@@ -5,6 +5,7 @@ import datashader as ds
 import datashader.transfer_functions as tf
 import scipy
 import pickle as pkl
+import xarray as xr
 FULL_CHROM_NAMES=pd.read_csv("hic_basic/ref/hg19.len.csv",index_col=0).index
 FULL_DIP_CHROM_NAMES=pd.read_csv("hic_basic/ref/hg19.dip.len.csv",index_col=0).index
 def get_bins(ref_length_file:str="hic_basic/ref/hg19.len.csv", chromosomes:list=FULL_CHROM_NAMES, resolution:int=1000000)->dict:
