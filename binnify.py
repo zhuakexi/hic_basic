@@ -72,10 +72,16 @@ def tiled_bin_cut(pairs:pd.DataFrame, chromosomes:list=FULL_CHROM_NAMES, referen
     bins_shifts = get_bin_shifts(bin_dict)
     bin_sum = get_bin_sum(bin_dict)
     res = pd.DataFrame()
-    for group, df in pairs.groupby(['chr1','chr2']): # a dask parallel groupby will be better
-        b_df = bin_cut(df, group, bin_dict) # bin a single chromosome pair
-        sb_df = shift_binned_chromosomes(b_df, group, bins_shifts) # shift according to chromosomes used
-        res = res.append(sb_df) # can append at ease since result is shifted
+    # a dask parallel groupby will be better
+    for group, df in pairs.groupby(['chr1','chr2']): 
+        #binnify only chromosomes mentioned in list
+        if group[0] in chromosomes and group[1] in chromosomes:
+            # bin a single chromosome pair
+            b_df = bin_cut(df, group, bin_dict)
+            # shift according to chromosomes used
+            sb_df = shift_binned_chromosomes(b_df, group, bins_shifts)
+            # can append at ease since result is shifted
+            res = res.append(sb_df)
     pixels = pd.DataFrame(np.zeros((bin_sum, bin_sum))) # all possible bin-combinations
     l_pixels = pixels.stack().reset_index()[["level_0","level_1"]] # change to longform
     l_pixels.columns = ["pos1","pos2"]
