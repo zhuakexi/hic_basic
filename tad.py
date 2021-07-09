@@ -38,7 +38,7 @@ def IS(R):
     return bias
 
 ## Find the best n_components by comparing silhouette coefficient
-def bestco(F):
+def bestco(F, resolution):
     # find best components
     x=-1
     R0=0
@@ -102,7 +102,7 @@ def zero(R,t):
     enrich.append(len(bias))
     return np.array(enrich)
 ## Split huge contact matrix to windows and detected TAD boundaries in each window
-def part_zero(F:np.ndarray, core:int, window:float):
+def part_zero(F:np.ndarray, core:int, window:float, reso:int):
     #Input:
     #   F: full contact_matrix
     #   core: number of threads
@@ -119,7 +119,7 @@ def part_zero(F:np.ndarray, core:int, window:float):
         if np.sum(P)<100:
             # poor signal
             return []
-        R,t=bestco(P)
+        R,t=bestco(P, reso)
         if t==0:
             return []
         # main calc
@@ -141,7 +141,7 @@ def part_zero(F:np.ndarray, core:int, window:float):
         pos=np.append(pos,result.get())
     return pos.astype('int32')
 ## entry function
-def tad(F, core:int=1, reso:int=40, min:int=600, max:int=1000, split:int=8000)
+def tad(F, core:int=1, reso:int=40, min:int=600, max:int=1000, split:int=8000):
 #Input:
 #   F: input contact matrix : np.ndarray
 #   reso: resolution of the matrix (kbp)
@@ -149,9 +149,9 @@ def tad(F, core:int=1, reso:int=40, min:int=600, max:int=1000, split:int=8000)
 #   split: window size (kbp)
 #   core: treads used
 
-    length=400//resolution
-    delta=int(math.ceil(100/resolution))
+    length=400//reso
+    delta=int(math.ceil(100/reso))
     # window length (of res_bins)
-    window=split//resolution
+    window=split//reso
 
-    return part_zero(F, core, window)
+    return part_zero(F, core, window, reso)
