@@ -11,7 +11,7 @@ def corate(A,n,time):
     S=np.zeros([np.shape(A)[0],np.shape(A)[1]])
     for i in range(time):
         K=np.zeros([np.shape(A)[0],np.shape(A)[1]])
-        estimator=decomposition.NMF(n_components=n, init='random',random_state=i)
+        estimator=decomposition.NMF(n_components=n, init='random',random_state=i, max_iter=10_000)
         estimator.fit(A)
         B=estimator.transform(A)
         index=B.argmax(axis=1)
@@ -32,28 +32,28 @@ def silhou(R,pos):
             silhou+=(-a/(pos[i+1]-pos[i])+b/(n+pos[i]-pos[i+1]))/max((a/(pos[i+1]-pos[i]),b/(n+pos[i]-pos[i+1])))
     return silhou/n
 ## Calculate clustering rate of each bin
-def IS(R):
+def IS(R, length):
     bias=np.zeros([np.shape(R)[0]])
     for i in range(1,np.shape(R)[0]-1):
         bias[i]=np.mean(R[max(0,i-length):(i+1),i:min(i+length+1,np.shape(R)[0])])
     return bias
 
 ## Find the best n_components by comparing silhouette coefficient
-def bestco(F, resolution):
+def bestco(F, reso, length, delta, min_val, max_val):
     # find best components
     x=-1
     R0=0
     n1=0
-    for n in range(max(int(np.shape(F)[0]*resolution/size[1]),1),int(np.shape(F)[0]*resolution/size[0])+1):
+    for n in range(max(int(np.shape(F)[0]*reso/max_val),1),int(np.shape(F)[0]*reso/min_val)+1):
         R1=corate(F,n,10)
-        x1=silhou(R1,zero(R1,n-1))
+        x1=silhou(R1, zero(R1,n-1, length, delta))
         if x1>=x:
             R0=R1
             x=x1
             n1=n
     return R0,n1
 ## Find bins with local minimal clustering rate and global comparative low clustering rate （these bins are detected TAD boundaries)
-def zero(R,t):
+def zero(R, t, length, delta):
     # pick at most t TAD boundary from contact matrix
     # Input:
     #   R : small piece of matrix
@@ -62,7 +62,7 @@ def zero(R,t):
     # find local valley of IS result
 
     #bias: number of contacts in "anti-diag" field
-    bias=IS(R)
+    bias=IS(R, length)
     #delta_list: right_bias - left_bias
     delta_list=[]
     for i in range(delta,len(bias)-delta):
@@ -103,10 +103,11 @@ def zero(R,t):
     enrich.append(len(bias))
     return np.array(enrich)
 ## Split huge contact matrix to windows and detected TAD boundaries in each window
-def part_zero(F:np.ndarray, core:int, window:float, reso:int):
+def part_zero(F:np.ndarray, core:int, window:float, reso:int, delta, length, min_val, max_val):
     #Input:
     #   F: full contact_matrix
     #   core: number of threads
+
     pos=[]
     n=np.shape(F)[0]
     global task
@@ -120,11 +121,11 @@ def part_zero(F:np.ndarray, core:int, window:float, reso:int):
         if np.sum(P)<100:
             # poor signal
             return []
-        R,t=bestco(P, reso)
+        R,t=bestco(P, reso, length, delta, min_val, max_val)
         if t==0:
             return []
         # main calc
-        p=zero(R,t-1)
+        p=zero(R,t-1, length, delta)
         pos=[]
         for j in p:
             if j in range(window//2*i-max(0,window//2*i-window//4),window//2*(i+1)-max(0,window//2*i-window//4)):
@@ -142,7 +143,7 @@ def part_zero(F:np.ndarray, core:int, window:float, reso:int):
         pos=np.append(pos,result.get())
     return pos.astype('int32')
 ## entry function
-def tad(F, core:int=1, reso:int=40, min:int=600, max:int=1000, split:int=8000):
+def tad(F, core:int=1, reso:int=40, min_val:int=600, max_val:int=1000, split:int=8000):
 #Input:
 #   F: input contact matrix : np.ndarray
 #   reso: resolution of the matrix (kbp)
@@ -151,8 +152,9 @@ def tad(F, core:int=1, reso:int=40, min:int=600, max:int=1000, split:int=8000):
 #   core: treads used
 
     length=400//reso
+    #size=[min_val,max_val]
     delta=int(math.ceil(100/reso))
     # window length (of res_bins)
     window=split//reso
 
-    return part_zero(F, core, window, reso)
+    return part_zero(F, core, window, reso, delta, length, min_val, max_val)
