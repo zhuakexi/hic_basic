@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn import decomposition
 import math
+import multiprocessing
 
 ## Run NMF in several times with random initialisation and output consensus matrix
 def corate(A,n,time):
