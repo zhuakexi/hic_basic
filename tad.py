@@ -107,9 +107,15 @@ def part_zero(F:np.ndarray, core:int, window:float, reso:int, delta, length, min
     #Input:
     #   F: full contact_matrix
     #   core: number of threads
-
+    #   window: size of sliding window, in number of reso_bins
+    #   reso: resolution of the input contact_matrix, in kbp
+    
     pos=[]
+    # length of chromosome/input_matrix, in num of reso_bins
     n=np.shape(F)[0]
+
+    # deTOKI's core function
+
     global task
     def task(i):
         # i : work id
@@ -120,6 +126,7 @@ def part_zero(F:np.ndarray, core:int, window:float, reso:int, delta, length, min
         P=F[max(0,window//2*i-window//4):min(n,window//2*i+window-window//4),max(0,window//2*i-window//4):min(n,window//2*i+window-window//4)]
         if np.sum(P)<100:
             # poor signal
+            # windows with less than 100 contacts yield 0 tad boundaries
             return []
         R,t=bestco(P, reso, length, delta, min_val, max_val)
         if t==0:
@@ -131,13 +138,23 @@ def part_zero(F:np.ndarray, core:int, window:float, reso:int, delta, length, min
             if j in range(window//2*i-max(0,window//2*i-window//4),window//2*(i+1)-max(0,window//2*i-window//4)):
                 pos.append(j+max(0,window//2*i-window//4))
         return pos
+
+    # multi-thread calc
+    
     pool = multiprocessing.Pool(processes=core)
     res_list=[]
     for i in range(math.ceil(2*n/window)):
+        # iterate by window's mid-points
+        # window size is 8mb,
+        # each window overlaps neighbor windows by 4mb,
+        # yield 2*n/window mid-points
         result = pool.apply_async(task, args=(i,))
         res_list.append(result)
     pool.close()
     pool.join()
+
+    # async get and join every window's tad boundary
+
     for i in range(math.ceil(2*n/window)):
         result=res_list[i]
         pos=np.append(pos,result.get())
@@ -148,7 +165,7 @@ def tad(F, core:int=1, reso:int=40, min_val:int=600, max_val:int=1000, split:int
 #   F: input contact matrix : np.ndarray
 #   reso: resolution of the matrix (kbp)
 #   min, max: tad mean size (kbp)
-#   split: window size (kbp)
+#   split: window size (kbp) 
 #   core: treads used
 
     length=400//reso
