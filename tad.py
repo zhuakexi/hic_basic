@@ -38,11 +38,20 @@ def silhou(R, pos):
             b=np.sum((1-R)[i,:])-a
             silhou+=(-a/(pos[i+1]-pos[i])+b/(n+pos[i]-pos[i+1]))/max((a/(pos[i+1]-pos[i]),b/(n+pos[i]-pos[i+1])))
     return silhou/n
+
 ## Calculate clustering rate of each bin
 def IS(R, length):
+    # Calculate clustering rate(number of contacts 
+    # locatingin  inter_domain triangle field of the bin)
+
+    # Input:
+    #   R: contact matrix, typically consensus_NMF_matrix
+    #   length : length of bin's flanking regions considered
     bias=np.zeros([np.shape(R)[0]])
     for i in range(1,np.shape(R)[0]-1):
-        bias[i]=np.mean(R[max(0,i-length):(i+1),i:min(i+length+1,np.shape(R)[0])])
+        bias[i]=np.mean(
+            R[max(0,i-length):(i+1), i:min(i+length+1,np.shape(R)[0])]
+            )
     return bias
 
 ## Find the best n_components by comparing silhouette coefficient
@@ -128,11 +137,13 @@ def zero(R, t, length, delta):
     return np.array(enrich)
 ## Split huge contact matrix to windows and detected TAD boundaries in each window
 def part_zero(F:np.ndarray, core:int, window:float, reso:int, delta, length, min_val, max_val):
+    # depend on : bestco, zero
+    
     #Input:
     #   F: full contact_matrix
     #   core: number of threads
-    #   window: size of sliding window, in number of reso_bins
-    #   reso: resolution of the input contact_matrix, in kbp
+    #   window, reso, length, delta -> bestco
+    #   length, delta -> zero
     
     pos=[]
     # length of chromosome/input_matrix, in num of reso_bins
@@ -189,7 +200,7 @@ def part_zero(F:np.ndarray, core:int, window:float, reso:int, delta, length, min
         pos=np.append(pos,result.get())
     return pos.astype('int32')
 ## entry function
-def tad(F, core:int=1, reso:int=40, min_val:int=600, max_val:int=1000, split:int=8000):
+def tad(F, core:int=1, reso:int=40, min_val:int=600, max_val:int=1000, window_size_raw:int=8000, delta_raw:int=100):
 #Input:
 #   F: input contact matrix : np.ndarray
 #   reso: resolution of the matrix (kbp)
@@ -197,10 +208,12 @@ def tad(F, core:int=1, reso:int=40, min_val:int=600, max_val:int=1000, split:int
 #   split: window size (kbp) 
 #   core: treads used
 
+    # length of flanking regions considered
+    # by default 400kbp
     length=400//reso
-    #size=[min_val,max_val]
-    delta=int(math.ceil(100/reso))
-    # window length (of res_bins)
-    window=split//reso
+    # small intervals for calculating curve's summints and valleys
+    delta=int(math.ceil(delta_raw/reso))
+    # tiling windows' size(number of res_bins), for parallel calculation 
+    window_size = window_size_raw//reso
 
     return part_zero(F, core, window, reso, delta, length, min_val, max_val)
