@@ -8,6 +8,13 @@ import multiprocessing
 
 ## Run NMF in several times with random initialisation and output consensus matrix
 def corate(A,n,time):
+    # Input:
+    #   A : matrix, window-sized submatrix
+    #   n : number of components, optimized by 
+    #       {average_length_of_TAD, length_of_window}
+    #   time : times of NMF running
+    # Output:
+    #   consensus NMF matrix
     S=np.zeros([np.shape(A)[0],np.shape(A)[1]])
     for i in range(time):
         K=np.zeros([np.shape(A)[0],np.shape(A)[1]])
@@ -22,7 +29,7 @@ def corate(A,n,time):
         S=S+K
     return S.astype(np.float64)/time
 ## Define silhouette coefficient of consensus matrix and detected TAD boundaries
-def silhou(R,pos):
+def silhou(R, pos):
     n=np.shape(R)[0]
     silhou=0
     for i in range(len(pos)-1):
@@ -40,18 +47,35 @@ def IS(R, length):
 
 ## Find the best n_components by comparing silhouette coefficient
 def bestco(F, reso, length, delta, min_val, max_val):
-    # find best components
+    # argument picking
+    # find best n(number of components)
+    # judged by silhouette coefficient
+
+    # n ~ number of TADs in 1 window
+
+    # rely on:
+    #   corate, silhou, zero
+    # Input:
+    #   F, reso, min_val, max_val: for n determining
+    #   length, delta: for boundary calling
+    # Output:
+    #   final consensus NMF matrix, and its n
     x=-1
     R0=0
     n1=0
     for n in range(max(int(np.shape(F)[0]*reso/max_val),1),int(np.shape(F)[0]*reso/min_val)+1):
+        # get NMF_consensus_matrix
         R1=corate(F,n,10)
-        x1=silhou(R1, zero(R1,n-1, length, delta))
+        # calc tad under above n/NMF_consensus_matrix
+        x1=silhou(R1, zero(R1, n-1, length, delta))
         if x1>=x:
             R0=R1
             x=x1
             n1=n
+    # final R0, best consensus NMF matrix
+    # fianl n1, best n_component used in NMF
     return R0,n1
+
 ## Find bins with local minimal clustering rate and global comparative low clustering rate （these bins are detected TAD boundaries)
 def zero(R, t, length, delta):
     # pick at most t TAD boundary from contact matrix
@@ -121,19 +145,24 @@ def part_zero(F:np.ndarray, core:int, window:float, reso:int, delta, length, min
         # i : work id
         # (implicit)F :  full mat
         # (implicit)window : window size (uint: reso_bins)
+        # (implicit)n : length of full chromosome 
 
-        # P : part of F, working unit
-        P=F[max(0,window//2*i-window//4):min(n,window//2*i+window-window//4),max(0,window//2*i-window//4):min(n,window//2*i+window-window//4)]
+        # P : a window-size-tile of F, different near chromosome ends
+        P=F[max(0,window//2*i-window//4):min(n,window//2*i+window-window//4),
+            max(0,window//2*i-window//4):min(n,window//2*i+window-window//4)]
         if np.sum(P)<100:
             # poor signal
             # windows with less than 100 contacts yield 0 tad boundaries
             return []
-        R,t=bestco(P, reso, length, delta, min_val, max_val)
+        # find best NMF_consensus_matrix
+        R, t = bestco(P, reso, length, delta, min_val, max_val)
         if t==0:
+            # all n candidates are not good
             return []
-        # main calc
-        p=zero(R,t-1, length, delta)
+        # call TAD on consensus matrix
+        p=zero(R, t-1, length, delta)
         pos=[]
+        # transform TAD boundary from local(in window) index to global index
         for j in p:
             if j in range(window//2*i-max(0,window//2*i-window//4),window//2*(i+1)-max(0,window//2*i-window//4)):
                 pos.append(j+max(0,window//2*i-window//4))
