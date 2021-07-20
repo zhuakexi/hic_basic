@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy
 
-from basic import parse_pairs
+from hires_utils.hires_io import parse_pairs
 
 def expected_inter(pairs:pd.DataFrame)->pd.DataFrame:
     # calculate expected inter contacts(exp(chra,chrb) = chra_total_frag * chrb_total_frag)
