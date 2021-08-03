@@ -6,9 +6,13 @@ import datashader.transfer_functions as tf
 import scipy
 import pickle as pkl
 import xarray as xr
+from pkgutil import get_data
+from io import StringIO
+from . import ref
+
 FULL_CHROM_NAMES=pd.read_csv("hic_basic/ref/hg19.len.csv",index_col=0).index
 FULL_DIP_CHROM_NAMES=pd.read_csv("hic_basic/ref/hg19.dip.len.csv",index_col=0).index
-def get_bins(ref_length_file:str="hic_basic/ref/hg19.len.csv", chromosomes:list=FULL_CHROM_NAMES, resolution:int=1000000)->dict:
+def get_bins(ref_length_file, chromosomes:list=FULL_CHROM_NAMES, resolution:int=1000000)->dict:
     # generate Intervals for each chromosome in list
     chrom_lengths = pd.read_csv(ref_length_file, index_col=0)
     chroms_intervals = {} # each chrom
@@ -62,13 +66,16 @@ def tiled_bin_cut(pairs:pd.DataFrame, chromosomes:list=FULL_CHROM_NAMES, referen
     # binnify and align contacts between chromosomes(in chromosome list)
     # by default binnify all chromosomes
     ## get bin breaks
-    if reference == "hg19":
-        ref_path = "hic_basic/ref/hg19.len.csv"
-    elif reference == "hg19.dip":
-        ref_path = "hic_basic/ref/hg19.dip.len.csv"
+    refs = {
+        "hg19":"hg19.len.csv", 
+        "hg19.dip":"hg19.dip.len.csv"
+        }
+    if reference in refs:
+        ref_dat = get_data(ref.__name__, refs[reference])
+        ref_f = StringIO(ref_dat.decode())
     else:
         raise ValueError("reference not supported yet")
-    bin_dict = get_bins(ref_path, chromosomes, resolution)
+    bin_dict = get_bins(ref_f, chromosomes, resolution)
     bins_shifts = get_bin_shifts(bin_dict)
     bin_sum = get_bin_sum(bin_dict)
     res = pd.DataFrame()
@@ -98,10 +105,16 @@ def shader_pairs_plot(pairs:pd.DataFrame, chromosomes:list=FULL_CHROM_NAMES,ref_
     #points = cvs.points(pairs, x="pos1",y="pos2")
     #return tf.shade(points) # this will pile all chromosome-pair together, useless
     pass # tedious, not usefull
-def shader_matrix_plot(mat:pd.DataFrame, width:int=500, height:int=500):
+def shader_matrix_plot(mat:pd.DataFrame, width:int=500, height:int=500, short_length:int=0):
     # plot binnified pairs matrix, difference samples aligned in same coords
+    # short_legth set short edge of resulting image, and keep h_w ratio(according to mat.shape)
+    #    useful when mat isn't standard square
     x_mat = xr.DataArray(mat.values, coords=[("pos1",mat.index),("pos2",mat.columns)]) # transform to xarray form
-    cvs = ds.Canvas(plot_width=width, plot_height=height)
+    if short_length != 0:
+        expand_r = short_length // min(*mat.shape)
+        cvs = ds.Canvas(plot_width=mat.shape[1]*expand_r, plot_height=mat.shape[0]*expand_r)
+    else:
+        cvs = ds.Canvas(plot_width=width, plot_height=height)
     x_mat['_file_obj'] = None # work around for ds bug
     return tf.shade(cvs.raster(x_mat))
 def write_matrix(mat:scipy.sparse.csc_matrix,file_name:str):
