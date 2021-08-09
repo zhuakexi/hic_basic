@@ -16,10 +16,12 @@ FULL_CHROM_NAMES=pd.read_csv(ref_f,index_col=0).index
 ref_dat = get_data(ref.__name__, "hg19.dip.len.csv")
 ref_f = StringIO(ref_dat.decode())
 FULL_DIP_CHROM_NAMES=pd.read_csv(ref_f,index_col=0).index
-def get_bins(ref_length_file, chromosomes:list=FULL_CHROM_NAMES, resolution:int=1000000)->dict:
+def get_bins(ref_length_file, chromosomes:list=None, resolution:int=1000000)->dict:
     # generate Intervals for each chromosome in list
     chrom_lengths = pd.read_csv(ref_length_file, index_col=0)
     chroms_intervals = {} # each chrom
+    if chromosomes == None:
+        chromosomes = chrom_lengths.index
     for chrom in chromosomes:
         length = chrom_lengths.loc[chrom,"length"]
         breaks = list(range(0, length, resolution))
@@ -66,19 +68,25 @@ def shift_binned_chromosomes(pairs_chunk:pd.DataFrame,chrom_pair:tuple, bin_shif
     new_pos1 = pairs_chunk["pos1"].astype(int) + bin_shifts[chra]
     new_pos2 = pairs_chunk["pos2"].astype(int) + bin_shifts[chrb]
     return pd.concat([new_pos1, new_pos2],axis=1)
-def tiled_bin_cut(pairs:pd.DataFrame, chromosomes:list=FULL_CHROM_NAMES, reference:str="hg19", resolution:int=1000000):
+def tiled_bin_cut(pairs:pd.DataFrame, chromosomes:list=None, reference:str="hg19", resolution:int=1000000):
     # binnify and align contacts between chromosomes(in chromosome list)
     # by default binnify all chromosomes
     ## get bin breaks
     refs = {
         "hg19":"hg19.len.csv", 
-        "hg19.dip":"hg19.dip.len.csv"
+        "hg19.dip":"hg19.dip.len.csv",
+        "mm10":"mm10.len.csv",
+        "mm10.dip":"mm10.dip.len.csv"
         }
     if reference in refs:
         ref_dat = get_data(ref.__name__, refs[reference])
         ref_f = StringIO(ref_dat.decode())
     else:
         raise ValueError("reference not supported yet")
+    if chromosomes == None:
+        # if chromosome list not given using all chromosomes
+        # from the given ref
+        chromosomes = pd.read_csv(ref_f, index_col=0)
     bin_dict = get_bins(ref_f, chromosomes, resolution)
     bins_shifts = get_bin_shifts(bin_dict)
     bin_sum = get_bin_sum(bin_dict)
@@ -102,7 +110,7 @@ def tiled_bin_cut(pairs:pd.DataFrame, chromosomes:list=FULL_CHROM_NAMES, referen
     ex_filled = dex_bin_counts.unstack(fill_value=0) # get wide-form/matrix
     sp_ex_filled = scipy.sparse.csc_matrix(ex_filled.values) # transform to column sparse matrix
     return pd.DataFrame.sparse.from_spmatrix(sp_ex_filled)
-def shader_pairs_plot(pairs:pd.DataFrame, chromosomes:list=FULL_CHROM_NAMES,ref_file:str="hic_basic/ref/hg19.len.csv",width:int=500, height:int=500):
+def shader_pairs_plot(pairs:pd.DataFrame, chromosomes:list=None,ref_file:str="hic_basic/ref/hg19.len.csv",width:int=500, height:int=500):
     # direct plot pairs file, fast but can't align different samples
     ## shift chromosome data tile
     #cvs = ds.Canvas(plot_width=width, plot_height=height)
