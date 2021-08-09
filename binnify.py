@@ -10,8 +10,12 @@ from pkgutil import get_data
 from io import StringIO
 from . import ref
 
-FULL_CHROM_NAMES=pd.read_csv("hic_basic/ref/hg19.len.csv",index_col=0).index
-FULL_DIP_CHROM_NAMES=pd.read_csv("hic_basic/ref/hg19.dip.len.csv",index_col=0).index
+ref_dat = get_data(ref.__name__, "hg19.len.csv")
+ref_f = StringIO(ref_dat.decode())
+FULL_CHROM_NAMES=pd.read_csv(ref_f,index_col=0).index
+ref_dat = get_data(ref.__name__, "hg19.dip.len.csv")
+ref_f = StringIO(ref_dat.decode())
+FULL_DIP_CHROM_NAMES=pd.read_csv(ref_f,index_col=0).index
 def get_bins(ref_length_file, chromosomes:list=FULL_CHROM_NAMES, resolution:int=1000000)->dict:
     # generate Intervals for each chromosome in list
     chrom_lengths = pd.read_csv(ref_length_file, index_col=0)
