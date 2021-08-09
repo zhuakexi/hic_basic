@@ -16,12 +16,9 @@ FULL_CHROM_NAMES=pd.read_csv(ref_f,index_col=0).index
 ref_dat = get_data(ref.__name__, "hg19.dip.len.csv")
 ref_f = StringIO(ref_dat.decode())
 FULL_DIP_CHROM_NAMES=pd.read_csv(ref_f,index_col=0).index
-def get_bins(ref_length_file, chromosomes:list=None, resolution:int=1000000)->dict:
+def get_bins(chrom_lengths, chromosomes:list=None, resolution:int=1000000)->dict:
     # generate Intervals for each chromosome in list
-    chrom_lengths = pd.read_csv(ref_length_file, index_col=0)
     chroms_intervals = {} # each chrom
-    if chromosomes == None:
-        chromosomes = chrom_lengths.index
     for chrom in chromosomes:
         length = chrom_lengths.loc[chrom,"length"]
         breaks = list(range(0, length, resolution))
@@ -83,10 +80,11 @@ def tiled_bin_cut(pairs:pd.DataFrame, chromosomes:list=None, reference:str="hg19
         ref_f = StringIO(ref_dat.decode())
     else:
         raise ValueError("reference not supported yet")
+    ref_content = pd.read_csv(ref_f,index_col=0)
     if chromosomes == None:
         # if chromosome list not given using all chromosomes
         # from the given ref
-        chromosomes = pd.read_csv(ref_f, index_col=0)
+        chromosomes = ref_content.index
     bin_dict = get_bins(ref_f, chromosomes, resolution)
     bins_shifts = get_bin_shifts(bin_dict)
     bin_sum = get_bin_sum(bin_dict)
