@@ -35,6 +35,7 @@ def cell_sig(file_path:str)->pd.Series:
     # return 1035*1 pd.Series with proper index
     pairs = parse_pairs(file_path) 
     ## generate 46*46 contacts count matrix
+    total_inter = pairs.query('chr1 != chr2').shape[0]
     gp = pairs.groupby(["chr1","chr2"])
     pairs_counts = gp.size() # split-count method
     for_matrix = pairs_counts.reset_index()
@@ -43,7 +44,7 @@ def cell_sig(file_path:str)->pd.Series:
     full_matrix = matrix.fillna(0)
     
     full_sig = full_matrix.T + full_matrix # in case input isn't sorted
-    normed_sig = full_sig/ expected_inter(pairs) # expected cannot have zero
-    
+    # normed_sig = full_sig/ expected_inter(pairs) # expected cannot have zero
+    normed_sig = full_sig/total_inter
     res = pick_triu(normed_sig)
     return res
