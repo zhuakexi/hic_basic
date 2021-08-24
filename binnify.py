@@ -85,7 +85,7 @@ def tiled_bin_cut(pairs:pd.DataFrame, chromosomes:list=None, reference:str="hg19
         # if chromosome list not given using all chromosomes
         # from the given ref
         chromosomes = ref_content.index
-    bin_dict = get_bins(ref_f, chromosomes, resolution)
+    bin_dict = get_bins(ref_content, chromosomes, resolution)
     bins_shifts = get_bin_shifts(bin_dict)
     bin_sum = get_bin_sum(bin_dict)
     res = pd.DataFrame()
