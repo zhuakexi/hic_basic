@@ -134,3 +134,62 @@ def read_matrix(file_name:str)->pd.DataFrame:
     with open(file_name,'rb') as f:
         mat = pkl.load(f)
     return pd.DataFrame.sparse.from_spmatrix(mat)
+def load_chrom_length()->dict:
+    refs = {
+    "hg19":"hg19.len.csv", 
+    "hg19.dip":"hg19.dip.len.csv",
+    "mm10":"mm10.len.csv",
+    "mm10.dip":"mm10.dip.len.csv"
+    }
+    ref_contents = {}
+    for ref_name in refs:
+        ref_dat = get_data(ref.__name__, refs[ref_name])
+        ref_f = StringIO(ref_dat.decode())
+        ref_contents[ref_name] = pd.read_csv(ref_f,index_col=0)
+    return ref_contents
+class Hicmap:
+    def __init__(self, df, chromosomes, ref, binsize):
+        # df: sparse_matrix
+        # chromosomes: list
+        # ref: word or path str
+        # binsize: int
+        self.df = df.copy(deep=True)
+        self.chromosomes = chromosomes
+        self.binsize = binsize
+        if ref in ["hg19","hg19.dip","hg38","GRCh38"]:
+            self.ref = load_chrom_length()[ref]
+        else:
+            self.ref = pd.read_csv(ref)
+        self.bins = self.get_bins()
+        self.chrom_shifts = get_bin_shifts(self.bins)
+        self.len_bp = self.get_base_length()
+    def get_bins(self):
+        chroms_intervals = {} # each chrom
+        for chrom in self.chromosomes:
+            length = self.ref.loc[chrom,"length"]
+            breaks = list(range(0, length, self.binsize))
+            breaks.append(length) # don't forget the rightmost points
+            chroms_intervals[chrom] = pd.IntervalIndex.from_breaks(
+                breaks,closed="left",name=chrom,dtype='interval[int64]')
+        return chroms_intervals # better in ordered dict
+    def __len__(self):
+        # caculate total number of all chromosomes' bins
+        return len(self.df)
+    def __str__(self):
+        return self.df.__str__()
+    def get_base_length(self):
+        length = 0
+        for chrom in self.chromosomes:
+            length += self.ref.loc[chrom].values[0]
+        return length
+    def pos2index(self, chrom, pos):
+        b_pos = pd.cut([pos], self.bins[chrom])
+        b_int_pos = b_pos.rename_categories(range(0,len(b_pos.categories)))
+        return self.chrom_shifts[chrom] + b_int_pos[0]
+    def loc(self, chrom1, start1, end1, chrom2, start2, end2):
+        start1_i = self.pos2index(chrom1, start1)
+        end1_i = self.pos2index(chrom1, end1)
+        start2_i = self.pos2index(chrom2, start2)
+        end2_i = self.pos2index(chrom2, end2)
+        #print(start1_i, end1_i)
+        return self.df.iloc[start1_i: end1_i, start2_i:end2_i]
