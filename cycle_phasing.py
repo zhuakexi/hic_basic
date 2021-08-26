@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import gzip
 from concurrent import futures
-from basic import divide_name
+from hires_utils.hires_utils.hires_io import divide_name
 
 def window_count(distances:pd.DataFrame, win_num)->pd.Series:
     # count distribution of distance array
