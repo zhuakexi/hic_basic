@@ -3,118 +3,132 @@
 import pandas as pd, numpy as np
 import datashader as ds
 import datashader.transfer_functions as tf
-import scipy
 import pickle as pkl
 import xarray as xr
 from pkgutil import get_data
 from io import StringIO
 from . import ref
 
-ref_dat = get_data(ref.__name__, "hg19.len.csv")
-ref_f = StringIO(ref_dat.decode())
-FULL_CHROM_NAMES=pd.read_csv(ref_f,index_col=0).index
-ref_dat = get_data(ref.__name__, "hg19.dip.len.csv")
-ref_f = StringIO(ref_dat.decode())
-FULL_DIP_CHROM_NAMES=pd.read_csv(ref_f,index_col=0).index
-def get_bins(chrom_lengths, chromosomes:list=None, resolution:int=1000000)->dict:
-    # generate Intervals for each chromosome in list
-    chroms_intervals = {} # each chrom
-    for chrom in chromosomes:
-        length = chrom_lengths.loc[chrom,"length"]
-        breaks = list(range(0, length, resolution))
-        breaks.append(length) # don't forget the rightmost points
-        chroms_intervals[chrom] = pd.IntervalIndex.from_breaks(breaks,closed="left",name=chrom,dtype='interval[int64]')
-    return chroms_intervals # better in ordered dict
-#print(get_bins()["chr1"])
-def bin_cut(contacts:pd.DataFrame, chrom_pair:tuple, bin_dict:dict):
-    # cut single chromosome-pair
-    # return int-labeled categories
-    # (chra, chra) and (chrb, chra) are regard as different pairs
-    chra, chrb = chrom_pair[0], chrom_pair[1]
-    b_pos1, b_pos2 = pd.cut(contacts["pos1"], bin_dict[chra]), pd.cut(contacts["pos2"], bin_dict[chrb])
-    b_int_pos1, b_int_pos2 = b_pos1.cat.rename_categories(range(0,len(b_pos1.cat.categories))), b_pos2.cat.rename_categories(range(0,len(b_pos2.cat.categories)))
-    binned_data = pd.concat([b_int_pos1, b_int_pos2],axis=1)
-    binned_data.columns = ["pos1", "pos2"]
-    return binned_data
-#print(bin_cut(chr1_pos1, ("chr1","chr1"), get_bins()))
-# functions to align multiple chromosomes
-def get_bin_shifts(chroms_intervals:dict)->pd.Series:
-    # shifts for all chfomosome used
-    # shifts are used in aligning chromsomes in a single map after per chromosome binning
-    interval_nums = {}
-    for chrom in chroms_intervals:
-        interval_nums[chrom] = len(chroms_intervals[chrom])
-    interval_nums = pd.Series(interval_nums)
-    bin_shifts = [0]
-    bin_shifts.extend(interval_nums.cumsum().values)
-    bin_shifts.pop()
-    return pd.Series(data=bin_shifts,index=interval_nums.index)
-# print(get_bin_shifts(get_bins()))
-def get_bin_sum(chroms_intervals:dict)->int:
-    # caculate total number of all chromosomes' bins
-    interval_nums = {}
-    for chrom in chroms_intervals:
-        interval_nums[chrom] = len(chroms_intervals[chrom])
-    interval_nums = pd.Series(interval_nums)
-    return interval_nums.sum()
-def shift_binned_chromosomes(pairs_chunk:pd.DataFrame,chrom_pair:tuple, bin_shifts:pd.Series):
-    # accept one contacts data block for one chrom combination
-    # move binned contacts to align blocks of data on a single map
-    # shift according to chromosome used, by default all chromosomes
-    chra, chrb = chrom_pair[0], chrom_pair[1]
-    new_pos1 = pairs_chunk["pos1"].astype(int) + bin_shifts[chra]
-    new_pos2 = pairs_chunk["pos2"].astype(int) + bin_shifts[chrb]
-    return pd.concat([new_pos1, new_pos2],axis=1)
-def tiled_bin_cut(pairs:pd.DataFrame, chromosomes:list=None, reference:str="hg19", resolution:int=1000000):
-    # binnify and align contacts between chromosomes(in chromosome list)
-    # by default binnify all chromosomes
-    ## get bin breaks
-    refs = {
-        "hg19":"hg19.len.csv", 
-        "hg19.dip":"hg19.dip.len.csv",
-        "mm10":"mm10.len.csv",
-        "mm10.dip":"mm10.dip.len.csv"
+class GenomeIdeograph:
+    @staticmethod
+    def get_lengths(ref_file):
+        # Get metrics of reference_genome,
+        #  should cover all file-finding troubles.
+        ##  Input:
+        ##    ref_file: reference_abbrevations(file stored in module)
+        ##      or lengths file_path(csv format:: chrom, lengths)
+        ##  Return:
+        ##    chromosome_order; dict, {chromosome:length}  
+        shipped_refs = {
+            "hg19":"hg19.len.csv", 
+            "hg19.dip":"hg19.dip.len.csv",
+            "mm10":"mm10.len.csv",
+            "mm10.dip":"mm10.dip.len.csv"        
         }
-    if reference in refs:
-        ref_dat = get_data(ref.__name__, refs[reference])
-        ref_f = StringIO(ref_dat.decode())
-    else:
-        raise ValueError("reference not supported yet")
-    ref_content = pd.read_csv(ref_f,index_col=0)
-    if chromosomes == None:
-        # if chromosome list not given using all chromosomes
-        # from the given ref
-        chromosomes = ref_content.index
-    bin_dict = get_bins(ref_content, chromosomes, resolution)
-    bins_shifts = get_bin_shifts(bin_dict)
-    bin_sum = get_bin_sum(bin_dict)
-    res = pd.DataFrame()
-    # a dask parallel groupby will be better
-    for group, df in pairs.groupby(['chr1','chr2']): 
-        #binnify only chromosomes mentioned in list
-        if group[0] in chromosomes and group[1] in chromosomes:
-            # bin a single chromosome pair
-            b_df = bin_cut(df, group, bin_dict)
-            # shift according to chromosomes used
-            sb_df = shift_binned_chromosomes(b_df, group, bins_shifts)
-            # can append at ease since result is shifted
-            res = res.append(sb_df)
-    pixels = pd.DataFrame(np.zeros((bin_sum, bin_sum))) # all possible bin-combinations
-    l_pixels = pixels.stack().reset_index()[["level_0","level_1"]] # change to longform
-    l_pixels.columns = ["pos1","pos2"]
-    ex_res = res.append(l_pixels) # extend binnify to ensure all possible combination has at least one value
-    ex_bin_counts = ex_res.groupby(["pos1","pos2"]).size() # count bin values
-    dex_bin_counts = ex_bin_counts - 1 # remove artificial contacts
-    ex_filled = dex_bin_counts.unstack(fill_value=0) # get wide-form/matrix
-    sp_ex_filled = scipy.sparse.csc_matrix(ex_filled.values) # transform to column sparse matrix
-    return pd.DataFrame.sparse.from_spmatrix(sp_ex_filled)
-def shader_pairs_plot(pairs:pd.DataFrame, chromosomes:list=None,ref_file:str="hic_basic/ref/hg19.len.csv",width:int=500, height:int=500):
-    # direct plot pairs file, fast but can't align different samples
-    ## shift chromosome data tile
-    #cvs = ds.Canvas(plot_width=width, plot_height=height)
-    #points = cvs.points(pairs, x="pos1",y="pos2")
-    #return tf.shade(points) # this will pile all chromosome-pair together, useless
-    pass # tedious, not usefull
+        if ref_file in shipped_refs:
+            ref_dat = get_data(ref.__name__, refs[reference])
+            lengths = pd.read_csv(
+                StringIO(ref_dat.decode()),
+                index_col=0)
+        else:
+            try:
+                lengths = pd.read_csv(
+                    ref_file,index_col=0)
+            except FileNotFoundError:
+                print("ref: neither valid abbrevations nor valid reference file")
+        chrom_order = dict(zip(lengths.index, range(len(lengths.index))))
+        lengths = lengths.iloc[:,0].to_dict()
+        return chrom_order, lengths
+    def __init__(self, ref_file):
+        ##  ref_file: reference_abbrevations(file stored in module)
+        ##    or lengths file_path(csv format:: chrom, lengths)
+        ##    chromosome order is the order of presentation in
+        ##    ref_file
+        self.chr_order, self.lengths = \
+            get_lengths(ref_file)
+        self.chrs = list(self.chr_order.keys())
+    def breaks(self, binsize:int):
+        # Get binned reference(int version)
+        ##  Return:
+        ##    breaks of bins(dict of list)
+        all_breaks = {}
+        for chrom in self.lengths:
+            length = self.lengths[chrom]
+            breaks = list(range(0, length, binsize))
+            breaks.append(length) # don't forget the rightmost point
+            all_breaks[chrom] = breaks
+        return all_breaks
+    def bins(self, binsize:int):
+        # Get binned reference(IntervalIdex version)
+        ## Return:
+        ##   intervals of each bin(
+        ##     dict of IntervalIndex)
+        breaks = self.breaks(binsize)
+        bins = {chrom : pd.IntervalIndex.from_breaks(
+                breaks[chrom], closed="left",
+                name=chrom,dtype='interval[int64]')
+                for chrom in breaks}
+        return bins
+    def chr_sort(self,chr_list):
+        # Sort input chr_id list according to this ideograph
+        return sorted(chr_list, key = lambda x: self.chr_order[x])
+    def chr_sort_keys(self):
+        # key function for sorted
+        return lambda x: self.chr_order[x]
+def symmetry(X):
+    # flip lower-triangle-part and add 
+    #  it to upper-triangle
+    #  set lower triangle to zeros
+    # Input:
+    #  X: 2darray, assume square
+    X = np.tril(X,-1).T + X
+    X[np.tril_indices(X.shape[0],-1)] = 0
+    return X
+def bin_cut(dat:pd.DataFrame, breaks:dict, bins:dict):
+    # Binnify contacts between a pair of chromosomes(chr_pair)
+    # Input:
+    ##  dat: pairs, assume intra-contacts or 
+    ##    inter-contacts between two chromosome
+    ##  chr_pair: set with 1(for intra) or 2(inter) elements
+    ##  breaks: binned reference 
+    ##    chromosome_name : boundary of each bin in that chromosome} 
+    ##    (keys should contain all eles in chr_pair)
+    ##  bins: binned reference(IntervalIndex version)
+    ##    use as index
+    ##    chromosome_name : intervals of each bin in that chromosome} 
+    ##    (keys should contain all eles in chr_pair)
+    # Output:
+    ##  pd.DataFrame with full interval_index
+    
+    # using first row to infer which chr_pair this
+    chr1, chr2 = dat.iloc[0,[1,3]]
+    # binnify
+    b_dat, xi, yi = np.histogram2d(x=dat["pos1"],y=dat["pos2"],
+        bins=[breaks[chr1],breaks[chr2]])
+    # store in sparse matrix
+    if chr1 == chr2:
+        # upper-triangle for intra_contacts
+        b_dat = symmetry(b_dat)
+    b_dat = pd.DataFrame(
+        b_dat).astype(pd.SparseDtype(int,0))
+    # using Interval version of bins as index
+    b_dat.index, b_dat.columns = \
+        bins[chr1], bins[chr2]
+    return b_dat
+def tiled_bin_cut(pairs:pd.DataFrame,ref:GenomeIdeograph,binsize:int)->Hicmap:
+    pairs_b = {}
+    for indi, dat in pairs.groupby(["chr1","chr2"]):
+        pairs_b[indi] = \
+        bin_cut(dat,ref.breaks(binsize),ref.bins(binsize))
+    # in-case input pairs isn't upper-triangle
+    norm_pairs_b = {}
+    for key in pairs_b:
+        if frozenset(key) in norm_pairs_b:
+            norm_pairs_b[frozenset(key)] += \
+            pairs_b[key]
+        else:
+            norm_pairs_b[frozenset(key)] = pairs_b[key]
+    return norm_pairs_b
 def shader_matrix_plot(mat:pd.DataFrame, width:int=500, height:int=500, short_length:int=0):
     # plot binnified pairs matrix, difference samples aligned in same coords
     # short_legth set short edge of resulting image, and keep h_w ratio(according to mat.shape)
@@ -134,19 +148,6 @@ def read_matrix(file_name:str)->pd.DataFrame:
     with open(file_name,'rb') as f:
         mat = pkl.load(f)
     return pd.DataFrame.sparse.from_spmatrix(mat)
-def load_chrom_length()->dict:
-    refs = {
-    "hg19":"hg19.len.csv", 
-    "hg19.dip":"hg19.dip.len.csv",
-    "mm10":"mm10.len.csv",
-    "mm10.dip":"mm10.dip.len.csv"
-    }
-    ref_contents = {}
-    for ref_name in refs:
-        ref_dat = get_data(ref.__name__, refs[ref_name])
-        ref_f = StringIO(ref_dat.decode())
-        ref_contents[ref_name] = pd.read_csv(ref_f,index_col=0)
-    return ref_contents
 class Hicmap:
     def __init__(self, df, chromosomes, ref, binsize):
         # df: sparse_matrix
