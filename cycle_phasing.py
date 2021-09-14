@@ -4,6 +4,7 @@ import gzip
 from concurrent import futures
 from hires_utils.hires_utils.hires_io import divide_name, parse_pairs
 
+# Nagano2017 part
 def G1_attrs_pairs(cell_name:str) -> pd.Series:
     # get cell's %near and farAvgDist
     
@@ -54,7 +55,22 @@ def contact_describe(cell_name:str) -> pd.Series:
         group = "blank"
     
     return pd.Series({"short%":short_r, "mitotic%":mitotic_r, "farAvg":farAvg.mean(),"group":group })
+def Nagano2017_cdp(cell_name:str):
+    # work for 11 column table only
+    # get cell's intra contact's distribution in Peter's window
+    # using customized .pairs parser
+    contacts = parse_pairs(cell_name)
 
+    # get contact distance array
+    intra = contacts.query("chr1 == chr2")
+    distances = abs(intra["pos1"] - intra["pos2"])
+    # count according to Peter's window
+    counts = window_count(distances, 150)
+    counts.name = cell_name
+    #return counts
+    return counts.reindex(range(38,151)) # only show 38-150
+
+# Generalized part
 def window_count(distances:pd.DataFrame, win_num)->pd.Series:
     # count distribution of distance array
     ## breaks from Nagano2017:
@@ -70,20 +86,6 @@ def window_count(distances:pd.DataFrame, win_num)->pd.Series:
         index = breaks)
     # normalized by all intra contacts
     return window_count/len(distances)
-def Nagano2017_cdp(cell_name:str):
-    # work for 11 column table only
-    # get cell's intra contact's distribution in Peter's window
-    # using customized .pairs parser
-    contacts = parse_pairs(cell_name)
-
-    # get contact distance array
-    intra = contacts.query("chr1 == chr2")
-    distances = abs(intra["pos1"] - intra["pos2"])
-    # count according to Peter's window
-    counts = window_count(distances, 150)
-    counts.name = cell_name
-    #return counts
-    return counts.reindex(range(38,151)) # only show 38-150
 def dis_counts(cell_name:str):
     # work for 11 column table only
     # get cell's intra contact's distribution in Peter's window
@@ -93,8 +95,8 @@ def dis_counts(cell_name:str):
     # get contact distance array
     intra = contacts.query("chr1 == chr2")
     distances = abs(intra["pos1"] - intra["pos2"])
-    # count according to Peter's window
+    # count according to Peter's window range
     counts = window_count(distances, 150)
     counts.name = cell_name
     #return counts
-    return counts # only show 38-150
+    return counts 
