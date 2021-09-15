@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import gzip
 from concurrent import futures
-from hires_utils.hires_utils.hires_io import divide_name, parse_pairs
+from .io import divide_name, parse_pairs
 
 # Nagano2017 part
 def G1_attrs_pairs(cell_name:str) -> pd.Series:
