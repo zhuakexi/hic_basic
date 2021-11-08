@@ -1,7 +1,9 @@
+# TODO: fill smooth_group to get fine-tunning group marker
 import pandas as pd
 import os
 import gzip
 import numpy as np
+
 def contact_describe(cell_name:str,c1=1,p1=2,c2=3,p2=4) -> pd.Series:
     # get cell's basic statistics, defined in Nagano2017
     contacts = pd.read_table(cell_name, header=None, comment="#",low_memory=False)
@@ -37,6 +39,18 @@ def contact_describe(cell_name:str,c1=1,p1=2,c2=3,p2=4) -> pd.Series:
         group = "blank"
     
     return {"short%":short_r, "mitotic%":mitotic_r, "farAvg":farAvg.mean(),"group":group }
+def smooth_group(cdps,raw_groups):
+    # fine-tuned group assignment using k-means clustering voting
+    # Input:
+    #   cdps: contacts decay profile, row for a sample
+    #         n*m array
+    #   groups: original group marker, length same as cdps row number
+    #           n array
+    # Output:
+    #    smooth_group: new group marker
+    #                  n array
+    #    reassignment_ratio: percent of changing-group sample
+    pass
 def Nagano_ordering(metrics:pd.DataFrame):
     # ordering within group using Nagano2017's metric
     # Input:
