@@ -4,37 +4,6 @@ import gzip
 from concurrent import futures
 from .io import divide_name, parse_pairs
 
-def contact_describe(cell_name:str) -> pd.Series:
-    # get cell's basic statistics, defined in Nagano2017
-    contacts = parse_pairs(cell_name)
-    intra = contacts.query(' chr1 == chr2 ')
-    distances = abs(intra["pos1"] - intra["pos2"])
-    
-    all_ = len(distances[23_000 < distances])
-    short = len(distances[(23_000 < distances) & (distances < 2_000_000)])
-    mitotic = len(distances[(2_000_000 < distances) & (distances < 12_000_000)])
-    farAvg = distances[(4_500_000 < distances) & (distances < 225_000_000)]
-    
-    mitotic_r = mitotic/all_
-    short_r = short/all_
-    
-    # assign to different stages on Peter's cirtera
-    if mitotic_r >= 0.3 and short_r <= 0.5:
-        group = "Post-M"
-    elif short_r > 0.5 and short_r + 1.8*mitotic_r > 1.0:
-        group = "Pre-M"
-    elif short_r <= 0.63:
-        group = "G1"
-    elif 0.63 < short_r <= 0.785:
-        group = "early-S"
-    elif short_r > 0.785:
-        group = "late-S/G2"
-    else:
-        group = "blank"
-    
-    return pd.Series({"short%":short_r, "mitotic%":mitotic_r, "farAvg":farAvg.mean(),"group":group })
-
-# Generalized part
 def window_count(distances:pd.DataFrame, win_num)->pd.Series:
     # count distribution of distance array
     ## breaks from Nagano2017:
