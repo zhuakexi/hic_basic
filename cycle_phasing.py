@@ -4,30 +4,6 @@ import gzip
 from concurrent import futures
 from .io import divide_name, parse_pairs
 
-# Nagano2017 part
-def G1_attrs_pairs(cell_name:str,c1=1,p1=2,c2=3,p2=4) -> pd.Series:
-    # get cell's %near and farAvgDist
-    ## get cell's intra contact's distance array 
-    contacts = pd.read_table(cell_name, header=None, comment="#")
-    new_columns = list(contacts.columns)
-    new_columns[c1] = "chr1"
-    new_columns[p1] = "pos1"
-    new_columns[c2] = "chr2"
-    new_columns[p2] = "pos2"
-    contacts.columns = new_columns
-    intra = contacts.query("chr1 == chr2")
-    distances = abs(intra["pos1"] - intra["pos2"])
-    counts = window_count(distances, 150)
-    
-    counts = counts.reset_index()[0]
-    all_ = counts.reindex(range(38,151)).sum() # all VALID bins, 1-37 are discarded, bin 38-150
-    near = counts.reindex(range(38,90)).sum() # bin 38-89
-    mitotic = counts.reindex(range(90,130)).sum() # bin 90-109
-    #far = counts.reindex(range(98, 151)).sum() # bin >= 98
-    
-    #farAvgDist = distances[distances < 4096000.0].mean() #mean contact distance considering bins >= 98
-    #result = pd.Series({"near_p":near/all_*100, "farAvgDist":farAvgDist})
-    return {"near_p":near/all_*100, "mitotic":mitotic/all_*100}
 def contact_describe(cell_name:str) -> pd.Series:
     # get cell's basic statistics, defined in Nagano2017
     contacts = parse_pairs(cell_name)
@@ -57,20 +33,6 @@ def contact_describe(cell_name:str) -> pd.Series:
         group = "blank"
     
     return pd.Series({"short%":short_r, "mitotic%":mitotic_r, "farAvg":farAvg.mean(),"group":group })
-def Nagano2017_cdp(cell_name:str):
-    # work for 11 column table only
-    # get cell's intra contact's distribution in Peter's window
-    # using customized .pairs parser
-    contacts = parse_pairs(cell_name)
-
-    # get contact distance array
-    intra = contacts.query("chr1 == chr2")
-    distances = abs(intra["pos1"] - intra["pos2"])
-    # count according to Peter's window
-    counts = window_count(distances, 150)
-    counts.name = cell_name
-    #return counts
-    return counts.reindex(range(38,151)) # only show 38-150
 
 # Generalized part
 def window_count(distances:pd.DataFrame, win_num)->pd.Series:
