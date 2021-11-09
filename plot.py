@@ -37,20 +37,25 @@ def cdps_plot(cdps,annote,sample_col="sample_name",order_col="index_order",group
     annote.loc[annote[group_col]=="Pre-M","group_color"] = "goldenrod"
     annote.loc[annote[group_col]=="early/mid-S","group_color"] = "green"
     annote.loc[annote[group_col]=="mid-S/G2","group_color"] = "lightgreen"
-    order = list(annote.sort_values(order_col)[sample_col].values)
+    annote = annote.sort_values(order_col)
+    order = list(annote[sample_col].values)
     fig = make_subplots(rows=2,cols=1,row_heights=[0.05,1],vertical_spacing=0.05)
     fig.add_trace(
         go.Bar(
         x = list(range(annote.shape[0])),
         y = [1 for i in range(0,annote.shape[0])],
-        marker_color = annote["group_color"]
+        marker_color = annote["group_color"],
+        hovertemplate='%{text}',
+        text = order
         ),
         row=1,
         col=1
     )
     fig.add_trace(
         go.Heatmap(
-            z = cdps.loc[order].T.values
+            z = cdps.loc[order].T.values,
+            hovertemplate = '%{text} '+'%{z}',
+            text = [order for i in range(annote.shape[0])]
         ),
         row=2,
         col=1
