@@ -1,6 +1,10 @@
 import pandas as pd
 import os
 import gzip
+import numpy as np
+import h5py
+from scipy.sparse import coo_matrix
+from io import StringIO
 def divide_name(filename):
     #home-made os.path.splitext, for it can't handle "name.a.b.c" properly
     basename = os.path.basename(filename)
@@ -104,3 +108,68 @@ def parse_pairs_like(filename:str)->pd.DataFrame:
     #assign column names
     #sys.stderr.write("pairs_parser: %s parsed \n" % filename)
     return pairs
+# read cooler file
+def read_h5_ds(group):
+    # read bottom level group into dataframe
+    data = {}
+    for key in group.keys():
+        if group[key].dtype.type == np.string_:
+            data[key] = group[key][:].astype("U")
+        else:
+            data[key] = group[key][:]
+    return pd.DataFrame(data)
+def load_cool(cool, root="/"):
+    """
+    Load simple cooler file as sparsematrix
+    
+    Parameters
+    ----------
+    cool : str
+        Path to the input .cool file.
+
+    Returns
+    -------
+    mat : scipy coo_matrix
+        Hi-C contact map in COO format.
+    frags : pandas DataFrame
+        Table of bins matching the matrix.
+    chroms : pandas DataFrame
+        Table of chromosome informations.
+    """
+    with h5py.File(cool,"r") as f:
+        frags = read_h5_ds(f[root]["bins"])
+        n_frags = frags.groupby("chrom", sort=False).count()["start"]
+        n_frags.name = "n_frags"
+        chroms = read_h5_ds(f[root]["chroms"])
+        mat = read_h5_ds(f[root]["pixels"])
+    frags["id"] = frags.groupby("chrom", sort=False).cumcount() + 1
+    chroms["cumul_length"] = (
+        chroms.length.shift(1).fillna(0).cumsum().astype(int)
+    )
+    chroms = pd.concat([chroms,n_frags],axis=1)    
+    n = int(max(np.amax(mat.bin1_id), np.amax(mat.bin2_id))) + 1
+    shape = (n, n)
+    mat = coo_matrix((mat["count"], (mat.bin1_id, mat.bin2_id)), shape=shape)
+
+    return mat, frags, chroms
+# write scipy sparse matrix to 3-col file
+def write_triplet(sparseM,filep,max_coo=True):
+    """
+    # write sparse matrix to triplet txt, assume symmetry
+    # write largest possible coordinate afront by default
+    """
+    sparseM.maxprint = sparseM.count_nonzero()
+    if max_coo == True:
+        with open(filep,"wt") as f:
+            f.write("%d\n" % sparseM.shape[0])
+        with open(filep,"at") as f:
+            for line in StringIO(str(sparseM)):
+                coord, value = line.split("\t")
+                c12 = " ".join(coord.strip().strip("()").split(", "))
+                f.write(" ".join([c12, value]))
+    else:
+        with open(filep,"wt") as f:
+            for line in StringIO(str(sparseM)):
+                coord, value = line.split("\t")
+                c12 = " ".join(coord.strip().strip("()").split(", "))
+                f.write(" ".join([c12, value]))
