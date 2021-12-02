@@ -26,7 +26,7 @@ def dis_counts(cell_name:str):
     contacts = parse_pairs(cell_name)
 
     # get contact distance array
-    intra = contacts.query("chr1 == chr2")
+    intra = contacts.query('chr1 == chr2')
     distances = abs(intra["pos1"] - intra["pos2"])
     # count according to Peter's window range
     counts = window_count(distances, 150)
