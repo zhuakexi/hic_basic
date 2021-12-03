@@ -17,8 +17,27 @@ def cdp_scatter(dat:pd.DataFrame)->go.Figure:
     )
     fig.update_xaxes(type="log")
     return fig
+# plot cdps heatmap
+def plot_cdps(cdps):
+    fig = go.Figure()
+    fig.add_trace(
+        go.Heatmap(
+            z = cdps,
+            y = cdps.index
+            #yaxis="y"
+        )
+    )
+    fig.update_layout(
+        height = 500,
+        width = 1000
+    )
+    fig.update_yaxes(
+        type = "log",
+        range = [3,8.3]
+    )
+    return fig
 # cdps heatmap with cycle-phasing marker
-def cdps_plot(cdps,orig_annote,sample_col="sample_name",order_col="index_order",group_col="group",color_map=None,hline=False):
+def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_order",group_col="group",color_map=None,hline=False):
     """
     # plot cdps heatmap with group marker in different color
     # Input:
