@@ -20,5 +20,6 @@ def ra_ordering(filesp, threads=24):
     dm = euclidean_distance_matrix(cdps.values)
     # return two ele list, [order,distance]
     order = solve_tsp_simulated_annealing(dm)
-    new_filesp = filesp.assign(order_index=order[0])
+    order_s = pd.Series(index=filesp.index[order[0]],data=list(range(filesp.shape[0])),name="order_index")
+    new_filesp = pd.concat([filesp,order_s],axis=1)
     return new_filesp
