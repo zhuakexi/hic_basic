@@ -10,6 +10,8 @@ from sklearn import preprocessing
 from sklearn.decomposition import PCA
 from umap import UMAP
 import pandas as pd
+from concurrent import futures
+from itertools import repeat
 
 def get_bin_locus(pos,size):
     return int( round( float(pos) / size) ) * size
@@ -62,6 +64,7 @@ def stack_dict(ares, sample_name:None, col_thresh=0.9, row_thresh=0.9):
     # first clean bad cols, then clean bad rows
     # Input:
     #    ares: list of dict
+    #    sample_name: name list of samples
     #    col_thresh: [0,1] larger is stricter, 0 to keep all
     #        keeping cols that at leat *ratio* of samples have nonNA value
     #    row_thresh: [0,1] larger is stricter, 0 to keep all
@@ -90,6 +93,30 @@ def fill_color(data, color_file, grt_full=True):
     if grt_full:
         filled_data = filled_data.dropna(axis=1)
     return filled_data
+def calc_color2(filesp, file_col, color_file, binsize, col_thresh=0.9, row_thresh=0.9,threads=24):
+    """
+    Input:
+        filesp: dataframe, must have file_col col
+        file_col: column in filesp that stores pairs file path
+        color_file: ref bed file that stores linear CpG density
+        binsize: binsize of color_file
+        col_thresh: [0,1] larger is stricter, 0 to keep all
+            keeping cols that at leat *ratio* of samples have nonNA value
+        row_thresh: [0,1] larger is stricter, 0 to keep all
+            after col cleaning, keeping samples that have nonNA value for at leat *ratio* of all attrs
+        threads: number of cores using
+    """
+    with futures.ProcessPoolExecutor(threads) as pool:
+        res = pool.map(
+            color2,
+            filesp[file_col],
+            repeat(color_file,filesp.shape[0]),
+            repeat(binsize, filesp.shape[0])
+        )
+    ares = list(res)
+    color_result = stack_dict(ares, filesp.index)
+    color_result = fill_color(color_result, color_file)
+    return color_result
 def do_umap(data,ndims=30):
     # do exactly what Seurat RunUMAP do
     # seens to plot better than umap-learn default settings
@@ -127,4 +154,6 @@ def scAB_embedding(data,ndims=30):
     pca_res = pca.fit_transform(scaled)
     # keep first 2 u by default
     umap_res = do_umap(pca_res,ndims)
-    return pd.DataFrame(umap_res, index=data.index)
+    result = pd.DataFrame(umap_res, index=data.index)
+    result.columns = ["u1","u2"]
+    return result
