@@ -15,7 +15,17 @@ from itertools import repeat
 
 def get_bin_locus(pos,size):
     return int( round( float(pos) / size) ) * size
-def color2(pairsf,color_file,bin_size,merge_haplotypes=True):
+def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dropXY=True):
+    """
+    Calculate 3D CpG density of each chromosome bin
+    Input:
+        pairsf: 4DN's pairs file
+        color_file: reference linear CpG density
+        bin_size: binsize of color_file(and the result output)
+        merge_haplotypes: whether treat maternal paternal chromosome differently,
+            when False, chromosomes must be like "chr1(mat)"
+        dropXY: only output autosome result
+    """
     # read in data
     pairs = []
     with gzip.open(pairsf,"rt") as f:
@@ -57,6 +67,9 @@ def color2(pairsf,color_file,bin_size,merge_haplotypes=True):
             smooth_color_data[bin_leg1].append(color_data[bin_leg2])
     for bin_leg in smooth_color_data:
         smooth_color_data[bin_leg] = np.mean(smooth_color_data[bin_leg])
+    if dropXY == True:
+            smooth_color_data = {k:v for k,v in smooth_color_data.items()
+                                 if k[0] not in ["chrX","chrY","chrX(mat)","chrX(pat)","chrY(mat)","chrY(pat)"]}
     return smooth_color_data
 def stack_dict(ares, sample_name:None, col_thresh=0.9, row_thresh=0.9):
     """
