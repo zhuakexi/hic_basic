@@ -106,13 +106,16 @@ def fill_color(data, color_file, grt_full=True):
     if grt_full:
         filled_data = filled_data.dropna(axis=1)
     return filled_data
-def calc_color2(filesp, file_col, color_file, binsize, col_thresh=0.9, row_thresh=0.9,threads=24):
+def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dropXY=True, col_thresh=0.9, row_thresh=0.9,threads=24):
     """
     Input:
         filesp: dataframe, must have file_col col
         file_col: column in filesp that stores pairs file path
         color_file: ref bed file that stores linear CpG density
         binsize: binsize of color_file
+        merge_haplotypes: whether treat maternal paternal chromosome differently,
+            when False, chromosomes must be like "chr1(mat)"
+        dropXY: only output autosome result
         col_thresh: [0,1] larger is stricter, 0 to keep all
             keeping cols that at leat *ratio* of samples have nonNA value
         row_thresh: [0,1] larger is stricter, 0 to keep all
@@ -124,7 +127,9 @@ def calc_color2(filesp, file_col, color_file, binsize, col_thresh=0.9, row_thres
             color2,
             filesp[file_col],
             repeat(color_file,filesp.shape[0]),
-            repeat(binsize, filesp.shape[0])
+            repeat(binsize, filesp.shape[0]),
+            repeat(merge_haplotypes, filesp.shape[0]),
+            repeat(dropXY, filesp.shape[0])
         )
     ares = list(res)
     color_result = stack_dict(ares, filesp.index)
