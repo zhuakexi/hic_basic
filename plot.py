@@ -23,7 +23,8 @@ def plot_cdps(cdps):
     fig.add_trace(
         go.Heatmap(
             z = cdps,
-            y = cdps.index
+            y = cdps.index,
+            colorscale="bluyl"
             #yaxis="y"
         )
     )
