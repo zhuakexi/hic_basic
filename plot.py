@@ -2,6 +2,8 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import pandas as pd
+import statsmodels.api as sm
+import numpy as np
 
 # cell cycle
 ## cdp scatter plot
@@ -127,5 +129,163 @@ def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_or
             y = 38,
             row = 2,
             col= 1
+        )
+    return fig
+def plot_compartment_strength(cs,g1_col="g1",g2_col="g2"):
+    # plot compartment strength
+    # cs index must be sample_name
+    # cs must have g1 and g2 col
+    # cs must be sorted
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x = cs.index,
+            y = cs[g1_col],
+            mode = "markers",
+            name = "g1"
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x = cs.index,
+            y = cs[g2_col],
+            mode = "markers",
+            name = "g2"
+        )
+    )
+    g1line = sm.nonparametric.lowess(
+        exog=list(range(cs.shape[0])),
+        endog=cs[g1_col],
+        frac=0.2)
+    fig.add_trace(
+        go.Scatter(
+            x = cs.index,
+            y = g1line[:,1],
+            name = "g1_trend"
+        )
+    )
+    g2line = sm.nonparametric.lowess(
+        exog=list(range(cs.shape[0])),
+        endog=cs[g2_col],
+        frac=0.2)
+    fig.add_trace(
+        go.Scatter(
+            x = cs.index,
+            y = g2line[:,1],
+            name = "g2_trend"
+        )
+    )
+    fig.update_layout(
+        height = 500,
+        width = 800,
+        title = "cell-order vs. compartment strength"
+    )
+    return fig
+def time_attr(adata,order_col="velocity_pseudotime"):
+    # Input:
+    #  adata: AnnData object
+    # plot attributes in single figure
+    fig = make_subplots(rows=6,cols=1,vertical_spacing=0.02)
+    
+    sorted_obs = adata.obs.sort_values(order_col)
+    
+    # add cdps subplot
+    cdps_fig = plot_cdps(
+        adata.obsm["cdps"].loc[sorted_obs.index].T
+    )
+    cdps_fig = cdps_fig.update_traces(
+       showscale=False 
+    )
+    fig.add_trace(
+        cdps_fig.data[0],
+        row=1,
+        col=1
+    )
+    
+    # add compartment strength subplot
+    cs_fig = plot_compartment_strength(
+        #adata.obs.sort_values("velocity_pseudotime"),
+        sorted_obs,
+        "g1_compartment_strength",
+        "g2_compartment_strength"
+    )
+    for trace in cs_fig.data:
+        fig.add_trace(trace,row=2,col=1)
+    
+    # add paternal maternal umi count subplot
+    pmUMI_fig = px.scatter(
+        sorted_obs,
+        x=sorted_obs.index,
+        y=sorted_obs["g1_umis"]/(sorted_obs["g1_umis"]+sorted_obs["g2_umis"]),
+        color = "seurat_clusters",
+        title="genome1_ratio")
+    for trace in pmUMI_fig.data:
+        fig.add_trace(
+            #pmUMI_fig.data[0],
+            trace,
+            row = 3,
+            col = 1
+        )
+    
+    # add contact number subplot
+    con_num_fig = px.scatter(
+        sorted_obs,
+        x=sorted_obs.index,
+        y=sorted_obs["pairs_c123_num"],
+        #color = "seurat_clusters",
+        title="c123 contact number")
+    for trace in con_num_fig.data:
+        fig.add_trace(
+            #pmUMI_fig.data[0],
+            trace,
+            row = 4,
+            col = 1
+        )
+    
+    # add intra subplot
+    intra_fig = px.scatter(
+        sorted_obs,
+        x=sorted_obs.index,
+        y=sorted_obs["intra"],
+        #color = "seurat_clusters",
+        title="intra contact ratio")
+    for trace in intra_fig.data:
+        fig.add_trace(
+            #pmUMI_fig.data[0],
+            trace,
+            row = 5,
+            col = 1
+        )
+        
+    # add repli_score subplot
+    rs_fig = px.scatter(
+        sorted_obs,
+        x=sorted_obs.index,
+        y=sorted_obs["repli_score"],
+        #color = "seurat_clusters",
+        title="repli_score")
+    for trace in rs_fig.data:
+        fig.add_trace(
+            #pmUMI_fig.data[0],
+            trace,
+            row = 6,
+            col = 1
+        )
+    # config figure
+    fig.update_layout(
+        height = 1200,
+        width = 1000,
+        title = "cell-order vs. attrs plot"
+    )
+    fig.update_yaxes(
+        visible=False,
+        row=1,
+        col=1
+    )
+    for i in range(1,6):
+        fig.update_xaxes(
+            visible=False,
+            row=i,
+            col=1
         )
     return fig
