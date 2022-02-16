@@ -216,4 +216,4 @@ def tad(F, core:int=1, reso:int=40, min_val:int=600, max_val:int=1000, window_si
     # tiling windows' size(number of res_bins), for parallel calculation 
     window_size = window_size_raw//reso
 
-    return part_zero(F, core, window, reso, delta, length, min_val, max_val)
+    return part_zero(F, core, window_size, reso, delta, length, min_val, max_val)
