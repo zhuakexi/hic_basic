@@ -11,7 +11,7 @@ import numpy as np
 from scipy import sparse
 from scipy.linalg import eigh
 from scipy.sparse.linalg import eigsh, lobpcg
-from .mdso.utils import check_similarity, compute_laplacian,\
+from .utils import check_similarity, compute_laplacian,\
                        _graph_is_connected, _set_diag
 from sklearn.utils import check_random_state, check_array
 from sklearn.utils.extmath import _deterministic_vector_sign_flip
