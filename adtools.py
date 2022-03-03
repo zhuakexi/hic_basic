@@ -96,7 +96,6 @@ def create_adata(expr, velo_ad, g1, g2):
             velo_ad.var.index
     ))
     genes = g_genes.union(expr.index.union(velo_ad.obs.index))
-    print(len(genes),len(samples))
     # ---generate seperate dfs--- 
     matrix = pd.DataFrame.sparse.from_spmatrix(velo_ad.layers["matrix"], index = velo_ad.obs.index, columns = velo_ad.var.index)
     spliced = pd.DataFrame.sparse.from_spmatrix(velo_ad.layers["spliced"], index = velo_ad.obs.index, columns = velo_ad.var.index)
@@ -112,9 +111,6 @@ def create_adata(expr, velo_ad, g1, g2):
     expr = expand_df(expr[samples], pixels)
     g1 = expand_df(g1[samples], pixels)
     g2 = expand_df(g2[samples], pixels)
-    print(pixels.shape)
-    for i in [matrix, spliced, unspliced, ambiguous, expr, g1, g2]:
-        print(i.shape)
     # ---create annData object---
     new_ad = ad.AnnData(
         expr.loc[genes, samples].T,
