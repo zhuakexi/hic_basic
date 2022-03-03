@@ -51,13 +51,29 @@ def clean_velocyto_names(adata, using_dup:list):
     adata.obs = adata.obs.drop("fix_name_res",axis=1)
     return adata
 def expand_df(target_df, ref_df):
-    target_df = target_df + ref_df
+    """
+    expand target_df to shape(with same index, columns) of ref_df, fill with 0
+    Input:
+        target_df: df to be transformed; sparse df
+        ref_df: axis reference, must contain all rows and cols of target_df; sparse df
+    """
+    assert target_df.index.isin(ref_df.index).all() and target_df.columns.isin(ref_df.columns).all(),\
+        "expand_df: target_df axis aren't both subset of ref_df"
+    cofactor = ref_df.loc[
+        ~ref_df.index.isin(target_df.index),
+        ~ref_df.columns.isin(target_df.columns)
+    ]
+    # for cofactor, join on both axis are OK
+    target_df = pd.concat(
+        [target_df, cofactor],
+        join = "outer"
+    )
     target_df.fillna(0, inplace=True)
     target_df = target_df.astype(pd.SparseDtype(int, fill_value=0))
     return target_df
 def create_adata(expr, velo_ad, g1, g2):
     """
-    Merge different matrix to single AnnData object
+    Merge different matrix to single AnnData object, intersection for obs, union for features.
     Input:
         expr: RNA count matrix from normal RNA-seq pipeline
         velo_ad: .loom from velocyto pipeline
@@ -80,6 +96,7 @@ def create_adata(expr, velo_ad, g1, g2):
             velo_ad.var.index
     ))
     genes = g_genes.union(expr.index.union(velo_ad.obs.index))
+    print(len(genes),len(samples))
     # ---generate seperate dfs--- 
     matrix = pd.DataFrame.sparse.from_spmatrix(velo_ad.layers["matrix"], index = velo_ad.obs.index, columns = velo_ad.var.index)
     spliced = pd.DataFrame.sparse.from_spmatrix(velo_ad.layers["spliced"], index = velo_ad.obs.index, columns = velo_ad.var.index)
@@ -88,13 +105,16 @@ def create_adata(expr, velo_ad, g1, g2):
     # future .X template
     pixels = pd.DataFrame.sparse.from_spmatrix(sparse.csr_matrix((len(genes),len(samples)),dtype=np.int64),index = genes, columns = samples)
     # ---prepare separate dfs---
-    matrix = expand_df(matrix, pixels)
-    spliced = expand_df(spliced, pixels)
-    unspliced = expand_df(unspliced, pixels)
-    ambiguous = expand_df(ambiguous, pixels)
-    expr = expand_df(expr, pixels)
-    g1 = expand_df(g1, pixels)
-    g2 = expand_df(g2, pixels)
+    matrix = expand_df(matrix[samples], pixels)
+    spliced = expand_df(spliced[samples], pixels)
+    unspliced = expand_df(unspliced[samples], pixels)
+    ambiguous = expand_df(ambiguous[samples], pixels)
+    expr = expand_df(expr[samples], pixels)
+    g1 = expand_df(g1[samples], pixels)
+    g2 = expand_df(g2[samples], pixels)
+    print(pixels.shape)
+    for i in [matrix, spliced, unspliced, ambiguous, expr, g1, g2]:
+        print(i.shape)
     # ---create annData object---
     new_ad = ad.AnnData(
         expr.loc[genes, samples].T,
