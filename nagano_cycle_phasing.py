@@ -2,6 +2,9 @@ import pandas as pd
 import os
 import gzip
 import numpy as np
+from sklearn import preprocessing
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 
 def contact_describe(cell_name:str,c1=1,p1=2,c2=3,p2=4) -> pd.Series:
     # get cell's basic statistics, defined in Nagano2017
