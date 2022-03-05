@@ -1,4 +1,3 @@
-# TODO: fill smooth_group to get fine-tunning group marker
 import pandas as pd
 import os
 import gzip
@@ -39,6 +38,7 @@ def contact_describe(cell_name:str,c1=1,p1=2,c2=3,p2=4) -> pd.Series:
         group = "blank"
     
     return {"short%":short_r, "mitotic%":mitotic_r, "farAvg":farAvg.mean(),"group":group }
+"""
 def smooth_group(cdps,raw_groups):
     # fine-tuned group assignment using k-means clustering voting
     # Input:
@@ -51,6 +51,38 @@ def smooth_group(cdps,raw_groups):
     #                  n array
     #    reassignment_ratio: percent of changing-group sample
     pass
+"""
+def smooth_cluster(cdps,annote,cluster_col="named_cluster",batchsize=5,pca_n=6):
+    """
+    # fine-tuned group assignment using k-means clustering voting
+    Input:
+        cdps: contact decay profiles
+        annote: df that records original group assignment, must using sample names as index
+        cluster_col: colname in annote that records originmal group assignment
+        batchsize: number of samples in each voting batch
+        pca_n: number of components used in distance calculation
+    Output:
+        annote with 2 new col: km_label km_label_group
+    """
+    # preprocessing
+    scaler = preprocessing.StandardScaler()
+    scaled = scaler.fit_transform(cdps.loc[annote.index].values)
+    pca = PCA(whiten=True)
+    pca_res = pca.fit_transform(scaled)
+    # kmean clustering
+    k_means = KMeans(init="k-means++", n_clusters = annote.shape[0]//batchsize)
+    k_means.fit(pca_res[:,:pca_n])
+    annote_ = annote.assign(km_label = k_means.labels_)
+    # vote for new group
+    km_label_group = annote_.groupby("km_label").apply(lambda x: x[cluster_col].value_counts().idxmax())
+    km_label_group.name = "km_label_group"
+    annote_ = pd.merge(
+        annote_, 
+        km_label_group,
+        left_on="km_label",
+        right_index = True
+    )
+    return annote_
 def Nagano_ordering(metrics:pd.DataFrame):
     # ordering within group using Nagano2017's metric
     # Input:
