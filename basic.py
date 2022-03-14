@@ -2,6 +2,13 @@ import pandas as pd
 import gzip
 import os
 from concurrent import futures
+def read_meta(fp):
+    """
+    Read general metadata, take care of sample_name.
+    """
+    df = pd.read_csv(fp, dtype={"sample_name":"string"},index_col=0)
+    df.index.name = "sample_name"
+    return df
 def divide_name(filename):
     #home-made os.path.splitext, for it can't handle "name.a.b.c" properly
     basename = os.path.basename(filename)
