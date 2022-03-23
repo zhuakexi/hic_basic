@@ -181,27 +181,21 @@ def plot_compartment_strength(cs,g1_col="g1",g2_col="g2"):
         title = "cell-order vs. compartment strength"
     )
     return fig
-def time_attr(adata,order_col="velocity_pseudotime"):
-    # Input:
-    #  adata: AnnData object
-    # plot attributes in single figure
-    fig = make_subplots(rows=6,cols=1,vertical_spacing=0.02)
-    
-    sorted_obs = adata.obs.sort_values(order_col)
-    
+def add_cdps(fig, row, col, adata, sorted_obs):
     # add cdps subplot
     cdps_fig = plot_cdps(
-        adata.obsm["cdps"].loc[sorted_obs.index].T
+        adata.uns["cdps"].loc[sorted_obs.index].T
     )
     cdps_fig = cdps_fig.update_traces(
        showscale=False 
     )
     fig.add_trace(
         cdps_fig.data[0],
-        row=1,
-        col=1
+        row=row,
+        col=col
     )
-    
+    return fig
+def add_compartment_strength(fig, row, col, adata, sorted_obs):
     # add compartment strength subplot
     cs_fig = plot_compartment_strength(
         #adata.obs.sort_values("velocity_pseudotime"),
@@ -210,8 +204,9 @@ def time_attr(adata,order_col="velocity_pseudotime"):
         "g2_compartment_strength"
     )
     for trace in cs_fig.data:
-        fig.add_trace(trace,row=2,col=1)
-    
+        fig.add_trace(trace,row=row,col=col)
+    return fig
+def add_pmUMI(fig, row, col, adata, sorted_obs):
     # add paternal maternal umi count subplot
     pmUMI_fig = px.scatter(
         sorted_obs,
@@ -223,10 +218,11 @@ def time_attr(adata,order_col="velocity_pseudotime"):
         fig.add_trace(
             #pmUMI_fig.data[0],
             trace,
-            row = 3,
-            col = 1
+            row = row,
+            col = col
         )
-    
+    return fig
+def add_contact_number(fig, row, col, adata, sorted_obs):
     # add contact number subplot
     con_num_fig = px.scatter(
         sorted_obs,
@@ -238,10 +234,11 @@ def time_attr(adata,order_col="velocity_pseudotime"):
         fig.add_trace(
             #pmUMI_fig.data[0],
             trace,
-            row = 4,
-            col = 1
+            row = row,
+            col = col
         )
-    
+    return fig
+def add_intra(fig, row, col, adata, sorted_obs):
     # add intra subplot
     intra_fig = px.scatter(
         sorted_obs,
@@ -253,11 +250,11 @@ def time_attr(adata,order_col="velocity_pseudotime"):
         fig.add_trace(
             #pmUMI_fig.data[0],
             trace,
-            row = 5,
-            col = 1
+            row = row,
+            col = col
         )
-        
-    # add repli_score subplot
+    return fig
+def add_rs(fig, row, col, adata, sorted_obs):
     rs_fig = px.scatter(
         sorted_obs,
         x=sorted_obs.index,
@@ -268,9 +265,28 @@ def time_attr(adata,order_col="velocity_pseudotime"):
         fig.add_trace(
             #pmUMI_fig.data[0],
             trace,
-            row = 6,
-            col = 1
+            row = row,
+            col = col
         )
+    return fig
+def time_attr(adata,order_col="velocity_pseudotime",using=None):
+    # Input:
+    #  adata: AnnData object
+    # plot attributes in single figure
+    
+    sorted_obs = adata.obs.sort_values(order_col)
+
+    stub = {
+     "cdps":add_cdps,
+        "rs":add_rs,
+        "intra":add_intra
+    }
+    if using == None:
+        using = stub.keys()
+    fig = make_subplots(rows=len(using),cols=1,vertical_spacing=0.02,shared_xaxes=True)
+    for i, v in enumerate(using):
+        fig = stub[v](fig, i+1, 1, adata, sorted_obs)
+    return fig
     # config figure
     fig.update_layout(
         height = 1200,
