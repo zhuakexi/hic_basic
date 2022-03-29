@@ -5,6 +5,8 @@ import numpy as np
 from sklearn import preprocessing
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+import sklearn.neighbors as NN
+from scipy.stats import entropy
 
 def contact_describe(cell_name:str,c1=1,p1=2,c2=3,p2=4) -> pd.Series:
     # get cell's basic statistics, defined in Nagano2017
@@ -158,3 +160,49 @@ def order_sample(ordering_values):
                 chunk.assign(index_order=np.nan)
             )
     return pd.concat(output)
+
+def schic_spectral_embedding(df):
+    """
+    non-linear dimensionality reduction of cdps curve
+    Input:
+        df: sample x feature matrix
+    Output:
+        2nd 3rd smallest eigenvectors of the graph Laplacian
+    """
+    # extract features
+    y = df.values.astype(np.float)
+    y[y==0] = 1 # add a pseudocount
+    y = y/y.sum(axis=1)[:,np.newaxis]
+
+    # compute distances
+    celln = y.shape[0]
+    dists = np.zeros((celln, celln))
+    for i in range(celln):
+        for j in range(i+1, celln):
+            dists[i,j] = entropy(y[i,:], qk=y[j,:], base=None)
+            dists[j,i] = entropy(y[j,:], qk=y[i,:], base=None)
+
+    symdist = dists+dists.T
+
+    # construct NN graph
+
+    k_nn = 7
+    nn = NN.NearestNeighbors(n_neighbors=k_nn, metric='precomputed', n_jobs=-1)
+    nn.fit(symdist)
+    dist2neighs, neighs =  nn.kneighbors()
+
+    adj = np.zeros((symdist.shape[0], symdist.shape[0]))
+    for i in range(symdist.shape[0]):
+        for ki in range(k_nn):
+            adj[i,neighs[i,ki]] = 1
+    adj = np.maximum(adj, adj.T)
+
+    # compute spectral embedding
+
+    lap = np.diag(adj.sum(axis=1))-adj
+    vals, vecs = np.linalg.eig(lap)
+    tmp = np.argsort(vals)
+    vals = vals[tmp]
+    vecs = vecs[:,tmp]
+    
+    return pd.DataFrame(vecs[:,1:3],columns=["ev1","ev2"])
