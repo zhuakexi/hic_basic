@@ -331,16 +331,18 @@ def _plot_cluster_gapped_heatmap(data, grouping, cluster_order, gap_width=1, T=T
     TODO:
         1. handle cluster number == 1
         2. mask gap-xx xticks
+        3. don't drop cluster or sample silently
     Input:
         data: m( samples ) * n( features ) dataframe
-        cluster: cluster ID of each sample; pd.Series
+        cluster: cluster ID of each sample. will drop missing levels; pd.Series
         cluster_order: order of clusters to show on heatmap
         gap_width: each gap equals to `gap_width` samples
         T: whether to transpose data( usually in time-dependent process )
-        hm_layout: heatmap layout to use, callable returning go.Figure
     Output:
         go.Figure
     """
+    # only keep cluster mentioned in cluster_order
+    data = data.loc[grouping[grouping.isin(cluster_order)].index]
     grouping = grouping.cat.set_categories(cluster_order, ordered=True)
     dfs = (v for k, v in data.groupby(grouping, sort=True))
     gaps = gen_gap(data.columns, grouping.cat.categories.shape[0] - 1, gap_width)
