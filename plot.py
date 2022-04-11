@@ -305,3 +305,53 @@ def time_attr(adata,order_col="velocity_pseudotime",using=None):
             col=1
         )
     return fig
+# plot pheatmap style gapped heatmap
+def gen_gap(features:list, number:int, k:int):
+    """
+    Input:
+        index: index of features
+        m: number of gaps
+        k: width of gaps
+    Output:
+        iterator of NA dataframes
+    """
+    n_features = len(features)
+    for i in range(number):
+        yield pd.DataFrame( 
+                np.array(
+                    list(repeat(np.nan, k*n_features))
+                ).reshape(k, n_features),
+                # fake sample_name
+                index = ["gap-{fake_id}".format(fake_id = j) for j in range(i*k, i*k+k)],
+                columns = features
+            )
+def _plot_cluster_gapped_heatmap(data, grouping, cluster_order, gap_width=1, T=True, hm_layout=plot_cdps):
+    """
+    Plot gap between heatmap clusters using dataframe hack.
+    TODO:
+        1. handle cluster number == 1
+        2. mask gap-xx xticks
+    Input:
+        data: m( samples ) * n( features ) dataframe
+        cluster: cluster ID of each sample; pd.Series
+        cluster_order: order of clusters to show on heatmap
+        gap_width: each gap equals to `gap_width` samples
+        T: whether to transpose data( usually in time-dependent process )
+        hm_layout: heatmap layout to use, callable returning go.Figure
+    Output:
+        go.Figure
+    """
+    grouping = grouping.cat.set_categories(cluster_order, ordered=True)
+    dfs = (v for k, v in data.groupby(grouping, sort=True))
+    gaps = gen_gap(data.columns, grouping.cat.categories.shape[0] - 1, gap_width)
+    intervening = (value for row in zip_longest(dfs, gaps, fillvalue=pd.DataFrame()) for value in row)
+    compiled_df = pd.concat(intervening)
+    if T == True:
+        fig = hm_layout(compiled_df.T)
+    else:
+        fig = hm_layout(complied_df)
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
+    )
+    return fig
