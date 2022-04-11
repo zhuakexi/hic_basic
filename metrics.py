@@ -1,11 +1,11 @@
-# distance metrics
+# distance/similarity metrics
 from string import capwords
 import numpy as np
 from sklearn import preprocessing
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import euclidean_distances, rbf_kernel
-
-def pca_euclid(mat:np.ndarray, n_components:int) -> np.ndarray:
+from .embedding import pca_rep
+def pca_euclid(mat:np.ndarray, n_components:int, with_std=False) -> np.ndarray:
     """
     Euclid distances in PCA-space.
     Input:
@@ -14,11 +14,11 @@ def pca_euclid(mat:np.ndarray, n_components:int) -> np.ndarray:
     Output:
         m * m distance matrix
     """
-    scaler = preprocessing.StandardScaler()
-    scaled = scaler.fit_transform(mat)
-    pca = PCA()
-    pca_res = pca.fit_transform(scaled)
-    dm = euclidean_distances(pca_res[:,:n_components])
+    dm = euclidean_distances(
+        pca_rep(
+            mat, n_components, with_std
+            )
+        )
     return dm
 def pca_euclid_kernel(mat:np.ndarray, n_components:int) -> np.ndarray:
     """    
