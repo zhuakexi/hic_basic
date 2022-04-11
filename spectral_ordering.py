@@ -2,36 +2,12 @@ import concurrent
 import sys
 from .mdso.spectral_ordering_ import SpectralBaseline, SpectralOrdering
 from .cycle_phasing import dis_counts
+from .metrics import pca_euclid_kernel, c_rbf_kernel
 import numpy as np
 import pandas as pd
-from sklearn import preprocessing
-from sklearn.decomposition import PCA
-from sklearn.metrics.pairwise import euclidean_distances, rbf_kernel
+
 from concurrent import futures
-def euclid_kernel(cdps,n_components):
-    # affinity based on PCA-euclid-distance
-    # Input:
-    #    n_components: number of PCA components used to calculate distance
-    # Output:
-    #    similarity matrix
-    scaler = preprocessing.StandardScaler()
-    scaled = scaler.fit_transform(cdps)
-    pca = PCA()
-    pca_res = pca.fit_transform(scaled)
-    dm = euclidean_distances(pca_res[:,:n_components])
-    sm = np.exp(-dm * 1/n_components)
-    return sm
-def euclid(cdps,n_components):
-    scaler = preprocessing.StandardScaler()
-    scaled = scaler.fit_transform(cdps)
-    pca = PCA()
-    pca_res = pca.fit_transform(scaled)
-    dm = euclidean_distances(pca_res[:,:n_components])
-    return dm
-def c_rbf_kernel(cdps,n_components):
-    scaler = preprocessing.StandardScaler()
-    scaled = scaler.fit_transform(cdps)
-    return rbf_kernel(scaled)
+
 def _mdso(cdps:pd.DataFrame, annote:pd.DataFrame, n_components:int=6):
     """
     Input:
@@ -42,9 +18,9 @@ def _mdso(cdps:pd.DataFrame, annote:pd.DataFrame, n_components:int=6):
     """
     # calculate similarity matrix
     sm =pd.DataFrame(
-        euclid_kernel(cdps.values,n_components),
-        index = cdps.index,
-        columns = cdps.index
+        pca_euclid_kernel(cdps.values,n_components),
+            index = cdps.index,
+            columns = cdps.index
         )
     so = SpectralOrdering()
     so_res = so.fit_transform(sm.values)
