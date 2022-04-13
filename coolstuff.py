@@ -1,7 +1,109 @@
+# cooler api functions
+import os.path as op
+import numpy as np
+import pandas as pd
+from cytoolz import compose
+from cooler.create import sanitize_records, aggregate_records
+import cooler
+
+from .utils import read_chromsizes, binnify
+
+def gen_bins(chromsizes_file:str, binsize:int):
+    """
+    Generate "bins" for cooler api.
+    """
+    if not op.exists(chromsizes_file):
+        raise ValueError('File "{}" not found'.format(chromsizes_file))
+    try:
+        binsize = int(binsize)
+    except ValueError:
+        raise ValueError(
+            'Expected integer binsize argument (bp), got "{}"'.format(binsize)
+        )
+    chromsizes = read_chromsizes(chromsizes_file, all_names=True)
+    bins = binnify(chromsizes, binsize)
+    return bins
+
+def easy_pixels(pairs_path, bins, chunksize=15e6, zero_based=False, tril_action="reflect"):
+    """
+    Easy to use func generating "pixels" for cooler api.
+    """
+    # --- pairs chunk read ---
+    # give reader
+    input_field_names = [
+        'chrom1', 'pos1', 'chrom2', 'pos2',
+    ]
+    input_field_dtypes = {
+        'chrom1': str,
+        'pos1': np.int64,
+        'chrom2': str,
+        'pos2': np.int64,
+    }
+    input_field_numbers = {"chrom1":1,"pos1":2,"chrom2":3,"pos2":4}
+    f_in = pairs_path
+
+    reader = pd.read_csv(
+        f_in,
+        sep='\t',
+        usecols=[input_field_numbers[name] for name in input_field_names],
+        names=input_field_names,
+        dtype=input_field_dtypes,
+        iterator=True,
+        chunksize=chunksize,
+        comment="#"
+        )
+    # --- "online" binnify ---
+    sanitize = sanitize_records(
+        bins,
+        schema='pairs',
+        decode_chroms=True,
+        is_one_based=not zero_based,
+        tril_action=tril_action,
+        sort=True,
+        validate=True
+        )
+    aggregations = {}
+    aggregate = aggregate_records(agg=aggregations, count=True, sort=False)
+    pipeline = compose(aggregate, sanitize)
+    return map(pipeline, reader)
+
+def scool_pixels(pairs_paths:dict, bins, chunksize=15e6, zero_based=False, tril_action="reflect"):
+    """
+    Generate pixels dict for multi-pairs-file. Using in scool generating.
+    Return:
+        Cell name as key and pixel table DataFrame as value
+    """
+    n = len(pairs_paths)
+    return {pairs_path : easy_pixels(pairs_paths[pairs_path], bins, chunksize,zero_based, tril_action) 
+        for pairs_path in pairs_paths}
+
+def pairs2cool(pairs_path, coolpath, sizef, binsize):
+    """
+    Generate .cool file from 4DN .pairs file
+    """
+    bins = gen_bins(sizef, binsize)
+    cooler.create_cooler(
+        coolpath,
+        bins,
+        easy_pixels(pairs_path, bins)
+    )
+def pairs2scool(pairs_paths, coolpath, sizef, binsize):
+    """
+    Generate .scool file from multiple 4DN .pairs file
+    """
+    bins = gen_bins(sizef, binsize)
+    cooler.create_scool(
+        coolpath,
+        bins,
+        scool_pixels(
+            pairs_paths,
+            bins
+        )
+    )
 # lousy helper functions to work with cooler, cooltools stuff
 # you need a conda env that names `cooler`, with cooler and cooltools installed
 import subprocess
-def pairs2cool(filei,fileo,sizef,binsize):
+def cli_pairs2cool(filei,fileo,sizef,binsize):
     """
     Generate .cool file from 4DN .pairs file
     Input:
@@ -13,7 +115,7 @@ def pairs2cool(filei,fileo,sizef,binsize):
     subprocess.check_output(
         "conda run -n cooler cooler cload pairs -c1 2 -p1 3 -c2 4 -p2 5 %s:%d %s %s " % (sizef,binsize,filei,fileo),
         shell=True)
-def mergecool(incools,outcool):
+def cli_mergecool(incools,outcool):
     """
     Merge cool files with same indices to get a consensus heatmap.
     Input:
@@ -24,7 +126,7 @@ def mergecool(incools,outcool):
         "conda run -n cooler cooler merge %s %s" %(outcool, incools),
         shell=True
     )
-def cl_Balance(filei,threads=8):
+def cli_cl_Balance(filei,threads=8):
     """
     cooler(cl) balance
     """
@@ -32,7 +134,7 @@ def cl_Balance(filei,threads=8):
         "conda run -n cooler cooler balance -p %d --force %s" % (threads,filei),
         shell=True
     )
-def ct_callTAD(filei,fileo):
+def cli_ct_callTAD(filei,fileo):
     """
     cooltools(ct) call TAD
     """
