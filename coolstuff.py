@@ -100,6 +100,26 @@ def pairs2scool(pairs_paths, coolpath, sizef, binsize):
             bins
         )
     )
+def cools2scool(cools, scool_path):
+    """
+    Generate scool from cooler files.
+    TODO:
+        don't readin all cools together.
+    Input:
+        cools: dict of name-cooler file, using first file's bins as default bins
+        scool_path: outputfile name
+    """
+    # pick first cool
+    bins = cooler.Cooler(cools[next(iter(cools))]).bins()[:]
+    multif_pixels = {
+        name : cooler.Cooler(cools[name]).pixels()[:]
+        for name in cools
+    }
+    cooler.create_scool(
+        scool_path,
+        bins,
+        multif_pixels
+    )
 # lousy helper functions to work with cooler, cooltools stuff
 # you need a conda env that names `cooler`, with cooler and cooltools installed
 import subprocess
