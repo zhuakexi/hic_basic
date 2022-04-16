@@ -1,19 +1,29 @@
+from math import ceil
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 from .utils  import filling_l2r_plotly
-def tech_box(annote, grouping="condition", size=200):
+def tech_box(annote, grouping="condition", features=["defaults"], ncols=3, size=200):
     """
     DNA and RNA tech metrics.
     Input:
         annote: sample * feature dataframe
         grouping: col name to group by
+        features: features to be plot. ["defaults", ...]
+        ncols: number of cols of subplots
         size: subplot size
     """
-    features = ["contacts","umis","rna_ratio","con_per_reads","umis_per_reads"]
-    fig = make_subplots(rows=2,cols=3,subplot_titles=features)
-    for row, col, _, feature in filling_l2r_plotly(2,3,features):
-        if isinstance(feature, str):
+    real_features = []
+    for i in features:
+        if i == "defaults":
+            real_features.extend(["contacts","umis","rna_ratio","con_per_reads","umis_per_reads"])
+        else:
+            real_features.append(i)
+    
+    nrows = ceil(len(ncols)/ncols)
+    fig = make_subplots(rows=nrows, cols=ncols, subplot_titles=features)
+    for row, col, _, feature in filling_l2r_plotly(nrows, ncols, features):
+        if feature is not None:
             fig.add_trace(
                 go.Box(
                     x = annote["condition"],
@@ -24,8 +34,8 @@ def tech_box(annote, grouping="condition", size=200):
                 col = col
             )
     fig.update_layout(
-        height = 2*size,
-        width = 3*size
+        height = nrows*size,
+        width = ncols*size
     )
     fig.update_layout(
         showlegend=False
