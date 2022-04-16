@@ -20,7 +20,7 @@ def tech_box(annote, grouping="condition", features=["defaults"], ncols=3, size=
         else:
             real_features.append(i)
     
-    nrows = ceil(len(ncols)/ncols)
+    nrows = ceil(len(real_features)/ncols)
     fig = make_subplots(rows=nrows, cols=ncols, subplot_titles=features)
     for row, col, _, feature in filling_l2r_plotly(nrows, ncols, features):
         if feature is not None:
