@@ -6,16 +6,10 @@ import os
 import loompy
 import scvelo as scv
 
+from ..io import matr
 from .basic import read_meta
 from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
-def matr(path,sep=","):
-    """
-    Read umi_tools long-form output matrix.
-    """
-    mat = pd.read_csv(path,sep=sep,index_col=0)
-    mat.columns = mat.columns.astype("string")
-    mat.index = mat.index.astype("string")
-    return mat
+
 def _merge_expr(fps, mapper, samplelist=None):
     """
     Merging umi count matrices.
