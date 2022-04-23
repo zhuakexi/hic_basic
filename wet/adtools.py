@@ -6,8 +6,7 @@ import os
 import loompy
 import scvelo as scv
 
-from ..io import matr
-from .basic import read_meta
+from ..io import matr, read_meta
 from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
 
 def _merge_expr(fps, mapper, samplelist=None):
