@@ -3,7 +3,7 @@ from functools import total_ordering
 import re
 
 import pandas as pd
-import plotly.graphic_objects as go
+import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 def drange(a,b,seats):
