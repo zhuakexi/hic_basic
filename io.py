@@ -1,6 +1,8 @@
-import pandas as pd
+import json
 import os
 import gzip
+
+import pandas as pd
 import numpy as np
 import h5py
 from scipy.sparse import coo_matrix
@@ -173,3 +175,17 @@ def write_triplet(sparseM,filep,max_coo=True):
                 coord, value = line.split("\t")
                 c12 = " ".join(coord.strip().strip("()").split(", "))
                 f.write(" ".join([c12, value]))
+
+# --- misc ---
+def dump_json(obj, filep):
+    """
+    Dump to json shortcut.
+    """
+    with open(filep,"wt") as f:
+        json.dump(obj,f)
+def load_json(filep):
+    """
+    Load from json file shortcut.
+    """
+    with open(filep,"rt") as f:
+        return json.load(f)
