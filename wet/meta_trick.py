@@ -1,3 +1,4 @@
+import re
 import pandas as pd
 
 def merge_meta(*dfs):
@@ -15,3 +16,25 @@ def merge_meta(*dfs):
         print("Cols good.")
     print("Resulting in %d samples." % new_meta.shape[0])
     return new_meta
+
+def last_mouse(df):
+    """
+    Find last batch number.
+    """
+    mouse_re = re.compile(r'm([\d,a-z]+)_')
+    mouse = []
+    nonnum = []
+    for group in df["group"].unique():
+        mres = mouse_re.search(group)
+        if mres is None:
+            print(group)
+            raise ValueError("Illegal batch code.")
+        else:
+            try:
+                num = int(mres.group(1))
+            except ValueError:
+                nonnum.append(mres.group(1))
+                continue
+            mouse.append(num)
+    print("Non-num :",nonnum)
+    return sorted(mouse)
