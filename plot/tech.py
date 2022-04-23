@@ -26,7 +26,7 @@ def tech_box(annote, grouping="condition", features=["defaults"], ncols=3, size=
         if feature is not None:
             fig.add_trace(
                 go.Box(
-                    x = annote["condition"],
+                    x = annote[grouping],
                     y = annote[feature],
                     name = feature
                 ),
