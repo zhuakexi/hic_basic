@@ -175,7 +175,22 @@ def write_triplet(sparseM,filep,max_coo=True):
                 coord, value = line.split("\t")
                 c12 = " ".join(coord.strip().strip("()").split(", "))
                 f.write(" ".join([c12, value]))
-
+# --- self defined formats ---
+def read_meta(fp):
+    """
+    Read general metadata, take care of sample_name.
+    """
+    df = pd.read_csv(fp, dtype={"sample_name":"string"},index_col=0)
+    df.index.name = "sample_name"
+    return df
+def matr(path,sep=","):
+    """
+    Read umi_tools long-form output matrix.
+    """
+    mat = pd.read_csv(path,sep=sep,index_col=0)
+    mat.columns = mat.columns.astype("string")
+    mat.index = mat.index.astype("string")
+    return mat
 # --- misc ---
 def dump_json(obj, filep):
     """

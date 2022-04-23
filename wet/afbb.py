@@ -183,77 +183,7 @@ def pick_useful(annote,mode="DNA_RNA"):
                 "pairs_c1_num","pairs_c12_num","pairs_c123_num","phased_ratio","1m_rmsd","con_per_reads"]
     cols = annote.columns.intersection(cols)
     return annote[cols]
-def drange(a,b,seats):
-    out = []
-    for i in range(a,b):
-        fill_0 = seats - len(str(i))
-        if fill_0 < 0:
-            out.append(str(i))
-        else:
-            out.append("0"*fill_0 + str(i))
-    return out
-def parse_group_string(group_string,last_mouse):
-    """
-    Parsing the cell meta data record from experiment.
-    Input:
-        group_string: string to be parsed
-        last_mouse: largest mouse number in past experiments 
-    """
-    
-    # ---RE's---
-    # in l1 entry
-    re_cell_prefix = re.compile(r'^\d{8}')
-    re_last_cell = re.compile(r'-(\d+):')
-    # in l2 entry
-    re_cell_range = re.compile(r'(\d+)-(\d+)\s+')
-    re_mouse_number = re.compile(r'\bm(\d+)\b')
-    re_clock = re.compile(r'\bo(\d+)\b')
-    re_partition = re.compile(r', ([a-z]+[0-9])\b')
-    re_cell_type = re.compile(r'\bc([c,to,or,\d]+)\b')
-    
-    # ---Parsing---
-    current_cell_prefix = None
-    current_digits = None
-    groups = []
-    for line in group_string.split("\n"):
-        if line.endswith(":"):
-            # is l1 entry
-            current_cell_prefix = re_cell_prefix.search(line).group(0)
-            # length of last cell number
-            current_digits = len(re_last_cell.search(line).group(1))
-            continue
-        else:
-            # is L2 entry
-            if current_cell_prefix == None or current_digits == None:
-                print(line)
-                raise ValueError("L2 entry without L1 entry.")
-            try:
-                start = int(re_cell_range.search(line).group(1))
-                end = int(re_cell_range.search(line).group(2)) + 1
-                partition = re_partition.search(line).group(1)
-                cell_type = re_cell_type.search(line).group(1)
-                mouse_number = int(re_mouse_number.search(line).group(1))
-                clock = re_clock.search(line).group(1)
-                for i in drange(start, end, current_digits):
-                    # sample_name, group, partition, cell_type
-                    i_sample_name = current_cell_prefix + i
-                    i_group = "m" + str(last_mouse + mouse_number) + "_c" + cell_type + "_o" + clock
-                    i_partition = partition
-                    i_cell_type = "c" + cell_type
-                    groups.append((i_sample_name, i_group, i_partition, i_cell_type))
-            except AttributeError:
-                print("parse_group_string: Parsing Failed - ",line)
-                continue
-    groups = pd.DataFrame(groups, columns = ["sample_name","group","partition","cell_type"])
-    groups = groups.set_index("sample_name")
-    return groups
-def read_meta(fp):
-    """
-    Read general metadata, take care of sample_name.
-    """
-    df = pd.read_csv(fp, dtype={"sample_name":"string"},index_col=0)
-    df.index.name = "sample_name"
-    return df
+
 def merge_meta(*dfs):
     """
     Merging metadata object.

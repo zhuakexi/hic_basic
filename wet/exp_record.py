@@ -1,8 +1,20 @@
 # --- meta data: group ---
 from functools import total_ordering
 import re
-import pandas as pd
 
+import pandas as pd
+import plotly.graphic_objects as go
+from plotly.subplots import make_subplots
+
+def drange(a,b,seats):
+    out = []
+    for i in range(a,b):
+        fill_0 = seats - len(str(i))
+        if fill_0 < 0:
+            out.append(str(i))
+        else:
+            out.append("0"*fill_0 + str(i))
+    return out
 def parse_group_string(group_string,last_mouse):
     """
     Parsing the cell meta data record from experiment.
