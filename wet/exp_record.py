@@ -72,32 +72,75 @@ def parse_group_string(group_string,last_mouse):
     return groups
 
 # --- meta data: group: parser ---
-norm_clock={"m22_c2_o20302100": "m22_c2_o20302100",
-"m12_c2_o2130": "m12_c2_o2130",
-"m13_c2_o23": "m13_c2_o2300",
-"m23_c2_o22002230": "m23_c2_o22002230",
-"m9_c2_o23": "m9_c2_o2300",
-"m27_c2_o700730": "m27_c2_o07000730",
-"m10_c2_o1": "m10_c2_o0100",
-"m20_c2_o530": "m20_c2_o0530",
-"m4_c2_o1112": "m4_c2_o11001200",
-"m18_c2_o500530": "m18_c2_o05000530",
-"m29_c2_o730": "m29_c2_o0730",
-"m21_c2_o530": "m21_c2_o0530",
-"m19_c2_o630700": "m19_c2_o06300700",
-"m1r_c2_o11": "m1r_c2_o1100",
-"m24_c2_o10": "m24_c2_o1000",
-"m28_c2_o930": "m28_c2_o0930",
-"m30_c2_o1330": "m30_c2_o1330",
-"m31_c2_o1011": "m31_c2_o10001100",
-"m26_c2_o12": "m26_c2_o1200",
-"m7_c2_o10": "m7_c2_o1000",
-"m1l_c2_o10": "m1l_c2_o1000",
-"m3_c2_o1011": "m3_c2_o10001100",
-"m2_c2_o16": "m2_c2_o1600"}
+norm_clock={
+    'm9_c1_o23':"m9_c1_o2300_d0",
+    'm12_c1_o2130':"m12_c1_o2130_d0",
+    'm46_c1orc2_o20302100':"m46_c1orc2_o20302100_d0",
+    'm46_c1_o20302100':"m46_c1_o20302100_d0",
+    'm50_c1_o16001700':"m50_c1_o16001700_d0",
+    'm51_c1_o16001700':"m51_c1_o16001700_d0",
+    'm53_c1_o21452200':"m53_c1_o21452200_d0",
+    "m22_c2_o20302100": "m22_c2_o20302100_d0",
+    "m12_c2_o2130": "m12_c2_o2130_d0",
+    "m13_c2_o23": "m13_c2_o2300_d0",
+    "m23_c2_o22002230": "m23_c2_o22002230_d0",
+    "m9_c2_o23": "m9_c2_o2300_d0",
+    "m27_c2_o700730": "m27_c2_o07000730_d1",
+    "m10_c2_o1": "m10_c2_o0100_d1",
+    "m20_c2_o530": "m20_c2_o0530_d1",
+    "m4_c2_o1112": "m4_c2_o11001200_d1",
+    "m18_c2_o500530": "m18_c2_o05000530_d1",
+    "m29_c2_o730": "m29_c2_o0730_d1",
+    "m21_c2_o530": "m21_c2_o0530_d1",
+    "m19_c2_o630700": "m19_c2_o06300700_d1",
+    "m1r_c2_o11": "m1r_c2_o1100_d1",
+    "m24_c2_o10": "m24_c2_o1000_d1",
+    "m28_c2_o930": "m28_c2_o0930_d1",
+    "m30_c2_o1330": "m30_c2_o1330_d1",
+    "m31_c2_o1011": "m31_c2_o10001100_d1",
+    "m26_c2_o12": "m26_c2_o1200_d1",
+    "m7_c2_o10": "m7_c2_o1000_d1",
+    "m1l_c2_o10": "m1l_c2_o1000_d1",
+    "m3_c2_o1011": "m3_c2_o10001100_d1",
+    "m2_c2_o16": "m2_c2_o1600_d1",
+    "m32_c2_o15301600" : "m32_c2_o15301600_d1",
+    "m33_c2_o15301600" : "m33_c2_o15301600_d1",
+    "m34_c2_o1430" : "m34_c2_o1430_d1",
+    "m35_c2_o15301600" : "m35_c2_o15301600_d1",
+    "c2_m36_o21002130" : "c2_m36_o21002130_d0",
+    "c2_m37_o02000300" : "c2_m37_o02000300_d1",
+    "m46_c2_o20302100" : "m46_c2_o20302100_d0",
+    "m46_c1orc2_o20302100" : "m46_c1orc2_o20302100_d0",
+    "m52_c2_o20152045" : "m52_c2_o20152045_d0",
+    "m53_c2_o21452200" : "m53_c2_o21452200_d0",
+    "m47_c2_o20002030" : "m47_c2_o20002030_d0",
+    "m48_c2_o21002130" : "m48_c2_o21002130_d0",
+    "m6_c4_o14" : "m6_c4_o1400_d1",
+    "m2_c4_o16" : "m2_c4_o1600_d1",
+    "m2_c4_o19" : "m2_c4_o1900_d1",
+    "m5_c4_o1112" : "m5_c4_o11001200_d1",
+    "m15_c4_o20" : "m15_c4_o2000_d1",
+    "m16_c4_o2223" : "m16_c4_o22002300_d1",
+    "m25_c4_o21p3" : "m25_c4_o2100p3_d1",
+    "m26_c4_o12" : "m26_c4_o1200_d1",
+    "m35_c4_o15301600" : "m35_c4_o15301600_d1",
+    "c4_m38_d3o04000400" : "c4_m38_o04000400_d2",
+    "m41_c4_o22002230" : "m41_c4_o22002230_d1",
+    "m42_c4_o00000030" : "m42_c4_o00000030_d2",
+    "m40_c4_o0800830" : "m40_c4_o08000830_d2",
+    'm33_c3or4_o15301600':'m33_c3or4_o15301600_d1',
+    'c8to16_m39_d3o08300830':'c8to16_m39_o08300830_d2',
+    'c8to16_m38_d3o04000400':'c8to16_m38_o04000400_d2',
+    'm40_c8_o08000830':'m40_c8_o08000830_d2',
+    "m49_c8_o10301030":"m49_c8_o10301030_d2"
+}
 
 @total_ordering
 class ExpTime:
+    """
+    Knowing group str's time.
+    Print the instance to see.
+    """
     @staticmethod
     def d2(time_str):
         if len(time_str) != 2:
@@ -105,7 +148,34 @@ class ExpTime:
         if time_str == "00":
             return 0
         return int(time_str.lstrip("0"))
-    def __init__(self,time_str):
+    @staticmethod
+    def find_time_str(group):
+        """
+        Find time substring in sample's group_string.
+        """
+        ts_re = re.compile("[_,^]+o(\d+)([a-z,A-Z]\d)*[$,_]+")
+        # search only returns first matching.
+        ts = ts_re.search(group)
+        if ts is None:
+            raise ValueError("Can't find time string in group name" + group)
+        else:
+            if ts.group(2) is not None:
+                print("[find_time_str] Note: {} has additional clock annotation: {}.".format(group,ts.group(2)))
+            return ts.group(1)
+    @staticmethod
+    def find_day(group):
+        """
+        Find day mark.
+        """
+        day_re = re.compile("d(\d+)")
+        day = day_re.search(group)
+        if day is None:
+            raise ValueError("Can't find day mark in group name" + group)
+        else:
+            return int(day.group(1))
+    def __init__(self, group):
+        time_str = self.find_time_str(group)
+        self.day = self.find_day(group)
         if len(time_str) == 8:
             self.tah = self.d2(time_str[0:2])
             self.tam = self.d2(time_str[2:4])
@@ -118,17 +188,18 @@ class ExpTime:
             self.tbm = self.tam
         else:
             print(time_str)
-            raise ValueError("time_str must be either 8 or 4 chrs")
+            raise ValueError("time_str must be either 8 or 4 chrs: " + group)
     def __eq__(self, other):
         return (self.tah == other.tah) and (self.tam == other.tam) \
-            and (self.tbh == other.tbh) and (self.tbm == other.tbm)
+            and (self.tbh == other.tbh) and (self.tbm == other.tbm) \
+            and (self.day == other.day)
     def __lt__(self, other):
         #return ((self.tah < other.tah) and (self.tam < other.tam)) \
         #    or ((self.tbh < other.tbh) and (self.tbm < other.tbm))
         #return self.tah < other.tah and self.tam < other.tam
-        return (self.tah*60 + self.tam) < (other.tah*60 + other.tam)
+        return (self.day*24*60 + self.tah*60 + self.tam) < (other.day*24*60 + other.tah*60 + other.tam)
     def __str__(self):
-        return str(self.tah)+":"+str(self.tam)+" "+str(self.tbh)+":"+str(self.tbm)
+        return "day{} {}:{} {}:{}".format(self.day, self.tah, self.tam, self.tbh, self.tbm)
 def add_order(annote,order):
     order = pd.Series(list(range(len(order))),index=order,name="order_index")
     return pd.concat([annote,order],axis=1)
