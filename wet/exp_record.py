@@ -72,7 +72,9 @@ def parse_group_string(group_string,last_mouse):
     return groups
 
 # --- meta data: group: parser ---
-norm_clock={
+@total_ordering
+class ExpTime:
+    norm_grp_mapper={
     'm9_c1_o23':"m9_c1_o2300_d0",
     'm12_c1_o2130':"m12_c1_o2130_d0",
     'm46_c1orc2_o20302100':"m46_c1orc2_o20302100_d0",
@@ -133,14 +135,7 @@ norm_clock={
     'c8to16_m38_d3o04000400':'c8to16_m38_o04000400_d2',
     'm40_c8_o08000830':'m40_c8_o08000830_d2',
     "m49_c8_o10301030":"m49_c8_o10301030_d2"
-}
-
-@total_ordering
-class ExpTime:
-    """
-    Knowing group str's time.
-    Print the instance to see.
-    """
+    }
     @staticmethod
     def d2(time_str):
         if len(time_str) != 2:
@@ -170,12 +165,13 @@ class ExpTime:
         day_re = re.compile("d(\d+)")
         day = day_re.search(group)
         if day is None:
-            raise ValueError("Can't find day mark in group name" + group)
+            raise ValueError("Can't find day mark in group name " + group)
         else:
             return int(day.group(1))
     def __init__(self, group):
-        time_str = self.find_time_str(group)
-        self.day = self.find_day(group)
+        norm_grp = self.norm_grp_mapper[group]
+        time_str = self.find_time_str(norm_grp)
+        self.day = self.find_day(norm_grp)
         if len(time_str) == 8:
             self.tah = self.d2(time_str[0:2])
             self.tam = self.d2(time_str[2:4])
@@ -189,6 +185,7 @@ class ExpTime:
         else:
             print(time_str)
             raise ValueError("time_str must be either 8 or 4 chrs: " + group)
+        self.hpf = (self.day*24*60 + self.tah*60 + self.tam)/60
     def __eq__(self, other):
         return (self.tah == other.tah) and (self.tam == other.tam) \
             and (self.tbh == other.tbh) and (self.tbm == other.tbm) \
@@ -200,19 +197,47 @@ class ExpTime:
         return (self.day*24*60 + self.tah*60 + self.tam) < (other.day*24*60 + other.tah*60 + other.tam)
     def __str__(self):
         return "day{} {}:{} {}:{}".format(self.day, self.tah, self.tam, self.tbh, self.tbm)
-def add_order(annote,order):
-    order = pd.Series(list(range(len(order))),index=order,name="order_index")
-    return pd.concat([annote,order],axis=1)
-def add_time_group_order(annote):
-    # must have exp_time col
-    exp_time_order = sorted(annote["exp_time"].unique(),key=ExpTime)
-    exp_time_order = exp_time_order[14:] + exp_time_order[:14]
-    time_group_order = pd.Series(
-        list(range(len(exp_time_order))),
-        index=exp_time_order,
-        name="time_group_order"
+def add_group_order(annote):
+    """
+    Add additional order index col indicating sample collection time order to input df.
+    Input must have a "group" col.
+    """
+    sorted_grp = sorted(annote["group"].unique(),key=ExpTime)
+    group_orderi = pd.Series(
+        list(range(len(sorted_grp))),
+        index=sorted_grp,
+        name="group_order_index"
     )
-    return pd.merge(annote,time_group_order,left_on="exp_time",right_index=True)
+    if "group_order_index" in annote.columns:
+        annote = annote.drop("group_order_index",axis=1)
+    return pd.merge(annote,group_orderi,left_on="group",right_index=True)
+def add_group_hour(annote):
+    """
+    Add additional order index col to input df indicating hour post fertilizing time when the sample was collected.
+    Input must have a "group" col.
+    """
+    grps = annote["group"].unique()
+    grp_hour = pd.Series([ExpTime(grp).hpf for grp in grps], index=grps, name="collect_hour")
+    if "collect_hour" in annote.columns:
+        annote = annote.drop("collect_hour",axis=1)
+    return pd.merge(annote, grp_hour, left_on="group",right_index=True)
+def add_cell_type(annote):
+    """
+    Add cell_type col to input df according to group name.
+    Input must have "group" col.
+    """
+    def get_cell_type(grp):
+        cell_type_re = re.compile('(c[a-z,0-9]+)')
+        cell_type = cell_type_re.search(grp)
+        if cell_type is None:
+            raise ValueError("[get_cell_type]: can't find cell_type mark in " + grp)
+        else:
+            return cell_type.group(1)
+    if "cell_type" in annote.columns:
+        annote = annote.drop("cell_type",axis=1)
+    annote = annote.assign(cell_type = [get_cell_type(i) for i in annote["group"]])
+    return annote
+
 def plot_cdps_time_group(annote, cdps):
     """
     Input
