@@ -3,6 +3,7 @@ from functools import total_ordering
 import re
 
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -211,15 +212,17 @@ def add_group_order(annote):
     if "group_order_index" in annote.columns:
         annote = annote.drop("group_order_index",axis=1)
     return pd.merge(annote,group_orderi,left_on="group",right_index=True)
-def add_group_hour(annote):
+def add_group_hour(annote, col="collect_hour"):
     """
     Add additional order index col to input df indicating hour post fertilizing time when the sample was collected.
-    Input must have a "group" col.
+    Input:
+        annote: sample-feature table, must have a "group" col.
+        col: name of new column.
     """
     grps = annote["group"].unique()
-    grp_hour = pd.Series([ExpTime(grp).hpf for grp in grps], index=grps, name="collect_hour")
-    if "collect_hour" in annote.columns:
-        annote = annote.drop("collect_hour",axis=1)
+    grp_hour = pd.Series([ExpTime(grp).hpf for grp in grps], index=grps, name=col)
+    if col in annote.columns:
+        annote = annote.drop(col, axis=1)
     return pd.merge(annote, grp_hour, left_on="group",right_index=True)
 def add_cell_type(annote):
     """
@@ -238,8 +241,26 @@ def add_cell_type(annote):
     annote = annote.assign(cell_type = [get_cell_type(i) for i in annote["group"]])
     return annote
 
-def plot_cdps_time_group(annote, cdps):
+def plot_real_pseudo_time(adata, ps_col="velocity_pseudotime",hour=True):
     """
+    Plot experiment time with pseudotime.
+    (adata plot; scatter plot;)
+    Input:
+        adata: AnnData object with "group" col in obs.
+        ps_col: obs col storing pseudotime to plot real time with. 
+        hour: sort by real experiment hour; False to use relative ordering.
+    """
+    adata.obs = add_group_hour(adata.obs, "collect_hour")
+    data = adata.obs.sort_values(ps_col)
+    fig = px.scatter(
+        x = data.index,
+        y = data["collect_hour"],
+        color = data["group"]
+    )
+    return fig
+def plot_cdps_time_group(adata, cdps):
+    """
+    Plot experiment time with pseudotime.
     Input
         cdps: contact decay profiles
         annote: sample_name as index; must have exp_time, order_index, time_group_order cols
