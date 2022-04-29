@@ -7,6 +7,8 @@ from concurrent import futures
 import gzip
 from itertools import repeat
 from subprocess import check_output, CalledProcessError
+
+import numpy as np
 import pandas as pd
 import pysam
 # add pairs num
@@ -65,6 +67,41 @@ def real_file(i):
         return i
     else:
         return None
+def multi_re(key_array, re_array, base_array):
+    """
+    Search according to regular expressions. Used in log file info extraction.
+    Print finding result and return finding as dict.
+    Input:
+        key_array: feature name of each re target.
+        re_s_array: re strings.
+        base_array: divide by elements to get real ratio.
+    Output:
+        searching result as dict.
+    """
+    re_array = [re.compile(i) for i in re_array]
+    def multi_re_(logfile):
+        value_array = []
+        
+        with open(logfile, "rt") as f:
+            lines = f.readlines()
+            for re_ in re_array:
+                for line in lines:
+                    re_res = re_.search(line)
+                    if re_res is not None:
+                        value_array.append(float(re_res.group(1)))
+        res = dict(zip(key_array, np.array(value_array)/np.array(base_array)))
+        for i, j in res.items():
+            print("{} : {:.2f}".format(i,j))
+        return res
+    return multi_re_
+
+star_stat = multi_re(["Input_reads", "Uniquely_mapped", "Unmapped_to_short", "Unmapped_mismatch"],
+         ["Number of input reads\s+\W\s+(\d+)",
+         "Uniquely mapped reads %\s+\W\s+(\d+\.\d+)%",
+         "too short\s+\W\s+(\d+\.\d+)%",
+         "too many mismatches\s+\W\s+(\d+\.\d+)%"],
+         [1,100,100,100])
+fc_stat = multi_re(["FeatureCount"],["assigned alignments : \d+ \((\d+\.\d+)%\)"],[100])
 def add_pairs(annote,task_dirp):
     """
     try add pairs file path, by default using:
@@ -180,6 +217,10 @@ def add_mapping(annote, threads=16):
         )
     ares = pd.DataFrame(list(res), index = annote.index)
     return pd.concat([annote, ares],axis=1,join="outer")
+def check_RNA(task_dirp):
+    res = {}
+    res.update(star_stat(os.path.join(task_dirp,"star_mapped","Log.final.out")))
+    res.update(fc_stat(os.path.join(task_dirp, "count_gene","gene_assigned.summary")))
 # agg
 def task_stat(task_dirp,threads=32):
     """
