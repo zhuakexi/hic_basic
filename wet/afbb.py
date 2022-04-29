@@ -209,7 +209,7 @@ def add_mapping(annote, threads=16):
     Adding mapping and primary mapping rate of DNA library.
     """
     sthreads = 4
-    with futures.ProcessPoolExecutor(int(sthreads/sthreads)) as pool:
+    with futures.ProcessPoolExecutor(int(threads/sthreads)) as pool:
         res = pool.map(
             mapping_rate,
             annote["task_dirp"] + "/sam/" + annote.index + ".bam",
@@ -221,6 +221,8 @@ def check_RNA(task_dirp):
     res = {}
     res.update(star_stat(os.path.join(task_dirp,"star_mapped","Log.final.out")))
     res.update(fc_stat(os.path.join(task_dirp, "count_gene","gene_assigned.summary")))
+    for i, j in res.items():
+        print("{} : {:.2f}".format(i,j))
 # agg
 def task_stat(task_dirp,threads=32):
     """
