@@ -2,11 +2,13 @@
 # add_pairs -> add_pairs_num -> add_info ... -> pick_useful
 import os
 import json
+import re
 from concurrent import futures
 import gzip
+from itertools import repeat
 from subprocess import check_output, CalledProcessError
 import pandas as pd
-import re
+import pysam
 # add pairs num
 def zcount(filename:str,target:str)->int:
     # count zipped file line number
@@ -49,6 +51,12 @@ def add_pairs_num(annote,threads,pairs_types=["pairs_c1","pairs_c12","pairs_c123
         ares[pairs_type+"_num"] = list(res)
     #return ares
     return filesp.assign(**ares)
+# count mapping rate
+def mapping_rate(bam,threads=4):
+    bamstat = json.loads(pysam.flagstat(bam, "-O","json","-@",str(threads)))
+    #print(bamstat)
+    return {"primary mapped":bamstat["QC-passed reads"]["primary mapped"]/bamstat["QC-passed reads"]["total"],
+            "mapped":bamstat["QC-passed reads"]["mapped"]/bamstat["QC-passed reads"]["total"]}
 # add_pairs path
 def real_file(i):
     if not isinstance(i,str):
@@ -159,6 +167,19 @@ def add_extra(annote):
     valid_rna_ratio_row = (~annote["rna_reads"].isna())&(~annote["raw_reads"].isna())&(annote["raw_reads"]!=0)
     new_annote.loc[valid_rna_ratio_row, "rna_ratio"] = annote.loc[valid_rna_ratio_row,"rna_reads"]/annote.loc[valid_rna_ratio_row,"raw_reads"]
     return new_annote
+def add_mapping(annote, threads=16):
+    """
+    Adding mapping and primary mapping rate of DNA library.
+    """
+    sthreads = 4
+    with futures.ProcessPoolExecutor(int(sthreads/sthreads)) as pool:
+        res = pool.map(
+            mapping_rate,
+            annote["task_dirp"] + "/sam/" + annote.index + ".bam",
+            repeat(sthreads, annote.shape[0])
+        )
+    ares = pd.DataFrame(list(res), index = annote.index)
+    return pd.concat([annote, ares],axis=1,join="outer")
 # agg
 def task_stat(task_dirp,threads=32):
     """

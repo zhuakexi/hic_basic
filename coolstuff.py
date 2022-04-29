@@ -1,5 +1,8 @@
 # cooler api functions
+import yaml
+import os
 import os.path as op
+
 import numpy as np
 import pandas as pd
 from cytoolz import compose
@@ -120,6 +123,29 @@ def cools2scool(cools, scool_path):
         bins,
         multif_pixels
     )
+
+# --- distiller-nf helper functions ---
+def gen_config(sample_table, output, task_dirp, template="/shareb/ychi/repo/ara_sperm_bulk1/HIC/project.yml"):
+    """
+    Generate distiller.nf project.yaml file from bubble_flow sample_table.csv.
+    Input:
+        sample_table: any csv, index as sample_name, using sample-name and task_dirp to infer DNA reads files
+        output: project.yml file
+        task_dirp: top folder for real input files
+    """
+    # read
+    with open(template, "rt") as f:
+        config = yaml.load(f, Loader=yaml.Loader)
+    # editing    
+    raw_reads_paths = {}
+    sample_table = pd.read_csv(sample_table, index_col=0)
+    for i in sample_table.index:
+        raw_reads_paths[i] = {"lane1": [os.path.join(task_dirp,i+"_R1.fq.gz"),os.path.join(task_dirp,i+"_R2.fq.gz")]}
+    # write
+    with open(output, "wt") as f:
+        yaml.dump(config, f)
+    print("Config generated.")
+
 # lousy helper functions to work with cooler, cooltools stuff
 # you need a conda env that names `cooler`, with cooler and cooltools installed
 import subprocess
