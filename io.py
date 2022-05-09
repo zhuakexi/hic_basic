@@ -110,6 +110,42 @@ def parse_pairs_like(filename:str)->pd.DataFrame:
     #assign column names
     #sys.stderr.write("pairs_parser: %s parsed \n" % filename)
     return pairs
+def parse_gtf(file,ID=True):
+    """
+    Parsing gtf file. Read all in memory. Extract gene_id to df if set true.
+    """
+    header = ["seqname","source","feature","start","end","score","strand","frame","attributes"]
+    dtypes = dict(zip(header, ["category","category","category","int","int","string","category","category","category","string"]))
+    gtf = pd.read_table(file, comment ="#", header=None, names = header, dtype=dtypes)
+    # get gene_id from attributes
+    if ID:
+        ID = gtf["attributes"].str.extract(r"gene_id \"(\w+)\";", expand=True)
+        ID.columns = ["gene_id"]
+        gtf = pd.concat([gtf, ID],axis=1, join="inner")
+    return gtf
+def parse_gff(file, ID=False, Name=False):
+    """
+    Parsing gff file. Read all in memory. Extract ID(gene), and Name if set true.
+    """
+    header = ["seqid","annotation_source","feature_type","start","end","score","strand","phase","attributes"]
+    dtypes = dict(zip(header,["category","category","category","int","int","string","category","category","string"]))
+    gff = pd.read_table(file,
+                        comment="#",
+                        header=None, 
+                        names = header,
+                        dtype = dtypes
+                       )
+    additions = []
+    if ID:
+        ID = gff["attributes"].str.extract(r"ID=gene:(\w+);",expand=True)
+        ID.columns = ["ID"]
+        additions.append(ID)
+    if Name:
+        Name = gff["attributes"].str.extract(r"Name=(\w+);",expand=True)
+        Name.columns = ["Name"]
+        additions.append(Name)
+    gff = pd.concat([gff] + additions, axis=1, join="inner")
+    return gff
 # read cooler file
 def read_h5_ds(group):
     # read bottom level group into dataframe
@@ -175,7 +211,7 @@ def write_triplet(sparseM,filep,max_coo=True):
                 coord, value = line.split("\t")
                 c12 = " ".join(coord.strip().strip("()").split(", "))
                 f.write(" ".join([c12, value]))
-# --- self defined formats ---
+# --- private formats ---
 def read_meta(fp):
     """
     Read general metadata, take care of sample_name.
@@ -191,6 +227,17 @@ def matr(path,sep=","):
     mat.columns = mat.columns.astype("string")
     mat.index = mat.index.astype("string")
     return mat
+def matra(file):
+    """
+    Read umi-tools output to anndata object.
+    """
+    expr = matr(file,"\t")
+    expr.columns = expr.columns.astype("str")
+    expr.columns.name = "sample_name"
+    expr.index = expr.index.astype("str")
+    expr.index.name = "gene"
+    adata = ad.AnnData(expr.T)
+    return adata
 # --- misc ---
 def dump_json(obj, filep):
     """

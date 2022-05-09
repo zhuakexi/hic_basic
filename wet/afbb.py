@@ -158,16 +158,6 @@ def get_info(log_d):
     #print(base)
     info = pd.DataFrame(base)
     return info
-def get_info(log_d):
-    base = {}
-    for fname in listdir_bytime(log_d):
-        #print(fname)
-        if fname.split(".")[-1] == "json":
-            #print(fname)
-            update_values(base, fname)
-    #print(base)
-    info = pd.DataFrame(base)
-    return info
 def add_info(annote,rd):
     info = get_info(rd)
     return pd.concat([annote,info.T],axis=1)
