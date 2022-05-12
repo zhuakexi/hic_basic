@@ -140,7 +140,8 @@ def gen_config(sample_table, output, task_dirp, template="/shareb/ychi/repo/ara_
     raw_reads_paths = {}
     sample_table = pd.read_csv(sample_table, index_col=0)
     for i in sample_table.index:
-        raw_reads_paths[i] = {"lane1": [os.path.join(task_dirp,i+"_R1.fq.gz"),os.path.join(task_dirp,i+"_R2.fq.gz")]}
+        raw_reads_paths[i] = {"lane1": [os.path.join(task_dirp, "DNA", i+"_R1.fq.gz"),os.path.join(task_dirp, "DNA", i+"_R2.fq.gz")]}
+    config["input"]["raw_reads_paths"] = raw_reads_paths
     # write
     with open(output, "wt") as f:
         yaml.dump(config, f)
