@@ -194,17 +194,27 @@ def add_extra(annote):
     valid_rna_ratio_row = (~annote["rna_reads"].isna())&(~annote["raw_reads"].isna())&(annote["raw_reads"]!=0)
     new_annote.loc[valid_rna_ratio_row, "rna_ratio"] = annote.loc[valid_rna_ratio_row,"rna_reads"]/annote.loc[valid_rna_ratio_row,"raw_reads"]
     return new_annote
-def add_mapping(annote, threads=16):
+def add_mapping(annote, old=False, threads=16):
     """
     Adding mapping and primary mapping rate of DNA library.
+    Input:
+        old: sam version compatible to old pipeline. task_dirp/sam/xxx.aln.sam.gz
     """
     sthreads = 4
-    with futures.ProcessPoolExecutor(int(threads/sthreads)) as pool:
-        res = pool.map(
-            mapping_rate,
-            annote["task_dirp"] + "/sam/" + annote.index + ".bam",
-            repeat(sthreads, annote.shape[0])
-        )
+    if old:
+        with futures.ProcessPoolExecutor(int(threads/sthreads)) as pool:
+            res = pool.map(
+                mapping_rate,
+                annote["task_dirp"] + "/sam/" + annote.index + ".aln.sam.gz",
+                repeat(sthreads, annote.shape[0])
+            )
+    else:
+        with futures.ProcessPoolExecutor(int(threads/sthreads)) as pool:
+            res = pool.map(
+                mapping_rate,
+                annote["task_dirp"] + "/sam/" + annote.index + ".bam",
+                repeat(sthreads, annote.shape[0])
+            )
     ares = pd.DataFrame(list(res), index = annote.index)
     return pd.concat([annote, ares],axis=1,join="outer")
 def check_RNA(task_dirp):
