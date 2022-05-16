@@ -272,8 +272,8 @@ def gen_cache(qc, cache_dir, velo_files, g1_files, g2_files, threads=32):
         merged_g2.to_csv(outfile)
     
     print("Gen cdps...")
+    outfile = os.path.join(cache_dir, "cdps.csv.gz")
     if not os.path.isfile(outfile):
-        outfile = os.path.join(cache_dir, "cdps.csv.gz")
         cdps = gen_cdps(qc, threads)
         cdps.to_csv(outfile)
     
