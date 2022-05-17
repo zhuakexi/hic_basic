@@ -1,6 +1,8 @@
 # --- meta data: group ---
 from functools import total_ordering
+from io import StringIO
 import re
+import yaml
 
 import pandas as pd
 import plotly.express as px
@@ -16,60 +18,43 @@ def drange(a,b,seats):
         else:
             out.append("0"*fill_0 + str(i))
     return out
-def parse_group_string(group_string,last_mouse):
+def parse_group_string(group_string, last_mouse):
     """
     Parsing the cell meta data record from experiment.
     Input:
-        group_string: string to be parsed
+        group_string: string to be parsed, should be in yaml format.
         last_mouse: largest mouse number in past experiments 
     """
-    
-    # ---RE's---
-    # in l1 entry
-    re_cell_prefix = re.compile(r'^\d{8}')
-    re_last_cell = re.compile(r'-(\d+):')
-    # in l2 entry
-    re_cell_range = re.compile(r'(\d+)-(\d+)\s+')
-    re_mouse_number = re.compile(r'\bm(\d+)\b')
-    re_clock = re.compile(r'\bo(\d+)\b')
-    re_partition = re.compile(r', ([a-z]+[0-9])\b')
-    re_cell_type = re.compile(r'\bc([c,to,or,\d]+)\b')
-    
-    # ---Parsing---
-    current_cell_prefix = None
-    current_digits = None
     groups = []
-    for line in group_string.split("\n"):
-        if line.endswith(":"):
-            # is l1 entry
-            current_cell_prefix = re_cell_prefix.search(line).group(0)
-            # length of last cell number
-            current_digits = len(re_last_cell.search(line).group(1))
-            continue
-        else:
-            # is L2 entry
-            if current_cell_prefix == None or current_digits == None:
-                print(line)
-                raise ValueError("L2 entry without L1 entry.")
-            try:
-                start = int(re_cell_range.search(line).group(1))
-                end = int(re_cell_range.search(line).group(2)) + 1
-                partition = re_partition.search(line).group(1)
-                cell_type = re_cell_type.search(line).group(1)
-                mouse_number = int(re_mouse_number.search(line).group(1))
-                clock = re_clock.search(line).group(1)
-                for i in drange(start, end, current_digits):
-                    # sample_name, group, partition, cell_type
-                    i_sample_name = current_cell_prefix + i
-                    i_group = "m" + str(last_mouse + mouse_number) + "_c" + cell_type + "_o" + clock
-                    i_partition = partition
-                    i_cell_type = "c" + cell_type
-                    groups.append((i_sample_name, i_group, i_partition, i_cell_type))
-            except AttributeError:
-                print("parse_group_string: Parsing Failed - ",line)
-                continue
+    
+    f = StringIO(group_string)
+    kv = yaml.load(f, yaml.BaseLoader)
+    f.close()
+    
+    for group in kv.keys():
+        # group: samples with same prefix
+        current_cell_prefix = group[0:8]
+        current_digits = len(group.split("-")[1])
+        for series in kv[group].keys():
+            # series: samples with same group_name
+            start = int(series.split("-")[0])
+            end = int(series.split("-")[1]) + 1
+            partition = kv[group][series]["p"]
+            cell_type = kv[group][series]["c"]
+            mouse_number = int(kv[group][series]["m"])
+            clock = kv[group][series]["o"]
+            
+            for i in drange(start, end, current_digits):
+                # sample_name, group, partition, cell_type
+                i_sample_name = current_cell_prefix + i
+                i_group = "m" + str(last_mouse + mouse_number) + "_c" + cell_type + "_o" + clock
+                i_partition = partition
+                i_cell_type = "c" + cell_type
+                groups.append((i_sample_name, i_group, i_partition, i_cell_type))
     groups = pd.DataFrame(groups, columns = ["sample_name","group","partition","cell_type"])
     groups = groups.set_index("sample_name")
+    if not groups.index.is_unique:
+        raise ValueError("parse_group_string Error: dranges overlap.")
     return groups
 
 # --- meta data: group: parser ---

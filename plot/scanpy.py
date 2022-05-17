@@ -18,4 +18,3 @@ def sc_pca(adata, color):
         width = 500
     )
     return fig
-def sc_feature
