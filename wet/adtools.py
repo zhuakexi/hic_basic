@@ -5,10 +5,10 @@ from scipy import sparse
 import os
 import loompy
 import scvelo as scv
-from wet.exp_record import add_cell_type, add_group_hour
 
 from ..io import matr, read_meta
 from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
+from .exp_record import add_cell_type, add_group_hour
 
 def _merge_expr(fps, mapper, samplelist=None):
     """
