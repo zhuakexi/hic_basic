@@ -369,7 +369,7 @@ def gen_ad_from_cache(cache_dir, annote):
     cdps = read_meta(os.path.join(cache_dir,"cdps.csv.gz"))
     res_ad.obs = pd.concat([res_ad.obs,pd.concat([rs, pm_interaction,annote[["group","partition","cell_type"]]],axis=1,join="inner")],axis=1)
     res_ad.obs = add_group_hour(res_ad.obs).loc[res_ad.obs_names]
-    res_ad.obs = add_cell_type(res_ad.obs).loc[res_ad.obs.names]
+    res_ad.obs = add_cell_type(res_ad.obs).loc[res_ad.obs_names]
     print("add uns...")
     res_ad.uns["cdps"] = cdps.loc[res_ad.obs_names]
     print("add g1 500k cs")
