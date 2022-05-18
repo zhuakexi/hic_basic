@@ -160,6 +160,44 @@ def clean_velocyto_names(adata, using_dup:list):
     adata.obs.index.name = "sample_name"
     adata.obs = adata.obs.drop("fix_name_res",axis=1)
     return adata
+# --- generate compartment strength ---
+def gen_fileis(sample_table, dir_path, str_pat):
+    """
+    Check and generate fileis(input file tables storing file path) for downstream calculating.
+    Input:
+        sample_table: meta, sample_names as index, try to ensure all samples have their input file.
+        dir_path: where to find those input files.
+        str_pat: string pattern, gen exact file name. using {} to represent sample_name.
+    Output:
+        pd.DataFrame
+    """
+    if not sample_table.index.is_unique:
+        raise ValueError("[gen_fileis] Error: sample_table index is not unique")
+    a = dict(zip([str_pat.format(i) for i in sample_table.index], list(sample_table.index)))
+    b = set(os.listdir(dir_path))
+    hitting = a.keys() & b
+    missing_sample = [a[k] for k in (a.keys() - hitting)]
+    extra = list(b - hitting)
+    
+    if len(missing_sample):
+        print("[gen_fileis] Warning: can't finds files for %d samples:" % len(missing_sample))
+        print(",".join(missing_sample))
+    if len(extra):
+        print("[gen_fileis] Warning: find extra files for:")
+        print(",".join(extra[:20]))
+        if len(extra) > 20:
+            print("...")
+    return pd.Series([os.path.join(dir_path, k) for k in hitting], index=[a[k] for k in hitting])
+def gen_cs(fileis):
+    """
+    Generate compartment strength table from pre-computed files.
+    """
+    cs = []
+    for file in fileis.values:
+        cs.append(pd.read_table(file, header=None))
+    cs = pd.concat(cs,axis=1)
+    cs.columns = fileis.index
+    return cs.T
 # --- create anndata object from scratch ---
 def expand_df(target_df, ref_df):
     """
@@ -240,7 +278,7 @@ def create_adata(expr, velo_ad, g1, g2):
     )
     return new_ad
 # --- calculate all mid-files used for generating adata object ---
-def gen_cache(qc, cache_dir, velo_files, g1_files, g2_files, threads=32):
+def gen_cache(qc, cache_dir, velo_files, g1_files, g2_files, cs_dir, threads=32):
     if not os.path.isdir(cache_dir):
         os.mkdir(cache_dir)
     
@@ -299,6 +337,20 @@ def gen_cache(qc, cache_dir, velo_files, g1_files, g2_files, threads=32):
         mat = gen_expr(qc)
         mat.to_csv(outfile)
     
+    # assuming g1 g2cs are precomputed and store in specific filename pattern.
+    print("Gen g1 500k compartment strength...")
+    outfile = os.path.join(cache_dir, "g1cs_500k.csv.gz")
+    if not os.path.isfile(outfile):
+        g1cs_fileis = gen_fileis(qc, cs_dir,  "{}.500000.cs.g1.txt")
+        g1cs_500k = gen_cs(g1cs_fileis)
+        g1cs_500k.to_csv(outfile)
+
+    print("Gen g2 500k compartment strength...")
+    outfile = os.path.join(cache_dir, "g2cs_500k.csv.gz")
+    if not os.path.isfile(outfile):
+        g2cs_fileis = gen_fileis(qc, cs_dir,  "{}.500000.cs.g2.txt")
+        g2cs_500k = gen_cs(g2cs_fileis)
+        g2cs_500k.to_csv(outfile)
     print("Done")
 def gen_ad_from_cache(cache_dir, annote):
     print("reading tables...")
@@ -317,4 +369,10 @@ def gen_ad_from_cache(cache_dir, annote):
     res_ad.obs = pd.concat([res_ad.obs,pd.concat([rs, pm_interaction,annote[["group","partition","cell_type"]]],axis=1,join="inner")],axis=1)
     print("add uns...")
     res_ad.uns["cdps"] = cdps.loc[res_ad.obs_names]
+    print("add g1 500k cs")
+    g1cs = matr(os.path.join(cache_dir, "g1cs_500k.csv.gz"))
+    res_ad.uns["g1cs_500k"] = g1cs.loc[res_ad.obs_names]
+    print("add g2 500k cs")
+    g2cs = matr(os.path.join(cache_dir, "g2cs_500k.csv.gz"))
+    res_ad.uns["g2cs_500k"] = g2cs.loc[res_ad.obs_names]
     return res_ad
