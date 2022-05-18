@@ -155,7 +155,10 @@ class ExpTime:
         else:
             return int(day.group(1))
     def __init__(self, group):
-        norm_grp = self.norm_grp_mapper[group]
+        if group in self.norm_grp_mapper:
+            norm_grp = self.norm_grp_mapper[group]
+        else:
+            norm_grp = group
         time_str = self.find_time_str(norm_grp)
         self.day = self.find_day(norm_grp)
         if len(time_str) == 8:
