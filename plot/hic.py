@@ -1,6 +1,7 @@
 from math import ceil
 
 import pandas as pd
+import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import plotly.graph_objects as go
