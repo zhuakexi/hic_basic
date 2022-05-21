@@ -1,7 +1,9 @@
 from math import ceil
 
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+import plotly.graph_objects as go
 import cooler
 import cooltools.lib.plotting
 
@@ -70,3 +72,95 @@ def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
             ax.set_visible(False)
     plt.tight_layout()
     return plt
+
+# --- HIC contact decay profile plot ---
+# plot cdps heatmap
+def _plot_cdps(cdps:pd.DataFrame):
+    """
+    Input:
+        cdps: sample x bin contact decay profile dataframe
+    """
+    fig = go.Figure()
+    fig.add_trace(
+        go.Heatmap(
+            z = cdps,
+            y = cdps.index,
+            colorscale="bluyl"
+            #yaxis="y"
+        )
+    )
+    fig.update_layout(
+        height = 500,
+        width = 1000
+    )
+    fig.update_yaxes(
+        type = "log",
+        range = [3,8.3]
+    )
+    return fig
+def plot_cdps(adata, index_col="velocity_pseudotime"):
+    """
+    Input:
+        index_col: wich adata.obs col to sort sample by
+    """
+    cdps = adata.uns["cdps"].loc[adata.obs.sort_values(index_col).index].T
+    return _plot_cdps(cdps)
+
+# --- HIC compartment strength plot ---
+def _plot_compartment_strength(cs,g1_col="g1",g2_col="g2"):
+    """
+    # plot compartment strength
+    # cs index must be sample_name
+    # cs must have g1 and g2 col
+    # cs must be sorted
+    """
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x = cs.index,
+            y = cs[g1_col],
+            mode = "markers",
+            name = "g1"
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x = cs.index,
+            y = cs[g2_col],
+            mode = "markers",
+            name = "g2"
+        )
+    )
+    g1line = sm.nonparametric.lowess(
+        exog=list(range(cs.shape[0])),
+        endog=cs[g1_col],
+        frac=0.2)
+    fig.add_trace(
+        go.Scatter(
+            x = cs.index,
+            y = g1line[:,1],
+            name = "g1_trend"
+        )
+    )
+    g2line = sm.nonparametric.lowess(
+        exog=list(range(cs.shape[0])),
+        endog=cs[g2_col],
+        frac=0.2)
+    fig.add_trace(
+        go.Scatter(
+            x = cs.index,
+            y = g2line[:,1],
+            name = "g2_trend"
+        )
+    )
+    fig.update_layout(
+        height = 500,
+        width = 800,
+        title = "cell-order vs. compartment strength"
+    )
+    return fig
+def plot_compartment_strength(adata, index_col="velocity_pseudotime"):
+    order = adata.obs.sort_values(index_col).index
+    data = pd.concat([adata.uns["g1cs_500k"].loc[order, "20"], adata.uns["g2cs_500k"].loc[order, "20"]],axis=1)
+    data.columns = ["g1cs","g2cs"]
+    return _plot_compartment_strength(data, "g1cs", "g2cs")

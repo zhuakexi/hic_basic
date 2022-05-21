@@ -64,3 +64,20 @@ def plot_gene_trends(data, additional, genes, order_col, ncols):
                     col = j
                 )
     return fig
+
+def _plot_gene_heatmap(df, scale=True):
+    if scale == True:
+        df = scale_row_vec(df)
+    fig = go.Figure()
+    fig.add_trace(
+        go.Heatmap(
+            z = df.values,
+            #text = ["a" for i in range(st_df.shape[0])],
+            colorscale = "RdBu_r"
+        )
+    )
+    fig.update_layout(
+        height = 700,
+        width = 500
+    )
+    return fig

@@ -1,3 +1,5 @@
+from itertools import repeat, zip_longest
+
 import plotly.express as px
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
@@ -5,6 +7,8 @@ import pandas as pd
 import statsmodels.api as sm
 import numpy as np
 
+from .rna import _plot_gene_heatmap
+from .hic import _plot_cdps, _plot_compartment_strength
 # cell cycle
 ## cdp scatter plot
 def cdp_scatter(dat:pd.DataFrame)->go.Figure:
@@ -19,26 +23,7 @@ def cdp_scatter(dat:pd.DataFrame)->go.Figure:
     )
     fig.update_xaxes(type="log")
     return fig
-# plot cdps heatmap
-def plot_cdps(cdps):
-    fig = go.Figure()
-    fig.add_trace(
-        go.Heatmap(
-            z = cdps,
-            y = cdps.index,
-            colorscale="bluyl"
-            #yaxis="y"
-        )
-    )
-    fig.update_layout(
-        height = 500,
-        width = 1000
-    )
-    fig.update_yaxes(
-        type = "log",
-        range = [3,8.3]
-    )
-    return fig
+
 # cdps heatmap with cycle-phasing marker
 def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_order",group_col="group",color_map=None,hline=False):
     """
@@ -131,59 +116,10 @@ def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_or
             col= 1
         )
     return fig
-def plot_compartment_strength(cs,g1_col="g1",g2_col="g2"):
-    # plot compartment strength
-    # cs index must be sample_name
-    # cs must have g1 and g2 col
-    # cs must be sorted
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x = cs.index,
-            y = cs[g1_col],
-            mode = "markers",
-            name = "g1"
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x = cs.index,
-            y = cs[g2_col],
-            mode = "markers",
-            name = "g2"
-        )
-    )
-    g1line = sm.nonparametric.lowess(
-        exog=list(range(cs.shape[0])),
-        endog=cs[g1_col],
-        frac=0.2)
-    fig.add_trace(
-        go.Scatter(
-            x = cs.index,
-            y = g1line[:,1],
-            name = "g1_trend"
-        )
-    )
-    g2line = sm.nonparametric.lowess(
-        exog=list(range(cs.shape[0])),
-        endog=cs[g2_col],
-        frac=0.2)
-    fig.add_trace(
-        go.Scatter(
-            x = cs.index,
-            y = g2line[:,1],
-            name = "g2_trend"
-        )
-    )
-    fig.update_layout(
-        height = 500,
-        width = 800,
-        title = "cell-order vs. compartment strength"
-    )
-    return fig
+
 def add_cdps(fig, row, col, adata, sorted_obs):
     # add cdps subplot
-    cdps_fig = plot_cdps(
+    cdps_fig = _plot_cdps(
         adata.uns["cdps"].loc[sorted_obs.index].T
     )
     cdps_fig = cdps_fig.update_traces(
@@ -197,7 +133,7 @@ def add_cdps(fig, row, col, adata, sorted_obs):
     return fig
 def add_compartment_strength(fig, row, col, adata, sorted_obs):
     # add compartment strength subplot
-    cs_fig = plot_compartment_strength(
+    cs_fig = _plot_compartment_strength(
         #adata.obs.sort_values("velocity_pseudotime"),
         sorted_obs,
         "g1_compartment_strength",
@@ -211,7 +147,7 @@ def add_pmUMI(fig, row, col, adata, sorted_obs):
     pmUMI_fig = px.scatter(
         sorted_obs,
         x=sorted_obs.index,
-        y=sorted_obs["g1_umis"]/(sorted_obs["g1_umis"]+sorted_obs["g2_umis"]),
+        y=sorted_obs["g1_UMIs"]/(sorted_obs["g1_UMIs"]+sorted_obs["g2_UMIs"]),
         color = "seurat_clusters",
         title="genome1_ratio")
     for trace in pmUMI_fig.data:
@@ -269,27 +205,61 @@ def add_rs(fig, row, col, adata, sorted_obs):
             col = col
         )
     return fig
-def time_attr(adata,order_col="velocity_pseudotime",using=None):
+def add_gene_heatmap(fig, row, col, adata, sorted_obs, gene_order):
+    gene_fig = _plot_gene_heatmap(
+        np.log(adata.uns["pCells"].loc[gene_order,sorted_obs.index]+1)
+    )
+    gene_fig = gene_fig.update_traces(
+        showscale = False
+    )
+    fig.add_trace(
+        gene_fig.data[0],
+        row = row,
+        col = col
+    )
+    return fig
+    
+def add_rs_config(fig, row, col, adata, sorted_obs):
+    fig.update_xaxes(
+        autorange=False, 
+        range=[0,sorted_obs.shape[0]],
+        row = row,
+        col = col
+    )
+    return fig
+
+def time_attr(adata, order_col="velocity_pseudotime", using=None, ascending=True, gene_order = None):
     # Input:
     #  adata: AnnData object
     # plot attributes in single figure
     
-    sorted_obs = adata.obs.sort_values(order_col)
+    sorted_obs = adata.obs.sort_values(order_col,ascending=ascending)
 
-    stub = {
+    stub_trace = {
      "cdps":add_cdps,
         "rs":add_rs,
-        "intra":add_intra
+        "gene":add_gene_heatmap,
+        "pmUMI":add_pmUMI
+    }
+    stub_layout = {
+        "rs" : add_rs_config
     }
     if using == None:
-        using = stub.keys()
+        using = stub_trace.keys()
     fig = make_subplots(rows=len(using),cols=1,vertical_spacing=0.02,shared_xaxes=True)
     for i, v in enumerate(using):
-        fig = stub[v](fig, i+1, 1, adata, sorted_obs)
-    return fig
+        if v == "gene":
+            fig = stub_trace[v](fig, i+1, 1, adata, sorted_obs, gene_order)
+        else:
+            fig = stub_trace[v](fig, i+1, 1, adata, sorted_obs)
+    for i, v in enumerate(using):
+        try:
+            fig = stub_layout[v](fig, i+1, 1, adata, sorted_obs)
+        except KeyError:
+            continue
     # config figure
     fig.update_layout(
-        height = 1200,
+        height = 1500,
         width = 1000,
         title = "cell-order vs. attrs plot"
     )
@@ -298,7 +268,7 @@ def time_attr(adata,order_col="velocity_pseudotime",using=None):
         row=1,
         col=1
     )
-    for i in range(1,6):
+    for i in range(1,len(using)+1):
         fig.update_xaxes(
             visible=False,
             row=i,
@@ -325,7 +295,7 @@ def gen_gap(features:list, number:int, k:int):
                 index = ["gap-{fake_id}".format(fake_id = j) for j in range(i*k, i*k+k)],
                 columns = features
             )
-def _plot_cluster_gapped_heatmap(data, grouping, cluster_order, gap_width=1, T=True, hm_layout=plot_cdps):
+def _plot_cluster_gapped_heatmap(data, grouping, cluster_order, gap_width=1, T=True, hm_layout=_plot_cdps):
     """
     Plot gap between heatmap clusters using dataframe hack.
     TODO:
@@ -351,7 +321,7 @@ def _plot_cluster_gapped_heatmap(data, grouping, cluster_order, gap_width=1, T=T
     if T == True:
         fig = hm_layout(compiled_df.T)
     else:
-        fig = hm_layout(complied_df)
+        fig = hm_layout(compiled_df)
     fig.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)'
