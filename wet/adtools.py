@@ -43,24 +43,33 @@ def _merge_expr(fps, mapper, samplelist=None):
     all_mat = all_mat.loc[~(all_mat.sum(axis=1)==0),:]
     print("final merged matrix",all_mat.shape)
     return all_mat
-def gen_expr(qc, outfp=None, mattail="count_matrix/counts.gene.tsv.gz"):
+def gen_expr(qc, mattail="count_matrix/counts.gene.tsv.gz"):
     """
     Generate single expression matrix that contains all (has valid task directory) qc passed samples from qc file.
     qc file must contain "task_dirp" col and use sample ID as index.
     fix sample ID with "_" for umi_tools limitation. 
     Input:
         qc: filtered dataframe
-        outfp: if not None, output file rather than real dataframe
         mattail: RNA mat position according to task_dirp
     Output:
         merged expression matrix
+    TODO:
+        Adding `outfp`; if not None, output file rather than real dataframe
     """
-    return _merge_expr(
-        [os.path.join(i,mattail) for i in qc["task_dirp"].unique()],
-        mapper = dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(1),
-                          qc.index[qc.index.str.contains("_")])),
-        samplelist = qc.index.values
-    )
+    if qc.index.str.contains("_").sum() > 0:
+        print("Warning: sample ID contains underscore")
+        return _merge_expr(
+            [os.path.join(i,mattail) for i in qc["task_dirp"].unique()],
+            mapper = dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(1),
+                            qc.index[qc.index.str.contains("_")])),
+            samplelist = qc.index.values
+        )
+    else:
+        return _merge_expr(
+            [os.path.join(i,mattail) for i in qc["task_dirp"].unique()],
+            mapper = dict(zip(qc.index.values,qc.index.values)),
+            samplelist = qc.index.values
+        )
 def _trim_names(orig, ref, verbose=False):
     """
     Find standard id from ref. 
