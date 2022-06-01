@@ -8,7 +8,7 @@ import statsmodels.api as sm
 import numpy as np
 
 from .rna import _plot_gene_heatmap
-from .hic import _plot_cdps, _plot_compartment_strength
+from .hic import _plot_cdps, plot_compartment_strength
 # cell cycle
 ## cdp scatter plot
 def cdp_scatter(dat:pd.DataFrame)->go.Figure:
@@ -133,11 +133,9 @@ def add_cdps(fig, row, col, adata, sorted_obs):
     return fig
 def add_compartment_strength(fig, row, col, adata, sorted_obs):
     # add compartment strength subplot
-    cs_fig = _plot_compartment_strength(
-        #adata.obs.sort_values("velocity_pseudotime"),
-        sorted_obs,
-        "g1_compartment_strength",
-        "g2_compartment_strength"
+    cs_fig = plot_compartment_strength(
+        adata
+        #adata.obs.sort_values("velocity_pseudotime")
     )
     for trace in cs_fig.data:
         fig.add_trace(trace,row=row,col=col)
@@ -228,21 +226,39 @@ def add_rs_config(fig, row, col, adata, sorted_obs):
     )
     return fig
 
+def add_compartment_strength_config(fig, row, col, adata, sorted_obs):
+    fig.update_xaxes(
+        autorange=False, 
+        range=[0,sorted_obs.shape[0]],
+        row = row,
+        col = col
+    )
+    return fig
 def time_attr(adata, order_col="velocity_pseudotime", using=None, ascending=True, gene_order = None):
+    """
+    Plot the time attributes of the cells.
+    Input:
+        adata: AnnData object
+        order_col: column in adata.obs to sort cells
+        using: name of attrs to plot; list; cdps, rs, gene, pmUMI, cs
+        ascending: whether to revert order
+    """
     # Input:
     #  adata: AnnData object
     # plot attributes in single figure
     
-    sorted_obs = adata.obs.sort_values(order_col,ascending=ascending)
+    sorted_obs = adata.obs.sort_values(order_col, ascending=ascending)
 
     stub_trace = {
      "cdps":add_cdps,
         "rs":add_rs,
         "gene":add_gene_heatmap,
-        "pmUMI":add_pmUMI
+        "pmUMI":add_pmUMI,
+        "cs":add_compartment_strength
     }
     stub_layout = {
-        "rs" : add_rs_config
+        "rs" : add_rs_config,
+        "cs" : add_compartment_strength_config
     }
     if using == None:
         using = stub_trace.keys()
