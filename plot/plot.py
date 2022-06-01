@@ -279,11 +279,13 @@ def time_attr(adata, order_col="velocity_pseudotime", using=None, ascending=True
         "rs":add_rs,
         "gene":add_gene_heatmap,
         "pmUMI":add_pmUMI,
-        "cs":add_compartment_strength
+        "cs":add_compartment_strength,
+        "schicluster_res":add_schicluster_res,
     }
     stub_layout = {
         "rs" : add_rs_config,
-        "cs" : add_compartment_strength_config
+        "cs" : add_compartment_strength_config,
+        "schicluster_res" : add_schicluster_res_config,
     }
     if using == None:
         using = stub_trace.keys()
