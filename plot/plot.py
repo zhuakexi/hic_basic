@@ -146,7 +146,7 @@ def add_pmUMI(fig, row, col, adata, sorted_obs):
         sorted_obs,
         x=sorted_obs.index,
         y=sorted_obs["g1_UMIs"]/(sorted_obs["g1_UMIs"]+sorted_obs["g2_UMIs"]),
-        color = "seurat_clusters",
+        #color = "seurat_clusters",
         title="genome1_ratio")
     for trace in pmUMI_fig.data:
         fig.add_trace(
