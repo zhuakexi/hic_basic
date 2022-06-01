@@ -1,4 +1,5 @@
 from itertools import repeat, zip_longest
+from os import sched_rr_get_interval
 
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -203,6 +204,21 @@ def add_rs(fig, row, col, adata, sorted_obs):
             col = col
         )
     return fig
+def add_schicluster_res(fig, row, col, adata, sorted_obs):
+    # add schicluster subplot
+    schicluster_fig = px.scatter(
+        sorted_obs,
+        x=sorted_obs.index,
+        y=sorted_obs["schicluster_res"],
+        #color = "seurat_clusters",
+        title="schicluster_res")
+    for trace in schicluster_fig.data:
+        fig.add_trace(
+            trace,
+            row = row,
+            col = col
+        )
+    return fig
 def add_gene_heatmap(fig, row, col, adata, sorted_obs, gene_order):
     gene_fig = _plot_gene_heatmap(
         np.log(adata.uns["pCells"].loc[gene_order,sorted_obs.index]+1)
@@ -216,7 +232,7 @@ def add_gene_heatmap(fig, row, col, adata, sorted_obs, gene_order):
         col = col
     )
     return fig
-    
+
 def add_rs_config(fig, row, col, adata, sorted_obs):
     fig.update_xaxes(
         autorange=False, 
@@ -227,6 +243,15 @@ def add_rs_config(fig, row, col, adata, sorted_obs):
     return fig
 
 def add_compartment_strength_config(fig, row, col, adata, sorted_obs):
+    fig.update_xaxes(
+        autorange=False, 
+        range=[0,sorted_obs.shape[0]],
+        row = row,
+        col = col
+    )
+    return fig
+
+def add_schicluster_res_config(fig, row, col, adata, sorted_obs):
     fig.update_xaxes(
         autorange=False, 
         range=[0,sorted_obs.shape[0]],
