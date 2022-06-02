@@ -9,6 +9,36 @@ import pandas as pd
 
 from ..cycle_phasing import dis_counts
 from ..repli_score import _repli_score, _make_repli_dict
+# --- generate cooler files
+def gen_cool(qc, cached, threads=16, sizef = "/share/home/ychi/data/genome/GRCm38/mm10.chrom.sizes", binsize=40_000, cool_addr="cool_paths.json"):
+    """
+    Generate cooler files from qc file.
+    Using mid-files of compartment strength pipeline is better.
+    """
+    # --- check input ---
+    valid_samples, fileis = check_input(qc, "pairs_c123")
+    # --- prepare io ---
+    if not os.path.isdir(os.path.join(cached, "cool", str(binsize))):
+        os.makedirs(os.path.join(cached, "cool", str(binsize)))
+    caching_files = [os.path.join(cached, "cool", str(binsize), "{name}.{res}.cool".format(name = i, res=binsize)) 
+                     for i in valid_samples]
+    # ---calc---
+    # valid_samples, fileis, caching_files
+    print("Calculating...")
+    startt = time.time()
+    with futures.ProcessPoolExecutor(threads) as pool:
+        res = pool.map(
+            pairs2cool,
+            fileis,
+            caching_files,
+            repeat(sizef, len(fileis)),
+            repeat(binsize, len(fileis)),
+        )
+    ares = list(res)
+    print("Finished. Using %.2f min." % ((time.time() - startt)/60) )
+    with open(cool_addr,"wt") as f:
+        json.dump(dict(zip(valid_samples, caching_files)), f)
+    return dict(zip(valid_samples, caching_files))
 # --- generate contact decay profiles ---
 def gen_cdps(filesp, threads = 32):
     # --- check pairs file ---
