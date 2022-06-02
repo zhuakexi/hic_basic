@@ -123,6 +123,24 @@ def cools2scool(cools, scool_path):
         bins,
         multif_pixels
     )
+def hic_pileup(scool, grouping, cache_pattern="{}.pileup.cool",mergebuf=1e6):
+    """
+    Generate pileup cool file for each cluster.
+    Input:
+        scool: cooler's scool file path
+        grouping: {sample:group}; pd.Series
+        cache_pattern: path to store resulting .cool file; str with {}
+    Output:
+        write cool according to cache_pattern
+    """
+    for cluster in grouping.unique():
+        samples = grouping[grouping==cluster].index
+        print("Merging " + str(cluster))
+        cooler.merge_coolers(
+            cache_pattern.format(str(cluster)),
+            [scool+"::/cells/{}".format(i) for i in samples],
+            mergebuf
+        )
 
 # --- distiller-nf helper functions ---
 def gen_config(sample_table, output, task_dirp, template="/shareb/ychi/repo/ara_sperm_bulk1/HIC/project.yml"):
