@@ -9,6 +9,8 @@ import pandas as pd
 
 from ..cycle_phasing import dis_counts
 from ..repli_score import _repli_score, _make_repli_dict
+from ..coolstuff import pairs2cool
+from .utils import check_input
 # --- generate cooler files
 def gen_cool(qc, cached, threads=16, sizef = "/share/home/ychi/data/genome/GRCm38/mm10.chrom.sizes", binsize=40_000, cool_addr="cool_paths.json"):
     """
@@ -99,18 +101,6 @@ def safe_repli_score(pairsf,ref,outf):
     with open(outf,"wt") as f:
         json.dump(out,f)
     return 0
-def check_input(filesp, col):
-    valid_samples = []
-    valid_files = []
-    for sample, row in filesp.iterrows():
-        file = row[col]
-        if not os.path.isfile(file):
-            print("Warning: input .pairs file missing.")
-            print("Nofile" + file)
-        else:
-            valid_samples.append(sample)
-            valid_files.append(file)
-    return valid_samples, valid_files
 def gen_repli_score(qc, cached, threads=32, ref="/share/home/ychi/data/genome/GRCm38/mm10_repli_chip.wig"):
     filesp = qc
     # ---check input---
