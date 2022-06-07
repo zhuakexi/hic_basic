@@ -165,3 +165,46 @@ def plot_compartment_strength(adata, index_col="velocity_pseudotime"):
     data = pd.concat([adata.uns["g1cs_500k"].loc[order, "20"], adata.uns["g2cs_500k"].loc[order, "20"]],axis=1)
     data.columns = ["g1cs","g2cs"]
     return _plot_compartment_strength(data, "g1cs", "g2cs")
+
+# --- HiC ps-curve plot ---
+def _plot_ps_curve(cvd_merged, der, xlim=(1e3,1e8)):
+    """
+    Plot ps curve.
+    Input:
+        cvd_merged: 2 col dataframe
+        der: array of ps-curve's derivative
+    """
+    f, axs = plt.subplots(
+        figsize=(6.5,13),
+        nrows=2,
+        gridspec_kw={'height_ratios':[6,2]},
+        sharex=True)
+    ax = axs[0]
+    ax.loglog(
+        cvd_merged['s_bp'],
+        cvd_merged['balanced.avg.smoothed.agg'],
+        '-',
+        markersize=5,
+    )
+
+    ax.set(
+        ylabel='IC contact frequency',
+        xlim=xlim
+    )
+    ax.set_aspect(1.0)
+    ax.grid(lw=0.5)
+
+
+    ax = axs[1]
+    ax.semilogx(
+        cvd_merged['s_bp'],
+        der,
+        alpha=0.5
+    )
+
+    ax.set(
+        xlabel='separation, bp',
+        ylabel='slope')
+
+    ax.grid(lw=0.5)
+    return f, ax
