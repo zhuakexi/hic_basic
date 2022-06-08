@@ -456,7 +456,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
             ws[i] = funcs["read_files"][i](funcs["cache_files"][i])
         else:
             # generate and cache
-            if isinstance(ws[i], tuple) & len(ws[i]) == 2:
+            if isinstance(ws[i], tuple) & (len(ws[i]) == 2):
                 if isinstance(ws[i][0], list) & isinstance(ws[i][1], dict):
                     # input contains additional arguments
                     ws[i] = funcs["gen"][i](*ws[i][0], **ws[i][1])
@@ -468,8 +468,8 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
         if i in funcs["tidy"]:
             ws[i] = funcs["tidy"][i](ws[i])
     # --- get consensus gene and sample names ---
-    samples = set.intersection(*map(set, [funcs["gi"][i][0](ws[i]) for i in ws])),
-    genes = set.union(*map(set, [funcs["gi"][i][1](ws[i]) for i in ws]))
+    samples = list(set.intersection(*map(set, [funcs["gi"][i][0](ws[i]) for i in ws])))
+    genes = list(set.union(*map(set, [funcs["gi"][i][1](ws[i]) for i in ws])))
     # --- generate seperate dfs ---
     # now in new dfs namespace
     dfs = {}
@@ -483,11 +483,13 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
     # --- expand dfs ---
     dfs = {i : expand_df(dfs[i][samples], pixels) for i in dfs}
     # --- create new annData object ---
+    print(dfs["expr"].loc[genes, samples].T.index)
+    print(pd.DataFrame(index=samples, dtype="string").index)
     new_ad = ad.AnnData(
-        X = dfs["expr"],
-        obs = pd.DataFrame(index=samples),
-        var = pd.DataFrame(index=genes),
-        layers = {i : dfs[i][genes, samples].T for i in dfs if i not in ["expr"]}
+        X = dfs["expr"].loc[genes, samples].T,
+        obs = pd.DataFrame(index=pd.Index(samples, dtype="string")),
+        var = pd.DataFrame(index=pd.Index(genes, dtype="string")),
+        layers = {i : dfs[i].loc[genes, samples].T for i in dfs if i not in ["expr"]}
     )
     return new_ad
 def gen_ad_from_cache(cache_dir, annote):
