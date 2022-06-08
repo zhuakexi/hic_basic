@@ -1,3 +1,4 @@
+from functools import partial
 import anndata as ad
 import pandas as pd
 import numpy as np
@@ -10,7 +11,7 @@ from ..io import matr, read_meta
 from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
 from .exp_record import add_cell_type, add_group_hour
 
-def _merge_expr(fps, mapper, samplelist=None):
+def _merge_expr(fps, mapper, samplelist=None, outfile=None, qc=None):
     """
     Merging umi count matrices.
     Input:
@@ -42,6 +43,8 @@ def _merge_expr(fps, mapper, samplelist=None):
     # ---remove full 0 lines---
     all_mat = all_mat.loc[~(all_mat.sum(axis=1)==0),:]
     print("final merged matrix",all_mat.shape)
+    if outfile is not None:
+        all_mat.to_csv(outfile)
     return all_mat
 def gen_expr(qc, mattail="count_matrix/counts.gene.tsv.gz"):
     """
@@ -229,6 +232,8 @@ def expand_df(target_df, ref_df):
     )
     target_df.fillna(0, inplace=True)
     target_df = target_df.astype(pd.SparseDtype(int, fill_value=0))
+    target_df.index = target_df.index.astype("string")
+    target_df.columns = target_df.columns.astype("string")
     return target_df
 def create_adata(expr, velo_ad, g1, g2):
     """
@@ -363,10 +368,12 @@ def gen_cache(qc, cache_dir, velo_files, g1_files, g2_files, cs_dir, threads=32)
         g2cs_500k = gen_cs(g2cs_fileis)
         g2cs_500k.to_csv(outfile)
     print("Done")
-# --- generate all mid-files used for generating adata object ---
+# --- functions to generate all mid-files used for generating adata object ---
 # sub function for generating g1 g2 cs...
 ## inferring the file name from the qc file
-def infer_expr(qc):
+### Input: [pos] qc, outfile
+### Output: ([],{})
+def _infer_expr_inputs(qc, outfile):
     # infer expression matrix file paths and other arguments
     mattail = "count_matrix/counts.gene.tsv.gz"
     if qc.index.str.contains("_").sum() > 0:
@@ -374,13 +381,63 @@ def infer_expr(qc):
         return [[os.path.join(i, mattail) for i in qc["task_dirp"].unique()]], {
             "mapper" :  dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(1),
                             qc.index[qc.index.str.contains("_")])),
-            "samplelist" : qc.index.values
+            "samplelist" : qc.index.values,
+            "outfile" : outfile
             }
     else:
         return [[os.path.join(i, mattail) for i in qc["task_dirp"].unique()]], {
             "mapper" : dict(zip(qc.index.values,qc.index.values)),
-            "samplelist" : qc.index.values
+            "samplelist" : qc.index.values,
+            "outfile" : outfile
             }
+## generate and caching
+### Input: exposed to output, must have qc and outfile key arguments
+### Output: single object
+def _gen_velo(velo_files, qc=None, outfile=None):
+    print("Gen velo cache...")
+    if not os.path.isfile(outfile):
+        loompy.combine(velo_files, outfile)
+        velo = scv.read(outfile)
+        a = _trim_names(pd.Index(velo.obs.index), qc.index)
+        if "220110_embryo_8EZD5:2021123110" in a.index:
+            a.loc["220110_embryo_8EZD5:2021123110","fix_name_res"] = "good"
+        velo = velo[a.query('fix_name_res == "good"').index]
+        velo.obs.index = a.query('fix_name_res == "good"')["normname"]
+        velo.obs.index.name = "CellID"
+        velo.write_loom(outfile)
+    return velo
+def _gen_cdps(qc=None, outfile=None):
+    print("Gen cdps...")
+    cdps = gen_cdps(qc)
+    cdps.to_csv(outfile)
+    return cdps
+def _gen_repliscore(outdir, qc = None, outfile=None):
+    print("Gen repli score...")
+    if not os.path.isdir(outdir):
+        os.mkdir(outdir)
+    outfile = os.path.join(outdir, "rs.csv.gz")
+    if not os.path.isfile(outfile):
+        rs = gen_repli_score(qc, outdir)
+        rs.to_csv(outfile)
+    return rs
+def _generate_PM_interactions(qc, outfile):
+    print("Gen PM interactions...")
+    PM_interaction = gen_PM_interactions(qc)
+    PM_interaction.index.name = "sample_name"
+    PM_interaction.to_csv(outfile)
+    return PM_interaction
+def _gen_g1_cs(cs_dir, qc, outfile):
+    print("Gen cs...")
+    cs_fileis = gen_fileis(qc, cs_dir,  "{}.500000.cs.g1.txt")
+    cs_500k = gen_cs(cs_fileis)
+    cs_500k.to_csv(outfile)
+    return cs_500k
+def _gen_g2_cs(cs_dir, qc, outfile):
+    print("Gen cs...")
+    cs_fileis = gen_fileis(qc, cs_dir,  "{}.500000.cs.g2.txt")
+    cs_500k = gen_cs(cs_fileis)
+    cs_500k.to_csv(outfile)
+    return cs_500k
 ## generate dataframes for each layer
 ## tidy
 def _tidy_velo(velo_ad):
@@ -397,21 +454,51 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
         # must output (list of positional arguments, dict of keyword arguments)
         "infer_inputs" :
             {
-                "expr" : infer_expr,
+                "expr" : _infer_expr_inputs
             },
         # essentail for all
         "cache_files" :
             {
                 "expr" : ca("expr.csv.gz"),
+                "velo" : ca("velocyto.integrate.loom"),
+                "g1" : ca("g1.csv.gz"),
+                "g2" : ca("g2.csv.gz"),
+                "cdps" : ca("cdps.csv.gz"),
+                "rs" : ca("rs.csv.gz"),
+                "pm" : ca("pm.csv.gz"),
+                "g1cs" : ca("g1cs_500k.csv.gz"),
+                "g2cs" : ca("g2cs_500k.csv.gz"),
             },
-        # essentail for all
         "gen" :
             {
-                "expr" : _merge_expr,
+                "expr" : partial(_merge_expr, samplelist = qc.index.values),
+                "velo" : _gen_velo,
+                "g1" : partial(_merge_expr,  mapper = dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(1),
+                              qc.index[qc.index.str.contains("_")]))),
+                "g2" : partial(_merge_expr,  mapper = dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(1),
+                              qc.index[qc.index.str.contains("_")]))),
+                # no input needed
+                "cdps" : _gen_cdps,
+                # no input needed
+                "rs" : _gen_repliscore,
+                # no input needed
+                "pm" : _generate_PM_interactions,
+                # 
+                "g1cs" : _gen_g1_cs,
+                "g2cs" : _gen_g2_cs
             },
+        # essentail for all
         "read_files" :
             {
-                "expr" : matr
+                "expr" : matr,
+                "velo" : ad.read_loom,
+                "g1" : matr,
+                "g2" : matr,
+                "cdps" : read_meta,
+                "rs" : read_meta,
+                "pm" : read_meta,
+                "g1cs" : matr,
+                "g2cs" : matr,
             },
         "tidy" :
             {
@@ -426,7 +513,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "g1" : [lambda x : x.columns, lambda x : x.index],
                 "g2" : [lambda x : x.columns, lambda x : x.index],
                 # velo is transposed during tidy
-                "velo" : [lambda x : x.var.index, lambda x : x.obs.index],
+                "velo" : [lambda x : x.var.index, lambda x : x.obs.index]
             },
         # essential for all
         "gdf" :
@@ -437,32 +524,37 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                     "unspliced" : pd.DataFrame.sparse.from_spmatrix(x.layers["unspliced"], index = x.obs.index, columns = x.var.index),
                     "ambiguous" : pd.DataFrame.sparse.from_spmatrix(x.layers["ambiguous"], index = x.obs.index, columns = x.var.index)
                 }
-            },
-        "dfs" :
-            {
-                "expr" : "expr",
-                "velo" : ["matrix", "spliced", "unspliced", "ambiguous"] 
-            },
+            }
     }
     ws = args
     # --- infer inputs ---:
     for i in ws:
         if ws[i] is None:
-            ws[i] = funcs["infer_inputs"][i](qc)
+            if ws[i] in funcs["infer_inputs"]:
+                print("Inferring inputs for {}...".format(i))
+                ws[i] = funcs["infer_inputs"][i](qc, funcs["cache_files"][i])
+            else:
+                print("No input for {}".format(i))
+                continue
     # --- generate and cache ---:
     for i in ws:
         if os.path.isfile(funcs["cache_files"][i]) & (i not in rewrite):
             # already generated, read from cache
+            print("Reading {} from cache...".format(i))
             ws[i] = funcs["read_files"][i](funcs["cache_files"][i])
         else:
             # generate and cache
+            print("Generating {}...".format(i))
             if isinstance(ws[i], tuple) & (len(ws[i]) == 2):
                 if isinstance(ws[i][0], list) & isinstance(ws[i][1], dict):
                     # input contains additional arguments
                     ws[i] = funcs["gen"][i](*ws[i][0], **ws[i][1])
             else:
                 # input is only list of file paths
-                ws[i] = funcs["gen"][i](ws[i])
+                if ws[i] is None:
+                    ws[i] = funcs["gen"][i](ws[i], qc = qc, outfile=funcs["cache_files"][i])
+                else:
+                    ws[i] = funcs["gen"][i](qc = qc, outfile=funcs["cache_files"][i])
     # --- tidy up generated dataframes ---:
     for i in ws:
         if i in funcs["tidy"]:
@@ -480,11 +572,15 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
             dfs[i] = ws[i]
     # --- future .X template ---
     pixels = pd.DataFrame.sparse.from_spmatrix(sparse.csr_matrix((len(genes),len(samples)),dtype=np.int64),index = genes, columns = samples)
+    pixels.index = pixels.index.astype("string")
+    pixels.columns = pixels.columns.astype("string")
     # --- expand dfs ---
+    print("Expanding dfs...")
     dfs = {i : expand_df(dfs[i][samples], pixels) for i in dfs}
     # --- create new annData object ---
+    print("creating new AnnData object")
     print(dfs["expr"].loc[genes, samples].T.index)
-    print(pd.DataFrame(index=samples, dtype="string").index)
+    print(pd.Index(samples, dtype="string"))
     new_ad = ad.AnnData(
         X = dfs["expr"].loc[genes, samples].T,
         obs = pd.DataFrame(index=pd.Index(samples, dtype="string")),
