@@ -287,6 +287,7 @@ def create_adata(expr, velo_ad, g1, g2):
         }
     )
     return new_ad
+
 # --- calculate all mid-files used for generating adata object ---
 def gen_cache(qc, cache_dir, velo_files, g1_files, g2_files, cs_dir, threads=32):
     if not os.path.isdir(cache_dir):
@@ -362,6 +363,125 @@ def gen_cache(qc, cache_dir, velo_files, g1_files, g2_files, cs_dir, threads=32)
         g2cs_500k = gen_cs(g2cs_fileis)
         g2cs_500k.to_csv(outfile)
     print("Done")
+# --- generate all mid-files used for generating adata object ---
+# sub function for generating g1 g2 cs...
+## inferring the file name from the qc file
+def infer_expr(qc):
+    # infer expression matrix file paths and other arguments
+    mattail = "count_matrix/counts.gene.tsv.gz"
+    if qc.index.str.contains("_").sum() > 0:
+        print("Warning: sample ID contains underscore")
+        return [[os.path.join(i, mattail) for i in qc["task_dirp"].unique()]], {
+            "mapper" :  dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(1),
+                            qc.index[qc.index.str.contains("_")])),
+            "samplelist" : qc.index.values
+            }
+    else:
+        return [[os.path.join(i, mattail) for i in qc["task_dirp"].unique()]], {
+            "mapper" : dict(zip(qc.index.values,qc.index.values)),
+            "samplelist" : qc.index.values
+            }
+## generate dataframes for each layer
+## tidy
+def _tidy_velo(velo_ad):
+    velo_ad.var_names_make_unique()
+    velo_ad = velo_ad.T
+    return velo_ad
+def _tidy_expr(expr):
+    expr.columns = expr.columns.astype("string")
+    return expr
+def gen_adata(qc, cache_dir, rewrite=[], **args):
+    ca = lambda x: os.path.join(cache_dir, x)
+    funcs = {
+        "infer_inputs" :
+            {
+                "expr" : infer_expr,
+            },
+        # essentail for all
+        "cache_files" :
+            {
+                "expr" : ca("expr.csv.gz"),
+            },
+        # essentail for all
+        "gen" :
+            {
+                "expr" : _merge_expr,
+            },
+        "read_files" :
+            {
+                "expr" : matr
+            },
+        "tidy" :
+            {
+                "expr" : _tidy_expr,
+                "velo" : _tidy_velo,
+            },
+        # essential for all
+        # [get_sample_names, get_gene_names]
+        "gi" :
+            {
+                "expr" : [lambda x : x.columns, lambda x : x.index],
+                "g1" : [lambda x : x.columns, lambda x : x.index],
+                "g2" : [lambda x : x.columns, lambda x : x.index],
+                # velo is transposed during tidy
+                "velo" : [lambda x : x.var.index, lambda x : x.obs.index],
+            },
+        # essential for all
+        "gdf" :
+            {
+                "velo" : lambda x : {
+                    "matrix" : pd.DataFrame.sparse.from_spmatrix(x.layers["matrix"], index = x.obs.index, columns = x.var.index),
+                    "spliced" : pd.DataFrame.sparse.from_spmatrix(x.layers["spliced"], index = x.obs.index, columns = x.var.index),
+                    "unspliced" : pd.DataFrame.sparse.from_spmatrix(x.layers["unspliced"], index = x.obs.index, columns = x.var.index),
+                    "ambiguous" : pd.DataFrame.sparse.from_spmatrix(x.layers["ambiguous"], index = x.obs.index, columns = x.var.index)
+                }
+            },
+        "dfs" :
+            {
+                "expr" : "expr",
+                "velo" : ["matrix", "spliced", "unspliced", "ambiguous"] 
+            },
+    }
+    ws = args
+    # --- infer inputs ---:
+    for i in ws:
+        if ws[i] is None:
+            ws[i] = funcs["infer_inputs"][i](qc)
+    # --- generate and cache ---:
+    for i in ws:
+        if os.path.isfile(funcs["cache_files"][i]) & (i not in rewrite):
+            # already generated, read from cache
+            ws[i] = funcs["read_files"][i](funcs["cache_files"][i])
+        else:
+            # generate and cache
+            ws[i] = funcs["gen"][i](*ws[i][0], **ws[i][1])
+    # --- tidy up generated dataframes ---:
+    for i in ws:
+        if i in funcs["tidy"]:
+            ws[i] = funcs["tidy"][i](ws[i])
+    # --- get consensus gene and sample names ---
+    samples = set.intersection(*map(set, [funcs["gi"][i][0](ws[i]) for i in ws])),
+    genes = set.union(*map(set, [funcs["gi"][i][1](ws[i]) for i in ws]))
+    # --- generate seperate dfs ---
+    # now in new dfs namespace
+    dfs = {}
+    for i in ws:
+        if i in funcs["gdf"]:
+            dfs.update(funcs["gdf"][i](ws[i]))
+        else:
+            dfs[i] = ws[i]
+    # --- future .X template ---
+    pixels = pd.DataFrame.sparse.from_spmatrix(sparse.csr_matrix((len(genes),len(samples)),dtype=np.int64),index = genes, columns = samples)
+    # --- expand dfs ---
+    dfs = {i : expand_df(dfs[i][samples], pixels) for i in dfs}
+    # --- create new annData object ---
+    new_ad = ad.AnnData(
+        X = dfs["expr"],
+        obs = pd.DataFrame(index=samples),
+        var = pd.DataFrame(index=genes),
+        layers = {i : dfs[i][genes, samples].T for i in dfs if i not in ["expr"]}
+    )
+    return new_ad
 def gen_ad_from_cache(cache_dir, annote):
     print("reading tables...")
     expr = matr(os.path.join(cache_dir,"expr.csv.gz"))
