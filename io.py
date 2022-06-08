@@ -219,6 +219,7 @@ def read_meta(fp):
     """
     df = pd.read_csv(fp, dtype={"sample_name":"string"},index_col=0)
     df.index.name = "sample_name"
+    df.columns = df.columns.astype("string")
     return df
 def matr(path,sep=","):
     """
