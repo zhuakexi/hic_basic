@@ -393,6 +393,8 @@ def _tidy_expr(expr):
 def gen_adata(qc, cache_dir, rewrite=[], **args):
     ca = lambda x: os.path.join(cache_dir, x)
     funcs = {
+        # not essentail
+        # must output (list of positional arguments, dict of keyword arguments)
         "infer_inputs" :
             {
                 "expr" : infer_expr,
@@ -454,7 +456,13 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
             ws[i] = funcs["read_files"][i](funcs["cache_files"][i])
         else:
             # generate and cache
-            ws[i] = funcs["gen"][i](*ws[i][0], **ws[i][1])
+            if isinstance(ws[i], tuple) & len(ws[i]) == 2:
+                if isinstance(ws[i][0], list) & isinstance(ws[i][1], dict):
+                    # input contains additional arguments
+                    ws[i] = funcs["gen"][i](*ws[i][0], **ws[i][1])
+            else:
+                # input is only list of file paths
+                ws[i] = funcs["gen"][i](ws[i])
     # --- tidy up generated dataframes ---:
     for i in ws:
         if i in funcs["tidy"]:
