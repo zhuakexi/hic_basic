@@ -240,6 +240,19 @@ def matra(file):
     expr.index.name = "gene"
     adata = ad.AnnData(expr.T)
     return adata
+def parse_hicluster_res(embed, sample_table):
+    """
+    Read schicluster embedding result into dataframe.
+    Input:
+        embed: schicluster concat-cell output hdf5 file
+        sample_table: input sample file of schicluster pipeline
+    """
+    sample_table = read_meta(sample_table)
+    f = h5py.File(embed, "r")
+    data = pd.DataFrame(f["data"][:], index=sample_table.index)
+    f.close()
+    data.columns = ["PC%d" % i for i in range(1, data.shape[1]+1)]
+    return data
 # --- misc ---
 def dump_json(obj, filep):
     """
