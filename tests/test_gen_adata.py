@@ -77,6 +77,13 @@ def test_gen_adata_fullinput(request, tmp_path):
     "/shareb/ychi/repo/embryo_integrate/SNPsplit/result/220515_embryo.g2.gene_expr.tsv.gz"
     ]
     #adata = gen_adata(qc, cache_dir, expr = None, velo = velo_files, g1 = g1_files, g2 = g2_files)
-    adata = gen_adata(qc, cache_dir, expr = None, velo = velo_files, g1 = g1_files, g2 = g2_files, cdps=None, rs="/shareb/ychi/repo/embryo_integrate/anndatas/till220515_cache/repliscore_cache/", pm=None, g1cs = "/shareb/ychi/repo/embryo_integrate/CompartmentStrength/cs/", g2cs = "/shareb/ychi/repo/embryo_integrate/CompartmentStrength/cs/")
+    #adata = gen_adata(qc, cache_dir, expr = None, velo = velo_files, g1 = g1_files, g2 = g2_files, cdps=None, rs="/shareb/ychi/repo/embryo_integrate/anndatas/till220515_cache/repliscore_cache/", pm=None, g1cs = "/shareb/ychi/repo/embryo_integrate/CompartmentStrength/cs/", g2cs = "/shareb/ychi/repo/embryo_integrate/CompartmentStrength/cs/")
+    adata = gen_adata(qc, cache_dir, expr = None, velo = velo_files, 
+        g1 = g1_files, g2 = g2_files, cdps=None, 
+        rs="/shareb/ychi/repo/embryo_integrate/anndatas/till220515_cache/repliscore_cache/", 
+        pm=None, g1cs = "/shareb/ychi/repo/embryo_integrate/CompartmentStrength/cs/", 
+        g2cs = "/shareb/ychi/repo/embryo_integrate/CompartmentStrength/cs/",
+        annote = ["group","partition","cell_type"],
+        g1_UMIs=None, g2_UMIs=None)
     assert adata.obs.shape[0] == qc.shape[0]
     assert len(adata.uns.keys()) == 3
