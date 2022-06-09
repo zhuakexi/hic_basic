@@ -11,6 +11,7 @@ import scvelo as scv
 from ..io import matr, read_meta
 from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
 from .exp_record import add_cell_type, add_group_hour
+from .utils import two_sets
 from ..phasing import get_chrom_hap_score
 
 def _merge_expr(fps, mapper, samplelist=None, outfile=None, qc=None):
@@ -532,6 +533,24 @@ def create_adata_layers(ws, funcs):
         layers = {i : dfs[i].loc[genes, samples].T for i in dfs if i not in ["expr"]}
     )
     return new_ad
+def add_obsm(adata, data, obsm_key):
+    """
+    Adding obsm to anndata.
+    Input:
+        data: low-dim representation of samples. samples x feature
+        obsm_key: name of the representation
+    """
+    new_data = pd.DataFrame(index=adata.obs_names)
+
+    two_sets(adata.obs_names, data.index, True)
+    adata.obsm[obsm_key] = pd.concat(
+        [   new_data,
+            data.loc[data.index.intersection(adata.obs_names)]
+            ],
+        axis=1,
+        join="outer"
+        )
+    return adata
 def gen_adata(qc, cache_dir, rewrite=[], **args):
     ca = lambda x: os.path.join(cache_dir, x)
     funcs = {
