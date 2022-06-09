@@ -444,6 +444,21 @@ def _gen_annote(cols, qc=None, outfile=None):
     annote = qc[cols]
     annote.to_csv(outfile)
     return annote
+def _gen_g(fps, qc = None, outfile=None):
+    print("Gen phased count matrix...")
+    if qc.index.str.contains("_").sum() > 0:
+        print("Warning: sample ID contains underscore")
+        return _merge_expr(fps, 
+            mapper =  dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(1),
+                            qc.index[qc.index.str.contains("_")])),
+            samplelist =  qc.index.values,
+            outfile = outfile
+            )
+    else:
+        return _merge_expr(fps,
+            mapper = dict(zip(qc.index.values,qc.index.values)),
+            samplelist = qc.index.values,
+            outfile = outfile)
 ## generate dataframes for each layer
 ## tidy
 def _tidy_velo(velo_ad):
@@ -497,8 +512,8 @@ def create_adata_layers(ws, funcs):
     dfs = {i : expand_df(dfs[i][samples], pixels) for i in dfs}
     # --- create new annData object ---
     print("creating new AnnData object")
-    print(dfs["expr"].loc[genes, samples].T.index)
-    print(pd.Index(samples, dtype="string"))
+    #print(dfs["expr"].loc[genes, samples].T.index)
+    #print(pd.Index(samples, dtype="string"))
     new_ad = ad.AnnData(
         X = dfs["expr"].loc[genes, samples].T,
         obs = pd.DataFrame(index=pd.Index(samples, dtype="string")),
@@ -535,10 +550,8 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
             {
                 "expr" : partial(_merge_expr, samplelist = qc.index.values),
                 "velo" : _gen_velo,
-                "g1" : partial(_merge_expr,  mapper = dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(1),
-                              qc.index[qc.index.str.contains("_")]))),
-                "g2" : partial(_merge_expr,  mapper = dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(1),
-                              qc.index[qc.index.str.contains("_")]))),
+                "g1" : _gen_g,
+                "g2" : _gen_g,
                 # no input needed
                 "cdps" : _gen_cdps,
                 # no input needed
@@ -602,7 +615,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
     # --- infer inputs ---:
     for i in ws:
         if ws[i] is None:
-            if ws[i] in funcs["infer_inputs"]:
+            if i in funcs["infer_inputs"]:
                 print("Inferring inputs for {}...".format(i))
                 ws[i] = funcs["infer_inputs"][i](qc, funcs["cache_files"][i])
             else:
