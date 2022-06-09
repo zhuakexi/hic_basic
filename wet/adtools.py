@@ -2,7 +2,7 @@ from functools import partial
 import anndata as ad
 import pandas as pd
 import numpy as np
-from repli_score import _repli_score
+from ..repli_score import _repli_score
 from scipy import sparse
 import os
 import loompy
