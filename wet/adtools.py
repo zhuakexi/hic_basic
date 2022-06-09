@@ -439,6 +439,11 @@ def _gen_g2_cs(cs_dir, qc=None, outfile=None):
     cs_500k = gen_cs(cs_fileis)
     cs_500k.to_csv(outfile)
     return cs_500k
+def _gen_annote(cols, qc=None, outfile=None):
+    print("Gen annote...")
+    annote = qc[cols]
+    annote.to_csv(outfile)
+    return annote
 ## generate dataframes for each layer
 ## tidy
 def _tidy_velo(velo_ad):
@@ -449,11 +454,13 @@ def _tidy_expr(expr):
     expr.columns = expr.columns.astype("string")
     return expr
 ## adding annotations to adata object
-def _add_g1_UMIs(adata=None):
+def _add_g1_UMIs(adata=None, qc=None):
     return adata.obs.assign(g1_UMIs = adata.layers["g1"].sum(axis=1))
-def _add_g2_UMIs(adata=None):
+def _add_g2_UMIs(adata=None, qc=None):
     return adata.obs.assign(g2_UMIs = adata.layers["g2"].sum(axis=1))
-def _add_concat(adata=None, df=None):
+def _add_concat(adata=None, df=None, qc = None):
+    if not set(adata.obs.index).issubset(df.index):
+        raise ValueError("[adding annotation]: adata.obs.index is not a subset of df.index")
     return pd.concat([adata.obs, df],axis=1, join="inner")
 def create_adata_layers(ws, funcs):
     """
@@ -508,7 +515,8 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
             {
                 "expr" : _infer_expr_inputs
             },
-        # essentail for all
+        # not essentail
+        # must output single object
         "cache_files" :
             {
                 "expr" : ca("expr.csv.gz"),
@@ -520,7 +528,9 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "pm" : ca("pm.csv.gz"),
                 "g1cs" : ca("g1cs_500k.csv.gz"),
                 "g2cs" : ca("g2cs_500k.csv.gz"),
+                "annote" : ca("annote.csv.gz"),
             },
+        # not esential
         "gen" :
             {
                 "expr" : partial(_merge_expr, samplelist = qc.index.values),
@@ -537,7 +547,8 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "pm" : _generate_PM_interactions,
                 # 
                 "g1cs" : _gen_g1_cs,
-                "g2cs" : _gen_g2_cs
+                "g2cs" : _gen_g2_cs,
+                "annote" : _gen_annote,
             },
         # essentail for all
         "read_files" :
@@ -551,6 +562,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "pm" : read_meta,
                 "g1cs" : matr,
                 "g2cs" : matr,
+                "annote" : read_meta
             },
         "tidy" :
             {
@@ -576,6 +588,14 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                     "unspliced" : pd.DataFrame.sparse.from_spmatrix(x.layers["unspliced"], index = x.obs.index, columns = x.var.index),
                     "ambiguous" : pd.DataFrame.sparse.from_spmatrix(x.layers["ambiguous"], index = x.obs.index, columns = x.var.index)
                 }
+            },
+        "add_annote" :
+            {
+                "rs" : _add_concat,
+                "g1_UMIs" : _add_g1_UMIs,
+                "g2_UMIs" : _add_g2_UMIs,
+                "pm" : _add_concat,
+                "annote" : _add_concat,
             }
     }
     ws = args
@@ -588,8 +608,12 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
             else:
                 print("No input for {}".format(i))
                 continue
+    print("Generating mid-files...")
     # --- generate and cache ---:
     for i in ws:
+        if i not in funcs["cache_files"] and i not in funcs["gen"]:
+            print("Direct attr {}".format(i))
+            continue
         if os.path.isfile(funcs["cache_files"][i]) & (i not in rewrite):
             # already generated, read from cache
             print("Reading {} from cache...".format(i))
@@ -610,13 +634,27 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                     ws[i] = funcs["gen"][i](ws[i], qc = qc, outfile=funcs["cache_files"][i])
     # --- seperate by layer, obsm, ... ---:
     layers = {i : ws[i] for i in ws if i in ("expr", "velo", "g1", "g2")}
-    obs = {i : ws[i] for i in ws if i in ("rs", "pm")}
+    obs = {i : ws[i] for i in ws if i in ("rs", "pm", "g1_UMIs", "g2_UMIs", "annote")}
     uns = {i : ws[i] for i in ws if i in ("cdps", "g1cs", "g2cs")}
     # --- create adata ---:
+    print("Creating adata...")
     adata = create_adata_layers(layers, funcs)
     # --- adding per-cell annotations ---:
-    # TODO: fix this
+    print("Adding per-cell annotations...")
+    for i in obs:
+        if i in funcs["cache_files"]:
+            adata.obs = funcs["add_annote"][i](
+                adata = adata, 
+                df = funcs["read_files"][i](funcs["cache_files"][i]), 
+                qc=qc
+            )
+        else:
+            adata.obs = funcs["add_annote"][i](
+                adata = adata,
+                qc = qc
+            )
     # --- adding uns ---:
+    print("Adding uns...")
     for i in uns:
         adata.uns[i] = uns[i].loc[adata.obs_names]
     return adata
