@@ -467,9 +467,9 @@ def _gen_chrom_hap_score(dump_dirs, qc = None, outfile=None):
         if not os.path.isdir(dir):
             raise ValueError("{} is not a directory".format(dir))
         chrom_hap_scores.append(get_chrom_hap_score(dir))
-    chrom_hap_score = pd.concat(chrom_hap_scores, axis=0)
+    chrom_hap_score = pd.DataFrame(pd.concat(chrom_hap_scores, axis=0), columns = ["chrom_hap_score"])
     chrom_hap_score.to_csv(outfile)
-    return pd.DataFrame(chrom_hap_score, columns=["chrom_hap_score"])
+    return chrom_hap_score
 ## generate dataframes for each layer
 ## tidy
 def _tidy_velo(velo_ad):
