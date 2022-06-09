@@ -40,13 +40,13 @@ def c_u_filter(meta, ccol, ucol, c_threshold, u_threshold):
     print("Keep %d samples from %d samples" % (qc.shape[0], meta.shape[0]))
     return qc
 def plot_qc(meta, ccol="contacts", ucol="umis", c_threshold=[150_000, 1_000_000], u_threshold=[10_000, 600_000]):
-    fig = px.scatter(meta,x="contacts",y="umis")
+    fig = px.scatter(meta,x=ccol,y=ucol)
     fig.update_layout(
         height = 700,
         width = 700
     )
-    fig.add_hline(y=u_threshold[0], color="red")
-    fig.add_hline(y=u_threshold[1], color="red")
-    fig.add_vline(x=c_threshold[0], color="red")
-    fig.add_vline(x=c_threshold[1], color="red")
+    fig.add_hline(y=u_threshold[0])
+    fig.add_hline(y=u_threshold[1])
+    fig.add_vline(x=c_threshold[0])
+    fig.add_vline(x=c_threshold[1])
     return fig
