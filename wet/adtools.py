@@ -2,6 +2,7 @@ from functools import partial
 import anndata as ad
 import pandas as pd
 import numpy as np
+from repli_score import _repli_score
 from scipy import sparse
 import os
 import loompy
@@ -420,19 +421,19 @@ def _gen_repliscore(outdir, qc = None, outfile=None):
         rs = gen_repli_score(qc, outdir)
         rs.to_csv(outfile)
     return rs
-def _generate_PM_interactions(qc, outfile):
+def _generate_PM_interactions(qc=None, outfile=None):
     print("Gen PM interactions...")
     PM_interaction = gen_PM_interactions(qc)
     PM_interaction.index.name = "sample_name"
     PM_interaction.to_csv(outfile)
     return PM_interaction
-def _gen_g1_cs(cs_dir, qc, outfile):
+def _gen_g1_cs(cs_dir, qc=None, outfile=None):
     print("Gen cs...")
     cs_fileis = gen_fileis(qc, cs_dir,  "{}.500000.cs.g1.txt")
     cs_500k = gen_cs(cs_fileis)
     cs_500k.to_csv(outfile)
     return cs_500k
-def _gen_g2_cs(cs_dir, qc, outfile):
+def _gen_g2_cs(cs_dir, qc=None, outfile=None):
     print("Gen cs...")
     cs_fileis = gen_fileis(qc, cs_dir,  "{}.500000.cs.g2.txt")
     cs_500k = gen_cs(cs_fileis)
@@ -447,6 +448,57 @@ def _tidy_velo(velo_ad):
 def _tidy_expr(expr):
     expr.columns = expr.columns.astype("string")
     return expr
+## adding annotations to adata object
+def _add_g1_UMIs(adata=None):
+    return adata.obs.assign(g1_UMIs = adata.layers["g1"].sum(axis=1))
+def _add_g2_UMIs(adata=None):
+    return adata.obs.assign(g2_UMIs = adata.layers["g2"].sum(axis=1))
+def _add_concat(adata=None, df=None):
+    return pd.concat([adata.obs, df],axis=1, join="inner")
+def create_adata_layers(ws, funcs):
+    """
+    Create adata object form the layers
+    Input:
+        ws: dict of layer name and dataframe
+        funcs: functions to access layers
+    Output:
+        adata object
+    """
+    print("Creating adata object from layer dataframes...")
+    # --- tidy up generated dataframes ---:
+    for i in ws:
+        if i in funcs["tidy"]:
+            ws[i] = funcs["tidy"][i](ws[i])
+    # --- get consensus gene and sample names ---
+    samples = list(set.intersection(*map(set, [funcs["gi"][i][0](ws[i]) for i in ws])))
+    genes = list(set.union(*map(set, [funcs["gi"][i][1](ws[i]) for i in ws])))
+    # --- generate seperate dfs for layers ---
+    # now in new dfs namespace
+    dfs = {}
+    for i in ws:
+        if i in ("expr", "velo", "g1", "g2"):
+            if i in funcs["gdf"]:
+                dfs.update(funcs["gdf"][i](ws[i]))
+            else:
+                dfs[i] = ws[i]
+    # --- future .X template ---
+    pixels = pd.DataFrame.sparse.from_spmatrix(sparse.csr_matrix((len(genes),len(samples)),dtype=np.int64),index = genes, columns = samples)
+    pixels.index = pixels.index.astype("string")
+    pixels.columns = pixels.columns.astype("string")
+    # --- expand dfs ---
+    print("Expanding dfs...")
+    dfs = {i : expand_df(dfs[i][samples], pixels) for i in dfs}
+    # --- create new annData object ---
+    print("creating new AnnData object")
+    print(dfs["expr"].loc[genes, samples].T.index)
+    print(pd.Index(samples, dtype="string"))
+    new_ad = ad.AnnData(
+        X = dfs["expr"].loc[genes, samples].T,
+        obs = pd.DataFrame(index=pd.Index(samples, dtype="string")),
+        var = pd.DataFrame(index=pd.Index(genes, dtype="string")),
+        layers = {i : dfs[i].loc[genes, samples].T for i in dfs if i not in ["expr"]}
+    )
+    return new_ad
 def gen_adata(qc, cache_dir, rewrite=[], **args):
     ca = lambda x: os.path.join(cache_dir, x)
     funcs = {
@@ -545,49 +597,29 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
         else:
             # generate and cache
             print("Generating {}...".format(i))
-            if isinstance(ws[i], tuple) & (len(ws[i]) == 2):
-                if isinstance(ws[i][0], list) & isinstance(ws[i][1], dict):
-                    # input contains additional arguments
-                    ws[i] = funcs["gen"][i](*ws[i][0], **ws[i][1])
+            if isinstance(ws[i], tuple):
+                if (len(ws[i]) == 2):
+                    if isinstance(ws[i][0], list) & isinstance(ws[i][1], dict):
+                        # input contains additional arguments
+                        ws[i] = funcs["gen"][i](*ws[i][0], **ws[i][1])
             else:
                 # input is only list of file paths
                 if ws[i] is None:
-                    ws[i] = funcs["gen"][i](ws[i], qc = qc, outfile=funcs["cache_files"][i])
-                else:
                     ws[i] = funcs["gen"][i](qc = qc, outfile=funcs["cache_files"][i])
-    # --- tidy up generated dataframes ---:
-    for i in ws:
-        if i in funcs["tidy"]:
-            ws[i] = funcs["tidy"][i](ws[i])
-    # --- get consensus gene and sample names ---
-    samples = list(set.intersection(*map(set, [funcs["gi"][i][0](ws[i]) for i in ws])))
-    genes = list(set.union(*map(set, [funcs["gi"][i][1](ws[i]) for i in ws])))
-    # --- generate seperate dfs ---
-    # now in new dfs namespace
-    dfs = {}
-    for i in ws:
-        if i in funcs["gdf"]:
-            dfs.update(funcs["gdf"][i](ws[i]))
-        else:
-            dfs[i] = ws[i]
-    # --- future .X template ---
-    pixels = pd.DataFrame.sparse.from_spmatrix(sparse.csr_matrix((len(genes),len(samples)),dtype=np.int64),index = genes, columns = samples)
-    pixels.index = pixels.index.astype("string")
-    pixels.columns = pixels.columns.astype("string")
-    # --- expand dfs ---
-    print("Expanding dfs...")
-    dfs = {i : expand_df(dfs[i][samples], pixels) for i in dfs}
-    # --- create new annData object ---
-    print("creating new AnnData object")
-    print(dfs["expr"].loc[genes, samples].T.index)
-    print(pd.Index(samples, dtype="string"))
-    new_ad = ad.AnnData(
-        X = dfs["expr"].loc[genes, samples].T,
-        obs = pd.DataFrame(index=pd.Index(samples, dtype="string")),
-        var = pd.DataFrame(index=pd.Index(genes, dtype="string")),
-        layers = {i : dfs[i].loc[genes, samples].T for i in dfs if i not in ["expr"]}
-    )
-    return new_ad
+                else:
+                    ws[i] = funcs["gen"][i](ws[i], qc = qc, outfile=funcs["cache_files"][i])
+    # --- seperate by layer, obsm, ... ---:
+    layers = {i : ws[i] for i in ws if i in ("expr", "velo", "g1", "g2")}
+    obs = {i : ws[i] for i in ws if i in ("rs", "pm")}
+    uns = {i : ws[i] for i in ws if i in ("cdps", "g1cs", "g2cs")}
+    # --- create adata ---:
+    adata = create_adata_layers(layers, funcs)
+    # --- adding per-cell annotations ---:
+    # TODO: fix this
+    # --- adding uns ---:
+    for i in uns:
+        adata.uns[i] = uns[i].loc[adata.obs_names]
+    return adata
 def gen_ad_from_cache(cache_dir, annote):
     print("reading tables...")
     expr = matr(os.path.join(cache_dir,"expr.csv.gz"))
