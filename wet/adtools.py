@@ -11,6 +11,7 @@ import scvelo as scv
 from ..io import matr, read_meta
 from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
 from .exp_record import add_cell_type, add_group_hour
+from ..phasing import get_chrom_hap_score
 
 def _merge_expr(fps, mapper, samplelist=None, outfile=None, qc=None):
     """
@@ -459,6 +460,16 @@ def _gen_g(fps, qc = None, outfile=None):
             mapper = dict(zip(qc.index.values,qc.index.values)),
             samplelist = qc.index.values,
             outfile = outfile)
+def _gen_chrom_hap_score(dump_dirs, qc = None, outfile=None):
+    print("Gen chrom hap socre...")
+    chrom_hap_scores = []
+    for dir in dump_dirs:
+        if not os.path.isdir(dir):
+            raise ValueError("{} is not a directory".format(dir))
+        chrom_hap_scores.append(get_chrom_hap_score(dir))
+    chrom_hap_score = pd.concat(chrom_hap_scores, axis=0)
+    chrom_hap_score.to_csv(outfile)
+    return pd.DataFrame(chrom_hap_score, columns=["chrom_hap_score"])
 ## generate dataframes for each layer
 ## tidy
 def _tidy_velo(velo_ad):
@@ -544,6 +555,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "g1cs" : ca("g1cs_500k.csv.gz"),
                 "g2cs" : ca("g2cs_500k.csv.gz"),
                 "annote" : ca("annote.csv.gz"),
+                "chrom_hap_score" : ca("chrom_hap_score.csv.gz")
             },
         # not esential
         "gen" :
@@ -562,6 +574,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "g1cs" : _gen_g1_cs,
                 "g2cs" : _gen_g2_cs,
                 "annote" : _gen_annote,
+                "chrom_hap_score" : _gen_chrom_hap_score
             },
         # essentail for all
         "read_files" :
@@ -575,7 +588,8 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "pm" : read_meta,
                 "g1cs" : matr,
                 "g2cs" : matr,
-                "annote" : read_meta
+                "annote" : read_meta,
+                "chrom_hap_score" : read_meta
             },
         "tidy" :
             {
@@ -609,6 +623,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "g2_UMIs" : _add_g2_UMIs,
                 "pm" : _add_concat,
                 "annote" : _add_concat,
+                "chrom_hap_score" : _add_concat
             }
     }
     ws = args
@@ -647,7 +662,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                     ws[i] = funcs["gen"][i](ws[i], qc = qc, outfile=funcs["cache_files"][i])
     # --- seperate by layer, obsm, ... ---:
     layers = {i : ws[i] for i in ws if i in ("expr", "velo", "g1", "g2")}
-    obs = {i : ws[i] for i in ws if i in ("rs", "pm", "g1_UMIs", "g2_UMIs", "annote")}
+    obs = {i : ws[i] for i in ws if i in ("rs", "pm", "g1_UMIs", "g2_UMIs", "annote", "chrom_hap_score")}
     uns = {i : ws[i] for i in ws if i in ("cdps", "g1cs", "g2cs")}
     # --- create adata ---:
     print("Creating adata...")
