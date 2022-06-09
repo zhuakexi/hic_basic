@@ -87,3 +87,8 @@ def test_gen_adata_fullinput(request, tmp_path):
         g1_UMIs=None, g2_UMIs=None)
     assert adata.obs.shape[0] == qc.shape[0]
     assert len(adata.uns.keys()) == 3
+def test_gen_adata_sperm(request, tmp_path):
+    qc = read_meta("/share/Data/ychi/notebook/Project/sperm_integrate/meta/till14/till14.mm.csv.gz")
+    cache_dir = tmp_path
+    adata = gen_adata(qc, cache_dir, [], expr=None, chrom_hap_score = ["/shareb/ychi/repo/sperm12_check_sample_other_snpfile/rd/dump/","/shareb/ychi/repo/sperm13/rd/dump/","/shareb/ychi/repo/sperm14/rd/dump/"])
+    assert adata.obs.shape[0] == qc.shape[0] - 1 # one sample has no expression
