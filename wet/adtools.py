@@ -8,7 +8,7 @@ import os
 import loompy
 import scvelo as scv
 
-from ..io import matr, read_meta
+from ..io import matr, read_meta, get_chrom_contact_counts
 from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
 from .exp_record import add_cell_type, add_group_hour
 from .utils import two_sets
@@ -471,6 +471,16 @@ def _gen_chrom_hap_score(dump_dirs, qc = None, outfile=None):
     chrom_hap_score = pd.DataFrame(pd.concat(chrom_hap_scores, axis=0), columns = ["chrom_hap_score"])
     chrom_hap_score.to_csv(outfile)
     return chrom_hap_score
+def _gen_chrom_contacts(dump_dirs, qc = None, outfile=None):
+    print("Gen chrom contacts...")
+    chrom_contacts = []
+    for dir in dump_dirs:
+        if not os.path.isdir(dir):
+            raise ValueError("{} is not a directory".format(dir))
+        chrom_contacts.append(get_chrom_contact_counts(dir))
+    chrom_contacts = pd.concat(chrom_contacts, axis=1)
+    chrom_contacts.to_csv(outfile)
+    return chrom_contacts
 ## generate dataframes for each layer
 ## tidy
 def _tidy_velo(velo_ad):
@@ -574,7 +584,8 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "g1cs" : ca("g1cs_500k.csv.gz"),
                 "g2cs" : ca("g2cs_500k.csv.gz"),
                 "annote" : ca("annote.csv.gz"),
-                "chrom_hap_score" : ca("chrom_hap_score.csv.gz")
+                "chrom_hap_score" : ca("chrom_hap_score.csv.gz"),
+                "chrom_contacts" : ca("chrom_contacts.csv.gz"),
             },
         # not esential
         "gen" :
@@ -593,7 +604,8 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "g1cs" : _gen_g1_cs,
                 "g2cs" : _gen_g2_cs,
                 "annote" : _gen_annote,
-                "chrom_hap_score" : _gen_chrom_hap_score
+                "chrom_hap_score" : _gen_chrom_hap_score,
+                "chrom_contacts" : _gen_chrom_contacts,
             },
         # essentail for all
         "read_files" :
@@ -608,7 +620,8 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "g1cs" : matr,
                 "g2cs" : matr,
                 "annote" : read_meta,
-                "chrom_hap_score" : read_meta
+                "chrom_hap_score" : read_meta,
+                "chrom_contacts" : partial(pd.read_csv, index_col=[0,1]),
             },
         "tidy" :
             {
