@@ -508,7 +508,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
     # --- seperate by layer, obsm, ... ---:
     layers = {i : ws[i] for i in ws if i in ("expr", "velo", "g1", "g2")}
     obs = {i : ws[i] for i in ws if i in ("rs", "pm", "g1_UMIs", "g2_UMIs", "annote", "chrom_hap_score",
-                                          "chrom_contacts", "group_hour", "g1_UMIs", "g2_UMIs",
+                                          "chrom_contacts", "collect_hour", "cell_type", "g1_UMIs", "g2_UMIs",
                                           "cell_type")}
     uns = {i : ws[i] for i in ws if i in ("cdps", "g1cs", "g2cs")}
     # --- create adata ---:

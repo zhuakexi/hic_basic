@@ -174,4 +174,5 @@ def test_gen_adata_fullinput2(request, tmp_path):
         g1_UMIs=None, g2_UMIs=None, g1cs = "/shareb/ychi/repo/embryo_integrate/CompartmentStrength/cs/", 
         g2cs = "/shareb/ychi/repo/embryo_integrate/CompartmentStrength/cs/")
     assert adata.obs.shape[0] == qc.shape[0]
+    assert ("collect_hour" in adata.obs.columns) and ("cell_type" in adata.obs.columns)
     #assert len(adata.uns.keys()) == 3
