@@ -418,7 +418,6 @@ def _gen_repliscore(outdir, qc = None, outfile=None):
     print("Gen repli score...")
     if not os.path.isdir(outdir):
         os.mkdir(outdir)
-    outfile = os.path.join(outdir, "rs.csv.gz")
     if not os.path.isfile(outfile):
         rs = gen_repli_score(qc, outdir)
         rs.to_csv(outfile)
@@ -499,6 +498,12 @@ def _add_concat(adata=None, df=None, qc = None):
     if not set(adata.obs.index).issubset(df.index):
         raise ValueError("[adding annotation]: adata.obs.index is not a subset of df.index")
     return pd.concat([adata.obs, df],axis=1, join="inner")
+def _add_group_hour(adata=None, qc=None):
+    data = add_group_hour(qc, "collect_hour")
+    return adata.obs.assign(collect_hour = data["collect_hour"])
+def _add_cell_type(adata=None, qc=None):
+    data = add_cell_type(qc)
+    return adata.obs.assign(cell_type = data["cell_type"])
 def create_adata_layers(ws, funcs):
     """
     Create adata object form the layers
@@ -562,6 +567,30 @@ def add_obsm(adata, data, obsm_key):
         )
     return adata
 def gen_adata(qc, cache_dir, rewrite=[], **args):
+    """
+    Generate anndata object from the QC data.
+    Input:
+        qc: QC dataframe
+        cache_dir: directory to store the generated adata object
+        rewrite: list of dataframe name to rewrite
+
+        --- layers ---
+        expr: expression matrix
+        g1: phase 0 expression matrix
+        g2: phase 1 expression matrix
+        velo: velocity matrix
+        --- uns ---
+        cdps: contact decay profile
+        g1cs: phase 0 compartment strength
+        g2cs: phase 1 compartment strength
+        --- obs ---
+        g1_UMIs: phase 0 UMIs
+        g2_UMIs: phase 1 UMIs
+        pm: phase 0 1 interaction(contacts)
+        rs: repli_score
+        collect_hour: collection hour parsed from group name
+        cell_type: cell type parsed from group name
+    """
     ca = lambda x: os.path.join(cache_dir, x)
     funcs = {
         # not essentail
@@ -655,7 +684,9 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                 "g2_UMIs" : _add_g2_UMIs,
                 "pm" : _add_concat,
                 "annote" : _add_concat,
-                "chrom_hap_score" : _add_concat
+                "chrom_hap_score" : _add_concat,
+                "collect_hour" : _add_group_hour,
+                "cell_type" : _add_cell_type,
             }
     }
     ws = args
@@ -694,7 +725,9 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
                     ws[i] = funcs["gen"][i](ws[i], qc = qc, outfile=funcs["cache_files"][i])
     # --- seperate by layer, obsm, ... ---:
     layers = {i : ws[i] for i in ws if i in ("expr", "velo", "g1", "g2")}
-    obs = {i : ws[i] for i in ws if i in ("rs", "pm", "g1_UMIs", "g2_UMIs", "annote", "chrom_hap_score")}
+    obs = {i : ws[i] for i in ws if i in ("rs", "pm", "g1_UMIs", "g2_UMIs", "annote", "chrom_hap_score",
+                                          "chrom_contacts", "group_hour", "g1_UMIs", "g2_UMIs",
+                                          "cell_type")}
     uns = {i : ws[i] for i in ws if i in ("cdps", "g1cs", "g2cs")}
     # --- create adata ---:
     print("Creating adata...")
