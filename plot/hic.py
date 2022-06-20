@@ -99,12 +99,17 @@ def _plot_cdps(cdps:pd.DataFrame):
         range = [3,8.3]
     )
     return fig
-def plot_cdps(adata, index_col="velocity_pseudotime"):
+def plot_cdps(adata, index_col="velocity_pseudotime", reverse=False):
     """
     Input:
         index_col: wich adata.obs col to sort sample by
+        reverse: whether to reverse the order of the sample
     """
-    cdps = adata.uns["cdps"].loc[adata.obs.sort_values(index_col).index].T
+    if reverse:
+        order = adata.obs.sort_values(index_col, ascending=False).index
+    else:
+        order = adata.obs.sort_values(index_col, ascending=True).index
+    cdps = adata.uns["cdps"].loc[order].T
     return _plot_cdps(cdps)
 
 # --- HIC compartment strength plot ---
