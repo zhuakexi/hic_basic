@@ -11,4 +11,4 @@ def test_interpolate(request):
     traj = traj.iloc[:,0]
     ref_res = read_meta(os.path.join(request.fspath.dirname, "data", "interpolatedVals.csv.gz"))
     res, newtraj = _gaussian_interpolate(orig, traj, 0.1, 200)
-    assert_allclose(res, ref_res.values)
+    assert_allclose(res.values, ref_res.values)
