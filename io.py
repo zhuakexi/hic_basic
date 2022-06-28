@@ -111,18 +111,29 @@ def parse_pairs_like(filename:str)->pd.DataFrame:
     #assign column names
     #sys.stderr.write("pairs_parser: %s parsed \n" % filename)
     return pairs
-def parse_gtf(file,ID=True):
+def parse_gtf(file,ID=True,name=True, **args):
     """
     Parsing gtf file. Read all in memory. Extract gene_id to df if set true.
+    Input:
+        file: path to .gtf file.
+        ID: whether to parse gene_id from attribute string.
+        name: whether to parse gene_name from attribute string.
+        **args: arguments passed to pd.read_table
+    Return:
+        pd.DataFrame
     """
     header = ["seqname","source","feature","start","end","score","strand","frame","attributes"]
-    dtypes = dict(zip(header, ["category","category","category","int","int","string","category","category","category","string"]))
-    gtf = pd.read_table(file, comment ="#", header=None, names = header, dtype=dtypes)
+    dtypes = dict(zip(header, ["category","category","category","int","int","string","category","category","string"]))
+    gtf = pd.read_table(file, comment ="#", header=None, names = header, dtype=dtypes,**args)
     # get gene_id from attributes
     if ID:
-        ID = gtf["attributes"].str.extract(r"gene_id \"(\w+)\";", expand=True)
+        ID = gtf["attributes"].str.extract(r"gene_id \"([\w,.]+)\";", expand=True)
         ID.columns = ["gene_id"]
-        gtf = pd.concat([gtf, ID],axis=1, join="inner")
+        gtf = pd.concat([gtf, ID], axis=1, join="inner")
+    if name:
+        name = gtf["attributes"].str.extract(r"gene_name \"(\S+)\";", expand=True)
+        name.columns = ["gene_name"]
+        gtf = pd.concat([gtf, name], axis=1, join="inner")
     return gtf
 def parse_gff(file, ID=False, Name=False):
     """
