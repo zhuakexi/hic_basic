@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import anndata as ad
 
 from .metrics import euclidean_distances
 def _gaussian_interpolate(expr, traj, winSz=0.1, numPts=200):
@@ -58,3 +59,30 @@ def _corrected_pseudotime(ps, expr):
         full_metric = pd.concat([earlier_metric, latter_metric]).values
         new_ps[i] = full_metric.mean()
     return pd.Series(new_ps)
+def gaussian_interpolate(adata, pseudotime_col, obs_using, winSz=0.1, numPts=200, inplace=True):
+    """
+    Interpolation of all concerned traits in adata.
+    Input:
+        adata: AnnData object, must have adata.obs[pseudotime_col]
+        pseudotime_col: pseudotime column name
+        obs_using: list of obs column names to be interpolated
+        winSz: window size of the interpolation
+        numPts: number of desired interpolated points
+    Output:
+        new adata object numPts * adata.shape[1]
+    """
+    # get pseudotime
+    ps = adata.obs[pseudotime_col]
+    # interpolate expression
+    new_expr, new_ps = _gaussian_interpolate(adata.to_df().T, ps, winSz, numPts)
+    cdps, _ = _gaussian_interpolate(adata.uns["cdps"].T, ps, winSz, numPts)
+    new_obs, _ = _gaussian_interpolate(adata.obs[obs_using].T, ps, winSz, numPts)
+    new_ps.name = pseudotime_col + "_ip"
+    new_obs = pd.concat([new_obs.T, new_ps], axis=1)
+    new_adata = ad.AnnData(
+        new_expr.T.loc[new_obs.index],
+        obs=new_obs,
+        var=adata.var,
+        uns={"cdps": cdps.T})
+    # add new columns to adata
+    return new_adata
