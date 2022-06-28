@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+from .metrics import euclidean_distances
 def _gaussian_interpolate(expr, traj, winSz=0.1, numPts=200):
     """
     Interpolation of the expression data along one trajectory.
@@ -37,3 +38,23 @@ def _gaussian_interpolate(expr, traj, winSz=0.1, numPts=200):
     trajValNewPts = pd.Series(trajValNewPts, index=interpolated_point_names)
     return ValNewPts, trajValNewPts
     #return ValNewPts, error, trajValNewPts
+def _corrected_pseudotime(ps, expr):
+    """
+    Correct pseudotime to make it linearly correlated with a distance metrix.
+    Inspired by Alpert et al. (2018)
+    Input:
+        ps: pseudotime; pd.Series
+        expr: genes * samples; pd.DataFrame
+    """
+    samples = expr.columns
+    dm = pd.DataFrame(euclidean_distances(expr.T)/expr.shape[0]**0.5, index=samples, columns=samples)
+    i1 = ps.sort_values().index[0]
+    new_ps = {}
+    for i in samples:
+        earlier = ps[ps < ps[i]]
+        latter = ps[ps > ps[i]]
+        earlier_metric = dm.loc[earlier.index, i1] + dm.loc[earlier.index, i]
+        latter_metric = dm.loc[latter.index, i1] - dm.loc[latter.index, i]
+        full_metric = pd.concat([earlier_metric, latter_metric]).values
+        new_ps[i] = full_metric.mean()
+    return pd.Series(new_ps)
