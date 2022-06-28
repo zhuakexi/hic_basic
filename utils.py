@@ -4,7 +4,29 @@ import numpy as np
 import pandas as pd
 
 from .io import parse_gtf
-
+def two_sets(ref, check, warning=False):
+    """
+    Check two sample list.
+    Input:
+        ref: reference list, iterable.
+        check: list to be checked, iterable.
+    Output:
+        [missing, extra]; list of sets
+    """
+    missing_sample = set(ref) - set(check)
+    extra = set(check) - set(ref)
+    if warning:
+        if len(missing_sample):
+            print("[two_sets] Warning: can't find value for %d samples:" % len(missing_sample))
+            print(",".join(list(missing_sample)[:20]))
+            if len(extra) > 20:
+                print("...")
+        if len(extra):
+            print("[two_sets] Warning: find extra value for:")
+            print(",".join(list(extra)[:20]))
+            if len(extra) > 20:
+                print("...")
+    return missing_sample, extra
 # --- util functions paste from cooler ---
 def natsort_key(s, _NS_REGEX=re.compile(r"(\d+)", re.U)):
     return tuple([int(x) if x.isdigit() else x for x in _NS_REGEX.split(s) if x])
@@ -126,6 +148,6 @@ def mouse_id2name(id_list, ref_file):
     Output:
         list of gene_names
     """
-    
-    id_name_table = _mouse_id_name_table(ref_file)
-    return [id_name_table.loc[id][0] for id in id_list]
+    id_name_table = _mouse_id_name_table(ref_file)["gene_name"].to_dict()
+    two_sets(id_list, id_name_table.keys(), warning=True)
+    return np.array([id_name_table.get(id) for id in id_list])
