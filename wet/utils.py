@@ -1,5 +1,4 @@
 import os
-
 def check_input(filesp, cols):
     """
     Check if the input files are valid.
@@ -58,26 +57,3 @@ def gen_fileis(sample_table, dir_path, str_pat):
         if len(extra) > 20:
             print("...")
     return pd.Series([os.path.join(dir_path, k) for k in hitting], index=[a[k] for k in hitting])
-def two_sets(ref, check, warning=False):
-    """
-    Check two sample list.
-    Input:
-        ref: reference list, iterable.
-        check: list to be checked, iterable.
-    Output:
-        [missing, extra]; list of sets
-    """
-    missing_sample = set(ref) - set(check)
-    extra = set(check) - set(ref)
-    if warning:
-        if len(missing_sample):
-            print("[two_sets] Warning: can't find value for %d samples:" % len(missing_sample))
-            print(",".join(list(missing_sample)[:20]))
-            if len(extra) > 20:
-                print("...")
-        if len(extra):
-            print("[two_sets] Warning: find extra value for:")
-            print(",".join(list(extra)[:20]))
-            if len(extra) > 20:
-                print("...")
-    return missing_sample, extra
