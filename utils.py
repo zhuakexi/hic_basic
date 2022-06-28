@@ -3,6 +3,8 @@ import re
 import numpy as np
 import pandas as pd
 
+from .io import parse_gtf
+
 # --- util functions paste from cooler ---
 def natsort_key(s, _NS_REGEX=re.compile(r"(\d+)", re.U)):
     return tuple([int(x) if x.isdigit() else x for x in _NS_REGEX.split(s) if x])
@@ -98,3 +100,32 @@ def binnify(chromsizes, binsize):
     )
 
     return bintable
+def _mouse_id_name_table(ref_file):
+    """
+    Get a table of mouse IDs and names from a reference file.
+    Input:
+        ref_file
+    Output:
+        pd.DataFrame
+    """
+    ref = parse_gtf(ref_file, True, True)
+    ref = ref[["gene_id", "gene_name"]].drop_duplicates(ignore_index = True)
+    gene_id = ref["gene_id"].str.split(".", expand=True)
+    gene_id.columns = ["main_gene_id", "gene_id_surplus"]
+    id_name_table = pd.concat([gene_id["main_gene_id"], ref["gene_name"]], axis=1, join="inner")
+    id_name_table = id_name_table.set_index("main_gene_id")
+    if not id_name_table.index.is_unique:
+        print("Warning id_name_table index is not unique")
+    return id_name_table
+def mouse_id2name(id_list, ref_file):
+    """
+    Convert moust gene_IDs to gene_names.
+    Input:
+        id_list: list of gene_IDs
+        ref_file: reference file
+    Output:
+        list of gene_names
+    """
+    
+    id_name_table = _mouse_id_name_table(ref_file)
+    return [id_name_table.loc[id][0] for id in id_list]
