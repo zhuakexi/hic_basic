@@ -86,3 +86,19 @@ def gaussian_interpolate(adata, pseudotime_col, obs_using, winSz=0.1, numPts=200
         uns={"cdps": cdps.T})
     # add new columns to adata
     return new_adata
+def correct_pseudotime(adata, pseudotime_col, inplace=True):
+    """
+    Correct pseudotime of adata to make it linearly correlated with a distance metrix.
+    Inspired by Alpert et al. (2018)
+    Input:
+        adata: AnnData object, must have adata.obs[pseudotime_col]
+        pseudotime_col: pseudotime column name
+    Output:
+        new adata object
+    """
+    if not inplace:
+        adata = adata.copy()
+    new_ps = _corrected_pseudotime(adata.obs[pseudotime_col], adata.to_df().T)
+    adata.obs[pseudotime_col + "_cr"] = new_ps
+    if not inplace:
+        return adata
