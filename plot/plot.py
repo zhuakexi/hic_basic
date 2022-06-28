@@ -143,12 +143,19 @@ def add_compartment_strength(fig, row, col, adata, sorted_obs):
     return fig
 def add_pmUMI(fig, row, col, adata, sorted_obs):
     # add paternal maternal umi count subplot
-    pmUMI_fig = px.scatter(
-        sorted_obs,
-        x=sorted_obs.index,
-        y=sorted_obs["g1_UMIs"]/(sorted_obs["g1_UMIs"]+sorted_obs["g2_UMIs"]),
-        #color = "seurat_clusters",
-        title="genome1_ratio")
+    if "pmUMIs" not in adata.obs.columns:
+        pmUMI_fig = px.scatter(
+            sorted_obs,
+            x=sorted_obs.index,
+            y=sorted_obs["g1_UMIs"]/(sorted_obs["g1_UMIs"]+sorted_obs["g2_UMIs"]),
+            #color = "seurat_clusters",
+            title="genome1_ratio")
+    else:
+        pmUMI_fig = px.scatter(
+            x = sorted_obs.index,
+            y = adata.obs.loc[sorted_obs.index,"pmUMIs"],
+            title = "genome1_ratio"
+        )
     for trace in pmUMI_fig.data:
         fig.add_trace(
             #pmUMI_fig.data[0],
