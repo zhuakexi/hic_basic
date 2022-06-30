@@ -139,15 +139,24 @@ def _mouse_id_name_table(ref_file):
     if not id_name_table.index.is_unique:
         print("Warning id_name_table index is not unique")
     return id_name_table
-def mouse_id2name(id_list, ref_file):
+def mouse_id2name(id_lists, ref_file, multi=False):
     """
     Convert moust gene_IDs to gene_names.
     Input:
-        id_list: list of gene_IDs
+        id_list: gene_ID list or list of gene_ID lists, do this because ref parsing is slow
+            e.g. [["ENSG0000012345", "ENSG0000012346"], ["ENSG0000012347"]]
         ref_file: reference file
+        multi: whether id_lists has multiple lists
     Output:
         list of gene_names
     """
     id_name_table = _mouse_id_name_table(ref_file)["gene_name"].to_dict()
-    two_sets(id_list, id_name_table.keys(), warning=True)
-    return np.array([id_name_table.get(id) for id in id_list])
+    if multi:
+        name_lists = []
+        for id_list in id_lists:
+            two_sets(id_list, id_name_table.keys(), warning=True)
+            name_lists.append(np.array([id_name_table.get(id) for id in id_list]))
+        return name_lists
+    else:
+        two_sets(id_list, id_name_table.keys(), warning=True)
+        return np.array([id_name_table.get(id) for id in id_list])
