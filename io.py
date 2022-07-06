@@ -288,3 +288,9 @@ def load_json(filep):
     """
     with open(filep,"rt") as f:
         return json.load(f)
+def get_ref_dir():
+    """
+    Return a path to src's ref
+    """
+    ref_dir = os.path.join(os.path.dirname(__file__), "ref")
+    return os.path.join(ref_dir, "")
