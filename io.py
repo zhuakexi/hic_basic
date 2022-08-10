@@ -111,7 +111,7 @@ def parse_pairs_like(filename:str)->pd.DataFrame:
     #assign column names
     #sys.stderr.write("pairs_parser: %s parsed \n" % filename)
     return pairs
-def parse_gtf(file,ID=True,name=True, **args):
+def parse_gtf(file,ID=True,name=True,mgi_id=True, **args):
     """
     Parsing gtf file. Read all in memory. Extract gene_id to df if set true.
     Input:
@@ -134,6 +134,10 @@ def parse_gtf(file,ID=True,name=True, **args):
         name = gtf["attributes"].str.extract(r"gene_name \"(\S+)\";", expand=True)
         name.columns = ["gene_name"]
         gtf = pd.concat([gtf, name], axis=1, join="inner")
+    if mgi_id:
+        mgi_id = gtf["attributes"].str.extract(r"mgi_id \"(MGI:\d+)\";", expand=True)
+        mgi_id.columns = ["mgi_id"]
+        gtf = pd.concat([gtf, mgi_id], axis=1, join="inner")
     return gtf
 def parse_gff(file, ID=False, Name=False):
     """
