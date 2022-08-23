@@ -1,6 +1,9 @@
 import pandas as pd
 import os
-from .io import get_ref_dir
+import json
+from pathlib import Path
+from .io import get_ref_dir, load_json
+ref_dir = Path(get_ref_dir())
 # ZGA gene module
 def Jichang2022_embryo_gene_module():
     real_path = os.path.join(get_ref_dir(), "Jichang2022_embryo_gene_module.csv.gz" )
@@ -37,3 +40,14 @@ def XijinGe2017_embryo_gene_module():
     for i in sheet.index:
         gene_sets[i] = list(sheet.loc[i].dropna().astype("string"))
     return gene_sets
+# cell cycle genes
+def mouse_cell_cycle():
+    """
+    Cell cycle gene sets in mouse. Used in seurat or scanpy g1/s, g2/m score.
+    Output:
+        dict of list.
+    """
+    CC = {}
+    CC["g2m"] = load_json(ref_dir / "mouse_g2m_genes.json")
+    CC["g1s"] = load_json(ref_dir / "mouse_s_genes.json")
+    return CC
