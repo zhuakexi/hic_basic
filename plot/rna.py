@@ -4,8 +4,8 @@ from plotly.subplots import make_subplots
 import anndata as ad
 import pandas as pd
 import numpy as np
-import statsmodels.api as sm
 from .utils import filling_l2r_plotly
+from .general import scatter_cols
 def _module_mean(adata, gene_set, layer):
     """
     Get mean expression of a set of genes.
@@ -53,44 +53,6 @@ def _traj_module_mean(adata, gene_sets, ps_col, layer="not_known"):
     data.columns = [key for key in gene_sets]
     data = data.loc[cell_order]
     return data
-def _scatter_cols(data, trends=False, points=True):
-    """
-    Multi-traces scatter plot.
-    Input:
-        data: x as index, traces as cols
-        trend: plot lowess trends
-        point: plot scatter points
-    Return:
-        go.Figure
-    """
-    fig = go.Figure()
-    if points:
-        for col in data:
-            fig.add_trace(
-                go.Scatter(
-                    x = data.index,
-                    y = data[col],
-                    name = col
-                )
-            )
-    if trends:
-        for col in data:
-            fig.add_trace(
-                go.Scatter(
-                    x = data.index,
-                    y = sm.nonparametric.lowess(
-                        exog = list(range(data.shape[0])),
-                        endog = data[col],
-                        frac = 0.2
-                    )[:, 1],
-                    name = col + "_trend"
-                )
-            )
-    fig.update_layout(
-        height = 500,
-        width = 800
-    )
-    return fig
 def plot_gene_module_mean(adata, gene_sets, ps_col, layer="not_known", trends=False, points=True):
     """
     Plot mean expression of module along trajectory. 
@@ -102,7 +64,7 @@ def plot_gene_module_mean(adata, gene_sets, ps_col, layer="not_known", trends=Fa
     Return:
         plotly figure
     """
-    return _scatter_cols(_traj_module_mean(adata, gene_sets, ps_col, layer), trends, points)
+    return scatter_cols(_traj_module_mean(adata, gene_sets, ps_col, layer), trends, points)
 def plot_gene_trend(adata, gene, order_col="velocity_pseudotime", additional=None):
     """
     Ploting expression trends along time.
