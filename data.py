@@ -51,3 +51,14 @@ def mouse_cell_cycle():
     CC["g2m"] = load_json(ref_dir / "mouse_g2m_genes.json")
     CC["g1s"] = load_json(ref_dir / "mouse_s_genes.json")
     return CC
+def mouse_GO_cell_cycle():
+    """
+    Mouse cell cycle genes with term: `G2/M transition of mitotic cell cycle` and `G1/S transition of mitotic cell cycle`.
+    Output:
+        dict of list
+    """
+    mat = pd.read_csv(ref_dir / "GO_MM_mitotic_cell_cycle_genes.csv.gz", index_col=0)
+    gene_sets_CC = {}
+    gene_sets_CC["G2/M transition of mitotic cell cycle"] = mat.loc[mat["3"] == "GO:0000086","gene_symbol"].values
+    gene_sets_CC["G1/S transition of mitotic cell cycle"] = mat.loc[mat["3"] == "GO:0000082","gene_symbol"].values
+    return gene_sets_CC
