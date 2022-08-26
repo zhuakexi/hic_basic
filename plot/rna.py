@@ -1,3 +1,108 @@
+from math import ceil
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import anndata as ad
+import pandas as pd
+import numpy as np
+import statsmodels.api as sm
+from .utils import filling_l2r_plotly
+def _module_mean(adata, gene_set, layer):
+    """
+    Get mean expression of a set of genes.
+    """
+    data = pd.DataFrame(
+        adata.layers[layer],
+        index = adata.obs_names,
+        columns = adata.var_names
+    )
+    return data[gene_set].mean(axis=1)
+def _traj_module_mean(adata, gene_sets, ps_col, layer="not_known"):
+    """
+    Get mean expression of module along trajectory. 
+    Input:
+        adata: anndata object, or dataframe
+        gene_sets: dict, module names as keys, list of module gene names as values
+        ps_col: pseudotime column name, must be in adata.obs
+        layer: layer name of count matrix
+    Return:
+        dataframe, index as sorted sample names, columns as module names
+    """
+    if isinstance(adata, ad.AnnData):
+        if layer == "X":
+            #print("is X")
+            mat = adata.to_df()
+        else:
+            mat = adata.layers[layer]
+        #print(mat.shape)
+        data = pd.DataFrame(
+            mat,
+            index = adata.obs_names,
+            columns = adata.var_names
+        )
+        cell_order = adata.obs.sort_values(ps_col).index
+    elif isinstance(adata, pd.DataFrame):
+        data = adata
+        cell_order = ps_col.sort_values().index
+    means = []
+    for key in gene_sets:
+        valid_genes = data.columns.intersection(gene_sets[key])
+        print("{}: target {} valid {} ".format(key, str(len(gene_sets[key])), str(len(valid_genes))))
+        #print(key, ":", str(len(gene_sets[key])), ":",str(len(valid_genes)) )
+        means.append(data[valid_genes].mean(axis=1))
+    data = pd.concat(means, axis=1)
+    data.columns = [key for key in gene_sets]
+    data = data.loc[cell_order]
+    return data
+def _scatter_cols(data, trends=False, points=True):
+    """
+    Multi-traces scatter plot.
+    Input:
+        data: x as index, traces as cols
+        trend: plot lowess trends
+        point: plot scatter points
+    Return:
+        go.Figure
+    """
+    fig = go.Figure()
+    if points:
+        for col in data:
+            fig.add_trace(
+                go.Scatter(
+                    x = data.index,
+                    y = data[col],
+                    name = col
+                )
+            )
+    if trends:
+        for col in data:
+            fig.add_trace(
+                go.Scatter(
+                    x = data.index,
+                    y = sm.nonparametric.lowess(
+                        exog = list(range(data.shape[0])),
+                        endog = data[col],
+                        frac = 0.2
+                    )[:, 1],
+                    name = col + "_trend"
+                )
+            )
+    fig.update_layout(
+        height = 500,
+        width = 800
+    )
+    return fig
+def plot_gene_module_mean(adata, gene_sets, ps_col, layer="not_known", trends=False, points=True):
+    """
+    Plot mean expression of module along trajectory. 
+    Input:
+        adata: anndata object, or dataframe
+        gene_sets: dict, module names as keys, list of module gene names as values
+        ps_col: pseudotime column name, must be in adata.obs
+        layer: layer name of count matrix
+    Return:
+        plotly figure
+    """
+    return _scatter_cols(_traj_module_mean(adata, gene_sets, ps_col, layer), trends, points)
 def plot_gene_trend(adata, gene, order_col="velocity_pseudotime", additional=None):
     """
     Ploting expression trends along time.
