@@ -13,7 +13,7 @@ def Jichang2022_embryo_gene_module():
     totipotent = genes["totipotent"].dropna()
     pluripotent = genes["pluripotent"].dropna()
     maternal = genes["maternal"].dropna()
-    return dict(zip(["minor_ZGA", "major_ZGA", "totipotent", "pluripotent", "maternal"], [i.values for i in [minor_ZGA, major_ZGA, totipotent, pluripotent, maternal]]))
+    return dict(zip(["minor_ZGA", "major_ZGA", "totipotent", "pluripotent", "maternal"], [set(i.values) for i in [minor_ZGA, major_ZGA, totipotent, pluripotent, maternal]]))
 def XijinGe2017_embryo_gene_module():
     """
     Gene clusters from `Exploratory bioinformatics investigation reveals importance of “junk” DNA in early embryo development`.
@@ -38,7 +38,7 @@ def XijinGe2017_embryo_gene_module():
     sheet = sheet.drop(["Clusters", "Genes"],axis=1)
     gene_sets = {}
     for i in sheet.index:
-        gene_sets[i] = list(sheet.loc[i].dropna().astype("string"))
+        gene_sets[i] = set(sheet.loc[i].dropna().astype("string"))
     return gene_sets
 # cell cycle genes
 def mouse_cell_cycle():
@@ -48,8 +48,8 @@ def mouse_cell_cycle():
         dict of list.
     """
     CC = {}
-    CC["g2m"] = load_json(ref_dir / "mouse_g2m_genes.json")
-    CC["g1s"] = load_json(ref_dir / "mouse_s_genes.json")
+    CC["g2m"] = set(load_json(ref_dir / "mouse_g2m_genes.json"))
+    CC["g1s"] = set(load_json(ref_dir / "mouse_s_genes.json"))
     return CC
 def mouse_GO_cell_cycle():
     """
@@ -59,6 +59,6 @@ def mouse_GO_cell_cycle():
     """
     mat = pd.read_csv(ref_dir / "GO_MM_mitotic_cell_cycle_genes.csv.gz", index_col=0)
     gene_sets_CC = {}
-    gene_sets_CC["G2/M transition of mitotic cell cycle"] = mat.loc[mat["3"] == "GO:0000086","gene_symbol"].values
-    gene_sets_CC["G1/S transition of mitotic cell cycle"] = mat.loc[mat["3"] == "GO:0000082","gene_symbol"].values
+    gene_sets_CC["G2/M transition of mitotic cell cycle"] = set(mat.loc[mat["3"] == "GO:0000086","gene_symbol"].values)
+    gene_sets_CC["G1/S transition of mitotic cell cycle"] = set(mat.loc[mat["3"] == "GO:0000082","gene_symbol"].values)
     return gene_sets_CC
