@@ -1,3 +1,5 @@
+import pandas as pd
+import plotly.express as px
 def filling_l2r_plotly(rows, cols, features):
     """
     Helper to iterate within row-cols. 
@@ -24,3 +26,20 @@ def filling_l2r_mpl(rows, cols, features):
             except IndexError:
                 feature = None
             yield i, j, k, feature
+def list2colorlist(celltypes):
+    """
+    Tranform a data list to a color list, ready for all color argument.
+    TODO:
+        custom mapper;
+        custom color sequence
+    """
+    # prepare mapper
+    color_discrete_sequence = px.colors.qualitative.Plotly
+    cat = tuple(set(celltypes))
+    mapper = pd.Series(
+        index = cat,
+        data = [color_discrete_sequence[i % len(color_discrete_sequence)] for i, key in enumerate(cat)],
+        name = "color"
+    )
+    color = [mapper[i] for i in celltypes]
+    return color
