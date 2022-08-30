@@ -42,7 +42,7 @@ def upset_plot_getter(data, keys):
     return count, tset
 
 # --- part 2 scatter ---
-def scatter_cols(data, trends=False, points=True):
+def scatter_cols(data, points=None, trends=[]):
     """
     Multi-traces scatter plot.
     Input:
@@ -52,29 +52,30 @@ def scatter_cols(data, trends=False, points=True):
     Return:
         go.Figure
     """
+    if points is None:
+        # plot point scatter for all cols by default.
+        points = data.columns
     fig = go.Figure()
-    if points:
-        for col in data:
-            fig.add_trace(
-                go.Scatter(
-                    x = data.index,
-                    y = data[col],
-                    name = col
-                )
+    for col in points:
+        fig.add_trace(
+            go.Scatter(
+                x = data.index,
+                y = data[col],
+                name = col
             )
-    if trends:
-        for col in data:
-            fig.add_trace(
-                go.Scatter(
-                    x = data.index,
-                    y = sm.nonparametric.lowess(
-                        exog = list(range(data.shape[0])),
-                        endog = data[col],
-                        frac = 0.2
-                    )[:, 1],
-                    name = col + "_trend"
-                )
+        )
+    for col in trends:
+        fig.add_trace(
+            go.Scatter(
+                x = data.index,
+                y = sm.nonparametric.lowess(
+                    exog = list(range(data.shape[0])),
+                    endog = data[col],
+                    frac = 0.2
+                )[:, 1],
+                name = col + "_trend"
             )
+        )
     fig.update_layout(
         height = 500,
         width = 800
