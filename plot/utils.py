@@ -43,3 +43,30 @@ def list2colorlist(celltypes):
     )
     color = [mapper[i] for i in celltypes]
     return color
+def add_cat_marker(fig, data, catcol="cell_type", ypos=1):
+    """
+    Adding colored scatter trace to figure to mark x categories.
+    Input:
+        fig: plotly figure
+        data: dataframe storing category info, must have same x index with fig data
+        catcol: category column name, must be in adata.obs
+        ypos: y position of marker points
+    Output:
+        fig with new traces, each cat one trace
+    """
+    data = data.copy()
+    data = data.assign(color = list2colorlist(data[catcol]))
+    for name, dat in data.groupby(catcol):
+        fig.add_trace(
+            go.Scatter(
+                x = dat.index,
+                y = [ypos for i in dat.index],
+                mode = "markers",
+                marker = dict(
+                    color = dat["color"],
+                    size = 3
+                ),
+                legendgroup = catcol,
+                name = name
+            )
+    )
