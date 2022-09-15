@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 def filling_l2r_plotly(rows, cols, features):
     """
     Helper to iterate within row-cols. 
