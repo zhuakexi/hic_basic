@@ -62,3 +62,35 @@ def mouse_GO_cell_cycle():
     gene_sets_CC["G2/M transition of mitotic cell cycle"] = set(mat.loc[mat["3"] == "GO:0000086","gene_symbol"].values)
     gene_sets_CC["G1/S transition of mitotic cell cycle"] = set(mat.loc[mat["3"] == "GO:0000082","gene_symbol"].values)
     return gene_sets_CC
+def chromosomes(genome):
+    """
+    Get chromosome lengths.
+    Returns:
+        pandas.DataFrame
+    """
+    files = {
+        "hg19_dip" : ref_dir / "hg19.dip.len.csv"
+    }
+    return pd.read_csv(files[genome],index_col=0)
+def fetch_centromeres(genome):
+    """
+    Get centromere regions.
+    Returns:
+        pandas.DataFrame
+    """
+    files = {
+        "hg19_dip" : ref_dir / "hg19_centromeres.csv.gz",
+        "mm10" : ref_dir / "mm10_gap.csv.gz"
+    }
+    if genome == "hg19_dip":
+        # tediously adding the chr prefix
+        # just read pre formatted file
+        return pd.read_csv(files[genome])
+    elif genome == "mm10":
+        # mouse cytoband file does not have centromeric, gvar, and stalk regions
+        # using gap files instead
+        gap = pd.read_csv(files[genome])
+        gap = gap.loc[gap["type"] == "centromere",["chrom","chromStart","chromEnd"]]
+        gap = gap.reset_index(drop=True)
+        gap.columns = ["chrom","start","end"]
+        return gap
