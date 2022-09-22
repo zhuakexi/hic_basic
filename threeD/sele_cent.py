@@ -71,8 +71,7 @@ def sele_cent(refp, flank=1):
     for atom in myspace["bins"]:
         if atom[0] not in atoms:
             atoms[atom[0]] = []
-        else:
-            atoms[atom[0]].append(int(atom[1]))
+        atoms[atom[0]].append(int(atom[1]))
     atoms = {chrom : sorted(atoms[chrom]) for chrom in atoms}
     # tidy centromeres reference
     centromeres = fetch_centromeres(refp)
