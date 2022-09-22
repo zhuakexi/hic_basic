@@ -92,10 +92,10 @@ def sele_telo(obj, genome, flank=1):
             continue
         left_end = bisect_right(atoms[chrom], telomeres[chrom][0][1])
         for atom in atoms[chrom][left_end:left_end+flank]: # select left telomere right flank
-            cmd.select(SelName, SelName + " or (chain " + chrom + " and name " + str(atom) + ")")
+            cmd.select(SelName, SelName + " or (chain " + chrom + " and name " + str(atom) + " and obj " + obj + ")")
         #print(telomeres[chrom])
         right_start = bisect_left(atoms[chrom], telomeres[chrom][1][0])
         for atom in atoms[chrom][right_start-flank:right_start]: # select right telomere left flank
-            cmd.select(SelName, SelName + " or (chain " + chrom + " and name " + str(atom) + ")")
+            cmd.select(SelName, SelName + " or (chain " + chrom + " and name " + str(atom) + " and obj " + obj + ")")
     return SelName
 cmd.extend("sele_telo", sele_telo)
