@@ -232,9 +232,10 @@ def read_meta(fp):
     """
     Read general metadata, take care of sample_name.
     """
-    df = pd.read_csv(fp, dtype={"sample_name":"string"},index_col=0)
+    df = pd.read_csv(fp,index_col=0)
     df.index.name = "sample_name"
     df.columns = df.columns.astype("string")
+    df.index = df.index.astype("string")
     return df
 def matr(path,sep=","):
     """
