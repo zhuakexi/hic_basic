@@ -1,5 +1,6 @@
 # things to do after bubbleflow
 # add_pairs -> add_pairs_num -> add_info ... -> pick_useful
+from genericpath import isfile
 import os
 import json
 import re
@@ -166,7 +167,14 @@ def add_umis(annote, umip):
     """
     Adding umi stat to annote.
     Assign 0 if sample not present in count matrix.
+    Input:
+        umip: umi count matrix path
     """
+    if not os.path.isfile(umip):
+        print("add_umis: umi file %s not exist." % umip)
+        annote = annote.assign(umis=0)
+        annote = annote.assign(genes=0)
+        return annote
     df = pd.read_table(umip,index_col=0,dtype={"gene":"string"})
     df.columns = df.columns.astype("string")
     umis = df.sum()
@@ -187,12 +195,15 @@ def add_extra(annote):
         umis_per_reads = -1,
         rna_ratio = -1
     )
-    valid_con_per_reads_row = (~annote["raw_contacts"].isna())&(~annote["dna_reads"].isna())&(annote["dna_reads"]!=0)
-    new_annote.loc[valid_con_per_reads_row, "con_per_reads"] = annote.loc[valid_con_per_reads_row,"raw_contacts"]/annote.loc[valid_con_per_reads_row,"dna_reads"]
-    valid_umis_per_reads_row = (~annote["umis"].isna())&(~annote["rna_reads"].isna())&(annote["rna_reads"]!=0)
-    new_annote.loc[valid_umis_per_reads_row, "umis_per_reads"] = annote.loc[valid_umis_per_reads_row,"umis"]/annote.loc[valid_umis_per_reads_row,"rna_reads"]
-    valid_rna_ratio_row = (~annote["rna_reads"].isna())&(~annote["raw_reads"].isna())&(annote["raw_reads"]!=0)
-    new_annote.loc[valid_rna_ratio_row, "rna_ratio"] = annote.loc[valid_rna_ratio_row,"rna_reads"]/annote.loc[valid_rna_ratio_row,"raw_reads"]
+    if "raw_contacts" in annote.columns and "dna_reads" in annote.columns:
+        valid_con_per_reads_row = (~annote["raw_contacts"].isna())&(~annote["dna_reads"].isna())&(annote["dna_reads"]!=0)
+        new_annote.loc[valid_con_per_reads_row, "con_per_reads"] = annote.loc[valid_con_per_reads_row,"raw_contacts"]/annote.loc[valid_con_per_reads_row,"dna_reads"]
+    if "umis" in annote.columns and "rna_reads" in annote.columns:
+        valid_umis_per_reads_row = (~annote["umis"].isna())&(~annote["rna_reads"].isna())&(annote["rna_reads"]!=0)
+        new_annote.loc[valid_umis_per_reads_row, "umis_per_reads"] = annote.loc[valid_umis_per_reads_row,"umis"]/annote.loc[valid_umis_per_reads_row,"rna_reads"]
+    if "rna_reads" in annote.columns and "raw_reads" in annote.columns:
+        valid_rna_ratio_row = (~annote["rna_reads"].isna())&(~annote["raw_reads"].isna())&(annote["raw_reads"]!=0)
+        new_annote.loc[valid_rna_ratio_row, "rna_ratio"] = annote.loc[valid_rna_ratio_row,"rna_reads"]/annote.loc[valid_rna_ratio_row,"raw_reads"]
     return new_annote
 def add_mapping(annote, old=False, threads=16):
     """
