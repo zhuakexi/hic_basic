@@ -1,6 +1,7 @@
 """
 DESCRIPTION:
 Color spectrum according to relative position to centromeres.
+WARNING: only works with small molecues for now.
 
 USAGE:
 color_centelo, selection, genome
