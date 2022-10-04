@@ -63,9 +63,9 @@ def fetch_cent_chromlen(genome):
                 row = Len(*(convert(value) for convert, value in zip(dtypes, row)))
                 res.append(row)
     for row in res:
-        if row in cent_chromlen:
+        if row.chromosome in cent_chromlen:
             cent_chromlen[row.chromosome].append(row.length)
-    print(cent_chromlen)
+    #print(cent_chromlen)
     return cent_chromlen
 def color_centelo(obj, genome):
     # get centromeres
@@ -99,6 +99,6 @@ def color_centelo(obj, genome):
             else:
                 # centromere
                 relpos = 0
-            cmd.alter("%s and chain %s and atom %d" % (obj, chrom, atom), "b=%f" % relpos)
+            cmd.alter("%s and chain %s and name %d" % (obj, chrom, atom), "b=%f" % relpos)
     cmd.spectrum("b", "blue_white_red", "%s" % obj, minimum=0, maximum=1)
 cmd.extend("color_centelo", color_centelo)
