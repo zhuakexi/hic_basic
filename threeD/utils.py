@@ -18,11 +18,17 @@ ref_dir = Path(get_ref_dir())
 def fetch_centromeres(genome):
     """
     Get centromere regions.
+    Only work with mm10 for now.
+    TODO: generalize to other genomes
+    Input:
+        fp (str): path to the gap file
     Returns:
-        list of namedtuple(chrom, start, end)
+        dict(chrom) of list[start, end]
     """
+    # mouse cytoband file does not have centromeric, gvar, and stalk regions
+    # using gap files instead
     files = {
-        "mm10" : ref_dir / "mm10_gap.csv.gz"
+        "mm10" : "mm10_gap.csv.gz"
     }
     if genome == "mm10":
         # mouse cytoband file does not have centromeric, gvar, and stalk regions
@@ -42,4 +48,5 @@ def fetch_centromeres(genome):
                 row = Bed(*(convert(value) for convert, value in zip(dtypes, row)))
                 if row.type == "centromere":
                     res.append(Cent(row.chrom, row.chromStart, row.chromEnd))
-    return res
+    centromeres = {row.chrom : [row.start, row.end] for row in res}
+    return centromeres
