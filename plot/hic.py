@@ -7,11 +7,14 @@ from matplotlib.colors import LogNorm
 import plotly.graph_objects as go
 import cooler
 import cooltools.lib.plotting
+import numpy as np
 
 from .utils import filling_l2r_mpl
 
 # --- Hi-C heatmap plot ---
-def _plot_mat(mat,title="",vmax=500):
+def _plot_mat(mat,title="",vmax=500, ignore_diags=True):
+    if ignore_diags:
+        np.fill_diagonal(mat, 0)
     norm = LogNorm(vmin=1, vmax=vmax)
     plt.figure(figsize=(11, 10))
     plt.gcf().canvas.set_window_title("Contact matrix".format())
@@ -23,7 +26,7 @@ def _plot_mat(mat,title="",vmax=500):
         norm = norm,
         cmap="fall"
     )
-def plot_cool(cool, title="", region="chr1",vmax=100, balance=False):
+def plot_cool(cool, title="", region="chr1",vmax=100, balance=False,ignore_diags=True):
     """"
     Plot heatmap of single cooler file.
     Input:
@@ -37,7 +40,8 @@ def plot_cool(cool, title="", region="chr1",vmax=100, balance=False):
     return _plot_mat(
         clr.matrix(balance=balance).fetch(region),
         title = title,
-        vmax = vmax
+        vmax = vmax,
+        ignore_diags = ignore_diags
     )
 
 def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
