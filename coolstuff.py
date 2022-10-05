@@ -128,7 +128,7 @@ def hic_pileup(scool, grouping, cache_pattern="{}.pileup.cool",mergebuf=1e6):
     Generate pileup cool file for each cluster.
     Input:
         scool: cooler's scool file path
-        grouping: {sample:group}; pd.Series
+        grouping: pd.Series
         cache_pattern: path to store resulting .cool file; str with {}
     Output:
         write cool according to cache_pattern
