@@ -143,7 +143,7 @@ def normalize_dense(M, norm="SCN", order=1, iterations=40):
 
     return (s + s.T) / 2
 from scipy.linalg import eig 
-def compartments(M, normalize=True):
+def compartments(M, normalize=True, matrixonly=False):
     """A/B compartment analysis
 
     Perform a PCA-based A/B compartment analysis on a normalized, single
@@ -157,6 +157,8 @@ def compartments(M, normalize=True):
         The input, normalized contact map. Must be a single chromosome.
     normalize : bool
         Whether to normalize the matrix beforehand.
+    matrixonly : bool
+        Whether to return only the matrix used for the PCA (useful in compartment plotting).
 
     Returns
     -------
@@ -189,6 +191,9 @@ def compartments(M, normalize=True):
     # Computation of the correlation matrice:"""
     N = np.corrcoef(N)
     N[np.isnan(N)] = 0.0
+
+    if matrixonly:
+        return N
 
     # Computation of eigen vectors:
     (eig_val, eig_vec) = eig(N)
