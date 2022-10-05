@@ -47,6 +47,8 @@ def read_chromsizes(
     Parse a ``<db>.chrom.sizes`` or ``<db>.chromInfo.txt`` file from the UCSC
     database, where ``db`` is a genome assembly name.
 
+    note: sep = "\t", can't have header.
+
     Parameters
     ----------
     filepath_or : str or file-like
@@ -76,7 +78,7 @@ def read_chromsizes(
         sep="\t",
         usecols=[0, 1],
         names=["name", "length"],
-        dtype={"name": str},
+        dtype={"name": str, "length": int},
         **kwargs
     )
     if not all_names:
