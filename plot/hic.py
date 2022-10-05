@@ -12,21 +12,29 @@ import numpy as np
 from .utils import filling_l2r_mpl
 
 # --- Hi-C heatmap plot ---
-def _plot_mat(mat,title="",vmax=500, ignore_diags=True):
+def _plot_mat(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall"):
     if ignore_diags:
         np.fill_diagonal(mat, 0)
     norm = LogNorm(vmin=1, vmax=vmax)
     plt.figure(figsize=(11, 10))
     plt.gcf().canvas.set_window_title("Contact matrix".format())
     plt.title(title)
-    return plt.imshow(
-        mat,
-        interpolation="none",
-        #extent=[col_lo, col_hi, row_hi, row_lo],
-        norm = norm,
-        cmap="fall"
-    )
-def plot_cool(cool, title="", region="chr1",vmax=100, balance=False,ignore_diags=True):
+    if donorm:
+        return plt.imshow(
+            mat,
+            interpolation="none",
+            #extent=[col_lo, col_hi, row_hi, row_lo],
+            norm = norm,
+            cmap=cmap
+        )
+    else:
+        return plt.imshow(
+            mat,
+            interpolation="none",
+            #extent=[col_lo, col_hi, row_hi, row_lo],
+            cmap=cmap
+        )
+def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diags=True, norm=True):
     """"
     Plot heatmap of single cooler file.
     Input:
@@ -38,6 +46,7 @@ def plot_cool(cool, title="", region="chr1",vmax=100, balance=False,ignore_diags
             Note: can only cross chrom boundaries if using slice.
         vmax: max z value.
         balance: whether to load balanced cooler matrix.
+        norm: whether to use lognorm.
     """
     using_index = False
     clr = cooler.Cooler(cool)
@@ -60,7 +69,8 @@ def plot_cool(cool, title="", region="chr1",vmax=100, balance=False,ignore_diags
         mat,
         title = title,
         vmax = vmax,
-        ignore_diags = ignore_diags
+        ignore_diags = ignore_diags,
+        norm = norm
     )
 
 def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
