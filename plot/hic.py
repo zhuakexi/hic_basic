@@ -5,8 +5,8 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import plotly.graph_objects as go
+import cooltools.lib.plotting # import the `fall` cmap
 import cooler
-import cooltools.lib.plotting
 import numpy as np
 
 from .utils import filling_l2r_mpl
@@ -33,12 +33,31 @@ def plot_cool(cool, title="", region="chr1",vmax=100, balance=False,ignore_diags
         cool: path to cooler file.
         title: name of the plot.
         region: genome region to plot.
+            "chr1" or "chr1:1000000-2000000" or ["chr1:1,000,000-2,000,000", "chr2"] or
+            slice(0,-1) or [slice(0,1000000), slice(1000000,2000000)]
+            Note: can only cross chrom boundaries if using slice.
         vmax: max z value.
         balance: whether to load balanced cooler matrix.
     """
+    using_index = False
     clr = cooler.Cooler(cool)
+    if isinstance(region, str):
+        region = [region]
+    elif isinstance(region, list):
+        if isinstance(region[0], slice):
+            using_index = True
+        pass
+    elif isinstance(region, slice):
+        region = [region]
+        using_index = True
+    else:
+        raise ValueError("region must be str or list or slice")
+    if using_index:
+        mat = clr.matrix(balance=balance)[region[0]] if len(region) == 1 else clr.matrix(balance=balance)[region[0], region[1]] # because can't unpack in slicer
+    else:
+        mat = clr.matrix(balance=balance).fetch(*region)
     return _plot_mat(
-        clr.matrix(balance=balance).fetch(region),
+        mat,
         title = title,
         vmax = vmax,
         ignore_diags = ignore_diags
