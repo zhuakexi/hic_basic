@@ -34,7 +34,7 @@ def _plot_mat(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fal
             #extent=[col_lo, col_hi, row_hi, row_lo],
             cmap=cmap
         )
-def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diags=True, norm=True):
+def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diags=True, donorm=True):
     """"
     Plot heatmap of single cooler file.
     Input:
@@ -70,7 +70,7 @@ def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diag
         title = title,
         vmax = vmax,
         ignore_diags = ignore_diags,
-        norm = norm
+        donorm = donorm
     )
 
 def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
