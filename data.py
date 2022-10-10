@@ -3,7 +3,65 @@ import os
 import json
 from pathlib import Path
 from .io import get_ref_dir, load_json
+import gzip
+from collections import namedtuple
+import csv
 ref_dir = Path(get_ref_dir())
+# basic genome features
+def fetch_cent_chromlen(genome):
+    """
+    Get centromere regions and chromosome lengths.
+    Only work with mm10 for now.
+    TODO: generalize to other genomes
+    Input:
+        fp (str): path to the gap file
+    Returns:
+        dict(chrom) of list[start, end, chrom_length]
+    """
+    # mouse cytoband file does not have centromeric, gvar, and stalk regions
+    # using gap files instead
+    gap_files = {
+        "mm10" : ref_dir / "mm10_gap.csv.gz"
+    }
+    len_files = {
+        "mm10" : ref_dir / "mm10.len.csv"
+    }
+    if genome == "mm10":
+        # mouse cytoband file does not have centromeric, gvar, and stalk regions
+        # using gap files instead
+        with gzip.open(gap_files[genome],"rt") as f:
+            fcsv = csv.reader(f)
+            #header
+            header = next(fcsv)
+            # orig gap file is '#"bin"' here
+            header[0] = "bin"
+            # dtypes
+            dtypes = [int, str, int, int, int, str, int, str, str]
+            Bed = namedtuple("Bed", header)
+            Cent = namedtuple("SRegion", ["chrom","start","end"])
+            res = []
+            for row in fcsv:
+                row = Bed(*(convert(value) for convert, value in zip(dtypes, row)))
+                if row.type == "centromere":
+                    res.append(Cent(row.chrom, row.chromStart, row.chromEnd))
+    cent_chromlen = {row.chrom : [row.start, row.end] for row in res}
+    if genome == "mm10":
+        with open(len_files[genome],"r") as f:
+            fcsv = csv.reader(f)
+            #header
+            header = next(fcsv)
+            # dtypes
+            dtypes = [str, int]
+            Len = namedtuple("Len", header)
+            res = []
+            for row in fcsv:
+                row = Len(*(convert(value) for convert, value in zip(dtypes, row)))
+                res.append(row)
+    for row in res:
+        if row.chromosome in cent_chromlen:
+            cent_chromlen[row.chromosome].append(row.length)
+    #print(cent_chromlen)
+    return cent_chromlen
 # ZGA gene module
 def Jichang2022_embryo_gene_module():
     real_path = os.path.join(get_ref_dir(), "Jichang2022_embryo_gene_module.csv.gz" )
