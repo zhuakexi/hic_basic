@@ -93,6 +93,12 @@ def pairs2cool(pairs_path, coolpath, sizef, binsize):
 def pairs2scool(pairs_paths, coolpath, sizef, binsize):
     """
     Generate .scool file from multiple 4DN .pairs file
+    Input:
+        pairs_path: pairs file path; dict
+            {cell_name: pairs_path}
+        coolpath: output .scool file path; str
+        sizef: chrom size file path, 2col(chrom:str, size:int) tsv without header
+        binsize: bin size; int
     """
     bins = gen_bins(sizef, binsize)
     cooler.create_scool(
@@ -126,6 +132,7 @@ def cools2scool(cools, scool_path):
 def hic_pileup(scool, grouping, cache_pattern="{}.pileup.cool",mergebuf=1e6):
     """
     Generate pileup cool file for each cluster.
+    To simply pileup all cells, use `grouping = pd.Series(1, index=cells)`
     Input:
         scool: cooler's scool file path
         grouping: pd.Series
