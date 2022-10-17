@@ -207,22 +207,32 @@ def load_cool(cool, root="/"):
 
     return mat, frags, chroms
 # write scipy sparse matrix to 3-col file
-def write_triplet(sparseM,filep,max_coo=True):
+def write_triplet(sparseM,filep,max_coo=False,zipping=True):
     """
-    # write sparse matrix to triplet txt, assume symmetry
-    # write largest possible coordinate afront by default
+    Write sparse matrix to triplet txt, assume symmetry.
+    For scipy doesn't give a way to write triplet format directly.
+    Input:
+        sparseM: scipy sparse matrix
+        filesp: output file path
+        max_coo: if True, write largest possible coordinate at first row
+    Output:
+        indi, indj, data; separated by tab
     """
     sparseM.maxprint = sparseM.count_nonzero()
+    if zipping:
+        opener = gzip.open
+    else:
+        opener = open
     if max_coo == True:
-        with open(filep,"wt") as f:
+        with openr(filep,"wt") as f:
             f.write("%d\n" % sparseM.shape[0])
-        with open(filep,"at") as f:
+        with openr(filep,"at") as f:
             for line in StringIO(str(sparseM)):
                 coord, value = line.split("\t")
                 c12 = " ".join(coord.strip().strip("()").split(", "))
                 f.write(" ".join([c12, value]))
     else:
-        with open(filep,"wt") as f:
+        with openr(filep,"wt") as f:
             for line in StringIO(str(sparseM)):
                 coord, value = line.split("\t")
                 c12 = " ".join(coord.strip().strip("()").split(", "))
