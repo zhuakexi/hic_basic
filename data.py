@@ -127,7 +127,8 @@ def chromosomes(genome):
         pandas.DataFrame
     """
     files = {
-        "hg19_dip" : ref_dir / "hg19.dip.len.csv"
+        "hg19_dip" : ref_dir / "hg19.dip.len.csv",
+        "mm10" : ref_dir / "mm10.len.csv"
     }
     return pd.read_csv(files[genome],index_col=0)
 def fetch_centromeres(genome):
