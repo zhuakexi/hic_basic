@@ -12,10 +12,14 @@ import numpy as np
 from .utils import filling_l2r_mpl
 
 # --- Hi-C heatmap plot ---
-def _plot_mat(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall"):
+def _plot_mat(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
+    mat = mat.copy()
     if ignore_diags:
         np.fill_diagonal(mat, 0)
-    norm = LogNorm(vmin=1, vmax=vmax)
+    if balancing:
+        norm = LogNorm(vmax=vmax) # using 0.1 here in cooltools tutorial
+    else:
+        norm = LogNorm(vmin=1,vmax=vmax)
     plt.figure(figsize=(11, 10))
     plt.gcf().canvas.set_window_title("Contact matrix".format())
     plt.title(title)
