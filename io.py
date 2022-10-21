@@ -1,4 +1,5 @@
 import json
+import pickle
 import os
 import gzip
 
@@ -333,6 +334,18 @@ def load_json(filep):
     """
     with open(filep,"rt") as f:
         return json.load(f)
+def load_pickle(filep):
+    """
+    Load from pickle file shortcut.
+    """
+    with open(filep,"rb") as f:
+        return pickle.load(f)
+def dump_pickle(obj, filep):
+    """
+    Dump to pickle shortcut.
+    """
+    with open(filep,"wb") as f:
+        pickle.dump(obj,f)
 def get_ref_dir():
     """
     Return a path to src's ref
