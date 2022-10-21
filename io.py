@@ -5,7 +5,7 @@ import gzip
 import pandas as pd
 import numpy as np
 import h5py
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, csr_matrix
 import anndata as ad
 from io import StringIO
 def divide_name(filename):
@@ -206,6 +206,43 @@ def load_cool(cool, root="/"):
     mat = coo_matrix((mat["count"], (mat.bin1_id, mat.bin2_id)), shape=shape)
 
     return mat, frags, chroms
+# read schilcuster results
+def parse_hicluster_res(embed, sample_table):
+    """
+    Read schicluster embedding result into dataframe.
+    Input:
+        embed: schicluster concat-cell output hdf5 file
+        sample_table: input sample file of schicluster pipeline
+    """
+    sample_table = read_meta(sample_table)
+    f = h5py.File(embed, "r")
+    data = pd.DataFrame(f["data"][:], index=sample_table.index)
+    f.close()
+    data.columns = ["PC%d" % i for i in range(1, data.shape[1]+1)]
+    return data
+def schicluster2mat(filei):
+    """
+    Read in schicluster impute .hdf5 file to sparse matrix.
+    Input:
+        filei: schicluster imputed .hdf5 file
+    Output:
+        sparse matrix
+    """
+    with h5py.File(filei, "r") as f:
+        g = f["Matrix"]
+        A = csr_matrix((g["data"][()], g["indices"][()], g["indptr"][()]), g.attrs["shape"])
+    return A
+def schiclusterDir2mat(hiclusterdir):
+    """
+    Read in schicluster imputed .hdf5 files (from a dir) to sparse matrix.
+    Input:
+        hicluster: schicluster imputed .hdf5 file dir. e.g. f"/shareb/ychi/repo/sperm22_schicluster/imputed_matrix/100000/{chrom}/"
+    Output:
+        sparse matrix
+    """
+    Ap = sum(map(schicluster2mat, map(lambda x:os.path.join(hiclusterdir,x),os.listdir(hiclusterdir))))
+    #Apc = mat_coarsen(Ap.todense(), coarsen)
+    return Ap
 # write scipy sparse matrix to 3-col file
 def write_triplet(sparseM,filep,max_coo=False,zipping=True):
     """
@@ -224,15 +261,15 @@ def write_triplet(sparseM,filep,max_coo=False,zipping=True):
     else:
         opener = open
     if max_coo == True:
-        with openr(filep,"wt") as f:
+        with opener(filep,"wt") as f:
             f.write("%d\n" % sparseM.shape[0])
-        with openr(filep,"at") as f:
+        with opener(filep,"at") as f:
             for line in StringIO(str(sparseM)):
                 coord, value = line.split("\t")
                 c12 = " ".join(coord.strip().strip("()").split(", "))
                 f.write(" ".join([c12, value]))
     else:
-        with openr(filep,"wt") as f:
+        with opener(filep,"wt") as f:
             for line in StringIO(str(sparseM)):
                 coord, value = line.split("\t")
                 c12 = " ".join(coord.strip().strip("()").split(", "))
@@ -266,19 +303,6 @@ def matra(file):
     expr.index.name = "gene"
     adata = ad.AnnData(expr.T)
     return adata
-def parse_hicluster_res(embed, sample_table):
-    """
-    Read schicluster embedding result into dataframe.
-    Input:
-        embed: schicluster concat-cell output hdf5 file
-        sample_table: input sample file of schicluster pipeline
-    """
-    sample_table = read_meta(sample_table)
-    f = h5py.File(embed, "r")
-    data = pd.DataFrame(f["data"][:], index=sample_table.index)
-    f.close()
-    data.columns = ["PC%d" % i for i in range(1, data.shape[1]+1)]
-    return data
 def get_chrom_contact_counts(dump_dir):
     """
     Get per-chromosome-per-phase contacts counts of samples.

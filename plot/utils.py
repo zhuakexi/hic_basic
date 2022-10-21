@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -71,3 +72,18 @@ def add_cat_marker(fig, data, catcol="cell_type", ypos=1):
                 name = name
             )
     )
+def tiling_mat(A, Ref):
+    """
+    Tiling 2 matrix. Rising light to the lighter one.
+    Input:
+        A: matrix to show on upper right.
+        Ref: matrix to show on lower left.
+        lighter: factor to decrease Ref signal
+    """
+    #m = np.tril(Ref/lighter) + np.triu(A)
+    As,Rs = A.sum(),Ref.sum()
+    if As < Rs:
+        m = np.tril(Ref) + np.triu(A*Rs/As)
+    if As > Rs:
+        m = np.tril(Ref*As/Rs) + np.triu(A)
+    return m
