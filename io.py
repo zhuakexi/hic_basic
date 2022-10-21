@@ -164,7 +164,13 @@ def parse_gff(file, ID=False, Name=False):
     return gff
 # read cooler file
 def read_h5_ds(group):
-    # read bottom level group into dataframe
+    """
+    Read .h5 bottom level group into dataframe.
+    Input:
+        group: h5py.Group; must have same length datasets.
+    Output:
+        pd.DataFrame
+    """
     data = {}
     for key in group.keys():
         if group[key].dtype.type == np.string_:
