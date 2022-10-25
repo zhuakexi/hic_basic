@@ -40,7 +40,12 @@ def space_grid(bases,extent=(1,1,1),num=8):
         1. surpport any dim
         2. set num for each dim
     """
-    extent = np.array(extent)
+    if isinstance(extent, np.ndarray):
+        pass
+    elif hasattr(extent, "__iter__"):
+        extent = np.array(extent)
+    else:
+        raise TypeError("extent must be np.ndarray or iterable")
     xyz_range = np.linspace(-1*extent, extent, num=num)
     query_points = np.stack(np.meshgrid(*xyz_range.T), axis=-1).astype(np.float32)
     grid_coords = np.concatenate(
