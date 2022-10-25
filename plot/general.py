@@ -1,7 +1,9 @@
 # --- part 1 Set/Venn ---
 from upsetplot import from_contents, UpSet
 import numpy as np
+import pandas as pd
 
+import plotly.express as px
 import plotly.graph_objects as go
 import statsmodels.api as sm
 
@@ -79,5 +81,23 @@ def scatter_cols(data, points=None, trends=[]):
     fig.update_layout(
         height = 500,
         width = 800
+    )
+    return fig
+
+# --- part N 3D ---
+def plot_points(array,**args):
+    """
+    Wrapping points (represent in numpy column arrays) to dataframe(treate x, y, z as features so in shape N * 3) and plot.
+    Input:
+        array: column array
+    Output:
+        dataframe, x, y, z as columns
+    """
+    data = array.T
+    data = pd.DataFrame(data, columns="x y z".split())
+    fig = px.scatter_3d(data, x="x",y="y",z="z",**args)
+    fig.update_layout(
+        height = 500,
+        width = 500
     )
     return fig
