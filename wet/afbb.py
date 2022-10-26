@@ -247,14 +247,32 @@ def task_stat(task_dirp,threads=32):
     annote = add_extra(annote)
     return annote
 # pick useful cols
-def pick_useful(annote,mode="DNA_RNA"):
-    if mode == "DNA_RNA":
-        cols = ["raw_reads","dna_reads","raw_contacts","raw_intra","dup_rate","contacts","intra",
+def pick_useful(annote,features=["basic"]):
+    """
+    Pick useful cols from meta dataframe.
+    Input:
+        annote: meta dataframe
+        features: list of features to pick, default words are "DNA" and "DNA_RNA"
+    Output:
+        new df with useful cols.
+    """
+    real_features = []
+    for i in features:
+        if i == "DNA_RNA":
+            real_features.extend(["raw_reads","dna_reads","raw_contacts","raw_intra","dup_rate","contacts","intra",
                 "pairs_c1_num","pairs_c12_num","pairs_c123_num","phased_ratio",
                "rna_reads","umis","rna_ratio","umis_per_reads","con_per_reads"
-               ]
-    elif mode == "DNA":
-        cols = ["raw_reads","dna_reads","raw_contacts","raw_intra","dup_rate","contacts","intra",
-                "pairs_c1_num","pairs_c12_num","pairs_c123_num","phased_ratio","1m_rmsd","con_per_reads"]
-    cols = annote.columns.intersection(cols)
+               ])
+        elif i == "DNA":
+            real_features.extend(["raw_reads","dna_reads","raw_contacts","raw_intra","dup_rate","contacts","intra",
+                "pairs_c1_num","pairs_c12_num","pairs_c123_num","phased_ratio","1m_rmsd","con_per_reads"])
+        elif i == "basic":
+            real_features.extend(["raw_contacts","raw_intra","dup_rate","contacts","intra","phased_ratio",
+                "pairs_c1_num","pairs_c12_num","pairs_c123_num"])
+        elif i == "basic_struct":
+            real_features.extend(["raw_contacts","raw_intra","dup_rate","contacts","intra","phased_ratio",
+                "pairs_c1_num","pairs_c12_num","pairs_c123_num","1m_rmsd","200k_rmsd","50k_rmsd","20k_rmsd"])
+        else:
+            real_features.append(i)
+    cols = annote.columns.intersection(real_features)
     return annote[cols]
