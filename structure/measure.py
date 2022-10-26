@@ -23,7 +23,7 @@ def say_cheese(plate, direction, scene):
     N = int(plate.shape[0]**0.5)
     ray = parallel_light(plate, direction)
     ray = o3d.core.Tensor(ray,dtype=o3d.core.Dtype.Float32)
-    return scene.cast_rays(ray["t_hit"].numpy())
+    return scene.cast_rays(ray)["t_hit"].numpy()
 def primary_views(_3dg, ngrid=16, method="distance"):
     """
     Get primary views from three orthogonal faces of the nucleus' oriented bounding box.
