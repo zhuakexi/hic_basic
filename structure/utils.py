@@ -1,5 +1,8 @@
-import numpy as np
 from functools import partial
+from itertools import product
+
+import numpy as np
+
 def coord2point(coords,bases):
     """
     Input:
@@ -46,10 +49,11 @@ def space_grid(bases,extent=(1,1,1),num=8):
         extent = np.array(extent)
     else:
         raise TypeError("extent must be np.ndarray or iterable")
-    xyz_range = np.linspace(-1*extent, extent, num=num)
-    query_points = np.stack(np.meshgrid(*xyz_range.T), axis=-1).astype(np.float32)
+    query_points = np.array(list(product(*np.linspace(-1*extent, extent,num=num).T)))
+    #xyz_range = np.linspace(-1*extent, extent, num=num)
+    #query_points = np.stack(np.meshgrid(*xyz_range.T), axis=-1).astype(np.float32)
     grid_coords = np.concatenate(
-        [grid_cords(query_points), np.array([1]*query_points.shape[0]**3).reshape(query_points.shape[0]**3, 1)],
+        [query_points, np.array([1]*query_points.shape[0]).reshape(query_points.shape[0],1)],
         axis=1).T # homogeneous coordinates of grids
     grid_points = coords2point(grid_coords, bases)
     return grid_points.T.reshape(num,num,num,3)
