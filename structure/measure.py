@@ -21,7 +21,7 @@ def primary_views(_3dg, ngrid=16, method="distance"):
     mesh = _3dg2mesh(_3dg)
     obb = mesh.get_oriented_bounding_box()
     # get box shape
-    bases["extent"] = obb.extent
+    result["extent"] = obb.extent
     # get three major vectors and center point vector
     bases = np.concatenate([obb.R, obb.center.reshape(3,1)], axis=1) # generating bases for homogeneous coordinates 
     result["bases"] = bases
