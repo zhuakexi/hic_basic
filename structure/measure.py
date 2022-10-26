@@ -2,34 +2,55 @@ from matplotlib.pyplot import grid
 import open3d as o3d
 import numpy as np
 from .utils import space_grid
-def primary_views(_3dg, ngrid=16):
+def primary_views(_3dg, ngrid=16, method="distance"):
     """
     Get primary views from three orthogonal faces of the nucleus' oriented bounding box.
     Input:
-        inner _3dg data structure (parsing from hickit output .3dg file)
+        _3dg: inner _3dg data structure (parsing from hickit output .3dg file)
+        ngrid: number of grids in each dimension
+        method: "ray" (depth from each primary direction) or "distance" (distance from grid point to mesh surface)
     Output:
-        three major vectors (from center to three faces of the box) and center point vector; all are column arrays
+        dict with keys (bases, name_of_vectors, primary_figures):
+            bases: three major vectors (from center to three faces of the box) and center point vector; all are column arrays
+            extent: extent of the box
+            name_of_vectors: names of the three major vectors and "center"
+            primary_figures: 3 * 2 figures (each figure is a 2D array), 2 direction for each major vector
+    TODO: adding ray casting method
     """
+    result = {}
     mesh = _3dg2mesh(_3dg)
     obb = mesh.get_oriented_bounding_box()
-    bases = np.concatenate([obb.R,obb.center.reshape(3,1)],axis=1) # generating bases for homogeneous coordinates
-    grid = space_grid(bases, obb.extent*0.5, ngrid)
-    # get 8 side view figures
+    # get box shape
+    bases["extent"] = obb.extent
+    # get three major vectors and center point vector
+    bases = np.concatenate([obb.R, obb.center.reshape(3,1)], axis=1) # generating bases for homogeneous coordinates 
+    result["bases"] = bases
+    grid = space_grid(
+        bases,
+        obb.extent*0.5, 
+        ngrid)
+    # naming vectors according to length
     axis_def = {0:"left-right",1:"dorsal-ventral",2:"head-tail"} # shortes to longest
     axis_names = list(map(lambda x:axis_def[x], np.argsort(obb.extent)))
+    axis_names.append("center")
+    result["name_of_vectors"] = axis_names
+    # get 8 side view figures
     mesht = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
     scene = o3d.t.geometry.RaycastingScene()
     _ = scene.add_triangles(mesht)
-    signed_distance = scene.compute_signed_distance(grid)
-    signed_distance = signed_distance.numpy()
-    depth_figures = [
-        [signed_distance[0,:,:], signed_distance[ngrid-1,:,:]],
-        [signed_distance[:,0,:], signed_distance[:,ngrid-1,:]],
-        [signed_distance[:,:,0], signed_distance[:,:,ngrid-1]],
-        []
-    ]
-    return zip(axis_names, depth_figures)
-    # obb.R * obb.extent.reshape(1,3) * 0.5
+    if method == "distance":
+        signed_distance = scene.compute_signed_distance(grid)
+        signed_distance = signed_distance.numpy()
+        primary_figures = [
+            [signed_distance[0,:,:], signed_distance[-1,:,:]],
+            [signed_distance[:,0,:], signed_distance[:,-1,:]],
+            [signed_distance[:,:,0], signed_distance[:,:,-1]],
+        ]
+        result["primary_figures"] = primary_figures
+    elif method == "ray":
+        pass
+    return result
+    # obb.R * obb.extent.reshape(1,3) * 0.5 # vectors with proper lengths
 def _3dg2mesh(_3dg):
     """
     Convert 3dg data structure to mesh.
