@@ -6,22 +6,22 @@ def parallel_light(plate, direction):
     """
     Adding same direction to all origin points.
     Input:
-        plate: N * 3 array
+        plate: N * N * 3 array
         direction: (3,) 3D vector
     Output:
-        N * 6 array
+        N * N * 6 array
     """
     N = plate.shape[0]
-    stacked_direction = np.concatenate(list(repeat(direction.reshape(3,1),N)),axis=1).T
+    plate = plate.reshape(N**2, 3)
+    stacked_direction = np.concatenate(list(repeat(direction.reshape(3,1),N**2)),axis=1).T
     ray = np.concatenate([plate, stacked_direction], axis=1)
-    return ray
+    return ray.reshape(N, N, 6)
 def say_cheese(plate, direction, scene):
     """
     Take a photo. The plate way!
     """
     N = int(plate.shape[0]**0.5)
     ray = parallel_light(plate, direction)
-    ray = ray.reshape(N, N, 6)
     ray = o3d.core.Tensor(ray,dtype=o3d.core.Dtype.Float32)
     return scene.cast_rays(ray["t_hit"].numpy())
 def primary_views(_3dg, ngrid=16, method="distance"):
