@@ -1,7 +1,29 @@
-from matplotlib.pyplot import grid
+from itertools import repeat
 import open3d as o3d
 import numpy as np
 from .utils import space_grid
+def parallel_light(plate, direction):
+    """
+    Adding same direction to all origin points.
+    Input:
+        plate: N * 3 array
+        direction: (3,) 3D vector
+    Output:
+        N * 6 array
+    """
+    N = plate.shape[0]
+    stacked_direction = np.concatenate(list(repeat(direction.reshape(3,1),N)),axis=1).T
+    ray = np.concatenate([plate, stacked_direction], axis=1)
+    return ray
+def say_cheese(plate, direction, scene):
+    """
+    Take a photo. The plate way!
+    """
+    N = int(plate.shape[0]**0.5)
+    ray = parallel_light(plate, direction)
+    ray = ray.reshape(N, N, 6)
+    ray = o3d.core.Tensor(ray,dtype=o3d.core.Dtype.Float32)
+    return scene.cast_rays(ray["t_hit"].numpy())
 def primary_views(_3dg, ngrid=16, method="distance"):
     """
     Get primary views from three orthogonal faces of the nucleus' oriented bounding box.
@@ -29,7 +51,6 @@ def primary_views(_3dg, ngrid=16, method="distance"):
         bases,
         obb.extent*0.5, 
         ngrid)
-    grid = o3d.core.Tensor(grid, dtype=o3d.core.Dtype.Float32)
     # naming vectors according to length
     axis_def = {0:"left-right",1:"dorsal-ventral",2:"head-tail"} # shortes to longest
     axis_names = list(map(lambda x:axis_def[x], np.argsort(obb.extent)))
@@ -40,6 +61,7 @@ def primary_views(_3dg, ngrid=16, method="distance"):
     scene = o3d.t.geometry.RaycastingScene()
     _ = scene.add_triangles(mesht)
     if method == "distance":
+        grid = o3d.core.Tensor(grid, dtype=o3d.core.Dtype.Float32)
         signed_distance = scene.compute_signed_distance(grid)
         signed_distance = signed_distance.numpy()
         primary_figures = [
@@ -49,7 +71,20 @@ def primary_views(_3dg, ngrid=16, method="distance"):
         ]
         result["primary_figures"] = primary_figures
     elif method == "ray":
-        pass
+        ray_directions = (obb.R * obb.extent.reshape(1,3)*0.5)
+        primary_figures = map(
+            say_cheese,
+            [grid[0,:,:,:], grid[-1,:,:,:], grid[:,0,:,:], grid[:,-1,:,:], grid[:,:,0,:], grid[:,:,-1,:]],
+            [ray_directions[:, 0], (-1)*ray_directions[:, 0], ray_directions[:, 1], (-1)*ray_directions[:, 1], ray_directions[:, 2], (-1)*ray_directions[:, 2]],
+            repeat(scene)
+        )
+        primary_figures = []
+        for i in range(3):
+            tmp = []
+            for j in range(2):
+                tmp.append(next(primary_figures))
+            primary_figures.append(tmp)
+        result["primary_figures"] = primary_figures
     return result
     # obb.R * obb.extent.reshape(1,3) * 0.5 # vectors with proper lengths
 def _3dg2mesh(_3dg):
