@@ -72,7 +72,7 @@ def primary_views(_3dg, ngrid=16, method="distance"):
         result["primary_figures"] = primary_figures
     elif method == "ray":
         ray_directions = (obb.R * obb.extent.reshape(1,3)*0.5)
-        primary_figures = map(
+        res = map(
             say_cheese,
             [grid[0,:,:,:], grid[-1,:,:,:], grid[:,0,:,:], grid[:,-1,:,:], grid[:,:,0,:], grid[:,:,-1,:]],
             [ray_directions[:, 0], (-1)*ray_directions[:, 0], ray_directions[:, 1], (-1)*ray_directions[:, 1], ray_directions[:, 2], (-1)*ray_directions[:, 2]],
@@ -82,7 +82,7 @@ def primary_views(_3dg, ngrid=16, method="distance"):
         for i in range(3):
             tmp = []
             for j in range(2):
-                tmp.append(next(primary_figures))
+                tmp.append(next(res))
             primary_figures.append(tmp)
         result["primary_figures"] = primary_figures
     return result
