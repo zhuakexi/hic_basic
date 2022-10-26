@@ -29,6 +29,7 @@ def primary_views(_3dg, ngrid=16, method="distance"):
         bases,
         obb.extent*0.5, 
         ngrid)
+    grid = o3d.core.Tensor(grid, dtype=o3d.core.Dtype.Float32)
     # naming vectors according to length
     axis_def = {0:"left-right",1:"dorsal-ventral",2:"head-tail"} # shortes to longest
     axis_names = list(map(lambda x:axis_def[x], np.argsort(obb.extent)))
