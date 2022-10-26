@@ -25,7 +25,8 @@ def primary_views(_3dg, ngrid=16):
     depth_figures = [
         [signed_distance[0,:,:], signed_distance[ngrid-1,:,:]],
         [signed_distance[:,0,:], signed_distance[:,ngrid-1,:]],
-        [signed_distance[:,:,0], signed_distance[:,:,ngrid-1]]
+        [signed_distance[:,:,0], signed_distance[:,:,ngrid-1]],
+        []
     ]
     return zip(axis_names, depth_figures)
     # obb.R * obb.extent.reshape(1,3) * 0.5
