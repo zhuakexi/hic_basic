@@ -220,6 +220,11 @@ def parse_hicluster_res(embed, sample_table):
     Input:
         embed: schicluster concat-cell output hdf5 file
         sample_table: input sample file of schicluster pipeline
+    Examples:
+        from hic_basic.io import parse_hicluster_res
+        from hic_basic.scAB_embedding import do_umap
+        hicluster_res = parse_hicluster_res(embed, sample_table)
+        umap_res = do_umap(hicluster_res.values)
     """
     sample_table = read_meta(sample_table)
     f = h5py.File(embed, "r")
