@@ -150,25 +150,33 @@ def hic_pileup(scool, grouping, cache_pattern="{}.pileup.cool",mergebuf=1e6):
         )
 
 # --- distiller-nf helper functions ---
-def gen_config(sample_table, output, task_dirp, template="/shareb/ychi/repo/ara_sperm_bulk1/HIC/project.yml"):
+def gen_config(sample_table, cfg, assembly="mm10",bwa="/share/home/ychi/data/genome/GRCm38/bwa_index/mm10.*",chrom_size="/share/home/ychi/data/genome/GRCm38/mm10.len.forCool.tsv",template="/shareb/ychi/ana/distiller-nf/project.yml"):
     """
     Generate distiller.nf project.yaml file from bubble_flow sample_table.csv.
     Input:
         sample_table: any csv, index as sample_name, using sample-name and task_dirp to infer DNA reads files
-        output: project.yml file
-        task_dirp: top folder for real input files
+        cfg: output project.yml file path
+        assembly: genome assembly name, default mm10
+        template: template project.yml file path
     """
     # read
     with open(template, "rt") as f:
         config = yaml.load(f, Loader=yaml.Loader)
-    # editing    
+    # editing input
     raw_reads_paths = {}
     sample_table = pd.read_csv(sample_table, index_col=0)
     for i in sample_table.index:
-        raw_reads_paths[i] = {"lane1": [os.path.join(task_dirp, "DNA", i+"_R1.fq.gz"),os.path.join(task_dirp, "DNA", i+"_R2.fq.gz")]}
+        raw_reads_paths[i] = {"lane1": [sample_table.loc[i, "R1_file"], sample_table.loc[i, "R2_file"]]}
     config["input"]["raw_reads_paths"] = raw_reads_paths
+    config["input"]["library_groups"] = None
+    # editing genome
+    genome = {}
+    genome["assembly_name"] = assembly
+    genome["bwa_index_wildcard_path"] = bwa
+    genome["chrom_sizes_path"] = chrom_size
+    config["input"]["genome"] = genome
     # write
-    with open(output, "wt") as f:
+    with open(cfg, "wt") as f:
         yaml.dump(config, f)
     print("Config generated.")
 
