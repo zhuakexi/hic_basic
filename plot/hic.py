@@ -8,11 +8,14 @@ import plotly.graph_objects as go
 import cooltools.lib.plotting # import the `fall` cmap
 import cooler
 import numpy as np
+from matplotlib.colors import LogNorm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import bioframe
 
-from .utils import filling_l2r_mpl
+from .utils import filling_l2r_mpl, pcolormesh_45deg
 
 # --- Hi-C heatmap plot ---
-def _plot_mat(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
+def _plot_mat_mpl(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
     mat = mat.copy()
     if ignore_diags:
         np.fill_diagonal(mat, 0)
@@ -38,6 +41,53 @@ def _plot_mat(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fal
             #extent=[col_lo, col_hi, row_hi, row_lo],
             cmap=cmap
         )
+fall = [
+    [0.00,'rgb(255, 255, 255)'],
+    [0.10,'rgb(255, 255, 204)'],
+    [0.20,'rgb(255, 237, 160)'],
+    [0.30,'rgb(254, 217, 118)'],
+    [0.40,'rgb(254, 178, 76)'],
+    [0.50,'rgb(253, 141, 60)'],
+    [0.60,'rgb(252, 78, 42)'],
+    [0.70,'rgb(227, 26, 28)'],
+    [0.80,'rgb(189, 0, 38)'],
+    [0.90,'rgb(128, 0, 38)'],
+    [1.00,'rgb(0, 0, 0)'],
+]
+log_fall = [
+    [0,'rgb(255, 255, 255)'],
+    [1/10**9,'rgb(255, 255, 204)'],
+    [1/10**8,'rgb(255, 237, 160)'],
+    [1/10**7,'rgb(254, 217, 118)'],
+    [1/10**6,'rgb(254, 178, 76)'],
+    [1/10**5,'rgb(253, 141, 60)'],
+    [1/10**4,'rgb(252, 78, 42)'],
+    [1/10**3,'rgb(227, 26, 28)'],
+    [1/10**2,'rgb(189, 0, 38)'],
+    [1/10**1,'rgb(128, 0, 38)'],
+    [1/10**0,'rgb(0, 0, 0)'],
+]
+def _plot_mat(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
+    """
+    TODO: make a real colorscale bar according to LogNorm
+    """
+    mat = mat.copy()
+    if ignore_diags:
+        np.fill_diagonal(mat, 0)
+    if donorm:
+        if balancing:
+            mat = LogNorm(vmin=np.nanmin(mat) if np.nanmin(mat) > 0 else 0.0001, vmax=np.nanmax(mat), clip=True)(mat).data # balanced cooler(don't know why mat+=1 failed here)
+        else:
+            mat = LogNorm(vmin=1, vmax=vmax, clip=True)(mat).data
+    fig = go.Figure()
+    fig.add_trace(
+        go.Heatmap(
+            z = mat,
+            colorscale=fall, # don't know why log_fall failed here
+            showscale=False
+        )
+    )
+    return fig
 def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diags=True, donorm=True):
     """"
     Plot heatmap of single cooler file.
@@ -69,7 +119,7 @@ def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diag
         mat = clr.matrix(balance=balance)[region[0]] if len(region) == 1 else clr.matrix(balance=balance)[region[0], region[1]] # because can't unpack in slicer
     else:
         mat = clr.matrix(balance=balance).fetch(*region)
-    return _plot_mat(
+    return _plot_mat_mpl(
         mat,
         title = title,
         vmax = vmax,
@@ -110,7 +160,56 @@ def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
             ax.set_visible(False)
     plt.tight_layout()
     return plt
+# Functions to help with plotting
+from matplotlib.ticker import EngFormatter
+bp_formatter = EngFormatter('b')
+def format_ticks(ax, x=True, y=True, rotate=True):
+    if y:
+        ax.yaxis.set_major_formatter(bp_formatter)
+    if x:
+        ax.xaxis.set_major_formatter(bp_formatter)
+        ax.xaxis.tick_bottom()
+    if rotate:
+        ax.tick_params(axis='x',rotation=45)
+plt.rcParams['font.size'] = 12
+def plot_IS(clr,insulation_table,title,resolution=500e3,window=1.5e6,balance=True,chrom="chr2",start=10_500_000,steps=90,vmin=0.001,vmax=0.1):
+    """
+    Plot insulation score together with Hi-C matrix strata.
+    Input:
+        clr: cooler obj.
+        insulation_table: insulation score table.
+    """
+    resolution, window = int(resolution), int(window)
+    end = start + steps*window
+    region = (chrom, start, end)
+    norm = LogNorm(vmax=vmax, vmin=vmin)
+    data = clr.matrix(balance=balance).fetch(region)
+    insulation_table = pd.read_table(insulation_table)
+    
+    f, ax = plt.subplots(figsize=(18, 6))
+    im = pcolormesh_45deg(ax, data, start=region[1], resolution=resolution, norm=norm, cmap='fall')
+    ax.set_aspect(0.5)
+    ax.set_ylim(0, 10*window)
+    format_ticks(ax, rotate=False)
+    ax.xaxis.set_visible(False)
+    
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="1%", pad=0.1, aspect=6)
+    plt.colorbar(im, cax=cax)
 
+    insul_region = bioframe.select(insulation_table, region)
+
+    ins_ax = divider.append_axes("bottom", size="50%", pad=0., sharex=ax)
+    ins_ax.set_prop_cycle(plt.cycler("color", plt.cm.plasma(np.linspace(0,1,5))))
+    ins_ax.plot(insul_region[['start', 'end']].mean(axis=1),
+                insul_region['log2_insulation_score_'+str(window)],
+                label=f'Window {window} bp')
+
+    ins_ax.legend(bbox_to_anchor=(0., -1), loc='lower left', ncol=4);
+
+    format_ticks(ins_ax, y=False, rotate=False)
+    ax.set_xlim(region[1], region[2])
+    plt.title(title)
 # --- HIC contact decay profile plot ---
 # plot cdps heatmap
 def _plot_cdps(cdps:pd.DataFrame):
