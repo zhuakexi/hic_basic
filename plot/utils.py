@@ -92,3 +92,19 @@ def tiling_mat(A, Ref, adjust = True):
     else:
         m = np.tril(Ref) + np.triu(A)
     return m
+def pcolormesh_45deg(ax, matrix_c, start=0, resolution=1, *args, **kwargs):
+    """
+    Helper to plot a matrix with 45 degree angle.
+    """
+    start_pos_vector = [start+resolution*i for i in range(len(matrix_c)+1)]
+    import itertools
+    n = matrix_c.shape[0]
+    t = np.array([[1, 0.5], [-1, 0.5]])
+    matrix_a = np.dot(np.array([(i[1], i[0])
+                                for i in itertools.product(start_pos_vector[::-1],
+                                                           start_pos_vector)]), t)
+    x = matrix_a[:, 1].reshape(n + 1, n + 1)
+    y = matrix_a[:, 0].reshape(n + 1, n + 1)
+    im = ax.pcolormesh(x, y, np.flipud(matrix_c), *args, **kwargs)
+    im.set_rasterized(True)
+    return im
