@@ -1,5 +1,9 @@
+import time
+import numpy as np
+import h5py
+from scipy.sparse import load_npz, save_npz, csr_matrix, vstack
 from sklearn import preprocessing
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, TruncatedSVD
 
 def pca_rep(mat, n_components, with_std=False):
     """
@@ -17,3 +21,37 @@ def pca_rep(mat, n_components, with_std=False):
     pca = PCA(n_components)
     pca_res = pca.fit_transform(scaled)
     return pca_res
+
+def band_svd(cell_list, res, dist=10000000, dim=50):
+    """
+    Doing svd on cell matrix band(leg distance < dist).
+    """
+    celllist = np.loadtxt(cell_list, dtype=np.str)
+
+    with h5py.File(celllist[0], 'r') as f:
+            ngene = f['Matrix'].attrs['shape'][0]
+    idx = np.triu_indices(ngene, k=1)
+    idxfilter = np.array([(yy - xx) < (dist / res + 1) for xx, yy in zip(idx[0], idx[1])])
+    idx = (idx[0][idxfilter], idx[1][idxfilter])
+
+    start_time = time.time()
+    # matrix = np.zeros((len(celllist), np.sum(idxfilter)))
+    matrix = []
+    for i, cell in enumerate(celllist):
+        with h5py.File(cell, 'r') as f:
+            g = f['Matrix']
+            A = csr_matrix((g['data'][()], g['indices'][()],
+                        g['indptr'][()]), g.attrs['shape'])
+        # matrix[i] = A[idx]
+        matrix.append(csr_matrix(A[idx]))
+        if i%100 ==0:
+            print(i, 'cells loaded', time.time() - start_time, 'seconds')
+
+    matrix = vstack(matrix)
+
+    scalefactor = 100000
+    matrix.data = matrix.data * scalefactor
+    svd = TruncatedSVD(n_components=dim, algorithm='arpack')
+    matrix_reduce = svd.fit_transform(matrix)
+    matrix_reduce = np.concatenate((svd.singular_values_[None, :], matrix_reduce), axis=0)
+    return matrix_reduce
