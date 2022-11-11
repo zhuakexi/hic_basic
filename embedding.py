@@ -56,41 +56,53 @@ def band_svd(cell_list, res, dist=10000000, dim=50):
     matrix_reduce = svd.fit_transform(matrix)
     matrix_reduce = np.concatenate((svd.singular_values_[None, :], matrix_reduce), axis=0)
     return matrix_reduce
-def band_seg_svd(cell_list, res, nseg=10, dist=10000000, dim=50):
+def band_seg_svd(cell_list, res=100e3, segL=10e6, dist=10e6, dim=50):
     """
     Doing svd on cell matrix band(leg distance < dist) segments.
+    Input:
+        cell_list: file list of cell matrix.
+        res: resolution of matrix(binsize in bp).
+        segL: length of segment(in bp).
+        dist: distance of band, only pixels within the near-diagonal band are considered.
+        dim: number of components to keep.
     Return:
         list of svd results, same length as nseg.
     """
     celllist = np.loadtxt(cell_list, dtype=np.str)
+    assert segL % res == 0, 'segment length should be integer times of resolution'
+    ngene = int(segL//res) # nbins for each segment
     with h5py.File(celllist[0], 'r') as f:
-            ngene = int(f['Matrix'].attrs['shape'][0] / nseg)
+            tgene = int(f['Matrix'].attrs['shape'][0]) # total bin number
+    nseg = int(tgene // ngene) # number of segments, omit the last segment
+    idx = np.triu_indices(ngene, k=1)
+    idxfilter = np.array([(yy - xx) < (dist / res + 1) for xx, yy in zip(idx[0], idx[1])])
+    idx = (idx[0][idxfilter], idx[1][idxfilter])
+    start_time = time.time()
+    # loading all matrix
+    matrix = []
+    for i, cell in enumerate(celllist):
+        with h5py.File(cell, 'r') as f:
+            g = f['Matrix']
+            A = csr_matrix((g['data'][()], g['indices'][()],
+                        g['indptr'][()]), g.attrs['shape'])
+        matrix.append(A)
+        if i%100 ==0:
+            #print(i, 'cells loaded', time.time() - start_time, 'seconds')
+            pass
+    # embedding for each segment
     embeddings = []
     for seg in range(nseg):
         print(f"doing segment {seg} ...")
-        idx = np.triu_indices(ngene, k=1)
-        idxfilter = np.array([(yy - xx) < (dist / res + 1) for xx, yy in zip(idx[0], idx[1])])
-        idx = (idx[0][idxfilter] + seg*ngene, idx[1][idxfilter] + seg*ngene)
-
-        start_time = time.time()
-        # matrix = np.zeros((len(celllist), np.sum(idxfilter)))
-        matrix = []
-        for i, cell in enumerate(celllist):
-            with h5py.File(cell, 'r') as f:
-                g = f['Matrix']
-                A = csr_matrix((g['data'][()], g['indices'][()],
-                            g['indptr'][()]), g.attrs['shape'])
-            # matrix[i] = A[idx]
-            matrix.append(csr_matrix(A[idx]))
-            if i%100 ==0:
-                print(i, 'cells loaded', time.time() - start_time, 'seconds')
-
-        matrix = vstack(matrix)
-
+        idx = (idx[0] + seg*ngene, idx[1] + seg*ngene)
+        #print("Segnum:", seg, "nseg", nseg, "ngene", ngene, "tgene", tgene ,"idx:", idx, "shapeM", matrix[0].shape, sep="\n")
+        mat = vstack(
+            [csr_matrix(m[idx]) for m in matrix]
+            )
         scalefactor = 100000
-        matrix.data = matrix.data * scalefactor
+        mat.data = mat.data * scalefactor
         svd = TruncatedSVD(n_components=dim, algorithm='arpack')
-        matrix_reduce = svd.fit_transform(matrix)
+        mat_reduce = svd.fit_transform(mat)
         #matrix_reduce = np.concatenate((svd.singular_values_[None, :], matrix_reduce), axis=0)
-        embeddings.append(matrix_reduce)
+        embeddings.append(mat_reduce)
+        print(f"segment {seg} done in", time.time() - start_time, 'seconds')
     return embeddings
