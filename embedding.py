@@ -71,6 +71,7 @@ def band_seg_svd(cell_list, res=100e3, segL=10e6, dist=10e6, dim=50):
     celllist = np.loadtxt(cell_list, dtype=np.str)
     assert segL % res == 0, 'segment length should be integer times of resolution'
     ngene = int(segL//res) # nbins for each segment
+    dim = min(dim, ngene)
     with h5py.File(celllist[0], 'r') as f:
             tgene = int(f['Matrix'].attrs['shape'][0]) # total bin number
     nseg = int(tgene // ngene) # number of segments, omit the last segment
