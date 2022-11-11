@@ -93,10 +93,10 @@ def band_seg_svd(cell_list, res=100e3, segL=10e6, dist=10e6, dim=50):
     embeddings = []
     for seg in range(nseg):
         print(f"doing segment {seg} ...")
-        idx = (idx[0] + seg*ngene, idx[1] + seg*ngene)
+        lidx = (idx[0] + seg*ngene, idx[1] + seg*ngene) # local index
         #print("Segnum:", seg, "nseg", nseg, "ngene", ngene, "tgene", tgene ,"idx:", idx, "shapeM", matrix[0].shape, sep="\n")
         mat = vstack(
-            [csr_matrix(m[idx]) for m in matrix]
+            [csr_matrix(m[lidx]) for m in matrix]
             )
         scalefactor = 100000
         mat.data = mat.data * scalefactor
