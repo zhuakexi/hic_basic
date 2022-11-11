@@ -120,17 +120,31 @@ def mouse_GO_cell_cycle():
     gene_sets_CC["G2/M transition of mitotic cell cycle"] = set(mat.loc[mat["3"] == "GO:0000086","gene_symbol"].values)
     gene_sets_CC["G1/S transition of mitotic cell cycle"] = set(mat.loc[mat["3"] == "GO:0000082","gene_symbol"].values)
     return gene_sets_CC
-def chromosomes(genome):
+def chromosomes(genome, order=False):
     """
     Get chromosome lengths.
     Returns:
         pandas.DataFrame
     """
     files = {
+        "hg19" : ref_dir / "hg19.len.csv",
         "hg19_dip" : ref_dir / "hg19.dip.len.csv",
-        "mm10" : ref_dir / "mm10.len.csv"
+        "mm10" : ref_dir / "mm10.len.csv",
+        "mm10_dip" : ref_dir / "mm10.dip.len.csv",
     }
-    return pd.read_csv(files[genome],index_col=0)
+    if genome in files:
+        data = pd.read_csv(files[genome], index_col=0)
+    else:
+        try:
+            data = pd.read_csv(genome, index_col=0) # input is a file path
+        except FileNotFoundError:
+            print("ref: neither valid abbrevations nor valid reference file")
+    if isinstance(order, bool):
+        if order: # using default order
+            data.index = data.index.as_ordered()
+    else: # provided order
+        data.index = pd.CategoricalIndex(data.index, categories=order, ordered=True)
+    return data
 def fetch_centromeres(genome):
     """
     Get centromere regions.
