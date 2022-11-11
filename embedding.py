@@ -87,8 +87,8 @@ def band_seg_svd(cell_list, res=100e3, segL=10e6, dist=10e6, dim=50):
                         g['indptr'][()]), g.attrs['shape'])
         matrix.append(A)
         if i%100 ==0:
-            #print(i, 'cells loaded', time.time() - start_time, 'seconds')
-            pass
+            print(i, 'cells loaded', time.time() - start_time, 'seconds')
+            #pass
     # embedding for each segment
     embeddings = []
     for seg in range(nseg):
