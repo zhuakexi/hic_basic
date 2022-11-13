@@ -68,37 +68,37 @@ class GenomeIdeograph:
 #     )
 #     zp_mat_c = np.sum(temp,axis=(1,3))
 #     return zp_mat_c
-# def bin_cut(dat:pd.DataFrame, breaks:dict, bins:dict):
-#     # Binnify contacts between a pair of chromosomes(chr_pair)
-#     # Input:
-#     ##  dat: pairs, assume intra-contacts or 
-#     ##    inter-contacts between two chromosome
-#     ##  chr_pair: set with 1(for intra) or 2(inter) elements
-#     ##  breaks: binned reference 
-#     ##    chromosome_name : boundary of each bin in that chromosome} 
-#     ##    (keys should contain all eles in chr_pair)
-#     ##  bins: binned reference(IntervalIndex version)
-#     ##    use as index
-#     ##    chromosome_name : intervals of each bin in that chromosome} 
-#     ##    (keys should contain all eles in chr_pair)
-#     # Output:
-#     ##  pd.DataFrame with full interval_index
+def bin_cut(dat:pd.DataFrame, breaks:dict, bins:dict):
+    # Binnify contacts between a pair of chromosomes(chr_pair)
+    # Input:
+    ##  dat: pairs, assume intra-contacts or 
+    ##    inter-contacts between two chromosome
+    ##  chr_pair: set with 1(for intra) or 2(inter) elements
+    ##  breaks: binned reference 
+    ##    chromosome_name : boundary of each bin in that chromosome} 
+    ##    (keys should contain all eles in chr_pair)
+    ##  bins: binned reference(IntervalIndex version)
+    ##    use as index
+    ##    chromosome_name : intervals of each bin in that chromosome} 
+    ##    (keys should contain all eles in chr_pair)
+    # Output:
+    ##  pd.DataFrame with full interval_index
     
-#     # using first row to infer which chr_pair this
-#     chr1, chr2 = dat.iloc[0,[1,3]]
-#     # binnify
-#     b_dat, xi, yi = np.histogram2d(x=dat["pos1"],y=dat["pos2"],
-#         bins=[breaks[chr1],breaks[chr2]])
-#     # store in sparse matrix
-#     if chr1 == chr2:
-#         # upper-triangle for intra_contacts
-#         b_dat = symmetry(b_dat)
-#     b_dat = pd.DataFrame(
-#         b_dat).astype(pd.SparseDtype(int,0))
-#     # using Interval version of bins as index
-#     b_dat.index, b_dat.columns = \
-#         bins[chr1], bins[chr2]
-#     return b_dat
+    # using first row to infer which chr_pair this
+    chr1, chr2 = dat.iloc[0,[1,3]]
+    # binnify
+    b_dat, xi, yi = np.histogram2d(x=dat["pos1"],y=dat["pos2"],
+        bins=[breaks[chr1],breaks[chr2]])
+    # store in sparse matrix
+    if chr1 == chr2:
+        # upper-triangle for intra_contacts
+        b_dat = symmetry(b_dat)
+    b_dat = pd.DataFrame(
+        b_dat).astype(pd.SparseDtype(int,0))
+    # using Interval version of bins as index
+    b_dat.index, b_dat.columns = \
+        bins[chr1], bins[chr2]
+    return b_dat
 # def tiled_bin_cut(pairs:pd.DataFrame,ref:GenomeIdeograph,binsize:int)->Hicmap:
 #     pairs_b = {}
 #     for indi, dat in pairs.groupby(["chr1","chr2"]):
