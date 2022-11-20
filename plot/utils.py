@@ -108,3 +108,25 @@ def pcolormesh_45deg(ax, matrix_c, start=0, resolution=1, *args, **kwargs):
     im = ax.pcolormesh(x, y, np.flipud(matrix_c), *args, **kwargs)
     im.set_rasterized(True)
     return im
+def mat_coarsen(mat, coarseness):
+    """
+    # coarsen matrix to lower resolution
+    # Input:
+    #    mat: matrix
+    # Output:
+    #    matrix
+    """
+    shape = np.array(mat.shape, dtype=float)
+    new_shape = coarseness * np.ceil(shape/ coarseness).astype(int)
+    # zero-padded array
+    zp_mat = np.zeros(new_shape)
+    zp_mat[:mat.shape[0],:mat.shape[1]] = mat
+    temp = zp_mat.reshape(
+        (   zp_mat.shape[0] // coarseness,
+            coarseness,
+            zp_mat.shape[1] // coarseness,
+            coarseness
+        )
+    )
+    zp_mat_c = np.sum(temp,axis=(1,3))
+    return zp_mat_c
