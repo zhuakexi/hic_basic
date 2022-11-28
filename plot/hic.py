@@ -5,8 +5,11 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
 import cooltools.lib.plotting # import the `fall` cmap
 import cooler
+from cooler import Cooler
 import numpy as np
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -160,6 +163,233 @@ def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
             ax.set_visible(False)
     plt.tight_layout()
     return plt
+def plot_cool_track(coolp, IS_file, eigs_file, region, title, balance=False, winSize=500000):
+    """
+    Plot cooler with additional track files
+    """
+    clr = Cooler(str(coolp))
+    IS = pd.read_table(IS_file)
+    eigs = pd.read_table(eigs_file)
+    bin_s, bin_e = clr.extent(region)
+    region_IS = pd.merge(
+        left = clr.bins()[bin_s:bin_e],
+        right = IS,
+        how = "inner",
+        on = ("chrom","start","end")
+    ).copy().reset_index(drop=True)
+    region_eigs = pd.merge(
+        left = clr.bins()[bin_s:bin_e],
+        right = eigs,
+        how = "inner",
+        on = ("chrom","start","end")
+    )
+    region_mat = clr.matrix(balance = balance).fetch(region)
+    figure = make_subplots(
+        rows=3,
+        cols=1,
+        vertical_spacing=0.01,
+        row_heights = [10,2,2]
+    )
+    # add heatmap
+    mat_fig = _plot_mat(region_mat)
+    figure.add_trace(
+        mat_fig.data[0],
+        row=1,
+        col=1
+    )
+    # add insulation score
+    figure.add_trace(
+        go.Scatter(
+            x = region_IS.index,
+            y = region_IS[f"log2_insulation_score_{winSize}"],
+            name = "IS"
+        ),
+        row = 2,
+        col = 1
+    )
+    # add TAD boundaries
+    dat = region_IS.loc[region_IS[f"is_boundary_{winSize}"]]
+    figure.add_trace(
+        go.Scatter(
+            x = dat.index,
+            y = dat[f"log2_insulation_score_{winSize}"],
+            mode = "markers",
+            marker_symbol = "circle-open",
+            name = "TAD boundaries"
+        ),
+        row = 2,
+        col = 1
+    )
+    # add boundary strengths
+    figure.add_trace(
+        go.Bar(
+            x = dat.index,
+            y = -dat[f"boundary_strength_{winSize}"],
+            name = "boundary strengths"
+        ),
+        row = 2,
+        col = 1
+    )
+    # add eigen value
+    dat = region_eigs.copy()
+    dat = dat.assign(AB = "A")
+    dat.loc[dat["E1"] <0, "AB"] = "B"
+    eigs_fig = px.bar(
+        dat, x="start", y ="E1", color="AB",
+        color_discrete_map={"A":"red","B":"blue"}
+    )
+    for trace in eigs_fig.data:
+        figure.add_trace(trace, row=3,col=1)
+    figure.update_xaxes(
+        visible=False,
+        row = 1,
+        col = 1
+    )
+    figure.update_xaxes(
+        visible=False,
+        row = 2,
+        col = 1
+    )
+    figure.update_layout(
+        paper_bgcolor = "white",
+        plot_bgcolor = "white",
+        height = 850,
+        width = 700,
+        title = title
+    )
+    return figure
+def plot_compare_cool_track_hor(
+    coolp1, coolp2, 
+    IS_file1, IS_file2,
+    eigs_file1, eigs_file2, 
+    subplot_titles,
+    region, title, balance=False, winSize=500000):
+    """
+    Plot cooler with additional track files
+    """
+    clrs = [Cooler(str(coolp1)), Cooler(str(coolp2))] 
+    ISs = [pd.read_table(IS_file1), pd.read_table(IS_file2)]
+    eigss = [pd.read_table(eigs_file1), pd.read_table(eigs_file2)]
+    bin_s, bin_e = clrs[0].extent(region) # assume same bin
+    bin_sele = clrs[0].bins()[bin_s:bin_e]
+    region_ISs = [pd.merge(
+            left = bin_sele,
+            right = IS,
+            how = "inner",
+            on = ("chrom","start","end")
+        ).copy().reset_index(drop=True) for IS in ISs]
+    region_eigss = [pd.merge(
+            left = bin_sele,
+            right = eigs,
+            how = "inner",
+            on = ("chrom","start","end")
+        ) for eigs in eigss]
+    region_mats = [clr.matrix(balance = balance).fetch(region) 
+                  for clr in clrs]
+    figure = make_subplots(
+        rows=1,
+        cols=6,
+        horizontal_spacing=0.01,
+        column_widths = [2,2,10,2,2,10],
+        subplot_titles = [None,None, subplot_titles[0],
+                          None,None, subplot_titles[1]]
+    )
+    # add heatmap
+    for i, region_mat in enumerate(region_mats):
+        mat_fig = _plot_mat(region_mat)
+        figure.add_trace(
+            mat_fig.data[0],
+            row=1,
+            col=i*3 + 3
+        )
+    # add insulation score
+    for i, region_IS in enumerate(region_ISs):
+        figure.add_trace(
+            go.Scatter(
+                y = region_IS.index,
+                x = region_IS[f"log2_insulation_score_{winSize}"],
+                name = "IS",
+                orientation='h',
+                showlegend = True if i == 0 else False,
+                mode = "lines",
+                line = dict(color = "orange")
+            ),
+            row = 1,
+            col = i*3 + 2,
+        )
+        # add TAD boundaries
+        dat = region_IS.loc[region_IS[f"is_boundary_{winSize}"]]
+        figure.add_trace(
+            go.Scatter(
+                y = dat.index,
+                x = dat[f"log2_insulation_score_{winSize}"],
+                mode = "markers",
+                marker_symbol = "circle-open",
+                marker = dict(color = "lightgreen"),
+                orientation='h',
+                name = "TAD boundaries",
+                showlegend = True if i == 0 else False
+            ),
+            row = 1,
+            col = i*3 + 2
+        )
+        # add boundary strengths
+        figure.add_trace(
+            go.Bar(
+                y = dat.index,
+                x = -dat[f"boundary_strength_{winSize}"],
+                orientation='h',
+                name = "boundary strengths",
+                marker = dict(color = "purple"),
+                showlegend = True if i == 0 else False
+            ),
+            row = 1,
+            col = i*3 + 2
+        )
+        figure.update_yaxes(
+            autorange = False,
+            range = [0, len(region_IS.index)],
+            row = 1,
+            col = i*3 + 2
+        )
+    # add eigen value
+    for i, region_eigs in enumerate(region_eigss):
+        dat = region_eigs.copy()
+        dat = dat.assign(AB = "A")
+        dat.loc[dat["E1"] <0, "AB"] = "B"
+        eigs_fig = px.bar(
+            dat, y="start", x ="E1", color="AB",
+            color_discrete_map={"A":"red","B":"blue"},
+            orientation='h'
+        )
+        eigs_fig.update_traces(
+            showlegend = True if i == 0 else False
+        )
+        for trace in eigs_fig.data:
+            figure.add_trace(
+                trace, 
+                row=1,
+                col=i*3 + 1
+            )
+    figure.update_yaxes(
+        visible = False
+    )
+    figure.update_yaxes(
+        visible=True,
+        row = 1,
+        col = 1
+    )
+    figure.update_xaxes(
+        visible=False
+    )
+    figure.update_layout(
+        paper_bgcolor = "white",
+        plot_bgcolor = "white",
+        height = 450,
+        width = 900,
+        title = title
+    )
+    return figure
 # Functions to help with plotting
 from matplotlib.ticker import EngFormatter
 bp_formatter = EngFormatter('b')
