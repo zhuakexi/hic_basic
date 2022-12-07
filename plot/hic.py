@@ -390,6 +390,111 @@ def plot_compare_cool_track_hor(
         title = title
     )
     return figure
+def plot_tiling_compartment(coolps, eigs_files, region, title, balance=False):
+    """
+    Plot cooler with additional track files
+    """
+    clrs = [Cooler(str(coolp)) for coolp in coolps]
+    eigs = [pd.read_table(eigs_file) for eigs_file in eigs_files]
+    bin_s, bin_e = clrs[0].extent(region)
+    region_mat1 = compartments(
+        clrs[0].matrix(balance = balance).fetch(region),
+        matrixonly = True
+    )
+    region_mat2 = compartments(
+        clrs[1].matrix(balance = balance).fetch(region),
+        matrixonly = True
+    )
+    #return region_mat1, region_mat2
+    region_mat = tiling_mat(
+        region_mat1,
+        region_mat2
+    )
+    figure = make_subplots(
+        rows=2,
+        cols=2,
+        vertical_spacing=0.01,
+        horizontal_spacing=0.01,
+        row_heights = [10,2],
+        column_widths = [2,10]
+    )
+    # add heatmap
+    mat_fig = _plot_mat(region_mat,cmap="RdBu",donorm=False)
+    figure.add_trace(
+        mat_fig.data[0],
+        row=1,
+        col=2
+    )
+    # add eigen value 1
+    dat = pd.merge(
+        left = clrs[1].bins()[bin_s:bin_e],
+        right = eigs[1],
+        how = "inner",
+        on = ("chrom","start","end")
+    ).copy()
+    dat = dat.assign(AB = "A")
+    dat.loc[dat["E1"] <0, "AB"] = "B"
+    eigs_fig = px.bar(
+        dat, y="start", x ="E1", color="AB",
+        color_discrete_map={"A":"red","B":"blue"},
+        orientation='h'
+    )
+    eigs_fig.update_traces(
+        showlegend = False
+    )
+    for trace in eigs_fig.data:
+        figure.add_trace(trace, row=1, col=1)
+    # add eigen value 2
+    dat = pd.merge(
+        left = clrs[0].bins()[bin_s:bin_e],
+        right = eigs[0],
+        how = "inner",
+        on = ("chrom","start","end")
+    ).copy()
+    dat = dat.assign(AB = "A")
+    dat.loc[dat["E1"] <0, "AB"] = "B"
+    eigs_fig = px.bar(
+        dat, x="start", y ="E1", color="AB",
+        color_discrete_map={"A":"red","B":"blue"},
+        #orientation='h'
+    )
+    eigs_fig.update_traces(
+        showlegend = False
+    )
+    for trace in eigs_fig.data:
+        figure.add_trace(trace, row=2,col=2)
+    # layout  
+    ## heatmap
+    figure.update_xaxes(
+        visible=False,
+        row = 1,
+        col = 2
+    )
+    figure.update_yaxes(
+        visible=False,
+        row = 1,
+        col = 2
+    )
+    # eigen 2 (upper triangle)
+    figure.update_xaxes(
+        visible = False,
+        row = 1,
+        col = 1
+    )
+    # eigen 1 (lower triangle)
+    figure.update_yaxes(
+        visible = False,
+        row = 2,
+        col = 2
+    )
+    figure.update_layout(
+        paper_bgcolor = "white",
+        plot_bgcolor = "white",
+        height = 700,
+        width = 700,
+        title = title
+    )
+    return figure
 # Functions to help with plotting
 from matplotlib.ticker import EngFormatter
 bp_formatter = EngFormatter('b')
