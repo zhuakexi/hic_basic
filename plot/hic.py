@@ -86,7 +86,7 @@ def _plot_mat(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fal
     fig.add_trace(
         go.Heatmap(
             z = mat,
-            colorscale=fall, # don't know why log_fall failed here
+            colorscale=fall if cmap=="fall" else cmap, # don't know why log_fall failed here
             showscale=False
         )
     )
