@@ -15,7 +15,8 @@ from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import bioframe
 
-from .utils import filling_l2r_mpl, pcolormesh_45deg
+from .utils import filling_l2r_mpl, pcolormesh_45deg, tiling_mat
+from ..compartment import compartments
 
 # --- Hi-C heatmap plot ---
 def _plot_mat_mpl(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
