@@ -1,3 +1,4 @@
+from itertools import product
 import json
 import pickle
 import os
@@ -17,7 +18,7 @@ def divide_name(filename):
         return parts[0], ""
     else:
         return parts[0], "."+".".join(parts[1:])
-def parse_pairs(filename:str)->"Cell":
+def parse_pairs(filename:str)->pd.DataFrame:
     '''
     read from 4DN's standard .pairs format
     compatible with all hickit originated pairs-like format 
@@ -326,6 +327,40 @@ def get_chrom_contact_counts(dump_dir):
     res = pd.concat((pd.read_pickle(file) for file in [os.path.join(dump_dir, i) for i in os.listdir(dump_dir)]),axis=1)
     res.columns = [i.split("_")[0] for i in os.listdir(dump_dir)]
     return res
+def align_to_df(primary_views):
+    """
+    Extract general dataframe from primary_view function output.
+    Input:
+        primary_views: complex data structure list of dict
+    Output:
+        dataframe
+    """
+    mapper = {
+        "head-tail":0,
+        "dorsal-ventral":1,
+        "left-right":2,
+    }
+    dfs = [[],[],[]]
+    samples = []  
+    for sample in primary_views:
+        samples.append(sample)
+        for aname, figures in zip(
+            primary_views[sample]["name_of_vectors"],
+            primary_views[sample]["primary_figures"]
+        ):
+            for figure in figures: # 2 figure for each axis
+                figure[figure == np.inf] = np.nan
+                dfs[mapper[aname]].append(figure.reshape(1,-1))
+    index = list(product(samples, ["A","B"]))
+    #return dfs
+    dfs = [
+        pd.DataFrame(
+            np.concatenate(df,axis=0),
+            index=pd.MultiIndex.from_product([samples, ["A", "B"]])
+        )
+        for df in dfs
+    ]
+    return dfs
 # --- misc ---
 def dump_json(obj, filep):
     """
