@@ -4,7 +4,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from .io import parse_gtf
+from .hicio import parse_gtf
 def two_sets(ref, check, warning=False):
     """
     Check two sample list.
