@@ -8,7 +8,7 @@ import os
 import loompy
 import scvelo as scv
 
-from ..io import matr, read_meta, get_chrom_contact_counts
+from ..hicio import matr, read_meta, get_chrom_contact_counts
 from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
 from .exp_record import add_cell_type, add_group_hour
 from ..utils import two_sets, gen_fileis

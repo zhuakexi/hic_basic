@@ -1,7 +1,7 @@
 import os
 from numpy.testing import assert_allclose
 from ..interpolate import _gaussian_interpolate
-from ..io import read_meta
+from ..hicio import read_meta
 def test_interpolate(request):
     """
     Test the interpolate function.

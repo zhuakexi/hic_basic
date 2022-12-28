@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import json
 from pathlib import Path
-from .io import get_ref_dir, load_json
+from .hicio import get_ref_dir, load_json
 import gzip
 from collections import namedtuple
 import csv
