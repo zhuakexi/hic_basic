@@ -8,7 +8,7 @@ from itertools import dropwhile
 import numpy as np
 from sklearn import preprocessing
 from sklearn.decomposition import PCA
-from umap import UMAP
+#from umap import UMAP
 import pandas as pd
 from concurrent import futures
 from itertools import repeat
