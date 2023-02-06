@@ -73,7 +73,9 @@ log_fall = [
 ]
 def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
     """
-    TODO: make a real colorscale bar according to LogNorm
+    TODO:
+        1.make a real colorscale bar according to LogNorm
+        2. make real zmax
     """
     mat = orig_mat.copy()
     mat = mat.values
@@ -91,8 +93,12 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap
             x = orig_mat.columns,
             y = orig_mat.index,
             colorscale=fall if cmap=="fall" else cmap, # don't know why log_fall failed here
-            showscale=False
+            showscale=False,
+            zmax = vmax
         )
+    )
+    fig.update_layout(
+        title=title
     )
     return fig
 def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diags=True, donorm=True):
