@@ -71,11 +71,12 @@ log_fall = [
     [1/10**1,'rgb(128, 0, 38)'],
     [1/10**0,'rgb(0, 0, 0)'],
 ]
-def _plot_mat(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
+def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
     """
     TODO: make a real colorscale bar according to LogNorm
     """
-    mat = mat.copy()
+    mat = orig_mat.copy()
+    mat = mat.values
     if ignore_diags:
         np.fill_diagonal(mat, 0)
     if donorm:
@@ -87,6 +88,8 @@ def _plot_mat(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fal
     fig.add_trace(
         go.Heatmap(
             z = mat,
+            x = orig_mat.columns,
+            y = orig_mat.index,
             colorscale=fall if cmap=="fall" else cmap, # don't know why log_fall failed here
             showscale=False
         )
@@ -106,7 +109,7 @@ def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diag
         balance: whether to load balanced cooler matrix.
         norm: whether to use lognorm.
     """
-    using_index = False
+    using_index = False # using [] or fetch
     clr = cooler.Cooler(cool)
     if isinstance(region, str):
         region = [region]
@@ -120,10 +123,31 @@ def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diag
     else:
         raise ValueError("region must be str or list or slice")
     if using_index:
+        # input is slicer or list of slicer
         mat = clr.matrix(balance=balance)[region[0]] if len(region) == 1 else clr.matrix(balance=balance)[region[0], region[1]] # because can't unpack in slicer
+        mat = pd.DataFrame(mat)
+        if len(region) == 1:
+            index = clr.bins()[region[0]]
+            columns = clr.bins()[region[0]]
+        else:
+            # inter-chromosome region
+            index = clr.bins()[region[0]] # first region as index, same as cooler matrix fetch
+            columns = clr.bins()[region[1]]
     else:
         mat = clr.matrix(balance=balance).fetch(*region)
-    return _plot_mat_mpl(
+        mat = pd.DataFrame(mat)
+        if len(region) == 1:
+            index = clr.bins().fetch(region[0])
+            columns = clr.bins().fetch(region[0])
+        else:
+            # inter-chromosome region
+            index = clr.bins().fetch(region[0]) # first region as index, same as cooler matrix fetch
+            columns = clr.bins().fetch(region[1])
+    mat.columns = columns["start"]
+    mat.columns.name = "region 2"
+    mat.index = index["start"]
+    mat.index.name = "region 1"
+    return _plot_mat(
         mat,
         title = title,
         vmax = vmax,
