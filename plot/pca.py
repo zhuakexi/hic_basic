@@ -1,4 +1,5 @@
 import plotly.express as px
+import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from .utils import filling_l2r_plotly
 def plot_eigenfaces(pca,rows=2,cols=2,fsize=16):
