@@ -193,7 +193,7 @@ def cli_pairs2cool(filei,fileo,sizef,binsize):
         binsize: binsize as you wish
     """
     subprocess.check_output(
-        "conda run -n cooler cooler cload pairs -c1 2 -p1 3 -c2 4 -p2 5 %s:%d %s %s " % (sizef,binsize,filei,fileo),
+        "conda run -n embryo cooler cload pairs -c1 2 -p1 3 -c2 4 -p2 5 %s:%d %s %s " % (sizef,binsize,filei,fileo),
         shell=True)
 def cli_mergecool(incools,outcool):
     """
@@ -203,7 +203,7 @@ def cli_mergecool(incools,outcool):
         outcool: output .cool file path
     """
     subprocess.check_output(
-        "conda run -n cooler cooler merge %s %s" %(outcool, incools),
+        "conda run -n embryo cooler merge %s %s" %(outcool, incools),
         shell=True
     )
 def cli_cl_Balance(filei,threads=8):
@@ -211,7 +211,7 @@ def cli_cl_Balance(filei,threads=8):
     cooler(cl) balance
     """
     subprocess.check_output(
-        "conda run -n cooler cooler balance -p %d --force %s" % (threads,filei),
+        "conda run -n embryo cooler balance -p %d --force %s" % (threads,filei),
         shell=True
     )
 def cli_ct_callTAD(filei,fileo):
@@ -219,6 +219,6 @@ def cli_ct_callTAD(filei,fileo):
     cooltools(ct) call TAD
     """
     subprocess.check_output(
-        "conda run -n cooler cooltools diamond-insulation -o %s --append-raw-scores %s 100000" %(fileo,filei),
+        "conda run -n embryo cooltools diamond-insulation -o %s --append-raw-scores %s 100000" %(fileo,filei),
         shell=True
     )
