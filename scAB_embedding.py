@@ -102,7 +102,7 @@ def fill_color(data, color_file, grt_full=True):
     ref_color.index = ref_color.index.to_flat_index()
     # filling data with ref CpG file
     filled_data = data.fillna(value=ref_color["CpG"])
-    # remove columns if ref doesn't dave that locus
+    # remove columns if ref doesn't have that locus
     if grt_full:
         filled_data = filled_data.dropna(axis=1)
     return filled_data
@@ -121,7 +121,10 @@ def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dr
         row_thresh: [0,1] larger is stricter, 0 to keep all
             after col cleaning, keeping samples that have nonNA value for at leat *ratio* of all attrs
         threads: number of cores using
+    Note:
+        when binsize is small, valid col and row thresh drop dramatically, it's better to use color3 at that time
     """
+    print("Calculating color...")
     with futures.ProcessPoolExecutor(threads) as pool:
         res = pool.map(
             color2,
@@ -132,7 +135,9 @@ def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dr
             repeat(dropXY, filesp.shape[0])
         )
     ares = list(res)
-    color_result = stack_dict(ares, filesp.index)
+    print("Stacking color...")
+    color_result = stack_dict(ares, filesp.index, col_thresh, row_thresh)
+    print("Filling color...")
     color_result = fill_color(color_result, color_file)
     return color_result
 def do_umap(data,ndims=30):
