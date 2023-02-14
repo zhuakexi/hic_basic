@@ -2,7 +2,7 @@ import concurrent
 import sys
 from .mdso.spectral_ordering_ import SpectralBaseline, SpectralOrdering
 from .cycle_phasing import dis_counts
-from .metrics import pca_euclid_kernel, c_rbf_kernel
+from .metrics import kernel_pca_euclid, kernel_c_rbf
 import numpy as np
 import pandas as pd
 
@@ -18,7 +18,7 @@ def _mdso(cdps:pd.DataFrame, annote:pd.DataFrame, n_components:int=6):
     """
     # calculate similarity matrix
     sm =pd.DataFrame(
-        pca_euclid_kernel(cdps.values,n_components),
+        kernel_pca_euclid(cdps.values,n_components),
             index = cdps.index,
             columns = cdps.index
         )
