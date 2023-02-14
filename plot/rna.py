@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from .utils import filling_l2r_plotly
 from .general import scatter_cols
+
 def _module_mean(adata, gene_set, layer):
     """
     Get mean expression of a set of genes.
@@ -132,9 +133,13 @@ def plot_gene_trends(data, additional, genes, order_col, ncols):
                 )
     return fig
 
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from pp import standard_scaler
 def _plot_gene_heatmap(df, scale=True):
     if scale == True:
-        df = scale_row_vec(df)
+        df = standard_scaler(df, axis=1, with_std = True)
     fig = go.Figure()
     fig.add_trace(
         go.Heatmap(
