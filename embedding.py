@@ -111,7 +111,7 @@ def band_seg_svd(cell_list, res=100e3, segL=10e6, dist=10e6, dim=50):
         embeddings.append(mat_reduce)
         print(f"segment {seg} done in", time.time() - start_time, 'seconds')
     return embeddings
-def schic_spectral_embedding(df):
+def schic_spectral_embedding(df): # this is clean version, orig can be found in nagano_cycle_phasing.py
     """
     Non-linear dimensionality reduction of cdps curve
     Input:
