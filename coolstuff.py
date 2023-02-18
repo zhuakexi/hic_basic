@@ -5,29 +5,45 @@ import os.path as op
 
 import numpy as np
 import pandas as pd
-from cytoolz import compose
+#from cytoolz import compose # fail in HPC
 from cooler.create import sanitize_records, aggregate_records
 import cooler
 
-from .utils import read_chromsizes, binnify
+from .hicio import schicluster2mat
+from .data import chromosomes
+from .utils import binnify
 
-def gen_bins(chromsizes_file:str, binsize:int):
+# from .utils import read_chromsizes
+# def gen_bins(chromsizes_file:str, binsize:int):
+#     """
+#     Generate "bins" for cooler api.
+#     """
+#     if not op.exists(chromsizes_file):
+#         raise ValueError('File "{}" not found'.format(chromsizes_file))
+#     try:
+#         binsize = int(binsize)
+#     except ValueError:
+#         raise ValueError(
+#             'Expected integer binsize argument (bp), got "{}"'.format(binsize)
+#         )
+#     chromsizes = read_chromsizes(chromsizes_file, all_names=True)
+#     bins = binnify(chromsizes, binsize)
+#     return bins
+def gen_bins(genome, binsize):
     """
     Generate "bins" for cooler api.
     """
-    if not op.exists(chromsizes_file):
-        raise ValueError('File "{}" not found'.format(chromsizes_file))
     try:
         binsize = int(binsize)
     except ValueError:
         raise ValueError(
             'Expected integer binsize argument (bp), got "{}"'.format(binsize)
         )
-    chromsizes = read_chromsizes(chromsizes_file, all_names=True)
+    chromsizes = chromosomes(genome)["length"]
     bins = binnify(chromsizes, binsize)
     return bins
 
-def easy_pixels(pairs_path, bins, chunksize=15e6, zero_based=False, tril_action="reflect"):
+def _easy_pixels(pairs_path, bins, chunksize=15e6, zero_based=False, tril_action="reflect"):
     """
     Easy to use func generating "pixels" for cooler api.
     """
@@ -69,15 +85,82 @@ def easy_pixels(pairs_path, bins, chunksize=15e6, zero_based=False, tril_action=
     aggregate = aggregate_records(agg=aggregations, count=True, sort=False)
     pipeline = compose(aggregate, sanitize)
     return map(pipeline, reader)
+def _schicluster_pixels(filesp, genome, binsize):
+    """
+    Generate pixels iterator for cooler constructor.
+    Input:
+        filesp: All hdf5 file paths for 1 cell, chrom as index; pd.Series
+        genome: used to create shifts, eg. "mm10"
+        binsize: binsize of original schicluster matrix
+    Output:
+        iterator of dict
+    """
+    shifts = gen_bins(genome,binsize)["chrom"].drop_duplicates(keep="first")
+    shifts = {shifts[key]:key for key in shifts.index}
+    for chrom in filesp.index:
+        coo = schicluster2mat(filesp[chrom]).tocoo()
+        yield {
+            "bin1_id" : coo.row + shifts[chrom],
+            "bin2_id" : coo.col + shifts[chrom],
+            "count" : coo.data
+        }
+def schicluster2cool(filesp, fo, genome, binsize,
+    ordered=True,ensure_sorted=True, **args):
+    """
+    Dump schicluster imputed matrix to .cool file.
+    Input:
+        filesp: All hdf5 file paths for 1 cell, chrom as index; pd.Series
+        fo: output cool uri
+        genome: eg. "mm10"
+        binsize: binsize of original schicluster matrix
+        **args: other args for cooler.create_cooler
+    Output:
+        fo
+        write to file and return file path
+    Example:
+    ```
+        from pathlib import Path
+        import pandas as pd
+        from hic_basic.data import chromosomes
+        from hic_basic.coolstuff import schicluster2cool
+        
+        
+        sample = "2021110112"
+        ddir = "/shareb/ychi/repo/embryo_integrate/schicluster/imputed_matrix/100000/"
 
-def scool_pixels(pairs_paths:dict, bins, chunksize=15e6, zero_based=False, tril_action="reflect"):
+        chroms = [chrom for chrom in chromosomes(genome).index if chrom not in ["chrX","chrY"]]
+        filesp = pd.Series(
+            data = [
+                Path(ddir)/ "{chrom}".format(chrom=chrom) / "{sample}_{chrom}_pad1_std1_rp0.5_sqrtvc.hdf5".format(sample=sample, chrom=chrom) 
+                for chrom in chroms
+            ],
+            index = chroms,
+            name = sample)
+        
+        schicluster2cool(filesp, "test.cool","mm10",100e3)
+    ```
+    """
+    bins = gen_bins(
+        genome,
+        binsize
+    )
+    cooler.create_cooler(
+        fo,
+        bins,
+        _schicluster_pixels(filesp, genome, binsize),
+        ordered = ordered,
+        ensure_sorted = ensure_sorted,
+        **args
+    )
+    return fo
+def _scool_pixels(pairs_paths:dict, bins, chunksize=15e6, zero_based=False, tril_action="reflect"):
     """
     Generate pixels dict for multi-pairs-file. Using in scool generating.
     Return:
         Cell name as key and pixel table DataFrame as value
     """
     n = len(pairs_paths)
-    return {pairs_path : easy_pixels(pairs_paths[pairs_path], bins, chunksize,zero_based, tril_action) 
+    return {pairs_path : _easy_pixels(pairs_paths[pairs_path], bins, chunksize,zero_based, tril_action) 
         for pairs_path in pairs_paths}
 
 def pairs2cool(pairs_path, coolpath, sizef, binsize):
@@ -88,7 +171,7 @@ def pairs2cool(pairs_path, coolpath, sizef, binsize):
     cooler.create_cooler(
         coolpath,
         bins,
-        easy_pixels(pairs_path, bins)
+        _easy_pixels(pairs_path, bins)
     )
 def pairs2scool(pairs_paths, coolpath, sizef, binsize):
     """
@@ -104,7 +187,7 @@ def pairs2scool(pairs_paths, coolpath, sizef, binsize):
     cooler.create_scool(
         coolpath,
         bins,
-        scool_pixels(
+        _scool_pixels(
             pairs_paths,
             bins
         )
