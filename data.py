@@ -96,7 +96,7 @@ def fetch_TSS(gnames, TSS, name_col="gene_name"):
     #     res,
     #     columns = ["gname","chrom","txStart_id","txStart"]
     # )
-    return subdf
+    return subdf.reset_index()
 # ZGA gene module
 def Jichang2022_embryo_gene_module():
     real_path = os.path.join(get_ref_dir(), "Jichang2022_embryo_gene_module.csv.gz" )
