@@ -3,6 +3,7 @@ import os
 import json
 from pathlib import Path
 from .hicio import get_ref_dir, load_json
+from .utils import two_sets
 import gzip
 from collections import namedtuple
 import csv
@@ -62,6 +63,40 @@ def fetch_cent_chromlen(genome):
             cent_chromlen[row.chromosome].append(row.length)
     #print(cent_chromlen)
     return cent_chromlen
+def fetch_TSS(gnames, TSS, name_col="gene_name"):
+    """
+    Get the all TSS starts sites.
+    Input:
+        gnames: genename list
+        TSS: genome name or TSS reference table; string or pd.DataFrame
+        name_col: column name of gene name in TSS table; string
+    Output:
+        chromname, TSS id, TSS sites; pd.Series
+    """
+    TSS_files = {
+        "mm10" : ref_dir / "mm10_TSS.csv.gz"
+    }
+    if isinstance(TSS, str):
+        # using shipped TSS table if genome name is given
+        TSS = pd.read_csv(
+            TSS_files[TSS], 
+            index_col=name_col
+            )
+    missing, _ = two_sets(gnames, TSS.index)
+    if missing:
+        print("Warning %s not in ref TSS table." % " ".join(list(missing)) )
+        gnames = [gname for gname in gnames if gname in TSS.index]
+    subdf = TSS.loc[gnames]
+    # expand txStart string to long form dataframe
+    # u_txStarts = subdf["txStart"]
+    # u_txStarts = (i.split() for i in u_txStarts)
+    # res = ([str(gname), str(chrom), i,int(txStart)] for gname, chrom, u_txStart in zip(subdf.index,subdf["seqname"],u_txStarts) 
+    #        for i, txStart in enumerate(u_txStart))
+    # res = pd.DataFrame(
+    #     res,
+    #     columns = ["gname","chrom","txStart_id","txStart"]
+    # )
+    return subdf
 # ZGA gene module
 def Jichang2022_embryo_gene_module():
     real_path = os.path.join(get_ref_dir(), "Jichang2022_embryo_gene_module.csv.gz" )
