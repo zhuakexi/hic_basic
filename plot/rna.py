@@ -137,7 +137,7 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from pp import standard_scaler
-def _plot_gene_heatmap(df, scale=True):
+def _plot_gene_heatmap(df, scale=True,**args):
     if scale == True:
         df = standard_scaler(df, axis=1, with_std = True)
     fig = go.Figure()
@@ -145,7 +145,8 @@ def _plot_gene_heatmap(df, scale=True):
         go.Heatmap(
             z = df.values,
             #text = ["a" for i in range(st_df.shape[0])],
-            colorscale = "RdBu_r"
+            colorscale = "RdBu_r",
+            **args
         )
     )
     fig.update_layout(
