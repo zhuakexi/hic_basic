@@ -148,6 +148,9 @@ def schicluster2cool(filesp, fo, genome, binsize,
         fo,
         bins,
         _schicluster_pixels(filesp, genome, binsize),
+        dtypes = {
+            "count":float # hicluster impute output is float
+        },
         ordered = ordered,
         ensure_sorted = ensure_sorted,
         **args
