@@ -21,7 +21,7 @@ def _pca_rep(mat, n_components, with_std=False): # keep this to avoid circular i
     pca = PCA(n_components)
     pca_res = pca.fit_transform(scaled)
     return pca_res
-def distant_pca_euclid(mat:np.ndarray, n_components:int, with_std=False) -> np.ndarray:
+def distance_pca_euclid(mat:np.ndarray, n_components:int, with_std=False) -> np.ndarray:
     """
     Euclid distances in PCA-space.
     Input:
@@ -45,7 +45,7 @@ def kernel_pca_euclid(mat:np.ndarray, n_components:int) -> np.ndarray:
     Output:
         m * m similarity matrix
     """
-    dm = distant_pca_euclid(mat, n_components)
+    dm = distance_pca_euclid(mat, n_components)
     sm = np.exp(-dm * 1/n_components)
     return sm
 def kernel_c_rbf(mat):
