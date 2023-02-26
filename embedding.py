@@ -111,23 +111,23 @@ def band_seg_svd(cell_list, res=100e3, segL=10e6, dist=10e6, dim=50):
         embeddings.append(mat_reduce)
         print(f"segment {seg} done in", time.time() - start_time, 'seconds')
     return embeddings
-def schic_spectral_embedding(df): # this is clean version, orig can be found in nagano_cycle_phasing.py
+def NN_spectral_embedding(symdist, k_nn=7): # this is clean version, orig can be found in nagano_cycle_phasing.py
     """
     Non-linear dimensionality reduction of cdps curve
     Input:
-        df: sample x feature matrix
+        symdist: symmetric distance matrix
+        k_nn: number of neighbors when build NN graph
     Output:
         2nd 3rd smallest eigenvectors of the graph Laplacian
     """
-    symdist = pairwise_DKL(df)
-
     # construct NN graph
-
-    k_nn = 7
+    # find neighbors
     nn = NN.NearestNeighbors(n_neighbors=k_nn, metric='precomputed', n_jobs=-1)
     nn.fit(symdist)
     dist2neighs, neighs =  nn.kneighbors()
 
+    # construct 0,1 neighbor graph adj
+    # one direction neighbor is both neighbor, so adj is symm
     adj = np.zeros((symdist.shape[0], symdist.shape[0]))
     for i in range(symdist.shape[0]):
         for ki in range(k_nn):
@@ -142,4 +142,4 @@ def schic_spectral_embedding(df): # this is clean version, orig can be found in 
     vals = vals[tmp]
     vecs = vecs[:,tmp]
     
-    return pd.DataFrame(vecs[:,1:3],columns=["ev1","ev2"],index=df.index)
+    return pd.DataFrame(vecs[:,1:3],columns=["ev1","ev2"],index=symdist.index)
