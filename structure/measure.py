@@ -1,4 +1,5 @@
 from itertools import repeat
+from copy import deepcopy
 import open3d as o3d
 import numpy as np
 from .utils import space_grid
@@ -102,6 +103,26 @@ def _3dg2mesh(_3dg):
     # build mesh from point cloud
     mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(points, 2)
     return mesh
+def _keep_largest_mesh(mesh):
+    """
+    Keep the largest connected mesh.
+    Input:
+        mesh
+    Output:
+        mesh
+    """
+    triangle_clusters, cluster_n_triangles, cluster_area \
+        = mesh.cluster_connected_triangles()
+    triangle_clusters = np.asarray(triangle_clusters)
+    cluster_n_triangles = np.asarray(cluster_n_triangles)
+    cluster_area = np.asarray(cluster_area)
+    # only keep cluster with most triangles
+    edge_to_remove = \
+        cluster_n_triangles[triangle_clusters] < max(cluster_n_triangles)
+    mesh1 = deepcopy(mesh)
+    mesh1.remove_triangles_by_mask(edge_to_remove)
+    mesh1 = mesh1.remove_unreferenced_vertices()
+    return mesh1
 def calc_depth(_3dg):
     """
     Calculate the depth (from nuclear membrane) of a chromatin bin.
@@ -112,6 +133,7 @@ def calc_depth(_3dg):
     """
     xyz = _3dg.values # (N, 3)
     mesh = _3dg2mesh(_3dg)
+    mesh = _keep_largest_mesh(mesh) # try to remove nucleolus holes
     # transform to implicit representation
     mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
     scene = o3d.t.geometry.RaycastingScene()
