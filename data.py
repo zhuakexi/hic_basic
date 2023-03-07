@@ -162,16 +162,24 @@ def chromosomes(genome, order=False):
         pandas.DataFrame
     """
     files = {
-        "hg19" : ref_dir / "hg19.len.csv",
-        "hg19_dip" : ref_dir / "hg19.dip.len.csv",
-        "mm10" : ref_dir / "mm10.len.csv",
-        "mm10_dip" : ref_dir / "mm10.dip.len.csv",
+        "hg19" : ref_dir / "hg19.len.tsv",
+        "hg19_dip" : ref_dir / "hg19.dip.len.tsv",
+        "mm10" : ref_dir / "mm10.len.tsv",
+        "mm10_dip" : ref_dir / "mm10.dip.len.tsv",
     }
     if genome in files:
-        data = pd.read_csv(files[genome], index_col=0)
+        data = pd.read_table(
+            files[genome],
+            index_col=0,
+            names=["chrom", "length"]
+            )
     else:
         try:
-            data = pd.read_csv(genome, index_col=0) # input is a file path
+            data = pd.read_table(
+                genome,
+                index_col=0,
+                names=["chrom", "length"]
+                ) # input is a file path
         except FileNotFoundError:
             print("ref: neither valid abbrevations nor valid reference file")
     if isinstance(order, bool):
