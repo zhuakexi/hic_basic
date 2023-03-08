@@ -18,6 +18,7 @@ class GenomeIdeograph:
         # Get binned reference(int version)
         ##  Return:
         ##    breaks of bins(dict of list)
+        binsize = int(binsize)
         data = self.chromosomes.iloc[:,0].to_dict()
         all_breaks = {}
         for chrom in data:
@@ -26,16 +27,35 @@ class GenomeIdeograph:
             breaks.append(length) # don't forget the rightmost point
             all_breaks[chrom] = breaks
         return all_breaks
-    def bins(self, binsize:int):
-        # Get binned reference(IntervalIdex version)
-        ## Return:
-        ##   intervals of each bin(
-        ##     dict of IntervalIndex)
+    def bins(self, binsize:int, bed=False):
+        """
+        Get binned reference(IntervalIdex version)
+        Input:
+            binsize: int
+            bed: bool, if True, return bed format
+        Output:
+           intervals of each bin(
+                dict of IntervalIndex)        
+        """
+
+        binsize = int(binsize)
         breaks = self.breaks(binsize)
         bins = {chrom : pd.IntervalIndex.from_breaks(
                 breaks[chrom], closed="left",
                 name=chrom,dtype='interval[int64]')
                 for chrom in breaks}
+        if bed:
+            bins = [
+                pd.DataFrame(
+                    {
+                        "chrom" : chrom,
+                        "start" : bins[chrom].left,
+                        "end" : bins[chrom].right
+                    }
+                )
+                for chrom in bins
+            ]
+            bins = pd.concat(bins)
         return bins
 # def symmetry(X):
 #     # flip lower-triangle-part and add 
