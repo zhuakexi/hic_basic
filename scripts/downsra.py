@@ -76,6 +76,13 @@ fastq_aspera_urls_flatten = [j for i in fastq_aspera_urls for j in i]
 fastq_ftp_urls_flatten = [j for i in fastq_ftp_urls for j in i]
 fastq_md5s_flatten = [j for i in fastq_md5s for j in i]
 outfiles = [os.path.join(outdir, newname(url)) for url in fastq_aspera_urls_flatten]
+# append outputfile names to info
+fastq = pd.DataFrame(
+    [[os.path.join(os.path.abspath(outdir), newname(url)) for url in urls] for urls in fastq_aspera_urls]
+    )
+fastq.columns = ["R1", "R2"] + list(fastq.columns[2:])
+info = pd.concat([info, fastq], axis=1)
+info.to_csv(os.path.join(outdir, "info.csv"), index=False)
 # generate download commands
 if backend == "aspera":
     keyp = "~/miniconda3/envs/fastq-downloader/etc/asperaweb_id_dsa.openssh"
@@ -141,6 +148,9 @@ for md5value, outfile in zip(fastq_md5s_flatten, outfiles):
             damaged.append(outfile)
         with open(outfile + ".md5", "w") as f:
             f.write(md5res)
+if fastq.shape[1] > 2:
+    print("[Warning]: more than 2 fastq files found, only append the first two to new info file.")
+print("New info file saved to %s" % os.path.join(outdir, "info.csv"))
 if len(damaged) > 0:
     print("Damaged files found:")
     print("\t" + " ".join(damaged))
