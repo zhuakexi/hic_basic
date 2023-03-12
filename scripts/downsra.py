@@ -139,6 +139,8 @@ for md5value, outfile in zip(fastq_md5s_flatten, outfiles):
             print("Expected: %s" % md5value)
             print("Got: %s" % md5res)
             damaged.append(outfile)
+        with open(outfile + ".md5", "w") as f:
+            f.write(md5res)
 if len(damaged) > 0:
     print("Damaged files found:")
     print("\t" + " ".join(damaged))
