@@ -236,7 +236,15 @@ def hic_pileup(scool, grouping, cache_pattern="{}.pileup.cool",mergebuf=1e6):
         )
 
 # --- distiller-nf helper functions ---
-def gen_config(sample_table, cfg, assembly="mm10",bwa="/share/home/ychi/data/genome/GRCm38/bwa_index/mm10.*",chrom_size="/share/home/ychi/data/genome/GRCm38/mm10.len.forCool.tsv",template="/shareb/ychi/ana/distiller-nf/project.yml"):
+def gen_config(
+        sample_table, 
+        cfg, 
+        assembly="mm10",
+        bwa="/share/home/ychi/data/genome/GRCm38/bwa_index/mm10.*",
+        chrom_size="/share/home/ychi/data/genome/GRCm38/mm10.len.forCool.tsv",
+        template="/shareb/ychi/ana/distiller-nf/project.yml",
+        **args
+        ):
     """
     Generate distiller.nf project.yaml file from bubble_flow sample_table.csv.
     Input:
@@ -261,6 +269,10 @@ def gen_config(sample_table, cfg, assembly="mm10",bwa="/share/home/ychi/data/gen
     genome["bwa_index_wildcard_path"] = bwa
     genome["chrom_sizes_path"] = chrom_size
     config["input"]["genome"] = genome
+    # update other key:value
+    if args is not None:
+        for key in args:
+            config[key].update(args[key])
     # write
     with open(cfg, "wt") as f:
         yaml.dump(config, f)
