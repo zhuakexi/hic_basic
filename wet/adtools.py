@@ -197,9 +197,8 @@ def _gen_repliscore(outdir, qc = None, outfile=None):
     print("Gen repli score...")
     if not os.path.isdir(outdir):
         os.mkdir(outdir)
-    if not os.path.isfile(outfile):
-        rs = gen_repli_score(qc, outdir)
-        rs.to_csv(outfile)
+    rs = gen_repli_score(qc, outdir) # gen_repli_score has its own caching
+    rs.to_csv(outfile)
     return rs
 def _generate_PM_interactions(qc=None, outfile=None):
     print("Gen PM interactions...")
