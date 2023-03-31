@@ -188,8 +188,8 @@ def mouse_id2name(id_lists, ref_file, multi=False):
             name_lists.append(np.array([id_name_table.get(id) for id in id_list]))
         return name_lists
     else:
-        two_sets(id_list, id_name_table.keys(), warning=True)
-        return np.array([id_name_table.get(id) for id in id_list])
+        two_sets(id_lists, id_name_table.keys(), warning=True)
+        return np.array([id_name_table.get(id) for id in id_lists])
 # --- num functions ---
 def z_score(array, mean=0, std=1):
     z = (array - array.mean()) / array.std() * std**0.5 + mean
