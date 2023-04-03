@@ -25,7 +25,7 @@ def fetch_cent_chromlen(genome):
         "mm10" : ref_dir / "mm10_gap.csv.gz"
     }
     len_files = {
-        "mm10" : ref_dir / "mm10.len.csv"
+        "mm10" : ref_dir / "mm10.len.tsv"
     }
     if genome == "mm10":
         # mouse cytoband file does not have centromeric, gvar, and stalk regions
@@ -48,9 +48,10 @@ def fetch_cent_chromlen(genome):
     cent_chromlen = {row.chrom : [row.start, row.end] for row in res}
     if genome == "mm10":
         with open(len_files[genome],"r") as f:
-            fcsv = csv.reader(f)
+            fcsv = csv.reader(f, delimiter="\t")
             #header
-            header = next(fcsv)
+            #header = next(fcsv)
+            header = ["chromosome", "length"]
             # dtypes
             dtypes = [str, int]
             Len = namedtuple("Len", header)
