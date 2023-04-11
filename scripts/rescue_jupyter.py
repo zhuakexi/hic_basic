@@ -30,3 +30,31 @@ with open(input_, "r") as f:
                 f2.write(line+"\n")
             if i > C:
                 break
+# use this to test:
+text = '''{
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "256d3ea3-fb1c-4c46-9d55-004bdcf3340b",
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def shuffle_index(df):\\n",
+    "    s_df = df.sample(df.shape[0]).copy()\\n",
+    "    s_df.index = df.index\\n",
+    "    return s_df"
+   ]
+},
+{
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "31851668-d5f2-4ce7-8481-b99210c030b6",
+   "metadata": {
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "from hic_basic.hicio import load_pickle, dump_pickle"
+   ]
+  }'''
