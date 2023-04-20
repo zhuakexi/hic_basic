@@ -83,7 +83,41 @@ def scatter_cols(data, points=None, trends=[]):
         width = 800
     )
     return fig
-
+# import re
+def plot_ols(data, x, y, title, **kwargs):
+    """
+    Plot linear regression of dataframe
+    """
+    fig = px.scatter(
+        data,
+        x = x,
+        y = y,
+        trendline="ols",
+        **kwargs
+    )
+    # R2 = re.search('R<sup>2.*?(\d+).(\d+)', fig.data[1]["hovertemplate"])
+    # R2 = float(R2.group(1) + "." + R2.group(2)) if R2 else pd.NA
+    # b = re.search(' = (-?\d+).(\d+) \* ', fig.data[1]["hovertemplate"])
+    # b = float(b.group(1) + "." + b.group(2)) if b else pd.NA
+    trendlines = px.get_trendline_results(fig)
+    #print(trendlines)
+    if trendlines.shape[0] == 0:
+        R2 = pd.NA
+        b = pd.NA
+    elif trendlines.shape[0] == 1:
+        R2 = trendlines.loc[0,"px_fit_results"].rsquared
+        b = trendlines.loc[0,"px_fit_results"].params[1]
+    else:
+        R2 = trendlines.loc[0,"px_fit_results"].rsquared
+        b = trendlines.loc[0,"px_fit_results"].params[1]
+        print("Warning: more than one trendline found")
+        print(trendlines)
+    fig.update_layout(
+        title = title + ", R2=%.4f, b=%.3f" % (R2,b) if R2 is not pd.NA else title,
+        height = 500,
+        width = 700,
+    )
+    return fig
 # --- part N 3D ---
 def plot_points(array,**args):
     """
