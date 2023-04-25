@@ -131,8 +131,8 @@ def id2name(genelist, genome):
         gene names; list
     """
     id2name_files = {
-        "mm10" : ref_dir / "hg19_id_name.csv.gz",
-        "hg19" : ref_dir / "mm10_id_name.csv.gz"
+        "mm10" : ref_dir / "mm10_id_name.csv.gz",
+        "hg19" : ref_dir / "hg19_id_name.csv.gz"
     }
     if isinstance(genome, str):
         # using shipped id2name table if genome name is given
