@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import os
 import json
@@ -8,7 +9,62 @@ import gzip
 from collections import namedtuple
 import csv
 ref_dir = Path(get_ref_dir())
-# basic genome features
+# --- basic genome features ---
+def chromosomes(genome, order=False):
+    """
+    Get chromosome lengths.
+    Returns:
+        pandas.DataFrame
+    """
+    files = {
+        "hg19" : ref_dir / "hg19.len.tsv",
+        "hg19_dip" : ref_dir / "hg19.dip.len.tsv",
+        "mm10" : ref_dir / "mm10.len.tsv",
+        "mm10_dip" : ref_dir / "mm10.dip.len.tsv",
+    }
+    if genome in files:
+        data = pd.read_table(
+            files[genome],
+            index_col=0,
+            names=["chrom", "length"]
+            )
+    else:
+        try:
+            data = pd.read_table(
+                genome,
+                index_col=0,
+                names=["chrom", "length"]
+                ) # input is a file path
+        except FileNotFoundError:
+            print("ref: neither valid abbrevations nor valid reference file")
+    if isinstance(order, bool):
+        if order: # using default order
+            data.index = data.index.as_ordered()
+    else: # provided order
+        data.index = pd.CategoricalIndex(data.index, categories=order, ordered=True)
+    return data
+def fetch_centromeres(genome):
+    """
+    Get centromere regions.
+    Returns:
+        pandas.DataFrame
+    """
+    files = {
+        "hg19_dip" : ref_dir / "hg19_centromeres.csv.gz",
+        "mm10" : ref_dir / "mm10_gap.csv.gz"
+    }
+    if genome == "hg19_dip":
+        # tediously adding the chr prefix
+        # just read pre formatted file
+        return pd.read_csv(files[genome])
+    elif genome == "mm10":
+        # mouse cytoband file does not have centromeric, gvar, and stalk regions
+        # using gap files instead
+        gap = pd.read_csv(files[genome])
+        gap = gap.loc[gap["type"] == "centromere",["chrom","chromStart","chromEnd"]]
+        gap = gap.reset_index(drop=True)
+        gap.columns = ["chrom","start","end"]
+        return gap
 def fetch_cent_chromlen(genome):
     """
     Get centromere regions and chromosome lengths.
@@ -64,6 +120,63 @@ def fetch_cent_chromlen(genome):
             cent_chromlen[row.chromosome].append(row.length)
     #print(cent_chromlen)
     return cent_chromlen
+def id2name(genelist, genome):
+    """
+    Convert gene IDs to gene names.
+    Input:
+        genelist: list of gene IDs
+        genome: genome name or gene ID to gene name mapping dataframe; string or pd.DataFrame
+            gene ID as index when using a dataframe
+    Output:
+        gene names; list
+    """
+    id2name_files = {
+        "mm10" : ref_dir / "hg19_id_name.csv.gz",
+        "hg19" : ref_dir / "mm10_id_name.csv.gz"
+    }
+    if isinstance(genome, str):
+        # using shipped id2name table if genome name is given
+        ttable = pd.read_csv(id2name_files[genome], index_col=0)
+    else:
+        # using provided id2name table
+        ttable = genome
+    return ttable.loc[genelist, "gene_name"].tolist()
+def name2id(genelist, genome, pickid=False):
+    """
+    Convert gene names to gene IDs.
+    Input:
+        genelist: list of gene names
+        genome: genome name or gene ID to gene name mapping dataframe (name 2 id df will have non-unique index); string or pd.DataFrame
+            gene id as index when using a dataframe
+        pickid: if True, pick 1 gene ID for genes with multiple IDs, else return NA for genes with multiple IDs
+    Output:
+        gene IDs; list
+    """
+    id2name_files = {
+        "mm10" : ref_dir / "mm10_id_name.csv.gz",
+        "hg19" : ref_dir / "hg19_id_name.csv.gz"
+    }
+    if isinstance(genome, str):
+        # using shipped name2id table if genome name is given
+        ttable = pd.read_csv(id2name_files[genome], index_col=0)
+    else:
+        # using provided name2id table
+        ttable = genome
+    dup_genes = ttable["gene_name"].value_counts().loc[ttable["gene_name"].value_counts() > 1].index
+    if set(genelist).intersection(dup_genes.index):
+        # print warning if there are genes with multiple IDs
+        print("Warning: there are genes with multiple IDs: %s" % ", ".join(set(genelist).intersection(dup_genes.index)))
+    ttable = ttable.reset_index().drop_duplicates(subset="gene_name", keep="first").set_index("gene_name")
+    if pickid:
+        # pick 1 gene ID for genes with multiple IDs
+        return ttable.loc[genelist, "gene_id"].tolist()
+    else:
+        # return NA for genes with multiple IDs
+        ids = ttable.loc[genelist, "gene_id"].tolist()
+        for i, g in enumerate(genelist):
+            if g in dup_genes:
+                ids[i] = np.nan
+        return ids
 def fetch_TSS(gnames, TSS, name_col="gene_name"):
     """
     Get the all TSS starts sites.
@@ -156,58 +269,3 @@ def mouse_GO_cell_cycle():
     gene_sets_CC["G2/M transition of mitotic cell cycle"] = set(mat.loc[mat["3"] == "GO:0000086","gene_symbol"].values)
     gene_sets_CC["G1/S transition of mitotic cell cycle"] = set(mat.loc[mat["3"] == "GO:0000082","gene_symbol"].values)
     return gene_sets_CC
-def chromosomes(genome, order=False):
-    """
-    Get chromosome lengths.
-    Returns:
-        pandas.DataFrame
-    """
-    files = {
-        "hg19" : ref_dir / "hg19.len.tsv",
-        "hg19_dip" : ref_dir / "hg19.dip.len.tsv",
-        "mm10" : ref_dir / "mm10.len.tsv",
-        "mm10_dip" : ref_dir / "mm10.dip.len.tsv",
-    }
-    if genome in files:
-        data = pd.read_table(
-            files[genome],
-            index_col=0,
-            names=["chrom", "length"]
-            )
-    else:
-        try:
-            data = pd.read_table(
-                genome,
-                index_col=0,
-                names=["chrom", "length"]
-                ) # input is a file path
-        except FileNotFoundError:
-            print("ref: neither valid abbrevations nor valid reference file")
-    if isinstance(order, bool):
-        if order: # using default order
-            data.index = data.index.as_ordered()
-    else: # provided order
-        data.index = pd.CategoricalIndex(data.index, categories=order, ordered=True)
-    return data
-def fetch_centromeres(genome):
-    """
-    Get centromere regions.
-    Returns:
-        pandas.DataFrame
-    """
-    files = {
-        "hg19_dip" : ref_dir / "hg19_centromeres.csv.gz",
-        "mm10" : ref_dir / "mm10_gap.csv.gz"
-    }
-    if genome == "hg19_dip":
-        # tediously adding the chr prefix
-        # just read pre formatted file
-        return pd.read_csv(files[genome])
-    elif genome == "mm10":
-        # mouse cytoband file does not have centromeric, gvar, and stalk regions
-        # using gap files instead
-        gap = pd.read_csv(files[genome])
-        gap = gap.loc[gap["type"] == "centromere",["chrom","chromStart","chromEnd"]]
-        gap = gap.reset_index(drop=True)
-        gap.columns = ["chrom","start","end"]
-        return gap
