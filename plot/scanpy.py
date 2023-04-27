@@ -15,7 +15,7 @@ def sc_pca(adata, color):
     fig = px.scatter(pca_res, x = "PC1", y= "PC2", color = color,hover_name=pca_res.index)
     fig.update_layout(
         height = 500,
-        width = 500
+        width = 600
     )
     return fig
 def plot_elbow(adata):
@@ -23,7 +23,7 @@ def plot_elbow(adata):
     fig.update_layout(
         showlegend = False,
         height = 500,
-        width = 500,
+        width = 600,
         title = "PCA elbow plot"
     )
     return fig
@@ -42,4 +42,23 @@ def plot_umap(adata, color):
         height = 500,
         width = 600
     )
+    return fig
+def plot_diffmap(adata, color, title):
+    # --- create dataframe for plotly ---
+    obs = adata.obs.copy()
+    n_DCs = adata.obsm["X_diffmap"].shape[1]
+    diffmap = pd.DataFrame(
+        adata.obsm["X_diffmap"],
+        index = obs.index,
+        columns = [f"DC{i}" for i in range(1, n_DCs+1)]
+        )
+    # --- plot ---
+    fig = px.scatter(
+        diffmap,
+        x="DC2", # DC1 is steady-state solution, which is non-informative in diffusion maps
+        y="DC3",
+        color=obs[color],
+        title=title,
+        )
+    fig.update_traces(marker=dict(size=3))
     return fig
