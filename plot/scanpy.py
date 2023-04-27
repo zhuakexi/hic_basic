@@ -21,6 +21,7 @@ def sc_pca(adata, color):
 def plot_elbow(adata):
     fig = px.scatter(adata.uns["pca"]["variance_ratio"])
     fig.update_layout(
+        showlegend = False,
         height = 500,
         width = 500,
         title = "PCA elbow plot"
