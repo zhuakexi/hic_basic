@@ -98,7 +98,12 @@ def correct_pseudotime(adata, pseudotime_col, inplace=True):
     """
     if not inplace:
         adata = adata.copy()
-    new_ps = _corrected_pseudotime(adata.obs[pseudotime_col], adata.to_df().T)
-    adata.obs[pseudotime_col + "_cr"] = new_ps
+    # deal with missing values
+    if adata.obs[pseudotime_col].isna().any():
+        sub = adata[~adata.obs[pseudotime_col].isna()]
+    else:
+        sub = adata
+    new_ps = _corrected_pseudotime(sub.obs[pseudotime_col], sub.to_df().T)
+    adata.obs[pseudotime_col + "_cr"] = new_ps # add new column inplace, adata.obs = xx will not work
     if not inplace:
         return adata
