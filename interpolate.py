@@ -39,25 +39,26 @@ def _gaussian_interpolate(expr, traj, winSz=0.1, numPts=200):
     trajValNewPts = pd.Series(trajValNewPts, index=interpolated_point_names)
     return ValNewPts, trajValNewPts
     #return ValNewPts, error, trajValNewPts
-def _corrected_pseudotime(ps, expr):
+def _correct_pseudotime(ps, dm):
     """
     Correct pseudotime to make it linearly correlated with a distance metrix.
     Inspired by Alpert et al. (2018)
     Input:
-        ps: pseudotime; pd.Series
-        expr: genes * samples; pd.DataFrame
+        ps: pseudotime, pd.Series
+        dm: distance matrix
+    Output:
+        ps_cr: corrected pseudotime, pd.Series
     """
-    samples = expr.columns
-    dm = pd.DataFrame(euclidean_distances(expr.T)/expr.shape[0]**0.5, index=samples, columns=samples)
-    i1 = ps.sort_values().index[0]
+    ps = ps.sort_values()
+    i1 = ps.index[0] # i1 is start point
     new_ps = {}
-    for i in samples:
+    for i in ps.index:
         earlier = ps[ps < ps[i]]
         latter = ps[ps > ps[i]]
-        earlier_metric = dm.loc[earlier.index, i1] + dm.loc[earlier.index, i]
-        latter_metric = dm.loc[latter.index, i1] - dm.loc[latter.index, i]
-        full_metric = pd.concat([earlier_metric, latter_metric]).values
-        new_ps[i] = full_metric.mean()
+        earlier_metric = dm.loc[earlier.index, i1] + dm.loc[earlier.index, i] # D_i_i1 = D_x_i1 + D_x_i
+        latter_metric = dm.loc[latter.index, i1] - dm.loc[latter.index, i] # D_i_i1 = D_x_i1 - D_x_i
+        full_metric = pd.concat([earlier_metric, latter_metric]).values # measure point i n-1 times
+        new_ps[i] = full_metric.mean() # using mean
     return pd.Series(new_ps)
 def gaussian_interpolate(adata, pseudotime_col, obs_using, winSz=0.1, numPts=200, inplace=True):
     """
@@ -103,7 +104,9 @@ def correct_pseudotime(adata, pseudotime_col, inplace=True):
         sub = adata[~adata.obs[pseudotime_col].isna()]
     else:
         sub = adata
-    new_ps = _corrected_pseudotime(sub.obs[pseudotime_col], sub.to_df().T)
+    ps, expr = sub.obs[pseudotime_col], sub.to_df().T
+    dm = pd.DataFrame(euclidean_distances(expr)/expr.shape[0]**0.5, index=expr.index, columns=expr.index)
+    new_ps = _correct_pseudotime(ps, dm)
     adata.obs[pseudotime_col + "_cr"] = new_ps # add new column inplace, adata.obs = xx will not work
     if not inplace:
         return adata
