@@ -87,7 +87,7 @@ def gaussian_interpolate(adata, pseudotime_col, obs_using, winSz=0.1, numPts=200
         uns={"cdps": cdps.T})
     # add new columns to adata
     return new_adata
-def correct_pseudotime(adata, pseudotime_col, inplace=True):
+def correct_pseudotime(adata, pseudotime_col, n_pcs=15, inplace=True):
     """
     Correct pseudotime of adata to make it linearly correlated with a distance metrix.
     Inspired by Alpert et al. (2018)
@@ -104,9 +104,15 @@ def correct_pseudotime(adata, pseudotime_col, inplace=True):
         sub = adata[~adata.obs[pseudotime_col].isna()]
     else:
         sub = adata
-    ps, expr = sub.obs[pseudotime_col], sub.to_df().T
-    dm = pd.DataFrame(euclidean_distances(expr)/expr.shape[0]**0.5, index=expr.index, columns=expr.index)
-    new_ps = _correct_pseudotime(ps, dm)
+    #ps, expr = sub.obs[pseudotime_col], sub.to_df().T
+    #dm = pd.DataFrame(euclidean_distances(expr)/expr.shape[0]**0.5, index=expr.index, columns=expr.index)
+    # using pca-euclidean distances
+    dm = pd.DataFrame(
+        euclidean_distances(sub.obsm["X_pca"][:, :n_pcs]),
+        index = sub.obs_names,
+        columns = sub.obs_names
+    )
+    new_ps = _correct_pseudotime(sub.obs[pseudotime_col], dm)
     adata.obs[pseudotime_col + "_cr"] = new_ps # add new column inplace, adata.obs = xx will not work
     if not inplace:
         return adata
