@@ -161,8 +161,10 @@ def _infer_expr_inputs(qc, outfile):
     if qc.index.str.contains("_").sum() > 0:
         print("Warning: sample ID contains underscore")
         return [[os.path.join(i, mattail) for i in qc["task_dirp"].unique()]], {
-            "mapper" :  dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(-1),
-                            qc.index[qc.index.str.contains("_")])),
+            "mapper" :  dict(zip(
+                            [i.split("_")[-1] for i in qc.index if "_" in i],
+                            [i for i in qc.index if "_" in i]
+                            )),
             "samplelist" : qc.index.values,
             "outfile" : outfile
             }
@@ -228,8 +230,10 @@ def _gen_g(fps, qc = None, outfile=None):
     if qc.index.str.contains("_").sum() > 0:
         print("Warning: sample ID contains underscore")
         return _merge_expr(fps, 
-            mapper =  dict(zip(qc.index[qc.index.str.contains("_")].str.split("_",expand=True).get_level_values(-1),
-                            qc.index[qc.index.str.contains("_")])),
+            mapper =  dict(zip(
+                            [i.split("_")[-1] for i in qc.index if "_" in i],
+                            [i for i in qc.index if "_" in i]
+                            )),
             samplelist =  qc.index.values,
             outfile = outfile
             )
