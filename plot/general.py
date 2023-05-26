@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import statsmodels.api as sm
 
+# --- part 1 set plot ---
 def plot_upsetplot(sets, show_counts):
     """
     Upset plot like in R.
@@ -42,8 +43,36 @@ def upset_plot_getter(data, keys):
         count = len(tset)
         #count = np.sum(index)
     return count, tset
-
-# --- part 2 scatter ---
+# --- part 2 histogram ---
+def _logbin_histogram(x, nbins=100):
+    """
+    Log binning histogram.
+    Input:
+        x: data to plot, nonegative; pd.Series
+        bins: number of bins; int
+    Output:
+        plotly bar plot
+    """
+    bins = np.logspace(np.log10(x.min()), np.log10(x.max()), nbins)
+    bin_counts = pd.cut(x, bins).value_counts(sort=False)
+    # transform categorical index to numeric index
+    bin_counts.index = bin_counts.index.map(lambda x: x.left)
+    # using left end as x
+    # set bar width to be the bin width, otherwise bars in right will be too thin
+    fig = go.Figure(
+        data = go.Bar(
+            x = bin_counts.index,
+            y = bin_counts.values,
+            width = np.diff(bins),
+        )
+    )
+    fig.update_xaxes(type="log")
+    fig.update_layout(
+        height = 500,
+        width = 700
+    )
+    return fig
+# --- part 3 scatter ---
 def scatter_cols(data, points=None, trends=[]):
     """
     Multi-traces scatter plot.
