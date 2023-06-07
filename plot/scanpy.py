@@ -43,6 +43,22 @@ def plot_umap(adata, color):
         width = 600
     )
     return fig
+def plot_tsne(adata, color):
+    """
+    Plot scanpy tsne using plotly.
+    """
+    tsne_res = pd.DataFrame(adata.obsm["X_tsne"][:, :2])
+    tsne_res.index = adata.obs_names
+    tsne_res.columns = ["T1","T2"]
+    # adding annotations
+    tsne_res = pd.concat([tsne_res, adata.obs], axis=1)
+    # plot
+    fig = px.scatter(tsne_res, x = "T1", y = "T2", color = color, hover_name = tsne_res.index)
+    fig.update_layout(
+        height = 500,
+        width = 600
+    )
+    return fig
 def plot_diffmap(adata, color, title):
     # --- create dataframe for plotly ---
     obs = adata.obs.copy()
