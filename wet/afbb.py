@@ -223,7 +223,7 @@ def add_mapping(annote, old=False, threads=16):
         with futures.ProcessPoolExecutor(int(threads/sthreads)) as pool:
             res = pool.map(
                 mapping_rate,
-                annote["task_dirp"] + "/sam/" + annote.index + ".bam",
+                annote["task_dirp"] + "/hic_mapped/" + annote.index + ".sorted.bam",
                 repeat(sthreads, annote.shape[0])
             )
     ares = pd.DataFrame(list(res), index = annote.index)
