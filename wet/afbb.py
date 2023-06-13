@@ -235,7 +235,7 @@ def check_RNA(task_dirp):
     for i, j in res.items():
         print("{} : {:.2f}".format(i,j))
 # agg
-def task_stat(task_dirp,threads=32):
+def task_stat(task_dirp, ref=None, threads=32):
     """
     Get all infomation about this task
     """
@@ -243,7 +243,10 @@ def task_stat(task_dirp,threads=32):
     annote = add_pairs(con,task_dirp)
     annote = add_pairs_num(annote,threads)
     annote = add_info(annote,os.path.join(task_dirp,"rd"))
-    annote = add_umis(annote,os.path.join(task_dirp,"count_matrix","counts.gene.tsv.gz"))
+    if ref is not None:
+        annote = add_umis(annote,os.path.join(task_dirp,"count_matrix"+"_"+ref,"counts.gene.tsv.gz"))
+    else:
+        annote = add_umis(annote,os.path.join(task_dirp,"count_matrix","counts.gene.tsv.gz"))
     annote = add_extra(annote)
     return annote
 # pick useful cols
