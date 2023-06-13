@@ -11,6 +11,11 @@ import h5py
 from scipy.sparse import coo_matrix, csr_matrix
 import anndata as ad
 from io import StringIO
+
+import sys
+sys.path.append("/share/home/ychi/dev")
+from hires_utils.hires_utils.hires_io import parse_3dg
+
 def divide_name(filename):
     #home-made os.path.splitext, for it can't handle "name.a.b.c" properly
     basename = os.path.basename(filename)
