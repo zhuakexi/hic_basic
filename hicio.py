@@ -249,16 +249,20 @@ def parse_hicluster_res(embed, sample_table):
     Read schicluster embedding result into dataframe.
     Input:
         embed: schicluster concat-cell output hdf5 file
-        sample_table: input sample file of schicluster pipeline
+        sample_table: input sample file of schicluster pipeline or list of sample names
     Examples:
         from hic_basic.io import parse_hicluster_res
         from hic_basic.scAB_embedding import do_umap
         hicluster_res = parse_hicluster_res(embed, sample_table)
         umap_res = do_umap(hicluster_res.values)
     """
-    sample_table = read_meta(sample_table)
+    if isinstance(sample_table, str):
+        sample_table = read_meta(sample_table)
+        samples = sample_table.index
+    else:
+        samples = sample_table
     f = h5py.File(embed, "r")
-    data = pd.DataFrame(f["data"][:], index=sample_table.index)
+    data = pd.DataFrame(f["data"][:], index=samples)
     f.close()
     data.columns = ["PC%d" % i for i in range(1, data.shape[1]+1)]
     return data
