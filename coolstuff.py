@@ -5,7 +5,7 @@ import os.path as op
 
 import numpy as np
 import pandas as pd
-#from cytoolz import compose # fail in HPC
+from cytoolz import compose # fail in HPC
 from cooler.create import sanitize_records, aggregate_records
 import cooler
 
@@ -221,13 +221,13 @@ def hic_pileup(scool, grouping, cache_pattern="{}.pileup.cool",mergebuf=1e6):
     To simply pileup all cells, use `grouping = pd.Series(1, index=cells)`
     Input:
         scool: cooler's scool file path
-        grouping: pd.Series
+        grouping: dict, key is cluster name, value is list of cell names
         cache_pattern: path to store resulting .cool file; str with {}
     Output:
         write cool according to cache_pattern
     """
-    for cluster in grouping.unique():
-        samples = grouping[grouping==cluster].index
+    for cluster in grouping:
+        samples = grouping[cluster]
         print("Merging " + str(cluster))
         cooler.merge_coolers(
             cache_pattern.format(str(cluster)),
