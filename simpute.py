@@ -26,7 +26,7 @@ def boolean_radius_neighbor(df, min_dist=3, n_jobs=4):
         include_self = False,
         n_jobs=n_jobs)
     return triu(graph)
-def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000):
+def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000, n_jobs=4):
     """
     Genereate 0,1 cooler file of region proximity from 3dg file.
     Only cis region is considered.
@@ -52,7 +52,7 @@ def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000)
     chunks = (chunk[["x","y","z"]] for _, chunk in index_structure.groupby("chrom"))
     local_pixels = (
         (
-            boolean_radius_neighbor(chunk, min_dist=min_dist, n_jobs=4).nonzero(),
+            boolean_radius_neighbor(chunk, min_dist=min_dist, n_jobs=n_jobs).nonzero(),
             pd.Series(chunk.index, index=list(range(chunk.shape[0]))) 
             )
         for chunk in chunks
