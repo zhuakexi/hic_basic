@@ -78,7 +78,13 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap
         2. make real zmax
     """
     mat = orig_mat.copy()
-    mat = mat.values
+    if isinstance(mat, pd.DataFrame):
+        mat = mat.values
+        columns = orig_mat.columns
+        index = orig_mat.index
+    else:
+        columns = None
+        index = None
     if ignore_diags:
         np.fill_diagonal(mat, 0)
     if donorm:
@@ -90,8 +96,8 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap
     fig.add_trace(
         go.Heatmap(
             z = mat,
-            x = orig_mat.columns,
-            y = orig_mat.index,
+            x = columns,
+            y = index,
             colorscale=fall if cmap=="fall" else cmap, # don't know why log_fall failed here
             showscale=False,
             zmax = vmax
