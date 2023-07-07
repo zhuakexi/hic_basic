@@ -27,11 +27,11 @@ def plot_elbow(adata):
         title = "PCA elbow plot"
     )
     return fig
-def plot_umap(adata, color):
+def plot_umap(adata, color, key="X_umap"):
     """
     Plot scanpy umap using plotly.
     """
-    umap_res = pd.DataFrame(adata.obsm["X_umap"][:, :2])
+    umap_res = pd.DataFrame(adata.obsm[key][:, :2])
     umap_res.index = adata.obs_names
     umap_res.columns = ["U1","U2"]
     # adding annotations
