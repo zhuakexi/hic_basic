@@ -1,12 +1,15 @@
 import os
 import sys
-from .coolstuff import gen_bins
-from .hicio import parse_3dg
+
+import cooler
+from hires_utils.hires_io import parse_3dg
 import numpy as np
 import pandas as pd
-import cooler
 from scipy.sparse import triu
 from sklearn.neighbors import radius_neighbors_graph
+
+from .coolstuff import gen_bins
+
 def boolean_radius_neighbor(df, min_dist=3, n_jobs=4):
     """
     generate boolean matrix from dataframe

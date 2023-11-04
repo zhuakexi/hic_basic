@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 import toolz
-from .hicio import parse_3dg
+
+from hires_utils.hires_io import parse_3dg
+
 from .simpute import boolean_radius_neighbor
 
 def shannon_index(x):
