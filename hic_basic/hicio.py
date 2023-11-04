@@ -1,20 +1,19 @@
-from itertools import product, dropwhile
-from collections import namedtuple
-import json
-import pickle
-import os
 import gzip
-
-import pandas as pd
-import numpy as np
-import h5py
-from scipy.sparse import coo_matrix, csr_matrix
-import anndata as ad
+import json
+import os
+import pickle
+from collections import namedtuple
 from io import StringIO
+from itertools import product, dropwhile
 
-import sys
-sys.path.append("/share/home/ychi/dev")
-from hires_utils.hires_utils.hires_io import parse_3dg
+import anndata as ad
+import h5py
+import numpy as np
+import pandas as pd
+from scipy.sparse import coo_matrix, csr_matrix
+
+
+
 
 def divide_name(filename):
     #home-made os.path.splitext, for it can't handle "name.a.b.c" properly
