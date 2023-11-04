@@ -1,8 +1,8 @@
 import os
 from numpy.testing import assert_allclose
-from ..wet.adtools import gen_adata
-from ..hicio import read_meta
-from ..wet import basic_filter
+from hic_basic.wet.adtools import gen_adata
+from hic_basic.hicio import read_meta
+from hic_basic.wet import basic_filter
 # TODO: remove basic filter from here
 def test_gen_adata(request, tmp_path):
     cache_dir = tmp_path / "test_gen_adata"
