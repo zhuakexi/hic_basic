@@ -1,7 +1,6 @@
 #on python & IDE
 __pycache__/
 .project
-.vscode/
 
 # on jupyter notebook
 *.ipynb
