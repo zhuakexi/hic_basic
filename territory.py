@@ -1,8 +1,7 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import toolz
 from .hicio import parse_3dg
-from .coolstuff import gen_bins
 from .simpute import boolean_radius_neighbor
 
 def shannon_index(x):
@@ -104,3 +103,7 @@ def intermingle(_3dg_path, min_dist=3, n_jobs=12):
         join="outer"
     )
     return intermingling_metrics
+if __name__ == "__main__":
+    _3dg = "/share/home/ychi/dev/hic_basic/tests/data/intermingle.3dg"
+    intermingle(_3dg, 0.21)
+    print("done")
