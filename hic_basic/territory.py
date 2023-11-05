@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import toolz
 
-from hires_utils.hires_io import parse_3dg
 from sklearn.neighbors import radius_neighbors_graph
 
 def shannon_index(x):
@@ -11,11 +10,11 @@ def shannon_index(x):
     """
     x = x[x > 0]
     return -(x * np.log(x)).sum()
-def intermingle(_3dg_path, min_dist=3, n_jobs=12, table=False):
+def intermingle(_3dg, min_dist=3, n_jobs=12, table=False):
     """
     Calculate intermingling metrics for each particle in 3dg file.
     Input:
-        _3dg_path: str, path to 3dg file
+        _3dg: dataframe, result of hic_basic.hicio parse_3dg
         min_dist: int, minimum distance to be considered as neighbor
         n_jobs: int, number of jobs to run in parallel
     Output:
@@ -27,13 +26,13 @@ def intermingle(_3dg_path, min_dist=3, n_jobs=12, table=False):
             species_richness: int, number of species in the neighborhood
     """
     # --- load data ---
-    structure = parse_3dg(_3dg_path)
-    structure = structure.reset_index()
-    structure.columns = ["chrom", "start", "x", "y", "z"]
+    _3dg = _3dg.copy()
+    _3dg = _3dg.reset_index()
+    _3dg.columns = ["chrom", "start", "x", "y", "z"]
     # --- generate radius neighbor ---
     # get sparse matrix, basically tuple of two arrays, (row, col)
     RN = radius_neighbors_graph(
-        structure[["x","y","z"]].values,
+        _3dg[["x","y","z"]].values,
         min_dist,
         mode = "distance",
         metric = "minkowski",
@@ -43,9 +42,9 @@ def intermingle(_3dg_path, min_dist=3, n_jobs=12, table=False):
         ).nonzero()
     # --- count RN chromosome distribution for each particle ---
     # seq
-    for_chrom_count = ((i, structure.iat[j, 0]) for i, j in zip(*RN))
+    for_chrom_count = ((i, _3dg.iat[j, 0]) for i, j in zip(*RN))
     # init
-    chroms = structure["chrom"].dropna().unique()
+    chroms = _3dg["chrom"].dropna().unique()
     frequency_def = dict(zip(
         chroms,
         range(len(chroms))
@@ -78,7 +77,7 @@ def intermingle(_3dg_path, min_dist=3, n_jobs=12, table=False):
     ).T
     # tidy up index
     frequency_table = pd.concat(
-        [structure, frequency_table],
+        [_3dg, frequency_table],
         axis=1,
         join="outer"
     )[frequency_table.columns]
@@ -88,7 +87,7 @@ def intermingle(_3dg_path, min_dist=3, n_jobs=12, table=False):
         [frequency_table.columns]*frequency_table.shape[0],
         columns=frequency_table.columns
         )
-    mask = (mask.T == structure["chrom"]).T
+    mask = (mask.T == _3dg["chrom"]).T
     intra_near = frequency_table.where(mask, 0).sum(axis=1)
     all_near = frequency_table.sum(axis=1)
     intermingling_ratio = (all_near - intra_near) / all_near
@@ -99,7 +98,7 @@ def intermingle(_3dg_path, min_dist=3, n_jobs=12, table=False):
     # prepare output
     intermingling_metrics = pd.concat(
         [
-            structure[["chrom","start"]],
+            _3dg[["chrom","start"]],
             intermingling_ratio.rename("intermingling_ratio"),
             multi_chrom_intermingling.rename("multi_chrom_intermingling"),
             species_richness.rename("species_richness")
