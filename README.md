@@ -1,4 +1,11 @@
 # hic_basic
+# Installation
+In jupyter notebooks, add
+```
+import sys
+sys.path.insert(0, "$YourGitDir/hic_basic")
+sys.path.insert(0, "$YourGitDir/hires_utils")
+```
 # pseudo bulk analysis
 pairs --> .scool --> .cool(s)  
 Assume you have a meta file `xx.meta.csv.gz` that stores all pairs file path and sample name in `pairs_c12` col.  
