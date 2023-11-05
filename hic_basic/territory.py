@@ -3,8 +3,7 @@ import pandas as pd
 import toolz
 
 from hires_utils.hires_io import parse_3dg
-
-from .simpute import boolean_radius_neighbor
+from sklearn.neighbors import radius_neighbors_graph
 
 def shannon_index(x):
     """
@@ -12,7 +11,7 @@ def shannon_index(x):
     """
     x = x[x > 0]
     return -(x * np.log(x)).sum()
-def intermingle(_3dg_path, min_dist=3, n_jobs=12):
+def intermingle(_3dg_path, min_dist=3, n_jobs=12, table=False):
     """
     Calculate intermingling metrics for each particle in 3dg file.
     Input:
@@ -33,9 +32,13 @@ def intermingle(_3dg_path, min_dist=3, n_jobs=12):
     structure.columns = ["chrom", "start", "x", "y", "z"]
     # --- generate radius neighbor ---
     # get sparse matrix, basically tuple of two arrays, (row, col)
-    RN = boolean_radius_neighbor(
-        structure[["x","y","z"]],
-        min_dist=min_dist,
+    RN = radius_neighbors_graph(
+        structure[["x","y","z"]].values,
+        min_dist,
+        mode = "distance",
+        metric = "minkowski",
+        p = 2,
+        include_self = False,
         n_jobs=n_jobs
         ).nonzero()
     # --- count RN chromosome distribution for each particle ---
@@ -73,7 +76,7 @@ def intermingle(_3dg_path, min_dist=3, n_jobs=12):
         per_bin_frequency,
         index=chroms
     ).T
-    # tidy up index, RN always missing the last particle
+    # tidy up index
     frequency_table = pd.concat(
         [structure, frequency_table],
         axis=1,
@@ -104,8 +107,12 @@ def intermingle(_3dg_path, min_dist=3, n_jobs=12):
         axis=1,
         join="outer"
     )
-    return intermingling_metrics
+    if table:
+        return intermingling_metrics, frequency_table
+    else:
+        return intermingling_metrics
 if __name__ == "__main__":
     _3dg = "/share/home/ychi/dev/hic_basic/tests/data/intermingle.3dg"
-    intermingle(_3dg, 0.21)
+    print(intermingle(_3dg, 0.21,table=True)[1])
+    print(intermingle(_3dg, 0.21))
     print("done")
