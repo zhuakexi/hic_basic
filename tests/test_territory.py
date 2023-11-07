@@ -7,12 +7,13 @@ import unittest
 
 import pandas as pd
 from hic_basic.territory import intermingle
+from hires_utils.hires_io import parse_3dg
 def test_intermingle(self):
     """
     Test the intermingle function.
     """
     frequency_table = intermingle(
-        os.path.join(os.path.dirname(__file__), "intermingle.3dg"),
+        parse_3dg(os.path.join(os.path.dirname(__file__), "intermingle.3dg")),
         0.21,
         table=True
     )

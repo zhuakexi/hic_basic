@@ -111,7 +111,8 @@ def intermingle(_3dg, min_dist=3, n_jobs=12, table=False):
     else:
         return intermingling_metrics
 if __name__ == "__main__":
-    _3dg = "/share/home/ychi/dev/hic_basic/tests/data/intermingle.3dg"
-    print(intermingle(_3dg, 0.21,table=True)[1])
-    print(intermingle(_3dg, 0.21))
+    from hires_utils.hires_io import parse_3dg
+    _3dg_file = "/share/home/ychi/dev/hic_basic/tests/data/intermingle.3dg"
+    print(intermingle(parse_3dg(_3dg_file), 0.21, table=True)[1])
+    print(intermingle(parse_3dg(_3dg_file), 0.21))
     print("done")
