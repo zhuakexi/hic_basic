@@ -2,6 +2,9 @@
 __pycache__/
 .project
 
+#on debug
+tests/output
+003.cif
 # on jupyter notebook
 *.ipynb
 .ipynb_checkpoints/
