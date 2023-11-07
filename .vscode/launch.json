@@ -8,6 +8,16 @@
             "name": "Python: Module",
             "type": "python",
             "request": "launch",
+            "module": "hic_basic.plot.render",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "/share/home/ychi/dev/hires_utils"
+            }
+        },
+        {
+            "name": "Python: Module",
+            "type": "python",
+            "request": "launch",
             "module": "hic_basic.territory",
             "justMyCode": true,
             "env": {
