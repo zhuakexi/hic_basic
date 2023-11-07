@@ -49,7 +49,7 @@ def surface_pymol(_3dg, png, tmpdir=None):
 
     # Delete the intermediate pymol script
     os.remove(script_file_path)
-def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tmpdir=None):
+def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, **args):
     """
     Generate a and run an intermediate pymol script to render surface pngs.
     Delete the intermediate script after rendering.
@@ -58,6 +58,7 @@ def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tm
         _3dg: _3dg file path
         b_factor: a 3 column tsv (chrom pos b_factor) without header
         png: output png file path
+        **args: transparent to threedg_to_cif
     """
     # Generate a random string as the intermediate pymol script name
     letters = string.ascii_lowercase
@@ -71,7 +72,7 @@ def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tm
         cif_file_path = (tmpdir / _3dg).name.with_suffix(".cif")
     else:
         cif_file_path = Path(_3dg).with_suffix(".cif")
-    threedg_to_cif(_3dg, cif_file_path, b_factor)
+    threedg_to_cif(_3dg, cif_file_path, b_factor, **args)
     # Generate the intermediate pymol script
     template_file_path = Path(__file__).parent / "b_factor.pml"
     with open(template_file_path, "r") as f:
@@ -98,16 +99,21 @@ if __name__ == "__main__":
     from io import StringIO
 
     import pandas as pd
-    cpg = pd.read_table(
-        "/share/home/ychi/software/dip-c/color/hg19.cpg.20k.txt",
-        header=None,
-        names=["chrom", "pos", "cpg"]
-    )
-    cpg["chrom"] = cpg["chrom"].apply(lambda x: "chr"+x)
-    cpg = StringIO(cpg.to_csv(sep="\t", index=False, header=False))
-    # wrap cpg to file-like object
+    # cpg
     clip_b_pymol(
         "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.20k.4.3dg",
-        cpg,
+        "/share/home/ychi/software/dip-c/color/hg19.cpg.20k.txt",
         "/share/home/ychi/dev/hic_basic/tests/output/GMO1001.clean.20k.4.cpg.png",
+        )
+    # intermingling ratio
+    intermingling_score = pd.read_csv(
+        "/shareb/ychi/repo/sperm_struct/ds_pipeline/smk/intermingle/GMO1001.R3.scores.csv.gz",
+        index_col=0
+    )[["chrom","start","multi_chrom_intermingling"]]
+    clip_b_pymol(
+        "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.20k.4.3dg",
+        StringIO(intermingling_score.to_csv(sep="\t", index=False, header=False)),
+        "/share/home/ychi/dev/hic_basic/tests/output/GMO1001.clean.20k.4.intermingling.ratio.png",
+        cmap="white red, all, 0, 1.6",
+        dupref = False
         )
