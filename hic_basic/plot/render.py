@@ -63,15 +63,13 @@ def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tm
     # Generate a random string as the intermediate pymol script name
     letters = string.ascii_lowercase
     script_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".pml")
+    _3dg = Path(_3dg)
     if tmpdir is not None:
         script_file_path = tmpdir / script_file_path
+        cif_file_path = (tmpdir / _3dg).with_suffix(".cif")
     else:
-        script_file_path = os.getcwd() / script_file_path
-    # Generate a cif file from the 3dg file
-    if tmpdir is not None:
-        cif_file_path = (tmpdir / _3dg).name.with_suffix(".cif")
-    else:
-        cif_file_path = Path(_3dg).with_suffix(".cif")
+        script_file_path = Path.cwd() / script_file_path
+        cif_file_path = (Path.cwd() / _3dg).with_suffix(".cif")
     threedg_to_cif(_3dg, cif_file_path, b_factor, **args)
     # Generate the intermediate pymol script
     template_file_path = Path(__file__).parent / "b_factor.pml"
@@ -104,6 +102,7 @@ if __name__ == "__main__":
         "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.20k.4.3dg",
         "/share/home/ychi/software/dip-c/color/hg19.cpg.20k.txt",
         "/share/home/ychi/dev/hic_basic/tests/output/GMO1001.clean.20k.4.cpg.png",
+        tmpdir="/share/home/ychi/dev/hic_basic/tests/output"
         )
     # intermingling ratio
     intermingling_score = pd.read_csv(
@@ -115,5 +114,6 @@ if __name__ == "__main__":
         StringIO(intermingling_score.to_csv(sep="\t", index=False, header=False)),
         "/share/home/ychi/dev/hic_basic/tests/output/GMO1001.clean.20k.4.intermingling.ratio.png",
         cmap="white red, all, 0, 1.6",
+        tmpdir="/share/home/ychi/dev/hic_basic/tests/output",
         dupref = False
         )
