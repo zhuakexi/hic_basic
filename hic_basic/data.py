@@ -13,7 +13,10 @@ ref_dir = Path(get_ref_dir())
 def chromosomes(genome, order=False):
     """
     Get chromosome lengths.
-    Returns:
+    Input:
+        genome: genome name or chromosome length table; string or pd.DataFrame
+        order: if True, order chromosomes by length, if list order chromosomes by the list; bool or list
+    Return:
         pandas.DataFrame
     """
     files = {
