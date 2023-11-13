@@ -63,13 +63,13 @@ def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tm
     # Generate a random string as the intermediate pymol script name
     letters = string.ascii_lowercase
     script_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".pml")
-    _3dg = Path(_3dg)
+    cif_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".cif")
     if tmpdir is not None:
         script_file_path = tmpdir / script_file_path
-        cif_file_path = (tmpdir / _3dg).with_suffix(".cif")
+        cif_file_path = tmpdir / cif_file_path
     else:
         script_file_path = Path.cwd() / script_file_path
-        cif_file_path = (Path.cwd() / _3dg).with_suffix(".cif")
+        cif_file_path = Path.cwd() / cif_file_path
     threedg_to_cif(_3dg, cif_file_path, b_factor, **args)
     # Generate the intermediate pymol script
     template_file_path = Path(__file__).parent / "b_factor.pml"
