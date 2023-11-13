@@ -49,6 +49,49 @@ def surface_pymol(_3dg, png, tmpdir=None):
 
     # Delete the intermediate pymol script
     os.remove(script_file_path)
+def clip_territory_pymol(_3dg, png, tmpdir=None, **args):
+    """
+    Generate a and run an intermediate pymol script to render slicing pngs.
+    Each chromosome has a different color, but currently only support 18 colors.
+    Delete the intermediate script and cif file after rendering.
+    Tmp file names are randomly generated.
+    Input:
+        _3dg: _3dg file path
+        png: output png file path
+        **args: transparent to threedg_to_cif
+    """
+    # Generate a random string as the intermediate pymol script name
+    letters = string.ascii_lowercase
+    script_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".pml")
+    cif_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".cif")
+    if tmpdir is not None:
+        script_file_path = tmpdir / script_file_path
+        cif_file_path = tmpdir / cif_file_path
+    else:
+        script_file_path = Path.cwd() / script_file_path
+        cif_file_path = Path.cwd() / cif_file_path
+    threedg_to_cif(_3dg, cif_file_path, **args)
+    # Generate the intermediate pymol script
+    template_file_path = Path(__file__).parent / "clip_territory.pml"
+    with open(template_file_path, "r") as f:
+        template = Template(f.read())
+    script = template.substitute(
+        cif=cif_file_path,
+        png=png
+        )
+
+    # Write the intermediate pymol script
+    with open(script_file_path, "w") as f:
+        f.write(script)
+
+    # Run the intermediate pymol script
+    #code = f"conda run --live-stream -n pymol pymol -cq {script_name}"
+    code = f"conda run -n pymol pymol -cq {script_file_path}"
+    subprocess.run(code, shell=True)
+
+    # Delete the intermediate pymol script
+    os.remove(cif_file_path)
+    os.remove(script_file_path)
 def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, **args):
     """
     Generate a and run an intermediate pymol script to render surface pngs.
@@ -97,6 +140,17 @@ if __name__ == "__main__":
     from io import StringIO
 
     import pandas as pd
+    # clip territory
+    from hires_utils.hires_io import parse_3dg
+    # replace () in chromosome name with _
+    _3dg = parse_3dg("/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.20k.4.3dg").reset_index()
+    _3dg["chr"] = _3dg["chr"].str.replace("[()]", "_", regex=True)
+    _3dg = _3dg.set_index(["chr","pos"], drop=True)
+    clip_territory_pymol(
+        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+        "/share/home/ychi/dev/hic_basic/tests/output/GMO1001.clean.20k.4.territory.png",
+        tmpdir="/share/home/ychi/dev/hic_basic/tests/output"
+        )
     # cpg
     clip_b_pymol(
         "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.20k.4.3dg",
