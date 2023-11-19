@@ -533,6 +533,111 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, balance=False):
         title = title
     )
     return figure
+def plot_compartment(coolp, eigs_file, region, title, balance=False):
+    """
+    Plot distance-normalized Hi-C correlation matrix with compartment track.
+    Input:
+        coolp: path to cooler file.
+        eigs_file: path to eigen vector file.
+        region: genome region to plot.
+        title: name of the plot.
+        balance: whether to load balanced cooler matrix.
+    """
+    clr = Cooler(str(coolp))
+    eig = pd.read_table(eigs_file)
+    bin_s, bin_e = clr.extent(region)
+    region_mat = compartments(
+        clr.matrix(balance = balance).fetch(region),
+        matrixonly = True
+    )
+    figure = make_subplots(
+        rows=2,
+        cols=2,
+        vertical_spacing=0.01,
+        horizontal_spacing=0.01,
+        row_heights = [10,2],
+        column_widths = [2,10]
+    )
+    # add heatmap
+    mat_fig = _plot_mat(region_mat,cmap="RdBu",donorm=False)
+    figure.add_trace(
+        mat_fig.data[0],
+        row=1,
+        col=2
+    )
+    # add eigen value 1
+    dat = pd.merge(
+        left = clr.bins()[bin_s:bin_e],
+        right = eig,
+        how = "inner",
+        on = ("chrom","start","end")
+    ).copy()
+    dat = dat.assign(AB = "A")
+    dat.loc[dat["E1"] <0, "AB"] = "B"
+    eigs_fig = px.bar(
+        dat, y="start", x ="E1", color="AB",
+        color_discrete_map={"A":"red","B":"blue"},
+        orientation='h'
+    )
+    eigs_fig.update_traces(
+        showlegend = False
+    )
+    for trace in eigs_fig.data:
+        figure.add_trace(trace, row=1, col=1)
+    # add eigen value 2
+    dat = pd.merge(
+        left = clr.bins()[bin_s:bin_e],
+        right = eig,
+        how = "inner",
+        on = ("chrom","start","end")
+    ).copy()
+    dat = dat.assign(AB = "A")
+    dat.loc[dat["E1"] <0, "AB"] = "B"
+    eigs_fig = px.bar(
+        dat, x="start", y ="E1", color="AB",
+        color_discrete_map={"A":"red","B":"blue"},
+        #orientation='h'
+    )
+    eigs_fig.update_traces(
+        showlegend = False
+    )
+    for trace in eigs_fig.data:
+        figure.add_trace(trace, row=2,col=2)
+    # layout  
+    ## heatmap
+    figure.update_xaxes(
+        visible=False,
+        row = 1,
+        col = 2
+    )
+    figure.update_yaxes(
+        visible=False,
+        row = 1,
+        col = 2
+    )
+    # eigen 2 (upper triangle)
+    figure.update_xaxes(
+        visible = False,
+        row = 1,
+        col = 1
+    )
+    # eigen 1 (lower triangle)
+    figure.update_yaxes(
+        visible = False,
+        row = 2,
+        col = 2
+    )
+    figure.update_layout(
+        paper_bgcolor = "white",
+        plot_bgcolor = "white",
+        height = 700,
+        width = 700,
+        title = title
+    )
+    return figure
+# --- diagonal-track plot ---
+def plot_IS(IS_file):
+    pass
 # Functions to help with plotting
 from matplotlib.ticker import EngFormatter
 bp_formatter = EngFormatter('b')
