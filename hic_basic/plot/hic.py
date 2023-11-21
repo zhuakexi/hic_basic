@@ -658,7 +658,7 @@ def plot_IS(clr,insulation_table,title,resolution=500e3,window=1.5e6,balance=Tru
         insulation_table: insulation score table.
     """
     resolution, window = int(resolution), int(window)
-    end = start + steps*window
+    end = start + steps*resolution
     region = (chrom, start, end)
     norm = LogNorm(vmax=vmax, vmin=vmin)
     data = clr.matrix(balance=balance).fetch(region)
