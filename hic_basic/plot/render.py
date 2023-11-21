@@ -19,15 +19,13 @@ def surface_pymol(_3dg, png, tmpdir=None):
     # Generate a random string as the intermediate pymol script name
     letters = string.ascii_lowercase
     script_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".pml")
+    cif_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".cif")
     if tmpdir is not None:
         script_file_path = tmpdir / script_file_path
+        cif_file_path = tmpdir / cif_file_path
     else:
-        script_file_path = os.getcwd() / script_file_path
-    # Generate a cif file from the 3dg file
-    if tmpdir is not None:
-        cif_file_path = tmpdir / _3dg.name.with_suffix(".cif")
-    else:
-        cif_file_path = _3dg.parent / _3dg.name.with_suffix(".cif")
+        script_file_path = Path.cwd() / script_file_path
+        cif_file_path = Path.cwd() / cif_file_path
     threedg_to_cif(_3dg, cif_file_path)
     # Generate the intermediate pymol script
     template_file_path = Path(__file__).parent / "surface.pml"
