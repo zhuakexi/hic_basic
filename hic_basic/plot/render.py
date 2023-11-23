@@ -45,7 +45,8 @@ def surface_pymol(_3dg, png, tmpdir=None):
     code = f"conda run -n pymol pymol -cq {script_file_path}"
     subprocess.run(code, shell=True)
 
-    # Delete the intermediate pymol script
+    # Delete the intermediate pymol script and cif file
+    os.remove(cif_file_path)
     os.remove(script_file_path)
 def clip_territory_pymol(_3dg, png, tmpdir=None, **args):
     """
@@ -87,7 +88,7 @@ def clip_territory_pymol(_3dg, png, tmpdir=None, **args):
     code = f"conda run -n pymol pymol -cq {script_file_path}"
     subprocess.run(code, shell=True)
 
-    # Delete the intermediate pymol script
+    # Delete the intermediate pymol script and cif file
     os.remove(cif_file_path)
     os.remove(script_file_path)
 def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, **args):
@@ -131,7 +132,7 @@ def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tm
     code = f"conda run -n pymol pymol -cq {script_file_path}"
     subprocess.run(code, shell=True)
 
-    # Delete the intermediate pymol script
+    # Delete the intermediate pymol script and cif file
     os.remove(cif_file_path)
     os.remove(script_file_path)
 if __name__ == "__main__":
