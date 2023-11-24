@@ -25,7 +25,7 @@ def say_cheese(plate, direction, scene):
     ray = parallel_light(plate, direction)
     ray = o3d.core.Tensor(ray,dtype=o3d.core.Dtype.Float32)
     return scene.cast_rays(ray)["t_hit"].numpy()
-def primary_views(_3dg, ngrid=16, method="ray"):
+def primary_views(_3dg, ngrid=16, method="ray", keep_main=True):
     """
     Get primary views from three orthogonal faces of the nucleus' oriented bounding box.
     Input:
@@ -38,10 +38,23 @@ def primary_views(_3dg, ngrid=16, method="ray"):
             extent: extent of the box
             name_of_vectors: names of the three major vectors and "center"
             primary_figures: 3 * 2 figures (each figure is a 2D array), 2 direction for each major vector
-    TODO: adding ray casting method
     """
     result = {}
-    mesh = _3dg2mesh(_3dg)
+
+    # --- remove wandering fragments --- #
+    # useful when sample have Y chromosome
+    points = o3d.geometry.PointCloud()
+    points.points = o3d.utility.Vector3dVector(_3dg.values)
+    if keep_main:
+        labels = np.array(points.cluster_dbscan(eps=5, min_points=40))
+        largest_cluster = np.argmax(np.bincount(labels))
+        result["bad_particles"] = np.where(labels!=largest_cluster)[0]
+        points = points.select_by_index(result["bad_particles"], invert=True)
+    else:
+        result["bad_particles"] = []
+
+    # --- generate oriented bounding box --- # 
+    mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(points, 2)
     obb = mesh.get_oriented_bounding_box()
     # get box shape
     result["extent"] = obb.extent
