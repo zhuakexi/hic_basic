@@ -7,6 +7,7 @@ import unittest
 from io import StringIO
 from pathlib import Path
 
+import pandas as pd
 import plotly.graph_objects as go
 from hic_basic.plot.render import surface_pymol
 from hic_basic.structure.measure import primary_views
@@ -51,5 +52,21 @@ class TestMeasure(unittest.TestCase):
             )
         write_lr_view(_3dg_primary_views, outpng)
         self.assertTrue(Path(outpng).exists())
+    def test_primary_views_alot(self):
+        ddir = "/share/home/ychi/dev/sperm_struct/ds_pipeline/smk/config/"
+        sample_table = pd.read_csv(
+            ddir + "PFA05_strain_schicluster_sample_table.csv.gz",
+            index_col=0
+            ).query('cell_state == "hapmal"')
+        gs = sample_table["20k_g_struct1"].dropna()[:2]
+        for _3dg_file in gs:
+            _3dg_primary_views = primary_views(
+                parse_3dg(_3dg_file),
+                ngrid = 64,
+                keep_main=True
+                )
+            outpng = os.path.join(os.path.dirname(__file__), "output", os.path.basename(_3dg_file) + "_primary_figure.png")
+            write_lr_view(_3dg_primary_views, outpng)
+            self.assertTrue(Path(outpng).exists())
 if __name__ == "__main__":
     unittest.main()

@@ -2,6 +2,7 @@ from itertools import repeat
 from copy import deepcopy
 import open3d as o3d
 import numpy as np
+import pandas as pd
 from .utils import space_grid
 def parallel_light(plate, direction):
     """
@@ -47,7 +48,9 @@ def primary_views(_3dg, ngrid=16, method="ray", keep_main=True):
     points.points = o3d.utility.Vector3dVector(_3dg.values)
     if keep_main:
         labels = np.array(points.cluster_dbscan(eps=5, min_points=40))
-        largest_cluster = np.argmax(np.bincount(labels))
+        clusters = pd.Series(labels).value_counts()
+        result["clusters"] = clusters[:5]
+        largest_cluster = clusters.index[0]
         result["bad_particles"] = np.where(labels!=largest_cluster)[0]
         points = points.select_by_index(result["bad_particles"], invert=True)
     else:
