@@ -104,6 +104,7 @@ def fetch_cent_chromlen(genome):
                 row = Bed(*(convert(value) for convert, value in zip(dtypes, row)))
                 if row.type == "centromere":
                     res.append(Cent(row.chrom, row.chromStart, row.chromEnd))
+            res.append(Cent("chrY", 4050275, 4181802)) #see https://www.ncbi.nlm.nih.gov/grc/mouse/issues/MG-4414
     cent_chromlen = {row.chrom : [row.start, row.end] for row in res}
     if genome == "mm10":
         with open(len_files[genome],"r") as f:
