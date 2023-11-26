@@ -259,13 +259,13 @@ def centelo_relpos(_3dg, genome, dupref=False):
         b_factor.append(relpos)
     b_factor = pd.DataFrame({"chrom":_3dg.index.get_level_values(0), "pos":_3dg.index.get_level_values(1), "b_factor":b_factor})
     return b_factor
-def surface_centelo_pymol(_3dg, png, genome="mm10", tmpdir=None, cif_name=None, dupref=False, **args):
+def surface_centelo_pymol(_3dg_file, png, genome="mm10", tmpdir=None, cif_name=None, dupref=False, **args):
     """
     Generate a and run an intermediate pymol script to render centelo surface pngs.
     Delete the intermediate script after rendering.
     Script name is randomly generated.
     Input:
-        _3dg: _3dg file path
+        _3dg_file: _3dg file path
         png: output png file path
         genome: genome name, used to fetch centromere position
         tmpdir: directory to save intermediate files
@@ -287,11 +287,12 @@ def surface_centelo_pymol(_3dg, png, genome="mm10", tmpdir=None, cif_name=None, 
         cif_file_path = cif_name
     
     # --- prepare centelo relative position as b factor --- #
-    b_factor = centelo_relpos(parse_3dg(_3dg), genome, dupref)
+    _3dg = parse_3dg(_3dg_file)
+    b_factor = centelo_relpos(_3dg, genome, dupref)
 
     # --- dump cif file --- #
     threedg_to_cif(
-        _3dg,
+        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)), # rewrap because _3dg_file maybe stringio
         cif_file_path,
         StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
         **args
@@ -321,13 +322,13 @@ def surface_centelo_pymol(_3dg, png, genome="mm10", tmpdir=None, cif_name=None, 
     else:
         pass
     os.remove(script_file_path)
-def clip_centelo_pymol(_3dg, png, genome="mm10", clip=0, tmpdir=None, cif_name=None, dupref=False, **args):
+def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, tmpdir=None, cif_name=None, dupref=False, **args):
     """
     Generate a and run an intermediate pymol script to render centelo clip pngs.
     Delete the intermediate script after rendering.
     Script name is randomly generated.
     Input:
-        _3dg: _3dg file path
+        _3dg_file: _3dg file path
         png: output png file path
         genome: genome name, used to fetch centromere position
         tmpdir: directory to save intermediate files
@@ -349,11 +350,12 @@ def clip_centelo_pymol(_3dg, png, genome="mm10", clip=0, tmpdir=None, cif_name=N
         cif_file_path = cif_name
     
     # --- prepare centelo relative position as b factor --- #
-    b_factor = centelo_relpos(parse_3dg(_3dg), genome, dupref)
+    _3dg = parse_3dg(_3dg_file)
+    b_factor = centelo_relpos(_3dg, genome, dupref)
 
     # --- dump cif file --- #
     threedg_to_cif(
-        _3dg,
+        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
         cif_file_path,
         StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
         **args
