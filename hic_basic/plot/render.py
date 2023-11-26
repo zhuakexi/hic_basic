@@ -6,8 +6,10 @@ from pathlib import Path
 from string import Template
 from tempfile import NamedTemporaryFile
 
-from hires_utils.mmcif import threedg_to_cif
-def surface_pymol(_3dg, png, tmpdir=None):
+from hic_basic.data import fetch_cent_chromlen
+from hires_utils.mmcif import threedg_to_cif, chrom_rm_suffix
+# --- basic modes --- #
+def surface_territory_pymol(_3dg, png, tmpdir=None):
     """
     Generate a and run an intermediate pymol script to render surface pngs.
     Delete the intermediate script after rendering.
@@ -28,7 +30,7 @@ def surface_pymol(_3dg, png, tmpdir=None):
         cif_file_path = Path.cwd() / cif_file_path
     threedg_to_cif(_3dg, cif_file_path)
     # Generate the intermediate pymol script
-    template_file_path = Path(__file__).parent / "surface.pml"
+    template_file_path = Path(__file__).parent / "surface_territory.pml"
     with open(template_file_path, "r") as f:
         template = Template(f.read())
     script = template.substitute(
@@ -91,6 +93,50 @@ def clip_territory_pymol(_3dg, png, tmpdir=None, **args):
     # Delete the intermediate pymol script and cif file
     os.remove(cif_file_path)
     os.remove(script_file_path)
+def surface_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, **args):
+    """
+    Generate a and run an intermediate pymol script to render surface pngs, color by b factor.
+    Delete the intermediate script after rendering.
+    Script name is randomly generated.
+    Input:
+        _3dg: _3dg file path
+        b_factor: a 3 column tsv (chrom pos b_factor) without header
+        png: output png file path
+        **args: transparent to threedg_to_cif
+    """
+    # Generate a random string as the intermediate pymol script name
+    letters = string.ascii_lowercase
+    script_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".pml")
+    cif_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".cif")
+    if tmpdir is not None:
+        script_file_path = tmpdir / script_file_path
+        cif_file_path = tmpdir / cif_file_path
+    else:
+        script_file_path = Path.cwd() / script_file_path
+        cif_file_path = Path.cwd() / cif_file_path
+    threedg_to_cif(_3dg, cif_file_path, b_factor, **args)
+    # Generate the intermediate pymol script
+    template_file_path = Path(__file__).parent / "surface_b_factor.pml"
+    with open(template_file_path, "r") as f:
+        template = Template(f.read())
+    script = template.substitute(
+        cif=cif_file_path,
+        png=png,
+        cmap=cmap
+        )
+
+    # Write the intermediate pymol script
+    with open(script_file_path, "w") as f:
+        f.write(script)
+
+    # Run the intermediate pymol script
+    #code = f"conda run --live-stream -n pymol pymol -cq {script_name}"
+    code = f"conda run -n pymol pymol -cq {script_file_path}"
+    subprocess.run(code, shell=True)
+
+    # Delete the intermediate pymol script and cif file
+    os.remove(cif_file_path)
+    os.remove(script_file_path)
 def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, **args):
     """
     Generate a and run an intermediate pymol script to render surface pngs.
@@ -114,7 +160,7 @@ def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tm
         cif_file_path = Path.cwd() / cif_file_path
     threedg_to_cif(_3dg, cif_file_path, b_factor, **args)
     # Generate the intermediate pymol script
-    template_file_path = Path(__file__).parent / "b_factor.pml"
+    template_file_path = Path(__file__).parent / "clip_b_factor.pml"
     with open(template_file_path, "r") as f:
         template = Template(f.read())
     script = template.substitute(
@@ -134,6 +180,81 @@ def clip_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tm
 
     # Delete the intermediate pymol script and cif file
     os.remove(cif_file_path)
+    os.remove(script_file_path)
+# --- useful modes --- #
+def surface_centelo_pymol(_3dg, png, genome="mm10", tmpdir=None, cif_name=None, dupref=False, **args):
+    """
+    Generate a and run an intermediate pymol script to render centelo surface pngs.
+    Delete the intermediate script after rendering.
+    Script name is randomly generated.
+    Input:
+        _3dg: _3dg file path
+        png: output png file path
+        genome: genome name, used to fetch centromere position
+        tmpdir: directory to save intermediate files
+        cif_name: cif file path to dump, if None, a random name will be generated and removed after rendering
+        dupref: whether to annote diploid genome with haploid reference
+        **args: transparent to threedg_to_cif
+    """
+    # Generate a random string as the intermediate pymol script name
+    letters = string.ascii_lowercase
+    script_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".pml")
+    cif_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".cif")
+    if tmpdir is not None:
+        script_file_path = tmpdir / script_file_path
+        cif_file_path = tmpdir / cif_file_path
+    else:
+        script_file_path = Path.cwd() / script_file_path
+        cif_file_path = Path.cwd() / cif_file_path
+    if cif_name is not None:
+        cif_file_path = cif_name
+    
+    # --- prepare centelo relative position as b factor --- #
+    centromeres = fetch_cent_chromlen(genome)
+    b_factor = []
+    for chrom, pos in _3dg.index:
+        if dupref:
+            chrom = chrom_rm_suffix(chrom)
+        if pos < centromeres[chrom][0]:
+             # left arm
+            relpos = (centromeres[chrom][0] - pos) / (centromeres[chrom][0] - 0 )
+        elif pos > centromeres[chrom][1]:
+             # right arm
+            relpos = (pos - centromeres[chrom][1]) / (centromeres[chrom][2] - centromeres[chrom][1])
+        else:
+            # centromere
+            relpos = 0
+        b_factor.append(relpos)
+    b_factor = pd.DataFrame({"chrom":_3dg.index.get_level_values(0), "pos":_3dg.index.get_level_values(1), "b_factor":b_factor})
+    threedg_to_cif(
+        _3dg,
+        cif_file_path,
+        StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
+        **args
+        )
+    # Generate the intermediate pymol script
+    template_file_path = Path(__file__).parent / "surface_b_fator.pml"
+    with open(template_file_path, "r") as f:
+        template = Template(f.read())
+    script = template.substitute(
+        cif=cif_file_path,
+        png=png
+        )
+
+    # Write the intermediate pymol script
+    with open(script_file_path, "w") as f:
+        f.write(script)
+
+    # Run the intermediate pymol script
+    #code = f"conda run --live-stream -n pymol pymol -cq {script_name}"
+    code = f"conda run -n pymol pymol -cq {script_file_path}"
+    subprocess.run(code, shell=True)
+
+    # Delete the intermediate pymol script and cif file
+    if cif_name is None:
+        os.remove(cif_file_path)
+    else:
+        pass
     os.remove(script_file_path)
 if __name__ == "__main__":
     from io import StringIO
