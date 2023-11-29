@@ -1,0 +1,22 @@
+{
+    "name" : "hic_basic",
+    "image": "zhuakexi/hic_basic:v0.4",
+    "runArgs": ["--rm", "-it"],
+    "mounts": [
+        "type=bind,source=/share/Data/ychi,target=/share/Data/ychi",
+        "type=bind,source=/share/home/ychi,target=/share/home/ychi",
+        "type=bind,source=/shareb/ychi,target=/shareb/ychi",
+        "type=bind,source=/sharec/ychi,target=/sharec/ychi"
+      ],
+    "workspaceFolder": "/share/home/ychi/dev/hic_basic",
+	"workspaceMount": "source=/share/home/ychi/dev/hic_basic,target=/share/home/ychi/dev/hic_basic,type=bind,consistency=cached",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"GitHub.copilot"
+			]
+		}
+	},
+
+}
