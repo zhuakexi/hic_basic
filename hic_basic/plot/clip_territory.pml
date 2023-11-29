@@ -12,7 +12,7 @@ load $cif, molecule
 
 # --- shading ---
 viewport 800, 800
-clip slab, 10
+clip slab, 1
 clip move, $clip
 set ray_shadows,0
 set ambient, 1
