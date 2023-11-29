@@ -10,7 +10,7 @@ from pathlib import Path
 
 import plotly.graph_objects as go
 from hic_basic.plot.render import surface_territory_pymol, surface_b_pymol, clip_b_pymol, \
-    surface_centelo_pymol, clip_centelo_pymol, highlight_surface_b_pymol
+    surface_centelo_pymol, clip_centelo_pymol, highlight_surface_b_pymol, clip_single_centelo_pymol
 from hires_utils.hires_io import parse_3dg
 from hic_basic.structure.measure import primary_views
 from lib.struct import sig_primary_coords
@@ -89,6 +89,19 @@ class TestRender(unittest.TestCase):
             "/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg",
             outpng,
             "mm10",
+            tmpdir=os.path.join(os.path.dirname(__file__), "output")
+            )
+        self.assertTrue(Path(outpng).exists())
+    def test_clip_single_centelo_pymol(self):
+        print("Test_clip_single_centelo_pymol")
+        outpng = os.path.join(os.path.dirname(__file__), "output", "clip_single_centelo_pymol.png")
+        # centelo
+        clip_single_centelo_pymol(
+            "/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg",
+            outpng,
+            ["chrX","chrY"],
+            "mm10",
+            clip=1,
             tmpdir=os.path.join(os.path.dirname(__file__), "output")
             )
         self.assertTrue(Path(outpng).exists())
