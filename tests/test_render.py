@@ -10,7 +10,8 @@ from pathlib import Path
 
 import plotly.graph_objects as go
 from hic_basic.plot.render import surface_territory_pymol, surface_b_pymol, clip_b_pymol, \
-    surface_centelo_pymol, clip_centelo_pymol, highlight_surface_b_pymol, clip_single_centelo_pymol
+    surface_centelo_pymol, clip_centelo_pymol, highlight_surface_b_pymol, clip_single_centelo_pymol, \
+    centelo_relpos
 from hires_utils.hires_io import parse_3dg
 from hic_basic.structure.measure import primary_views
 from lib.struct import sig_primary_coords
@@ -23,6 +24,11 @@ class TestRender(unittest.TestCase):
     """
     Test the render module.
     """
+    # --- test helper functions ---
+    def test_centelo_relpos(self):
+        _3dg = parse_3dg("/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg")
+        b_factor = centelo_relpos(_3dg, "mm10")
+        self.assertTrue(b_factor.shape[0] == _3dg.shape[0])
     # --- test basic functions ---
     def test_surface_territory_pymol(self):
         """
@@ -33,7 +39,8 @@ class TestRender(unittest.TestCase):
         surface_territory_pymol(
             please_pymol("/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.1m.4.3dg"),
             outpng,
-            tmpdir=os.path.join(os.path.dirname(__file__), "output")
+            tmpdir=os.path.join(os.path.dirname(__file__), "output"),
+            conda=None
             )
         self.assertTrue(Path(outpng).exists())
     def test_surface_b_pymol(self):
