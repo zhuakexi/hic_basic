@@ -27,7 +27,7 @@ class TestRender(unittest.TestCase):
     # --- test helper functions ---
     def test_centelo_relpos(self):
         _3dg = parse_3dg("/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg")
-        b_factor = centelo_relpos(_3dg, "mm10")
+        b_factor = centelo_relpos(_3dg.index, "mm10")
         self.assertTrue(b_factor.shape[0] == _3dg.shape[0])
     # --- test basic functions ---
     def test_surface_territory_pymol(self):
@@ -51,7 +51,8 @@ class TestRender(unittest.TestCase):
             "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.1m.4.3dg",
             "/share/home/ychi/software/dip-c/color/hg19.cpg.1m.txt",
             outpng,
-            tmpdir=os.path.join(os.path.dirname(__file__), "output")
+            tmpdir=os.path.join(os.path.dirname(__file__), "output"),
+            conda=None
             )
         self.assertTrue(Path(outpng).exists())
     def test_clip_b_pymol(self):
@@ -62,7 +63,8 @@ class TestRender(unittest.TestCase):
             "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.1m.4.3dg",
             "/share/home/ychi/software/dip-c/color/hg19.cpg.1m.txt",
             outpng,
-            tmpdir=os.path.join(os.path.dirname(__file__), "output")
+            tmpdir=os.path.join(os.path.dirname(__file__), "output"),
+            conda=None
             )
         self.assertTrue(Path(outpng).exists())
     def test_highlight_b_pymol(self):
@@ -73,7 +75,8 @@ class TestRender(unittest.TestCase):
             "/share/home/ychi/software/dip-c/color/hg19.cpg.1m.txt",
             "chrX_mat_",
             outpng,
-            tmpdir=os.path.join(os.path.dirname(__file__), "output")
+            tmpdir=os.path.join(os.path.dirname(__file__), "output"),
+            conda=None
             )
         self.assertTrue(Path(outpng).exists())
     # --- test useful functions ---
@@ -85,7 +88,8 @@ class TestRender(unittest.TestCase):
             "/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg",
             outpng,
             "mm10",
-            tmpdir=os.path.join(os.path.dirname(__file__), "output")
+            tmpdir=os.path.join(os.path.dirname(__file__), "output"),
+            conda=None
             )
         self.assertTrue(Path(outpng).exists())
     def test_clip_centelo_pymol(self):
@@ -96,7 +100,8 @@ class TestRender(unittest.TestCase):
             "/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg",
             outpng,
             "mm10",
-            tmpdir=os.path.join(os.path.dirname(__file__), "output")
+            tmpdir=os.path.join(os.path.dirname(__file__), "output"),
+            conda=None
             )
         self.assertTrue(Path(outpng).exists())
     def test_clip_single_centelo_pymol(self):
@@ -109,7 +114,8 @@ class TestRender(unittest.TestCase):
             ["chrX","chrY"],
             "mm10",
             clip=1,
-            tmpdir=os.path.join(os.path.dirname(__file__), "output")
+            tmpdir=os.path.join(os.path.dirname(__file__), "output"),
+            conda=None
             )
         self.assertTrue(Path(outpng).exists())
 if __name__ == "__main__":

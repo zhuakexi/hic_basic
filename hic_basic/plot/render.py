@@ -47,11 +47,11 @@ class PyMolRender:
             return self.tmpdir / file_path
         else:
             return Path.cwd() / file_path
-    def gen_cif(self, _3dg, **kwargs):
+    def gen_cif(self, _3dg, *args, **kwargs):
         """
         Rewrite the intermediate cif file with the given kwargs.
         """
-        threedg_to_cif(_3dg, self.cif_file_path, **kwargs)
+        threedg_to_cif(_3dg, self.cif_file_path, *args, **kwargs)
         return self.cif_file_path
     def gen_script(self, **kwargs):
         """
@@ -300,11 +300,10 @@ def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, tmpdir=None, cif_n
             )
         render.render()
         return png
-def single_centelo_relpos(_3dg, genome, target_chroms, dupref=False):
+def single_centelo_relpos(positions_2col, genome, target_chroms, dupref=False):
     centromeres = fetch_cent_chromlen(genome)
     b_factor = []
-    for chrom, pos in _3dg.index:
-
+    for chrom, pos in positions_2col:
         if dupref:
             chrom = chrom_rm_suffix(chrom)
         else:
@@ -334,7 +333,7 @@ def single_centelo_relpos(_3dg, genome, target_chroms, dupref=False):
             relpos = 0
         b_factor.append(relpos)
     b_factor = pd.DataFrame(
-        list(zip(*zip(*_3dg.index), b_factor)),
+        list(zip(*zip(*positions_2col), b_factor)),
         columns=["chrom","pos","b_factor"]
     )
     return b_factor
@@ -354,7 +353,7 @@ def clip_single_centelo_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], gen
         **args: transparent to threedg_to_cif
     """
     _3dg = parse_3dg(_3dg_file)
-    b_factor = single_centelo_relpos(_3dg, genome, target_chroms, dupref)
+    b_factor = single_centelo_relpos(_3dg.index, genome, target_chroms, dupref)
     with PyMolRender(
         Path(__file__).parent / "pml" / "clip_b_factor.pml",
         png, tmpdir, conda
