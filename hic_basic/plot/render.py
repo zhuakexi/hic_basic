@@ -1,5 +1,6 @@
 import os
 import random
+import shutil
 import string
 import subprocess
 from io import StringIO
@@ -51,6 +52,7 @@ class PyMolRender:
         Rewrite the intermediate cif file with the given kwargs.
         """
         threedg_to_cif(_3dg, self.cif_file_path, **kwargs)
+        return self.cif_file_path
     def gen_script(self, **kwargs):
         """
         Rewrite the intermediate pymol script with the given kwargs.
@@ -235,11 +237,10 @@ def centelo_relpos(positions_2col, genome, dupref=False):
         columns=["chrom","pos","b_factor"]
     )
     return b_factor
-def surface_centelo_pymol(_3dg_file, png, genome="mm10", tmpdir=None, cif_name=None, dupref=False, **args):
+def surface_centelo_pymol(_3dg_file, png, genome="mm10", tmpdir=None, 
+                          cif_name=None, dupref=False, conda="pymol", **args):
     """
-    Generate a and run an intermediate pymol script to render centelo surface pngs.
-    Delete the intermediate script after rendering.
-    Script name is randomly generated.
+    Render clip view, color centromere-telomere.
     Input:
         _3dg_file: _3dg file path
         png: output png file path
@@ -249,60 +250,27 @@ def surface_centelo_pymol(_3dg_file, png, genome="mm10", tmpdir=None, cif_name=N
         dupref: whether to annote diploid genome with haploid reference
         **args: transparent to threedg_to_cif
     """
-    # Generate a random string as the intermediate pymol script name
-    letters = string.ascii_lowercase
-    script_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".pml")
-    cif_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".cif")
-    if tmpdir is not None:
-        script_file_path = tmpdir / script_file_path
-        cif_file_path = tmpdir / cif_file_path
-    else:
-        script_file_path = Path.cwd() / script_file_path
-        cif_file_path = Path.cwd() / cif_file_path
-    if cif_name is not None:
-        cif_file_path = cif_name
-    
-    # --- prepare centelo relative position as b factor --- #
     _3dg = parse_3dg(_3dg_file)
     b_factor = centelo_relpos(_3dg.index, genome, dupref)
-
-    # --- dump cif file --- #
-    threedg_to_cif(
-        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)), # rewrap because _3dg_file maybe stringio
-        cif_file_path,
-        StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
-        **args
-        )
-    
-    # --- Generate the intermediate pymol script --- #
-    template_file_path = Path(__file__).parent / "surface_b_factor.pml"
-    with open(template_file_path, "r") as f:
-        template = Template(f.read())
-    script = template.substitute(
-        cif=cif_file_path,
-        png=png,
-        cmap="blue_white_red, all, 0, 1"
-        )
-    # Write the intermediate pymol script
-    with open(script_file_path, "w") as f:
-        f.write(script)
-
-    # Run the intermediate pymol script
-    #code = f"conda run --live-stream -n pymol pymol -cq {script_name}"
-    code = f"conda run -n pymol pymol -cq {script_file_path}"
-    subprocess.run(code, shell=True)
-
-    # Delete the intermediate pymol script and cif file
-    if cif_name is None:
-        os.remove(cif_file_path)
-    else:
-        pass
-    os.remove(script_file_path)
-def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, tmpdir=None, cif_name=None, dupref=False, **args):
+    with PyMolRender(
+        Path(__file__).parent / "pml" / "surface_b_factor.pml",
+        png, tmpdir, conda
+        ) as render:
+        tmp_cif = render.gen_cif(
+            StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+            StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
+            **args
+            )
+        if cif_name is not None:
+            shutil.copy(tmp_cif, cif_name)
+        render.gen_script(
+            cmap="blue_white_red, all, 0, 1"
+            )
+        render.render()
+        return png
+def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, tmpdir=None, cif_name=None, dupref=False, conda="pymol", **args):
     """
-    Generate a and run an intermediate pymol script to render centelo clip pngs.
-    Delete the intermediate script after rendering.
-    Script name is randomly generated.
+    Render clip view, color centromere-telomere.
     Input:
         _3dg_file: _3dg file path
         png: output png file path
@@ -310,58 +278,28 @@ def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, tmpdir=None, cif_n
         tmpdir: directory to save intermediate files
         cif_name: cif file path to dump, if None, a random name will be generated and removed after rendering
         dupref: whether to annote diploid genome with haploid reference
+        conda: conda environment name, None for no conda
         **args: transparent to threedg_to_cif
     """
-    # Generate a random string as the intermediate pymol script name
-    letters = string.ascii_lowercase
-    script_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".pml")
-    cif_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".cif")
-    if tmpdir is not None:
-        script_file_path = tmpdir / script_file_path
-        cif_file_path = tmpdir / cif_file_path
-    else:
-        script_file_path = Path.cwd() / script_file_path
-        cif_file_path = Path.cwd() / cif_file_path
-    if cif_name is not None:
-        cif_file_path = cif_name
-    
-    # --- prepare centelo relative position as b factor --- #
     _3dg = parse_3dg(_3dg_file)
-    b_factor = centelo_relpos(_3dg, genome, dupref)
-
-    # --- dump cif file --- #
-    threedg_to_cif(
-        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
-        cif_file_path,
-        StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
-        **args
-        )
-    
-    # --- Generate the intermediate pymol script --- #
-    template_file_path = Path(__file__).parent / "clip_b_factor.pml"
-    with open(template_file_path, "r") as f:
-        template = Template(f.read())
-    script = template.substitute(
-        cif=cif_file_path,
-        png=png,
-        cmap="blue_white_red, all, 0, 1",
-        clip=clip
-        )
-    # Write the intermediate pymol script
-    with open(script_file_path, "w") as f:
-        f.write(script)
-
-    # Run the intermediate pymol script
-    #code = f"conda run --live-stream -n pymol pymol -cq {script_name}"
-    code = f"conda run -n pymol pymol -cq {script_file_path}"
-    subprocess.run(code, shell=True)
-
-    # Delete the intermediate pymol script and cif file
-    if cif_name is None:
-        os.remove(cif_file_path)
-    else:
-        pass
-    os.remove(script_file_path)
+    b_factor = centelo_relpos(_3dg.index, genome, dupref)
+    with PyMolRender(
+        Path(__file__).parent / "pml" / "clip_b_factor.pml",
+        png, tmpdir, conda
+        ) as render:
+        tmp_cif = render.gen_cif(
+            StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+            StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
+            **args
+            )
+        if cif_name is not None:
+            shutil.copy(tmp_cif, cif_name)
+        render.gen_script(
+            cmap="blue_white_red, all, 0, 1",
+            clip=clip
+            )
+        render.render()
+        return png
 def single_centelo_relpos(_3dg, genome, target_chroms, dupref=False):
     centromeres = fetch_cent_chromlen(genome)
     b_factor = []
@@ -395,73 +333,45 @@ def single_centelo_relpos(_3dg, genome, target_chroms, dupref=False):
             # centromere
             relpos = 0
         b_factor.append(relpos)
-    b_factor = pd.DataFrame({"chrom":_3dg.index.get_level_values(0), "pos":_3dg.index.get_level_values(1), "b_factor":b_factor})
+    b_factor = pd.DataFrame(
+        list(zip(*zip(*_3dg.index), b_factor)),
+        columns=["chrom","pos","b_factor"]
+    )
     return b_factor
-def clip_single_centelo_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], genome="mm10", clip=0, tmpdir=None, cif_name=None, dupref=False, **args):
+def clip_single_centelo_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], genome="mm10",
+                              clip=0, tmpdir=None, cif_name=None, dupref=False, conda="pymol", **args):
     """
-    Generate a and run an intermediate pymol script to render centelo clip pngs.
-    Delete the intermediate script after rendering.
-    Script name is randomly generated.
+    Render clip view, color centromere-telomere of target chromosomes. Other chromosomes are set to 0.5/white.
     Input:
         _3dg_file: _3dg file path
         png: output png file path
+        target_chroms: chromosomes to color; list
         genome: genome name, used to fetch centromere position
+        clip: clip position 0 for middle, negative for more back, positive for more front
         tmpdir: directory to save intermediate files
         cif_name: cif file path to dump, if None, a random name will be generated and removed after rendering
         dupref: whether to annote diploid genome with haploid reference
         **args: transparent to threedg_to_cif
     """
-    # Generate a random string as the intermediate pymol script name
-    letters = string.ascii_lowercase
-    script_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".pml")
-    cif_file_path = Path("".join(random.choice(letters) for i in range(10)) + ".cif")
-    if tmpdir is not None:
-        script_file_path = tmpdir / script_file_path
-        cif_file_path = tmpdir / cif_file_path
-    else:
-        script_file_path = Path.cwd() / script_file_path
-        cif_file_path = Path.cwd() / cif_file_path
-    if cif_name is not None:
-        cif_file_path = cif_name
-    
-    # --- prepare centelo relative position as b factor --- #
     _3dg = parse_3dg(_3dg_file)
     b_factor = single_centelo_relpos(_3dg, genome, target_chroms, dupref)
-
-    # --- dump cif file --- #
-    threedg_to_cif(
-        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
-        cif_file_path,
-        StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
-        **args
-        )
-    
-    # --- Generate the intermediate pymol script --- #
-    template_file_path = Path(__file__).parent / "clip_b_factor.pml"
-    with open(template_file_path, "r") as f:
-        template = Template(f.read())
-    script = template.substitute(
-        cif=cif_file_path,
-        png=png,
-        cmap="blue_white_red, all, 0, 1",
-        clip=clip
-        )
-    # Write the intermediate pymol script
-    with open(script_file_path, "w") as f:
-        f.write(script)
-
-    # Run the intermediate pymol script
-    #code = f"conda run --live-stream -n pymol pymol -cq {script_name}"
-    code = f"conda run -n pymol pymol -cq {script_file_path}"
-    subprocess.run(code, shell=True)
-
-    # Delete the intermediate pymol script and cif file
-    if cif_name is None:
-        os.remove(cif_file_path)
-    else:
-        pass
-    os.remove(script_file_path)
-
+    with PyMolRender(
+        Path(__file__).parent / "pml" / "clip_b_factor.pml",
+        png, tmpdir, conda
+        ) as render:
+        tmp_cif = render.gen_cif(
+            StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+            StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
+            **args
+            )
+        if cif_name is not None:
+            shutil.copy(tmp_cif, cif_name)
+        render.gen_script(
+            cmap="blue_white_red, all, 0, 1",
+            clip=clip
+            )
+        render.render()
+        return png
 if __name__ == "__main__":
     from io import StringIO
 
