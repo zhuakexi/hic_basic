@@ -1,14 +1,42 @@
+import csv
+import gzip
+import json
+import os
+from collections import namedtuple
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-import os
-import json
-from pathlib import Path
+from hires_utils.mmcif import chrom_rm_suffix
+
 from .hicio import get_ref_dir, load_json
 from .utils import two_sets
-import gzip
-from collections import namedtuple
-import csv
 ref_dir = Path(get_ref_dir())
+# --- data manipulates ---
+def dupref_annote(bins, ref):
+    """
+    Annotate diploid genome with haploid ref
+    Input:
+        bins: pd.DataFrame, 2-level index
+        ref: pd.DataFrame, 2-level index
+    Output:
+        pd.DataFrame, 3dg with ref
+    """
+    bins.index.names = ["chrom","start"]
+    ref.index.names = ["chrom","start"]
+
+    bins = bins.reset_index()
+    ref = ref.reset_index()
+    bins = bins.assign(new_chrom=chrom_rm_suffix(bins["chrom"]))
+    ref.rename(columns={"chrom":"new_chrom"}, inplace=True)
+    bins = pd.merge(
+        bins,
+        ref,
+        on = ["new_chrom","start"],
+        how = "left"
+        ).drop(columns=["new_chrom"])
+    bins = bins.set_index(["chrom","start"])
+    return bins    
 # --- basic genome features ---
 def chromosomes(genome, order=False):
     """
