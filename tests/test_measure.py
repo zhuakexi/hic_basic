@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
-from hic_basic.plot.render import surface_pymol
 from hic_basic.structure.measure import primary_views
 from hires_utils.hires_io import parse_3dg
 def write_lr_view(_3dg_primary_views, outpng):
