@@ -105,6 +105,8 @@ def fetch_cent_chromlen(genome):
                 if row.type == "centromere":
                     res.append(Cent(row.chrom, row.chromStart, row.chromEnd))
             res.append(Cent("chrY", 4050275, 4181802)) #see https://www.ncbi.nlm.nih.gov/grc/mouse/issues/MG-4414
+    else:
+        raise ValueError("Only mm10 is supported for now.")
     cent_chromlen = {row.chrom : [row.start, row.end] for row in res}
     if genome == "mm10":
         with open(len_files[genome],"r") as f:
