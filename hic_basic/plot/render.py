@@ -90,7 +90,7 @@ def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol"):
         render.gen_script()
         render.render()
     return png
-def clip_territory_pymol(_3dg, png, clip=0, tmpdir=None, conda="pymol", **args):
+def clip_territory_pymol(_3dg, png, clip=0, slab=2, tmpdir=None, conda="pymol", **args):
     """
     Render clip view, color by each chromosome.
     Input:
@@ -106,7 +106,10 @@ def clip_territory_pymol(_3dg, png, clip=0, tmpdir=None, conda="pymol", **args):
         png, tmpdir,conda
         ) as render:
         render.gen_cif(_3dg, **args)
-        render.gen_script(clip=clip)
+        render.gen_script(
+            clip=clip,
+            slab=slab
+            )
         render.render()
 def surface_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, conda="pymol", **args):
     """
@@ -127,7 +130,7 @@ def surface_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02",
         render.gen_cif(_3dg, b_factor, **args)
         render.gen_script(cmap=cmap)
         render.render()
-def clip_b_pymol(_3dg, b_factor, png, clip=0, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, conda="pymol", **args):
+def clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, conda="pymol", **args):
     """
     Render clip view, color by b factor.
     Input:
@@ -145,7 +148,7 @@ def clip_b_pymol(_3dg, b_factor, png, clip=0, cmap="magenta green, all, 0.005, 0
         png, tmpdir, conda
         ) as render:
         render.gen_cif(_3dg, b_factor, **args)
-        render.gen_script(cmap=cmap, clip=clip)
+        render.gen_script(cmap=cmap, clip=clip, slab=slab)
         render.render()
 def highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap="magenta green, chain {}, 0.005, 0.02", tmpdir=None, conda="pymol", **args):
     """
@@ -171,7 +174,7 @@ def highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap="magenta green, c
             )
         render.render()
 # --- useful modes --- #
-def clip_single_territory_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], clip=0, tmpdir=None, conda="pymol", **args):
+def clip_single_territory_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], clip=0, slab=2, tmpdir=None, conda="pymol", **args):
     """
     Render clip view, only color target chromosomes.
     Input:
@@ -205,7 +208,8 @@ def clip_single_territory_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], c
             )
         render.gen_script(
             cmap="white_magenta, all, 0, 1",
-            clip=clip
+            clip=clip,
+            slab=slab
             )
         render.render()
 def centelo_relpos(positions_2col, genome, dupref=False):
@@ -268,7 +272,7 @@ def surface_centelo_pymol(_3dg_file, png, genome="mm10", tmpdir=None,
             )
         render.render()
         return png
-def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, tmpdir=None, cif_name=None, dupref=False, conda="pymol", **args):
+def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda="pymol", **args):
     """
     Render clip view, color centromere-telomere.
     Input:
@@ -296,7 +300,8 @@ def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, tmpdir=None, cif_n
             shutil.copy(tmp_cif, cif_name)
         render.gen_script(
             cmap="blue_white_red, all, 0, 1",
-            clip=clip
+            clip=clip,
+            slab=slab
             )
         render.render()
         return png
@@ -338,7 +343,7 @@ def single_centelo_relpos(positions_2col, genome, target_chroms, dupref=False):
     )
     return b_factor
 def clip_single_centelo_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], genome="mm10",
-                              clip=0, tmpdir=None, cif_name=None, dupref=False, conda="pymol", **args):
+                              clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda="pymol", **args):
     """
     Render clip view, color centromere-telomere of target chromosomes. Other chromosomes are set to 0.5/white.
     Input:
@@ -367,7 +372,8 @@ def clip_single_centelo_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], gen
             shutil.copy(tmp_cif, cif_name)
         render.gen_script(
             cmap="blue_white_red, all, 0, 1",
-            clip=clip
+            clip=clip,
+            slab=slab
             )
         render.render()
         return png
