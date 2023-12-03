@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from hires_utils.mmcif import chrom_rm_suffix
+from hires_utils.mmcif import chrom_rm_suffix, chrom_rm_prefix
 
 from .hicio import get_ref_dir, load_json
 from .utils import two_sets
@@ -28,7 +28,11 @@ def dupref_annote(bins, ref):
     bins = bins.reset_index()
     ref = ref.reset_index()
     bins = bins.assign(new_chrom=chrom_rm_suffix(bins["chrom"]))
-    ref.rename(columns={"chrom":"new_chrom"}, inplace=True)
+    # for chr1<->1 inconsistency
+    bins["new_chrom"] = chrom_rm_prefix(bins["new_chrom"])
+    # strip chr, assume ref is haploid so don't need to strip suffix
+    ref = ref.assign(new_chrom=chrom_rm_prefix(ref["chrom"])) 
+    ref = ref.drop(columns=["chrom"])
     bins = pd.merge(
         bins,
         ref,
