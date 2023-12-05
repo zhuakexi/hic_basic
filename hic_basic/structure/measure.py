@@ -104,20 +104,55 @@ def primary_views(_3dg, ngrid=16, method="ray", keep_main=True):
         result["primary_figures"] = primary_figures
     return result
     # obb.R * obb.extent.reshape(1,3) * 0.5 # vectors with proper lengths
-def _3dg2mesh(_3dg):
+def _3dg2mesh(_3dg, method="convex_hull", watertight=False, **args):
     """
     Convert 3dg data structure to mesh.
     Input:
-        inner _3dg data structure (parsing from hickit output .3dg file)
+        _3dg: _3dg data structure (parsing from hickit output .3dg file)
+        method: method to generate mesh, one of ["convex_hull", "alpha_shape", "poisson"]
+        watertight: whether to force watertight
     Output:
         mesh
+    TODO: make poisson and alpha_shape watertight
     """
+    # --- generate point cloud ---
     xyz = _3dg.values # (N, 3)
-    # generate point cloud
     points = o3d.geometry.PointCloud()
     points.points = o3d.utility.Vector3dVector(xyz)
-    # build mesh from point cloud
-    mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(points, 2)
+    # --- build mesh from point cloud ---
+    default_args = {
+        "alpha_shape" : {"alpha" : 2},
+        "convex_hull" : {},
+        "poisson" : {"depth":9, "n_threads":8},
+    }
+    if method not in default_args:
+        raise ValueError(f"method {method} not supported")
+    args = {**default_args[method], **args}
+    if method == "poisson":
+        if watertight:
+            raise ValueError("poisson method does not support forcing watertight")
+        points.estimate_normals()
+        points.orient_normals_consistent_tangent_plane(100)
+        mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(points, **args)
+        mesh = mesh.simplify_quadric_decimation(10000)
+    elif method == "convex_hull":
+        mesh, _ = points.compute_convex_hull()
+    elif method == "alpha_shape":
+        mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(points, **args)
+        if watertight:
+            while not mesh.is_watertight():
+                if args["alpha"] > 100:
+                    raise ValueError("Fail to generate watertight mesh")
+                args["alpha"] += 1
+                print("alpha shape not watertight, increase alpha to %d" % args["alpha"])
+                mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(points, **args)
+    else:
+        raise ValueError(f"method {method} not supported")
+    if method != "convex_hull":
+        mesh.remove_degenerate_triangles()
+        mesh.remove_duplicated_triangles()
+        mesh.remove_duplicated_vertices()
+        mesh.remove_non_manifold_edges()
     return mesh
 def _keep_largest_mesh(mesh):
     """
@@ -148,7 +183,7 @@ def calc_depth(_3dg):
         same dataframe with new column 'depth'
     """
     xyz = _3dg.values # (N, 3)
-    mesh = _3dg2mesh(_3dg)
+    mesh = _3dg2mesh(_3dg, method="alpha_shape", watertight=False, alpha=2)
     mesh = _keep_largest_mesh(mesh) # try to remove nucleolus holes
     # transform to implicit representation
     mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
@@ -159,3 +194,15 @@ def calc_depth(_3dg):
     res = scene.compute_signed_distance(query_points)
     #eturn res
     return _3dg.assign(depth=res.numpy())
+def _3dg_volume(_3dg, method="convex_hull", **args):
+    """
+    Compute volume of 3dg data structure.
+    Input:
+        _3dg: _3dg data structure (parsing from hickit output .3dg file)
+        method: method to generate mesh, one of ["convex_hull", "alpha_shape", "poisson"]
+    Output:
+        volume
+    """
+    mesh = _3dg2mesh(_3dg, method, watertight=True, **args)
+    mesh = _keep_largest_mesh(mesh)
+    return mesh.get_volume()
