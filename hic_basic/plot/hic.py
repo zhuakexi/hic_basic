@@ -206,22 +206,20 @@ def merge_track_data(clr, track_file, region):
     Pick out the track data that is in the region.
     Input:
         clr: cooler obj.
-        track_file: tuple; (path to track file, column name in track file)
+        track_file: path to track file
         region: genome region to plot.
     Output:
         pd.Series; index: start of each bin, value: track value.
     """
-    track_file, track_col = track_file
+    track_file = track_file
     track_data = pd.read_table(track_file)
     bin_s, bin_e = clr.extent(region)
     region_track_data = pd.merge(
         left = clr.bins()[bin_s:bin_e],
-        right = track_data[["chrom","start","end",track_col]],
+        right = track_data,
         how = "inner",
         on = ("chrom","start","end")
     ).copy().reset_index(drop=True)
-    # plotly can't handle multi-index, use start as index
-    region_track_data = region_track_data.set_index("start").drop(["chrom","end"], axis=1)[track_col]
     return region_track_data
 
 def plot_cool_track(coolp, track_files, region, title, balance=False, **args):
@@ -252,8 +250,11 @@ def plot_cool_track(coolp, track_files, region, title, balance=False, **args):
         col=1
     )
     # add tracks
-    for i, (track_name, track_file) in enumerate(track_files.items(), start=2):
+    for i, (track_name, track_tuple) in enumerate(track_files.items(), start=2):
+        track_file, colname = track_tuple
         region_track_data = merge_track_data(clr, track_file, region)
+        # plotly can't handle multi-index, use start as index
+        region_track_data = region_track_data.set_index("start").drop(["chrom","end"], axis=1)[colname]
         figure.add_trace(
             go.Scatter(
                 x = region_track_data.index,
@@ -624,6 +625,32 @@ def plot_compartment(coolp, eigs_file, region, title, balance=False):
 # --- diagonal-track plot ---
 def plot_IS(IS_file):
     pass
+# --- mat pileup plots ---
+def pileup_IS(coolp, IS, genome="hg19", flank=800_000, **args):
+    """
+    Pileup TAD boundaries from a cool file.
+    Input:
+        coolp: cooler path(adding resolutions when mcool)
+        IS: Insulation score; pd.Dataframe
+        genome: reference genome. eg. hg19
+        flank: flank size
+    Output:
+        pd.Dataframe
+    """
+    c = Cooler(coolp)
+    # Use bioframe to fetch the genomic features from the UCSC.
+    chromsizes = bioframe.fetch_chromsizes(genome)
+    cens = bioframe.fetch_centromeres(genome)
+    arms = bioframe.make_chromarms(chromsizes, cens)
+    # this will drop the hsv and other non-standard chromosomes
+    arms =  arms.set_index("chrom").loc[[i for i in c.chromnames if i.startswith("chr")]].reset_index()
+    # c_expect = cooltools.expected_cis(c, view_df=arms, nproc=2, chunksize=1_000_000)
+    # stack = cooltools.pileup(c, IS, view_df=arms, flank=flank,
+    #                          expected_df=c_expect, expected_value_col="balanced.avg")
+    stack = cooltools.pileup(c, IS, view_df=arms, flank=flank, **args)
+    mtx = np.nanmean(stack, axis=2)
+    mtx = pd.DataFrame(mtx).T
+    return mtx
 # Functions to help with plotting
 from matplotlib.ticker import EngFormatter
 bp_formatter = EngFormatter('b')
