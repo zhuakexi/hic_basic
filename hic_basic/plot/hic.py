@@ -28,7 +28,7 @@ def _plot_mat_mpl(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap=
     else:
         norm = LogNorm(vmin=1,vmax=vmax)
     plt.figure(figsize=(11, 10))
-    plt.gcf().canvas.set_window_title("Contact matrix".format())
+    #plt.gcf().canvas.set_window_title("Contact matrix".format())
     plt.title(title)
     if donorm:
         return plt.imshow(
@@ -201,93 +201,79 @@ def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
             ax.set_visible(False)
     plt.tight_layout()
     return plt
-def plot_cool_track(coolp, IS_file, eigs_file, region, title, balance=False, winSize=500000):
+def merge_track_data(clr, track_file, region):
     """
-    Plot cooler with additional track files
+    Pick out the track data that is in the region.
+    Input:
+        clr: cooler obj.
+        track_file: tuple; (path to track file, column name in track file)
+        region: genome region to plot.
+    Output:
+        pd.Series; index: start of each bin, value: track value.
     """
-    clr = Cooler(str(coolp))
-    IS = pd.read_table(IS_file)
-    eigs = pd.read_table(eigs_file)
+    track_file, track_col = track_file
+    track_data = pd.read_table(track_file)
     bin_s, bin_e = clr.extent(region)
-    region_IS = pd.merge(
+    region_track_data = pd.merge(
         left = clr.bins()[bin_s:bin_e],
-        right = IS,
+        right = track_data[["chrom","start","end",track_col]],
         how = "inner",
         on = ("chrom","start","end")
     ).copy().reset_index(drop=True)
-    region_eigs = pd.merge(
-        left = clr.bins()[bin_s:bin_e],
-        right = eigs,
-        how = "inner",
-        on = ("chrom","start","end")
-    )
+    # plotly can't handle multi-index, use start as index
+    region_track_data = region_track_data.set_index("start").drop(["chrom","end"], axis=1)[track_col]
+    return region_track_data
+
+def plot_cool_track(coolp, track_files, region, title, balance=False, **args):
+    """
+    Plot cooler with additional track files.
+    Input:
+        coolp: path to cooler file.
+        track_files: dict; key: track name, value: (path to track file, column name in track file)
+        region: genome region to plot.
+        title: name of the plot.
+        balance: whether to load balanced cooler matrix.
+    """
+    clr = Cooler(str(coolp))
     region_mat = clr.matrix(balance = balance).fetch(region)
+    mat_index = clr.bins().fetch(region)
+    region_mat = pd.DataFrame(region_mat, index=mat_index["start"], columns=mat_index["start"])
     figure = make_subplots(
-        rows=3,
+        rows=len(track_files) + 1,
         cols=1,
         vertical_spacing=0.01,
-        row_heights = [10,2,2]
+        row_heights = [10] + [2] * len(track_files)
     )
     # add heatmap
-    mat_fig = _plot_mat(region_mat)
+    mat_fig = _plot_mat(region_mat, **args)
     figure.add_trace(
         mat_fig.data[0],
         row=1,
         col=1
     )
-    # add insulation score
-    figure.add_trace(
-        go.Scatter(
-            x = region_IS.index,
-            y = region_IS[f"log2_insulation_score_{winSize}"],
-            name = "IS"
-        ),
-        row = 2,
-        col = 1
-    )
-    # add TAD boundaries
-    dat = region_IS.loc[region_IS[f"is_boundary_{winSize}"]]
-    figure.add_trace(
-        go.Scatter(
-            x = dat.index,
-            y = dat[f"log2_insulation_score_{winSize}"],
-            mode = "markers",
-            marker_symbol = "circle-open",
-            name = "TAD boundaries"
-        ),
-        row = 2,
-        col = 1
-    )
-    # add boundary strengths
-    figure.add_trace(
-        go.Bar(
-            x = dat.index,
-            y = -dat[f"boundary_strength_{winSize}"],
-            name = "boundary strengths"
-        ),
-        row = 2,
-        col = 1
-    )
-    # add eigen value
-    dat = region_eigs.copy()
-    dat = dat.assign(AB = "A")
-    dat.loc[dat["E1"] <0, "AB"] = "B"
-    eigs_fig = px.bar(
-        dat, x="start", y ="E1", color="AB",
-        color_discrete_map={"A":"red","B":"blue"}
-    )
-    for trace in eigs_fig.data:
-        figure.add_trace(trace, row=3,col=1)
+    # add tracks
+    for i, (track_name, track_file) in enumerate(track_files.items(), start=2):
+        region_track_data = merge_track_data(clr, track_file, region)
+        figure.add_trace(
+            go.Scatter(
+                x = region_track_data.index,
+                y = region_track_data.values,
+                name = track_name
+            ),
+            row = i,
+            col = 1
+        )
     figure.update_xaxes(
         visible=False,
         row = 1,
         col = 1
     )
-    figure.update_xaxes(
-        visible=False,
-        row = 2,
-        col = 1
-    )
+    for i in range(2, len(track_files) + 2):
+        figure.update_xaxes(
+            visible=False,
+            row = i,
+            col = 1
+        )
     figure.update_layout(
         paper_bgcolor = "white",
         plot_bgcolor = "white",
