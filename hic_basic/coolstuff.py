@@ -2,6 +2,8 @@
 import yaml
 import os
 import os.path as op
+import tempfile
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -304,14 +306,73 @@ def cli_mergecool(incools,outcool):
         "conda run -n embryo cooler merge %s %s" %(outcool, incools),
         shell=True
     )
-def cli_cl_Balance(filei,threads=8):
-    """
-    cooler(cl) balance
-    """
+def cli_balance(coolp, threads=8, force=False, conda_env=None, cwd=None):
+    if conda_env is None:
+        conda_run = ""
+    else:
+        conda_run = f"conda run -n {conda_env}"
+    if force:
+        force = "--force"
+    else:
+        force = ""
+    cmd = f"{conda_run} cooler balance {force} --nproc {threads} {coolp}"
+    try:
+        subprocess.check_output(
+            cmd,
+            shell=True,
+            cwd = cwd
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        return False
+def cli_IS(coolp, output, windowsizes, conda_env=None, cwd=None):
+    if conda_env is None:
+        conda_run = ""
+    else:
+        conda_run = f"conda run -n {conda_env}"
+    windowsizes = " ".join(map(str, windowsizes))
+
+    cmd = f"{conda_run} cooltools insulation --threshold Li -o {output} {coolp} {windowsizes}"
     subprocess.check_output(
-        "conda run -n embryo cooler balance -p %d --force %s" % (threads,filei),
-        shell=True
+        cmd,
+        shell=True,
+        cwd = cwd
     )
+def cli_pileup(coolp, feature, output, format="BED", view=None, expected=None, flank=100000, conda_env=None, cwd=None, threads=8):
+    if conda_env is None:
+        conda_run = ""
+    else:
+        conda_run = f"conda run -n {conda_env}"
+    if view is None:
+        view = ""
+    else:
+        view = f"--view {view}"
+    if expected is None:
+        expected = ""
+    else:
+        expected = f"--expected {expected}"
+
+    with tempfile.NamedTemporaryFile(mode="w+t", delete=True, dir=cwd if cwd is not None else "/tmp") as tmpfile:
+        if isinstance(feature, str) or isinstance(feature, Path):
+            # copy content from feature to tmpfile
+            with open(feature, "rt") as f:
+                tmpfile.write(f.read())
+            tmpfile.seek(0)
+            #print(tmpfile.read())
+            feature = tmpfile.name
+        elif isinstance(feature, pd.DataFrame):
+            feature.to_csv(tmpfile, sep="\t", header=False, index=False)
+            feature = tmpfile.name
+        else:
+            raise ValueError("feature should be a path or a dataframe")
+        cmd = f"{conda_run} cooltools pileup -p {threads} {view} {expected} --flank {flank} --features-format {format} -o {output} {coolp} {feature}"
+        subprocess.check_output(
+            cmd,
+            shell=True,
+            cwd = cwd
+        )
+    return output
 def cli_ct_callTAD(filei,fileo):
     """
     cooltools(ct) call TAD
