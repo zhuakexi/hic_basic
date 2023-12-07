@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from hic_basic.coolstuff import cli_pileup
+from hic_basic.coolstuff import cli_pileup, cli_expected
 from hic_basic.plot.hic import _plot_mat
 
 class TestCoolstuff(unittest.TestCase):
@@ -17,6 +17,7 @@ class TestCoolstuff(unittest.TestCase):
         if not self.outdir.exists():
             self.outdir.mkdir(parents=True)
         self.coolp = "/share/Data/ychi/raw/Bonev2017/ES.mcool::resolutions/20000"
+        self.coolp1M = "/share/Data/ychi/raw/Bonev2017/ES.mcool::resolutions/1000000"
         self.IS = Path(os.path.dirname(__file__)) / "data" / "mm10.HOXA.IS.tsv"
     def test_cli_pileup(self):
         """
@@ -66,6 +67,17 @@ class TestCoolstuff(unittest.TestCase):
         )
         fig.write_image(str(outpng), width=800, height=800)
         self.assertTrue(outpng.exists())
+    def cli_expected(self):
+        """
+        Test the cli_expected function.
+        """
+        output = self.outdir / "cli_expected.tsv"
+        cli_expected(
+            self.coolp1M,
+            output,
+            cwd=self.outdir
+        )
+        self.assertTrue(output.exists())
 if __name__ == "__main__":
     unittest.main()
 

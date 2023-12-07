@@ -373,6 +373,17 @@ def cli_pileup(coolp, feature, output, format="BED", view=None, expected=None, f
             cwd = cwd
         )
     return output
+def cli_expected(coolp, output, conda_env=None, cwd=None, threads=8):
+    if conda_env is None:
+        conda_run = ""
+    else:
+        conda_run = f"conda run -n {conda_env}"
+    subprocess.run(
+        f"{conda_run} cooltools expected-cis -p {threads} -o {output} {coolp}",
+        shell=True,
+        cwd=cwd
+    )
+    return output
 def cli_ct_callTAD(filei,fileo):
     """
     cooltools(ct) call TAD
