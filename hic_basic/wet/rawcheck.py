@@ -21,7 +21,7 @@ def ls_md5_files(download_dir):
     md5_files = Path(download_dir).glob('**/md5.txt')
     md5_lines = [(md5_file.parent, line.split()) for md5_file in md5_files for line in open(md5_file).readlines()]
     return md5_lines
-def verify_md5(download_dir, result_file):
+def verify_md5(download_dir, result_file, threads=8):
     """
     Verify md5 checksums of downloaded files.
     Input:
@@ -41,7 +41,7 @@ def verify_md5(download_dir, result_file):
     md5_lines = ls_md5_files(download_dir)
     # --- verify md5 checksums --- #
     nfails = 0
-    with concurrent.futures.ProcessPoolExecutor(8) as executor:
+    with concurrent.futures.ProcessPoolExecutor(threads) as executor:
         future_to_md5_line = {executor.submit(calculate_md5_for_file, parent_dir / filename): (parent_dir, filename, expected_md5) 
                               for parent_dir, (expected_md5, filename) in md5_lines}
         for future in concurrent.futures.as_completed(future_to_md5_line):
@@ -62,7 +62,7 @@ def verify_md5(download_dir, result_file):
     else:
         print(f'{nfails} md5 checksums are not OK.')
         return False
-def ls_samples(download_dir, show=True):
+def ls_samples(download_dir, show=False):
     """
     Find all samples in download_dir. Samples are defined as the directories containing fastq files.
     Input:
@@ -142,3 +142,41 @@ def split_download_dir(download_dir, task_dirps, sub="Rawdata"):
             if destination_dirp.exists():
                 shutil.rmtree(destination_dirp)
             shutil.copytree(source_dirp, destination_dirp)
+def gen_sample_table(task_dirp, R1_file="_R1.fq.gz", R2_file="_R2.fq.gz"):
+    """
+    Create sample table for a raw directory.
+    Input:
+        task_dirp: directory containing samples
+        R1_file: R1 file suffix
+        R2_file: R2 file suffix
+    Output:
+        sample_table will be written to task_dirp/../sample_table.tsv
+    """
+    task_dirp = Path(task_dirp)
+    sample_table = task_dirp.parent / "sample_table.csv"
+    if sample_table.exists():
+        sample_table.unlink()
+    sample_table.touch()
+    for sample_dirp in task_dirp.glob('*'):
+        if not sample_dirp.is_dir():
+            continue
+        sample_name = sample_dirp.name
+        R1_files = list(sample_dirp.glob(f'*{R1_file}'))
+        R2_files = list(sample_dirp.glob(f'*{R2_file}'))
+        if len(R1_files) == 0:
+            print(f'WARNING: no R1 file for {sample_name}')
+            continue
+        elif len(R1_files) > 1:
+            raise ValueError(f'More than one R1 file for {sample_name}: {R1_files}')
+        else:
+            R1_file = R1_files[0]
+        if len(R2_files) == 0:
+            print(f'WARNING: no R2 file for {sample_name}')
+            continue
+        elif len(R2_files) > 1:
+            raise ValueError(f'More than one R2 file for {sample_name}: {R2_files}')
+        else:
+            R2_file = R2_files[0]
+        with open(sample_table, 'a') as f:
+            f.write(f'{sample_name},{R1_file},{R2_file}\n')
+    print(f'Sample table written to {sample_table}')

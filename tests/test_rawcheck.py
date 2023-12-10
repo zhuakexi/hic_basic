@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, "/share/home/ychi/dev/hic_basic")
 import unittest
 from pathlib import Path
-from hic_basic.wet.rawcheck import verify_md5, ls_samples, split_download_dir
+from hic_basic.wet.rawcheck import verify_md5, ls_samples, split_download_dir, gen_sample_table
 
 class TestVerifyMd5(unittest.TestCase):
     def setUp(self) -> None:
@@ -40,5 +40,9 @@ class TestVerifyMd5(unittest.TestCase):
             }
             )
         self.assertTrue(True)
+    def gen_sample_table(self):
+        task_dirp = "/sharec/ychi/raw/sperm44_mESC/Rawdata"
+        gen_sample_table(task_dirp)
+        self.assertTrue(Path(task_dirp).joinpath("../sample_table.csv").exists())
 if __name__ == '__main__':
     unittest.main()
