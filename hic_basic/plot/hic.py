@@ -71,7 +71,7 @@ log_fall = [
     [1/10**1,'rgb(128, 0, 38)'],
     [1/10**0,'rgb(0, 0, 0)'],
 ]
-def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
+def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False, **args):
     """
     TODO:
         1.make a real colorscale bar according to LogNorm
@@ -93,6 +93,10 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap
         else:
             mat = LogNorm(vmin=1, vmax=vmax, clip=True)(mat).data
     fig = go.Figure()
+    default_args = dict(
+        zmax = vmax,
+    )
+    default_args.update(args)
     fig.add_trace(
         go.Heatmap(
             z = mat,
@@ -100,7 +104,7 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap
             y = index,
             colorscale=fall if cmap=="fall" else cmap, # don't know why log_fall failed here
             showscale=False,
-            zmax = vmax
+            **default_args
         )
     )
     fig.update_layout(
@@ -520,7 +524,7 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, balance=False):
         title = title
     )
     return figure
-def plot_compartment(coolp, eigs_file, region, title, strip=False, balance=False):
+def plot_compartment(coolp, eigs_file, region, title, strip=False, balance=False, **args):
     """
     Plot distance-normalized Hi-C correlation matrix with compartment track.
     Input:
@@ -566,7 +570,7 @@ def plot_compartment(coolp, eigs_file, region, title, strip=False, balance=False
         column_widths = [2,10]
     )
     # add heatmap
-    mat_fig = _plot_mat(region_mat,cmap="RdBu",donorm=False)
+    mat_fig = _plot_mat(region_mat,cmap="RdBu",donorm=False, **args)
     figure.add_trace(
         mat_fig.data[0],
         row=1,
