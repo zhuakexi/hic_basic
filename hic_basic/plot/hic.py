@@ -520,7 +520,7 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, balance=False):
         title = title
     )
     return figure
-def plot_compartment(coolp, eigs_file, region, title, balance=False):
+def plot_compartment(coolp, eigs_file, region, title, strip=False, balance=False):
     """
     Plot distance-normalized Hi-C correlation matrix with compartment track.
     Input:
@@ -528,15 +528,35 @@ def plot_compartment(coolp, eigs_file, region, title, balance=False):
         eigs_file: path to eigen vector file.
         region: genome region to plot.
         title: name of the plot.
+        strip: whether to strip the consecutive 0s in the matrix.
         balance: whether to load balanced cooler matrix.
     """
     clr = Cooler(str(coolp))
     eig = pd.read_table(eigs_file)
     bin_s, bin_e = clr.extent(region)
+    i_s, i_e = None, None # additional index for strip
+
+    # --- prepare heatmap --- #
     region_mat = compartments(
         clr.matrix(balance = balance).fetch(region),
         matrixonly = True
     )
+    pos = clr.bins()[bin_s:bin_e]["start"]
+    region_mat = pd.DataFrame(region_mat, index=pos, columns=pos)
+    if strip:
+        # strip consecutive 0s on left or right side
+        for i in range(region_mat.shape[0]):
+            if np.all(region_mat.iloc[i,:] == 0):
+                i_s = i
+            else:
+                i_s = i
+                break
+        for i in range(region_mat.shape[0]-1, -1, -1):
+            if np.all(region_mat.iloc[i,:] == 0):
+                i_e = i
+            else:
+                break
+        region_mat = region_mat.iloc[i_s:i_e,i_s:i_e]
     figure = make_subplots(
         rows=2,
         cols=2,
@@ -561,6 +581,8 @@ def plot_compartment(coolp, eigs_file, region, title, balance=False):
     ).copy()
     dat = dat.assign(AB = "A")
     dat.loc[dat["E1"] <0, "AB"] = "B"
+    if strip:
+        dat = dat.iloc[i_s:i_e,:]
     eigs_fig = px.bar(
         dat, y="start", x ="E1", color="AB",
         color_discrete_map={"A":"red","B":"blue"},
@@ -580,6 +602,8 @@ def plot_compartment(coolp, eigs_file, region, title, balance=False):
     ).copy()
     dat = dat.assign(AB = "A")
     dat.loc[dat["E1"] <0, "AB"] = "B"
+    if strip:
+        dat = dat.iloc[i_s:i_e,:]
     eigs_fig = px.bar(
         dat, x="start", y ="E1", color="AB",
         color_discrete_map={"A":"red","B":"blue"},
