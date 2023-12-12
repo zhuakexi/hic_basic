@@ -21,8 +21,11 @@ class TestVerifyMd5(unittest.TestCase):
 
         # Count the total number of lines in all md5.txt files
         md5_files = Path(download_dir).glob('**/md5.txt')
-        md5_lines = sum(1 for md5_file in md5_files for line in open(md5_file))
-
+        #md5_lines = sum(1 for md5_file in md5_files for line in open(md5_file))
+        md5_lines = 0
+        for md5_file in md5_files:
+            with open(md5_file, 'r') as f:
+                md5_lines += sum(1 for line in f)
         # Assert that the number of lines in the result file equals the total number of lines in all md5.txt files
         self.assertEqual(result_lines, md5_lines)
     def test_ls_samples(self):
