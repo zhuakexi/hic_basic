@@ -1,15 +1,16 @@
 # cooler api functions
-import yaml
 import os
 import os.path as op
 import tempfile
+import yaml
 from pathlib import Path
 
+import cooler
 import numpy as np
 import pandas as pd
-from cytoolz import compose # fail in HPC
+from cooler import Cooler
 from cooler.create import sanitize_records, aggregate_records
-import cooler
+from cytoolz import compose # fail in HPC
 
 from .hicio import schicluster2mat
 from .data import chromosomes
@@ -279,7 +280,62 @@ def gen_config(
     with open(cfg, "wt") as f:
         yaml.dump(config, f)
     print("Config generated.")
-
+def stat_cool(names, ddir, genome, show=True):
+    """
+    Statistic technical details.
+    Input:
+        names: list of cooler paths
+        ddir: distiller-nf directory
+        genome: genome name eg. "mm10"
+    Output:
+        pd.DataFrame
+    """
+    pairs_stats_pat = str(Path(ddir)/"results"/"pairs_library"/"{sample}.{genome}.dedup.stats")
+    cool_pat = str(Path(ddir)/"results"/"coolers_library"/"{sample}.{genome}.mapq_30.1000.cool")
+    stats = pd.concat(
+        list(map(
+            lambda x : pd.read_table(                                                                                                                                                                                           
+                pairs_stats_pat.format(sample=x, genome=genome),
+                names=["item", x],
+                index_col=0
+            ),
+            names
+        )),
+        axis = 1
+    )
+    annote = stats.iloc[:8,:]
+    filtered_contacts = list(map(
+        lambda x: Cooler(cool_pat.format(sample = x, genome=genome)).info["sum"],
+        names
+    ))
+    annote = annote.T.assign(
+        filtered_contacts = filtered_contacts
+    )
+    annote = annote.assign(
+        contact_ratio = annote["filtered_contacts"] / annote["total"],
+        trans_ratio = annote["trans"]/(annote["cis"] + annote["trans"])
+    )
+    annote = annote.astype(
+        dtype={
+            "total" : "int",
+            "total_unmapped" : "int",
+            "total_single_sided_mapped" : "int",
+            "total_mapped" : "int",
+            "total_dups" : "int",
+            "total_nodups" : "int",
+            "cis" : "int",
+            "trans" : "int",
+            "filtered_contacts" : "int",
+            "contact_ratio" : "float",
+            "trans_ratio" : "float"
+        }
+    )
+    annote = annote.round({"contact_ratio":3, "trans_ratio":3})
+    if show:
+        A = annote.astype("string").copy()
+        return A.T
+    else:
+        return annote
 # lousy helper functions to work with cooler, cooltools stuff
 # you need a conda env that names `cooler`, with cooler and cooltools installed
 import subprocess
