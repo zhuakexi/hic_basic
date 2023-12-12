@@ -19,7 +19,18 @@ def ls_md5_files(download_dir):
         md5_lines: list of tuples, (parent_dir, md5, filename)
     """
     md5_files = Path(download_dir).glob('**/md5.txt')
-    md5_lines = [(md5_file.parent, line.split()) for md5_file in md5_files for line in open(md5_file).readlines()]
+    #md5_lines = [(md5_file.parent, line.split()) for md5_file in md5_files for line in open(md5_file).readlines()]
+    md5_lines = []
+    for md5_file in md5_files:
+        md5_file = Path(md5_file)
+        parent_dir = md5_file.parent
+        with open(md5_file) as f:
+            for line in f:
+                line = line.split()
+                if len(line) == 2:
+                    md5_lines.append((parent_dir, line))
+                else:
+                    print(f'WARNING: invalid md5 line in {md5_file}: {line}')
     return md5_lines
 def verify_md5(download_dir, result_file, threads=8):
     """
