@@ -650,6 +650,20 @@ def plot_compartment(coolp, eigs_file, region, title, strip=False, balance=False
         title = title
     )
     return figure
+def plot_saddle_mpl(file, title):
+    saddle = np.load(file, allow_pickle=True)
+
+    plt.figure(figsize=(6,6))
+    norm = LogNorm(    vmin=10**(-1), vmax=10**1)
+    im = plt.imshow(
+        saddle['saddledata'],
+        cmap='RdBu_r',
+        norm = norm
+    )
+    plt.xlabel("saddle category")
+    plt.ylabel("saddle category")
+    plt.colorbar(im, label='obs/exp', pad=0.025, shrink=0.7)
+    plt.title(title)
 # --- diagonal-track plot ---
 def plot_IS(IS_file):
     pass
