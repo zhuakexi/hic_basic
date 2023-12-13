@@ -382,36 +382,39 @@ def cli_balance(coolp, threads=8, force=False, conda_env=None, cwd=None):
     except subprocess.CalledProcessError as e:
         print(e.output)
         return False
-def cli_compartment(coolp, phasing_track, outprefix, view, conda_env=None, cwd=None):
-    if conda_env is None:
-        conda_run = ""
-    else:
-        conda_run = f"conda run -n {conda_env}"
-    if view is None:
-        view = ""
-    else:
-        view = f"--view {view}"
-    cmd = f"{conda_run} cooltools eigs-cis {view} --phasing-track {phasing_track} -o {outprefix} {coolp}"
+def cli_compartment(coolp, phasing_track, outprefix, view, conda_env=None, cwd=None, force=False):
+    outprefix_path = Path(outprefix)
+
+    if not force and outprefix_path.with_suffix(".cis.vecs.tsv").exists():
+        print(f"Files '{outprefix}.cis.vecs.tsv' already exist. Skipping execution.")
+        return f"{outprefix}.cis.vecs.tsv", f"{outprefix}.cis.lam.txt"
+
+    conda_run = f"conda run -n {conda_env}" if conda_env else ""
+    view_option = f"--view {view}" if view else ""
+    cmd = f"{conda_run} cooltools eigs-cis {view_option} --phasing-track {phasing_track} -o {outprefix} {coolp}"
+
     subprocess.check_output(
         cmd,
         shell=True,
-        cwd = cwd
+        cwd=cwd
     )
     return f"{outprefix}.cis.vecs.tsv", f"{outprefix}.cis.lam.txt"
-def cli_saddle(coolp, eigv, expected, outprefix, view, conda_env=None, cwd=None):
-    if conda_env is None:
-        conda_run = ""
-    else:
-        conda_run = f"conda run -n {conda_env}"
-    if view is None:
-        view = ""
-    else:
-        view = f"--view {view}"
-    cmd = f"{conda_run} cooltools saddle --qrange 0.02 0.98 --fig png -o {outprefix} {view} --strength {coolp} {eigv} {expected}"
+
+def cli_saddle(coolp, eigv, expected, outprefix, view, conda_env=None, cwd=None, force=False):
+    outprefix_path = Path(outprefix)
+
+    if not force and outprefix_path.with_suffix(".saddledump.npz").exists():
+        print(f"Files '{outprefix}.saddledump.npz' already exist. Skipping execution.")
+        return f"{outprefix}.saddledump.npz", f"{outprefix}.png"
+
+    conda_run = f"conda run -n {conda_env}" if conda_env else ""
+    view_option = f"--view {view}" if view else ""
+    cmd = f"{conda_run} cooltools saddle --qrange 0.02 0.98 --fig png -o {outprefix} {view_option} --strength {coolp} {eigv} {expected}"
+
     subprocess.check_output(
         cmd,
         shell=True,
-        cwd = cwd
+        cwd=cwd
     )
     return f"{outprefix}.saddledump.npz", f"{outprefix}.png"
 def cli_IS(coolp, output, windowsizes, conda_env=None, cwd=None):
@@ -462,20 +465,20 @@ def cli_pileup(coolp, feature, output, format="BED", view=None, expected=None, f
             cwd = cwd
         )
     return output
-def cli_expected(coolp, output, view=None, conda_env=None, cwd=None, threads=8):
-    if conda_env is None:
-        conda_run = ""
-    else:
-        conda_run = f"conda run -n {conda_env}"
-    if view is None:
-        view = ""
-    else:
-        view = f"--view {view}"
-    subprocess.run(
-        f"{conda_run} cooltools expected-cis -p {threads} -o {output} {view} {coolp}",
-        shell=True,
-        cwd=cwd
+def cli_expected(coolp, output, view=None, conda_env=None, cwd=None, threads=8, force=False):
+    output_path = Path(output)
+
+    if not force and output_path.exists():
+        print(f"File '{output}' already exists. Skipping execution.")
+        return output
+
+    conda_run = f"conda run -n {conda_env}" if conda_env else ""
+    view_option = f"--view {view}" if view else ""
+    cmd = (
+        f"{conda_run} cooltools expected-cis -p {threads} -o {output} {view_option} {coolp}"
     )
+
+    subprocess.run(cmd, shell=True, cwd=cwd)
     return output
 # def cli_ct_callTAD(filei,fileo):
 #     """
