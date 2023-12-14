@@ -382,7 +382,7 @@ def cli_balance(coolp, threads=8, force=False, conda_env=None, cwd=None):
     except subprocess.CalledProcessError as e:
         print(e.output)
         return False
-def cli_compartment(coolp, phasing_track, outprefix, view, conda_env=None, cwd=None, force=False):
+def cli_compartment(coolp, phasing_track, outprefix, view=None, conda_env=None, cwd=None, force=False):
     outprefix_path = Path(outprefix)
 
     if not force and outprefix_path.with_suffix(".cis.vecs.tsv").exists():
