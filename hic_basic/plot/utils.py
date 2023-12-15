@@ -72,7 +72,7 @@ def add_cat_marker(fig, data, catcol="cell_type", ypos=1):
                 name = name
             )
     )
-def tiling_mat(A, Ref, adjust = True):
+def tiling_mat(A_orig, Ref_orig, adjust = True, ignore_diags = True):
     """
     Tiling 2 matrix. Rising light to the lighter one.
     Input:
@@ -83,7 +83,13 @@ def tiling_mat(A, Ref, adjust = True):
         A tiled matrix.
     """
     #m = np.tril(Ref/lighter) + np.triu(A)
-    As,Rs = A.sum(),Ref.sum()
+    A, Ref = A_orig.copy(), Ref_orig.copy()
+    if ignore_diags:
+        np.fill_diagonal(A,0)
+        np.fill_diagonal(Ref,0)
+        As, Rs = A.sum(),Ref.sum()
+    else:
+        As, Rs = A.sum(),Ref.sum()
     if adjust:
         if As < Rs:
             m = np.tril(Ref) + np.triu(A*(Rs/As)) # value overflow without parentheses in (Rs/As)
