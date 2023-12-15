@@ -417,14 +417,20 @@ def cli_saddle(coolp, eigv, expected, outprefix, view, conda_env=None, cwd=None,
         cwd=cwd
     )
     return f"{outprefix}.saddledump.npz", f"{outprefix}.png"
-def cli_IS(coolp, output, windowsizes, conda_env=None, cwd=None):
+def cli_IS(coolp, output, windowsizes, balanced=True, threads=8, conda_env=None, cwd=None, force=False):
+    if not force and Path(output).exists():
+        print(f"File '{output}' already exists. Skipping execution.")
+        return output
     if conda_env is None:
         conda_run = ""
     else:
         conda_run = f"conda run -n {conda_env}"
     windowsizes = " ".join(map(str, windowsizes))
-
-    cmd = f"{conda_run} cooltools insulation --threshold Li -o {output} {coolp} {windowsizes}"
+    threads = f"-p {threads}"
+    if balanced:
+        cmd = f"{conda_run} cooltools insulation {threads} --threshold Li -o {output} {coolp} {windowsizes}"
+    else:
+        cmd = f'{conda_run} cooltools insulation {threads} --ignore-diags 1 --clr-weight-name "" -o {output} {coolp} {windowsizes}'
     subprocess.check_output(
         cmd,
         shell=True,
