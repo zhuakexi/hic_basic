@@ -667,6 +667,7 @@ def plot_saddle_mpl(file, title):
 # --- diagonal-track plot ---
 def plot_IS(IS_file):
     pass
+
 # --- mat pileup plots ---
 def pileup_IS(coolp, IS, genome="hg19", flank=800_000, **args):
     """
@@ -737,6 +738,8 @@ def plot_IS(clr,insulation_table,title,resolution=500e3,window=1.5e6,balance=Tru
     ins_ax.plot(insul_region[['start', 'end']].mean(axis=1),
                 insul_region['log2_insulation_score_'+str(window)],
                 label=f'Window {window} bp')
+
+    ins_ax.set_ylim(-1.5, 1)  # Set y-axis range
 
     ins_ax.legend(bbox_to_anchor=(0., -1), loc='lower left', ncol=4);
 
