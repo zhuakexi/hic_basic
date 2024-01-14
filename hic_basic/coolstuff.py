@@ -382,6 +382,19 @@ def cli_balance(coolp, threads=8, force=False, conda_env=None, cwd=None):
     except subprocess.CalledProcessError as e:
         print(e.output)
         return False
+def cli_zoomify(coolp, output, resolutions=[20000,40000,100000,500000,1000000], force=False, threads=8, conda_env=None, cwd=None):
+    conda_run = f"conda run -n {conda_env}" if conda_env else ""
+    if not force and Path(output).exists():
+        print(f"File '{output}' already exists. Skipping execution.")
+        return output
+    resolutions = ",".join(map(str, resolutions))
+    cmd = f"{conda_run} cooler zoomify -n {threads} -r {resolutions} -o {output} {coolp}"
+    subprocess.check_output(
+        cmd,
+        shell=True,
+        cwd = cwd
+    )
+    return output
 def cli_compartment(coolp, phasing_track, outprefix, view=None, conda_env=None, cwd=None, force=False):
     outprefix_path = Path(outprefix)
 
