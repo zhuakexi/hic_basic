@@ -174,7 +174,7 @@ def highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap="magenta green, c
             )
         render.render()
 # --- useful modes --- #
-def clip_single_territory_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], clip=0, slab=2, tmpdir=None, conda="pymol", **args):
+def clip_single_territory_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], clip=0, slab=2, tmpdir=None, conda=None, **args):
     """
     Render clip view, only color target chromosomes.
     Input:
