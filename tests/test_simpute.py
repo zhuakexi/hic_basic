@@ -16,11 +16,11 @@ from hires_utils.hires_io import parse_3dg
 class TestSimpute(unittest.TestCase):
     def setUp(self) -> None:
         self.outdir = Path(os.path.dirname(__file__)) / "output" / "simpute"
-        self._3dg_path = "/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg"
+        self._3dg_path_small = "/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg"
         if not os.path.exists(self.outdir):
             os.makedirs(self.outdir)
     def test_cis_proximity_graph(self):
-        _3dg_path = self._3dg_path
+        _3dg_path = self._3dg_path_small
         fo = str(self.outdir / "cis_proximity_graph.cool")
         cis_proximity_graph(_3dg_path, fo, genome="mm10", binsize=1000000)
         self.assertTrue(os.path.exists(fo))
@@ -32,7 +32,7 @@ class TestSimpute(unittest.TestCase):
         self.assertEqual(result, np.sqrt((3**2) + (3**2) + (3**2)))
 
     def test_cis_distance_graph(self):
-        _3dg_path = self._3dg_path
+        _3dg_path = self._3dg_path_small
         fo = self.outdir / "cis_distance_graph.parquet"
         cis_distance_graph(_3dg_path, fo, max_dist=20000000, binsize=1000000)
         self.assertTrue(os.path.exists(fo))
@@ -42,6 +42,19 @@ class TestSimpute(unittest.TestCase):
         # --- check if distance is correct ---
         structure = parse_3dg(_3dg_path)
         picked = pixels.sample(1000)
+        for _, row in picked.iterrows():
+            true_value = euclidean(
+                structure.loc[(row["chrom1"], row["start1"])],
+                structure.loc[(row["chrom2"], row["start2"])]
+                )
+            # near equal
+            self.assertAlmostEqual(row["distance"], true_value, delta=1e-5)
+    def test_cis_distance_graph_noout(self):
+        _3dg_path = self._3dg_path_small
+        fo = None
+        pixels = cis_distance_graph(_3dg_path, fo, max_dist=20000000, binsize=1000000)
+        structure = parse_3dg(_3dg_path)
+        picked = pixels.sample(frac=1000/structure.shape[0]**2)
         for _, row in picked.iterrows():
             true_value = euclidean(
                 structure.loc[(row["chrom1"], row["start1"])],
