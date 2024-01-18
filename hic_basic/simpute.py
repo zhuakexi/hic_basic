@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 
 import cooler
 import dask.dataframe as dd
@@ -89,17 +90,19 @@ def calculate_distance(row1, row2):
     Calculate Euclidean distance between two points.
     """
     return euclidean(row1[['x', 'y', 'z']], row2[['x', 'y', 'z']])
-def cis_distance_graph(_3dg_path, fo, max_dist=2000000, genome="mm10", binsize=20000, n_jobs=4):
+def cis_distance_graph(_3dg_path, fo=None, max_dist=2000000, binsize=20000, n_jobs=4):
     """
     Generate distance matrix (store in bedpe-like format) from 3dg file.
     Only cis region is considered.
     Input:
         _3dg_path: str, path to 3dg file
-        fo: str, path to output parquet file
-        genome: str, genome version
-        binsize: int, binsize
+        fo: str, path to output parquet file, if None, return dataframe
+        max_dist: int, pixels with distance larger than max_dist will be discarded
+        binsize: int, binsize of input 3dg file
+        n_jobs: int, number of jobs to run in parallel
     Output:
-        None
+        df: n * 7 dask dataframe, (chrom1, start1, end1, chrom2, start2, end2, distance)
+        None if fo is not None
     """
     # --- load data ---
     structure = parse_3dg(_3dg_path)
@@ -133,4 +136,12 @@ def cis_distance_graph(_3dg_path, fo, max_dist=2000000, genome="mm10", binsize=2
 
     # Combine results and save to Parquet
     ddf_result = dd.from_delayed(delayed_results)
-    ddf_result.to_parquet(fo)
+    if fo is None:
+        return ddf_result
+    else:
+        print("Saving to Parquet...")
+        io_start = time.time()
+        ddf_result.to_parquet(fo)
+        io_end = time.time()
+        print(f"IO time: {io_end - io_start}")
+        return None
