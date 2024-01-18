@@ -7,6 +7,7 @@ sys.path.insert(0, "/share/home/ychi/dev/hires_utils")
 sys.path.insert(0, "/share/home/ychi/dev/sperm_struct")
 from pathlib import Path
 
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from scipy.spatial.distance import euclidean
@@ -37,8 +38,9 @@ class TestSimpute(unittest.TestCase):
         cis_distance_graph(_3dg_path, fo, max_dist=20000000, binsize=1000000)
         self.assertTrue(os.path.exists(fo))
         pixels = pd.read_parquet(fo)
-        print(pixels.head)
+        #print(pixels.head(10))
         print(pixels.shape)
+        self.assertTrue(isinstance(pixels, dd.DataFrame))
         # --- check if distance is correct ---
         structure = parse_3dg(_3dg_path)
         picked = pixels.sample(1000)
@@ -53,6 +55,9 @@ class TestSimpute(unittest.TestCase):
         _3dg_path = self._3dg_path_small
         fo = None
         pixels = cis_distance_graph(_3dg_path, fo, max_dist=20000000, binsize=1000000)
+        print(pixels.shape)
+        self.assertTrue(isinstance(pixels, dd.DataFrame))
+        # --- check if distance is correct ---
         structure = parse_3dg(_3dg_path)
         picked = pixels.sample(frac=1000/structure.shape[0]**2)
         for _, row in picked.iterrows():
