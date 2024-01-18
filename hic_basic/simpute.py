@@ -89,8 +89,7 @@ def calculate_distance(row1, row2):
     Calculate Euclidean distance between two points.
     """
     return euclidean(row1[['x', 'y', 'z']], row2[['x', 'y', 'z']])
-
-def cis_distance_graph(_3dg_path, fo, max_dist=2000000, binsize=20000, n_jobs=4):
+def cis_distance_graph(_3dg_path, fo, max_dist=2000000, genome="mm10", binsize=20000, n_jobs=4):
     """
     Generate distance matrix (store in bedpe-like format) from 3dg file.
     Only cis region is considered.
@@ -105,26 +104,31 @@ def cis_distance_graph(_3dg_path, fo, max_dist=2000000, binsize=20000, n_jobs=4)
     # --- load data ---
     structure = parse_3dg(_3dg_path)
 
+    # Reset index and add index columns to the DataFrame
+    structure = structure.reset_index()
+    structure.columns = ['chrom', 'pos', 'x', 'y', 'z']
+    
     # Convert to Dask DataFrame for parallel processing
     ddf = dd.from_pandas(structure, npartitions=n_jobs)
 
     # Define a delayed function for processing chunks
     def process_chunk(df_chunk):
         results = []
+        chrom = df_chunk['chrom'].iloc[0]
         for i in range(len(df_chunk)):
             for j in range(i, len(df_chunk)):  # Only compute upper triangle
-                if abs(df_chunk.index[i][1] - df_chunk.index[j][1]) <= max_dist / binsize:
+                if abs(df_chunk['pos'].iloc[i] - df_chunk['pos'].iloc[j]) <= max_dist:
                     dist = calculate_distance(df_chunk.iloc[i], df_chunk.iloc[j])
-                    results.append([df_chunk.index[i][0], df_chunk.index[i][1] * binsize, (df_chunk.index[i][1] + 1) * binsize, 
-                                    df_chunk.index[j][0], df_chunk.index[j][1] * binsize, (df_chunk.index[j][1] + 1) * binsize, 
+                    results.append([chrom, df_chunk['pos'].iloc[i], df_chunk['pos'].iloc[i] + binsize, 
+                                    chrom, df_chunk['pos'].iloc[j], df_chunk['pos'].iloc[j] + binsize, 
                                     dist])
         return pd.DataFrame(results, columns=['chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2', 'distance'])
 
     # Process each chromosome using Dask
-    chroms = structure.index.get_level_values('chrom').unique()
+    chroms = structure['chrom'].unique()
     delayed_results = []
     for chrom in chroms:
-        chrom_ddf = ddf.loc[chrom].compute()  # Compute each chromosome separately
+        chrom_ddf = ddf[ddf['chrom'] == chrom].compute()  # Compute each chromosome separately
         delayed_results.append(delayed(process_chunk)(chrom_ddf))
 
     # Combine results and save to Parquet

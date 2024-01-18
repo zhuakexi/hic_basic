@@ -9,7 +9,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.spatial.distance import euclidean
 from hic_basic.simpute import boolean_radius_neighbor, cis_proximity_graph, calculate_distance, cis_distance_graph
+from hires_utils.hires_io import parse_3dg
 
 class TestSimpute(unittest.TestCase):
     def setUp(self) -> None:
@@ -32,8 +34,21 @@ class TestSimpute(unittest.TestCase):
     def test_cis_distance_graph(self):
         _3dg_path = self._3dg_path
         fo = self.outdir / "cis_distance_graph.parquet"
-        cis_distance_graph(_3dg_path, fo, binsize=1000000)
+        cis_distance_graph(_3dg_path, fo, max_dist=20000000, binsize=1000000)
         self.assertTrue(os.path.exists(fo))
+        pixels = pd.read_parquet(fo)
+        print(pixels.head)
+        print(pixels.shape)
+        # --- check if distance is correct ---
+        structure = parse_3dg(_3dg_path)
+        picked = pixels.sample(1000)
+        for _, row in picked.iterrows():
+            true_value = euclidean(
+                structure.loc[(row["chrom1"], row["start1"])],
+                structure.loc[(row["chrom2"], row["start2"])]
+                )
+            # near equal
+            self.assertAlmostEqual(row["distance"], true_value, delta=1e-5)
 
 if __name__ == '__main__':
     unittest.main()
