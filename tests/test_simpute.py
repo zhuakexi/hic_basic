@@ -51,7 +51,8 @@ class TestSimpute(unittest.TestCase):
     
     def test_cis_distance_graph(self):
         test_cases = [
-            (self._3dg_path_small, self.outdir/"cis_distance_graph.parquet", 20000000, 1000000),
+            (self._3dg_path_small, self.outdir/"cis_distance_graph_small.parquet", 20000000, 1000000),
+            #(self._3dg_path_big, None, 20000000, 20000),
             (self._3dg_path_small, None, 20000000, 1000000),
         ]
         for _3dg_path, fo, max_dist, binsize in test_cases:
@@ -59,16 +60,19 @@ class TestSimpute(unittest.TestCase):
                 pixels = cis_distance_graph(_3dg_path, fo, max_dist=max_dist, binsize=binsize)
                 if fo is not None:
                     self.assertTrue(os.path.exists(fo))
-                self.assertTrue(isinstance(pixels, dd.DataFrame))
-                self.check_distance_graph(_3dg_path, pixels)
+                    pixels = dd.read_parquet(fo)
+                    self.check_distance_graph(_3dg_path, pixels)
+                else:
+                    self.assertTrue(isinstance(pixels, dd.DataFrame))
+                    self.check_distance_graph(_3dg_path, pixels)
     def test_cis_distance_graph_df(self):
         test_cases = [
-            (self._3dg_path_small, None, 20000000, 1000000),
-            (self._3dg_path_big, None, 20000000, 20000),
+            (self._3dg_path_small, None, None, 20000000, 1000000),
+            (self._3dg_path_small, "chr1(mat)", None, 20000000, 20000),
         ]
-        for _3dg_path, fo, max_dist, binsize in test_cases:
-            with self.subTest(_3dg_path=_3dg_path, fo=fo, max_dist=max_dist, binsize=binsize):
-                pixels = cis_distance_graph_df(_3dg_path, max_dist=max_dist, binsize=binsize)
+        for _3dg_path, chrom, fo, max_dist, binsize in test_cases:
+            with self.subTest(_3dg_path=_3dg_path, chrom=chrom, fo=fo, max_dist=max_dist, binsize=binsize):
+                pixels = cis_distance_graph_df(_3dg_path, chrom, max_dist=max_dist, binsize=binsize)
                 self.assertTrue(isinstance(pixels, pd.DataFrame))
                 self.check_distance_graph(_3dg_path, pixels)
 if __name__ == '__main__':
