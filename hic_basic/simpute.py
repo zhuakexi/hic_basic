@@ -3,6 +3,7 @@ import sys
 import time
 
 import cooler
+import dask
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -10,6 +11,7 @@ from dask.delayed import delayed
 from hires_utils.hires_io import parse_3dg
 from scipy.sparse import triu
 from scipy.spatial.distance import euclidean
+from scipy.spatial import distance_matrix
 from sklearn.neighbors import radius_neighbors_graph
 
 from .coolstuff import gen_bins
@@ -136,12 +138,62 @@ def cis_distance_graph(_3dg_path, fo=None, max_dist=2000000, binsize=20000, n_jo
 
     # Combine results and save to Parquet
     ddf_result = dd.from_delayed(delayed_results)
+    ddf_result = ddf_result.repartition(npartitions=4)
     if fo is None:
         return ddf_result
     else:
+        dask.config.set(scheduler='single-threaded')
         print("Saving to Parquet...")
         io_start = time.time()
         ddf_result.to_parquet(fo)
+        io_end = time.time()
+        print(f"IO time: {io_end - io_start}")
+        return None
+def cis_distance_graph_df(_3dg_path, fo=None, max_dist=2000000, binsize=20000, n_jobs=4):
+    """
+    Generate distance matrix (store in bedpe-like format) from 3dg file.
+    Only cis region is considered.
+    pandas.DataFrame version, all in memory.
+    Input:
+        _3dg_path: str, path to 3dg file
+        fo: str, path to output parquet file, if None, return dataframe
+        max_dist: int, pixels with distance larger than max_dist will be discarded
+        binsize: int, binsize of input 3dg file
+        n_jobs: int, number of jobs to run in parallel
+    Output:
+        df: n * 7 dataframe, (chrom1, start1, end1, chrom2, start2, end2, distance)
+        None if fo is not None
+    """
+    # --- load data ---
+    structure = parse_3dg(_3dg_path) # (chr, pos): x, y, z
+    def process_chunk(chunk):
+        xyz = chunk[["x","y","z"]]
+        chrom = chunk.index.get_level_values(0)[0]
+        start = chunk.index.get_level_values(1)
+
+        dist_mat = distance_matrix(xyz.values, xyz.values)
+        dist_df = pd.DataFrame(dist_mat, index=start, columns=start)
+
+        # keep triu
+        mask = np.triu(np.ones(dist_df.shape, dtype=bool), k=1)
+        dist_long_df = dist_df.where(mask).stack().reset_index()
+        dist_long_df.columns = ['start1', 'start2', 'distance']
+
+        # keep distance <= max_dist
+        dist_long_df = dist_long_df.loc[dist_long_df['distance'] <= max_dist]
+        dist_long_df['chrom1'] = chrom
+        dist_long_df['chrom2'] = chrom
+        dist_long_df['end1'] = dist_long_df['start1'] + binsize
+        dist_long_df['end2'] = dist_long_df['start2'] + binsize
+
+        return dist_long_df[['chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2', 'distance']]
+    df = structure.groupby(level=0).apply(process_chunk).reset_index(drop=True) # chrom1, start1, end1, chrom2, start2, end2, distance
+    if fo is None:
+        return df
+    else:
+        print("Saving to Parquet...")
+        io_start = time.time()
+        df.to_parquet(fo)
         io_end = time.time()
         print(f"IO time: {io_end - io_start}")
         return None

@@ -11,13 +11,15 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from scipy.spatial.distance import euclidean
-from hic_basic.simpute import boolean_radius_neighbor, cis_proximity_graph, calculate_distance, cis_distance_graph
+from hic_basic.simpute import boolean_radius_neighbor, cis_proximity_graph, calculate_distance, cis_distance_graph, \
+    cis_distance_graph_df
 from hires_utils.hires_io import parse_3dg
 
 class TestSimpute(unittest.TestCase):
     def setUp(self) -> None:
         self.outdir = Path(os.path.dirname(__file__)) / "output" / "simpute"
         self._3dg_path_small = "/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg"
+        self._3dg_path_big = "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.20k.4.3dg"
         if not os.path.exists(self.outdir):
             os.makedirs(self.outdir)
     def test_cis_proximity_graph(self):
@@ -32,41 +34,42 @@ class TestSimpute(unittest.TestCase):
         result = calculate_distance(row1, row2)
         self.assertEqual(result, np.sqrt((3**2) + (3**2) + (3**2)))
 
+    def check_distance_graph(self, _3dg_path, pixels):
+        # --- check if distance is correct ---
+        structure = parse_3dg(_3dg_path)
+        if isinstance(pixels, dd.DataFrame):
+            picked = pixels.sample(frac=1000/len(pixels))
+        else:
+            picked = pixels.sample(1000)
+        for _, row in picked.iterrows():
+            true_value = euclidean(
+                structure.loc[(row["chrom1"], row["start1"])],
+                structure.loc[(row["chrom2"], row["start2"])]
+                )
+            # near equal
+            self.assertAlmostEqual(row["distance"], true_value, delta=1e-5)
+    
     def test_cis_distance_graph(self):
-        _3dg_path = self._3dg_path_small
-        fo = self.outdir / "cis_distance_graph.parquet"
-        cis_distance_graph(_3dg_path, fo, max_dist=20000000, binsize=1000000)
-        self.assertTrue(os.path.exists(fo))
-        pixels = pd.read_parquet(fo)
-        #print(pixels.head(10))
-        print(pixels.shape)
-        self.assertTrue(isinstance(pixels, dd.DataFrame))
-        # --- check if distance is correct ---
-        structure = parse_3dg(_3dg_path)
-        picked = pixels.sample(1000)
-        for _, row in picked.iterrows():
-            true_value = euclidean(
-                structure.loc[(row["chrom1"], row["start1"])],
-                structure.loc[(row["chrom2"], row["start2"])]
-                )
-            # near equal
-            self.assertAlmostEqual(row["distance"], true_value, delta=1e-5)
-    def test_cis_distance_graph_noout(self):
-        _3dg_path = self._3dg_path_small
-        fo = None
-        pixels = cis_distance_graph(_3dg_path, fo, max_dist=20000000, binsize=1000000)
-        print(pixels.shape)
-        self.assertTrue(isinstance(pixels, dd.DataFrame))
-        # --- check if distance is correct ---
-        structure = parse_3dg(_3dg_path)
-        picked = pixels.sample(frac=1000/structure.shape[0]**2)
-        for _, row in picked.iterrows():
-            true_value = euclidean(
-                structure.loc[(row["chrom1"], row["start1"])],
-                structure.loc[(row["chrom2"], row["start2"])]
-                )
-            # near equal
-            self.assertAlmostEqual(row["distance"], true_value, delta=1e-5)
-
+        test_cases = [
+            (self._3dg_path_small, self.outdir/"cis_distance_graph.parquet", 20000000, 1000000),
+            (self._3dg_path_small, None, 20000000, 1000000),
+        ]
+        for _3dg_path, fo, max_dist, binsize in test_cases:
+            with self.subTest(_3dg_path=_3dg_path, fo=fo, max_dist=max_dist, binsize=binsize):
+                pixels = cis_distance_graph(_3dg_path, fo, max_dist=max_dist, binsize=binsize)
+                if fo is not None:
+                    self.assertTrue(os.path.exists(fo))
+                self.assertTrue(isinstance(pixels, dd.DataFrame))
+                self.check_distance_graph(_3dg_path, pixels)
+    def test_cis_distance_graph_df(self):
+        test_cases = [
+            (self._3dg_path_small, None, 20000000, 1000000),
+            (self._3dg_path_big, None, 20000000, 20000),
+        ]
+        for _3dg_path, fo, max_dist, binsize in test_cases:
+            with self.subTest(_3dg_path=_3dg_path, fo=fo, max_dist=max_dist, binsize=binsize):
+                pixels = cis_distance_graph_df(_3dg_path, max_dist=max_dist, binsize=binsize)
+                self.assertTrue(isinstance(pixels, pd.DataFrame))
+                self.check_distance_graph(_3dg_path, pixels)
 if __name__ == '__main__':
     unittest.main()
