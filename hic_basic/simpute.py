@@ -150,7 +150,7 @@ def cis_distance_graph(_3dg_path, fo=None, max_dist=2000000, binsize=20000, n_jo
         io_end = time.time()
         print(f"IO time: {io_end - io_start}")
         return None
-def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=2000000, binsize=20000):
+def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=2000000, binsize=20000, fill=False):
     """
     Generate distance matrix (store in bedpe-like format) from 3dg file.
     Only cis region is considered.
@@ -164,7 +164,9 @@ def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=
         fo: str, path to output parquet file, if None, return dataframe
         max_dist: int, pixels with distance larger than max_dist will be discarded
         binsize: int, binsize of input 3dg file
-        n_jobs: int, number of jobs to run in parallel
+        fill: return all possible pixels (< max_dist of course), fill missing pixels with NaN
+            only valid when both chrom and genome are specified
+            will return dask array
     Output:
         df: n * 7 dataframe, (chrom1, start1, end1, chrom2, start2, end2, distance)
         None if fo is not None
@@ -172,12 +174,12 @@ def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=
     # --- load data ---
     structure = parse_3dg(_3dg_path) # (chr, pos): x, y, z
     if genome is not None:
-        genome = GenomeIdeograph(genome)
+        ideograph = GenomeIdeograph(genome)
         # save memory
         structure = structure.reset_index()
         structure["chr"] = pd.Categorical(
             structure["chr"],
-            categories=genome.chromosomes.index.categories,
+            categories=ideograph.chromosomes.index.categories,
             ordered=True
         )
         structure = structure.set_index(["chr", "pos"])
@@ -211,7 +213,7 @@ def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=
         dist_long_df = dist_long_df[['chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2', 'distance']]
 
         if genome is not None:
-            dist_long_df = genome.join_pixel_id(dist_long_df, binsize, intra=True)
+            dist_long_df = ideograph.join_pixel_id(dist_long_df, binsize, intra=True)
             dist_long_df = dist_long_df[["pixel_id", "chrom1", "start1", "end1", "chrom2", "start2", "end2", "distance"]]
         else:
             pass
@@ -222,6 +224,39 @@ def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=
         df = process_chunk(structure, chrom)
     else:
         df = structure.groupby(level=0).apply(process_chunk).reset_index(drop=True) # chrom1, start1, end1, chrom2, start2, end2, distance
+    # --- fill to all possible pixels ---
+    if fill:
+        if genome is None:
+            raise ValueError("fill=True requires genome to be specified")
+        else:
+            if chrom is None: # TODO: work with all chromosomes
+                raise ValueError("fill=True requires chrom to be specified")
+            else:
+                start_id = ideograph.pixel_id(
+                    pd.Series(
+                        [chrom, 0, binsize, chrom, 0, binsize],
+                        index = ["chrom1", "start1", "end1", "chrom2", "start2", "end2"]
+                    ),
+                    binsize=binsize
+                )
+                last_bin = ideograph.chromosomes.loc[chrom] - ideograph.chromosomes.loc[chrom] % binsize
+                end_id = ideograph.pixel_id(
+                    pd.Series(
+                        [chrom, last_bin, ideograph.chromosomes.loc[chrom], chrom, last_bin, ideograph.chromosomes.loc[chrom]],
+                        index = ["chrom1", "start1", "end1", "chrom2", "start2", "end2"]
+                    ),
+                    binsize=binsize
+                )
+                new_df = dd.from_array(
+                    np.full(end_id - start_id + 1, np.nan),
+                    columns=["distance"],
+                )
+                new_df.index = np.arange(start_id, end_id + 1)
+                new_df["distance"] = new_df["distance"].fillna(df.set_index("pixel_id")["distance"])
+                new_da = new_df["distance"].to_dask_array(lengths=True)
+                df = new_da
+
+    # --- save to Parquet ---
     if fo is None:
         return df
     else:
