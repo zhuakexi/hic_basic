@@ -8,6 +8,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask.delayed import delayed
+from hic_basic.binnify import GenomeIdeograph
 from hires_utils.hires_io import parse_3dg
 from scipy.sparse import triu
 from scipy.spatial.distance import euclidean
@@ -149,7 +150,7 @@ def cis_distance_graph(_3dg_path, fo=None, max_dist=2000000, binsize=20000, n_jo
         io_end = time.time()
         print(f"IO time: {io_end - io_start}")
         return None
-def cis_distance_graph_df(_3dg_path, chrom=None, fo=None, max_dist=2000000, binsize=20000, n_jobs=4):
+def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=2000000, binsize=20000):
     """
     Generate distance matrix (store in bedpe-like format) from 3dg file.
     Only cis region is considered.
@@ -158,6 +159,8 @@ def cis_distance_graph_df(_3dg_path, chrom=None, fo=None, max_dist=2000000, bins
         _3dg_path: str, path to 3dg file
         chrom: str, chromosome to be processed.
             if None, process all chromosomes(highly not recommended, may cause memory error)
+        genome: give genome name or length path and add pixel_id to output
+            if None, pixel_id will not be added
         fo: str, path to output parquet file, if None, return dataframe
         max_dist: int, pixels with distance larger than max_dist will be discarded
         binsize: int, binsize of input 3dg file
@@ -168,6 +171,16 @@ def cis_distance_graph_df(_3dg_path, chrom=None, fo=None, max_dist=2000000, bins
     """
     # --- load data ---
     structure = parse_3dg(_3dg_path) # (chr, pos): x, y, z
+    if genome is not None:
+        genome = GenomeIdeograph(genome)
+        # save memory
+        structure = structure.reset_index()
+        structure["chr"] = pd.Categorical(
+            structure["chr"],
+            categories=genome.chromosomes.index.categories,
+            ordered=True
+        )
+        structure = structure.set_index(["chr", "pos"])
     def process_chunk(chunk, chrom=None):
         xyz = chunk[["x","y","z"]]
         if chrom is None:
@@ -195,8 +208,15 @@ def cis_distance_graph_df(_3dg_path, chrom=None, fo=None, max_dist=2000000, bins
         dist_long_df['chrom2'] = chrom
         dist_long_df['end1'] = dist_long_df['start1'] + binsize
         dist_long_df['end2'] = dist_long_df['start2'] + binsize
+        dist_long_df = dist_long_df[['chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2', 'distance']]
 
-        return dist_long_df[['chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2', 'distance']]
+        if genome is not None:
+            dist_long_df = genome.join_pixel_id(dist_long_df, binsize, intra=True)
+            dist_long_df = dist_long_df[["pixel_id", "chrom1", "start1", "end1", "chrom2", "start2", "end2", "distance"]]
+        else:
+            pass
+
+        return dist_long_df
     if chrom is not None:
         structure = structure.loc[chrom]
         df = process_chunk(structure, chrom)
