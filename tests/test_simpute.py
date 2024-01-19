@@ -7,6 +7,7 @@ sys.path.insert(0, "/share/home/ychi/dev/hires_utils")
 sys.path.insert(0, "/share/home/ychi/dev/sperm_struct")
 from pathlib import Path
 
+import dask.array as da
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -67,16 +68,22 @@ class TestSimpute(unittest.TestCase):
                     self.check_distance_graph(_3dg_path, pixels)
     def test_cis_distance_graph_df(self):
         test_cases = [
-            (self._3dg_path_small, None, None, None, 20000000, 1000000),
-            (self._3dg_path_small, "chr1", None, None, 20000000, 1000000),
-            (self._3dg_path_big, "chr1(mat)", "hg19_dip", None, 20000000, 20000),
+            (self._3dg_path_small, None, None, None, 20000000, 1000000, False),
+            (self._3dg_path_small, "chr1", None, None, 20000000, 1000000, False),
+            (self._3dg_path_big, "chr1(mat)", "hg19_dip", None, 20000000, 20000, False),
+            (self._3dg_path_big, "chr1(mat)", "hg19_dip", None, 20000000, 20000, False)
         ]
-        for _3dg_path, chrom, genome, fo, max_dist, binsize in test_cases:
-            with self.subTest(_3dg_path=_3dg_path, chrom=chrom, genome=genome, fo=fo, max_dist=max_dist, binsize=binsize):
-                pixels = cis_distance_graph_df(_3dg_path, chrom, genome, max_dist=max_dist, binsize=binsize)
-                self.assertTrue(isinstance(pixels, pd.DataFrame))
-                self.check_distance_graph(_3dg_path, pixels)
-                if genome is not None:
+        for _3dg_path, chrom, genome, fo, max_dist, binsize, fill in test_cases:
+            with self.subTest(_3dg_path=_3dg_path, chrom=chrom, genome=genome, fo=fo, 
+                              max_dist=max_dist, binsize=binsize, fill=fill):
+                pixels = cis_distance_graph_df(_3dg_path, chrom, genome, 
+                                               max_dist=max_dist, binsize=binsize, fill=fill)
+                if fill is True:
+                    self.assertTrue(isinstance(pixels, da))
+                else:
+                    self.assertTrue(isinstance(pixels, pd.DataFrame))
+                    self.check_distance_graph(_3dg_path, pixels)
+                if (genome is not None) and (fill is False):
                     self.assertTrue(pixels["pixel_id"].is_unique)
                 else:
                     pass
