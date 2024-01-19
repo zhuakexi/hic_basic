@@ -71,7 +71,7 @@ def chromosomes(genome, order=False):
                 names=["chrom", "length"]
                 ) # input is a file path
         except FileNotFoundError:
-            print("ref: neither valid abbrevations nor valid reference file")
+            raise ValueError("ref: neither valid abbrevations nor valid reference file")
     if isinstance(order, bool):
         if order: # using default order
             data.index = data.index.as_ordered()
