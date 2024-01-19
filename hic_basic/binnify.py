@@ -14,6 +14,16 @@ class GenomeIdeograph:
             or lengths file_path(csv format:: chrom, lengths)
         """
         self.chromosomes = chromosomes(ref)
+        # transform to ordered categorical
+        # not easy to use in normal tasks, but useful in binned data
+        chroms = self.chromosomes.index.to_list()
+        self.chromosomes.reset_index(inplace=True)
+        self.chromosomes["chrom"] = pd.Categorical(
+            self.chromosomes["chrom"],
+            categories=chroms,
+            ordered=True
+        )
+        self.chromosomes.set_index("chrom", inplace=True)
     def breaks(self, binsize:int):
         # Get binned reference(int version)
         ##  Return:
@@ -57,6 +67,53 @@ class GenomeIdeograph:
             ]
             bins = pd.concat(bins)
         return bins
+    def pixel_id(self, row, binsize:int, intra=True):
+        """
+        Get pixel_id from row
+        Input:
+            row: pd.Series, assume bedpe format
+            binsize: int
+        Output:
+            int
+        """
+        chrom1, start1, end1, chrom2, start2, end2 = row[:6]
+        if intra: # not triu, use full to avoid confusion
+            offsets_l1 = self.chromosomes["length"] // binsize
+            offsets_l2 = ((offsets_l1) ** 2).cumsum()
+            offsets_l2 = pd.Series(
+                np.insert(offsets_l2.values, 0, 0)[0:-1],
+                index = offsets_l2.index
+            )
+            offsets_l1, offsets_l2 = offsets_l1.to_dict(), offsets_l2.to_dict()
+            pixel_id = offsets_l2[chrom1] + (start1 // binsize) * offsets_l1[chrom1] + (start2 // binsize)
+        else: # not implemented
+            raise NotImplementedError("inter-chrom not implemented")
+        return pixel_id
+    def join_pixel_id(self, df, binsize, intra=True):
+        """
+        Add a 'pixel_id' column to the input DataFrame in a vectorized manner.
+        Input:
+            df: DataFrame, bedpe-like with columns 'chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2'
+            binsize: int, size of the bins used in pixelation
+            intra: bool, if True, process intra-chromosomal pixels
+        Output:
+            DataFrame with an additional 'pixel_id' column
+        """
+        if intra:
+            # 计算每个染色体长度的累积和，用于确定每个染色体的像素偏移
+            offsets_l1 = (self.chromosomes["length"] // binsize).to_dict()
+            cumul_offsets_l2 = ((self.chromosomes["length"] // binsize) ** 2).cumsum()
+            offsets_l2 = pd.Series(np.insert(cumul_offsets_l2.values, 0, 0)[:-1], index=cumul_offsets_l2.index).to_dict()
+
+            # 计算 pixel_id
+            df['pixel_id'] = (df['chrom1'].map(offsets_l2) + 
+                              (df['start1'] // binsize) * df['chrom1'].map(offsets_l1) +
+                              (df['start2'] // binsize))
+        else:
+            raise NotImplementedError("inter-chrom not implemented")
+
+        return df
+
 # def symmetry(X):
 #     # flip lower-triangle-part and add 
 #     #  it to upper-triangle
@@ -88,37 +145,37 @@ class GenomeIdeograph:
 #     )
 #     zp_mat_c = np.sum(temp,axis=(1,3))
 #     return zp_mat_c
-def bin_cut(dat:pd.DataFrame, breaks:dict, bins:dict):
-    # Binnify contacts between a pair of chromosomes(chr_pair)
-    # Input:
-    ##  dat: pairs, assume intra-contacts or 
-    ##    inter-contacts between two chromosome
-    ##  chr_pair: set with 1(for intra) or 2(inter) elements
-    ##  breaks: binned reference 
-    ##    chromosome_name : boundary of each bin in that chromosome} 
-    ##    (keys should contain all eles in chr_pair)
-    ##  bins: binned reference(IntervalIndex version)
-    ##    use as index
-    ##    chromosome_name : intervals of each bin in that chromosome} 
-    ##    (keys should contain all eles in chr_pair)
-    # Output:
-    ##  pd.DataFrame with full interval_index
+# def bin_cut(dat:pd.DataFrame, breaks:dict, bins:dict):
+#     # Binnify contacts between a pair of chromosomes(chr_pair)
+#     # Input:
+#     ##  dat: pairs, assume intra-contacts or 
+#     ##    inter-contacts between two chromosome
+#     ##  chr_pair: set with 1(for intra) or 2(inter) elements
+#     ##  breaks: binned reference 
+#     ##    chromosome_name : boundary of each bin in that chromosome} 
+#     ##    (keys should contain all eles in chr_pair)
+#     ##  bins: binned reference(IntervalIndex version)
+#     ##    use as index
+#     ##    chromosome_name : intervals of each bin in that chromosome} 
+#     ##    (keys should contain all eles in chr_pair)
+#     # Output:
+#     ##  pd.DataFrame with full interval_index
     
-    # using first row to infer which chr_pair this
-    chr1, chr2 = dat.iloc[0,[1,3]]
-    # binnify
-    b_dat, xi, yi = np.histogram2d(x=dat["pos1"],y=dat["pos2"],
-        bins=[breaks[chr1],breaks[chr2]])
-    # store in sparse matrix
-    if chr1 == chr2:
-        # upper-triangle for intra_contacts
-        b_dat = symmetry(b_dat)
-    b_dat = pd.DataFrame(
-        b_dat).astype(pd.SparseDtype(int,0))
-    # using Interval version of bins as index
-    b_dat.index, b_dat.columns = \
-        bins[chr1], bins[chr2]
-    return b_dat
+#     # using first row to infer which chr_pair this
+#     chr1, chr2 = dat.iloc[0,[1,3]]
+#     # binnify
+#     b_dat, xi, yi = np.histogram2d(x=dat["pos1"],y=dat["pos2"],
+#         bins=[breaks[chr1],breaks[chr2]])
+#     # store in sparse matrix
+#     if chr1 == chr2:
+#         # upper-triangle for intra_contacts
+#         b_dat = symmetry(b_dat)
+#     b_dat = pd.DataFrame(
+#         b_dat).astype(pd.SparseDtype(int,0))
+#     # using Interval version of bins as index
+#     b_dat.index, b_dat.columns = \
+#         bins[chr1], bins[chr2]
+#     return b_dat
 # def tiled_bin_cut(pairs:pd.DataFrame,ref:GenomeIdeograph,binsize:int)->Hicmap:
 #     pairs_b = {}
 #     for indi, dat in pairs.groupby(["chr1","chr2"]):
