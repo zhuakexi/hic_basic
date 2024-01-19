@@ -168,10 +168,13 @@ def cis_distance_graph_df(_3dg_path, chrom=None, fo=None, max_dist=2000000, bins
     """
     # --- load data ---
     structure = parse_3dg(_3dg_path) # (chr, pos): x, y, z
-    def process_chunk(chunk):
+    def process_chunk(chunk, chrom=None):
         xyz = chunk[["x","y","z"]]
-        chrom = chunk.index.get_level_values(0)[0]
-        start = chunk.index.get_level_values(1)
+        if chrom is None:
+            chrom = chunk.index.get_level_values(0)[0]
+            start = chunk.index.get_level_values(1)
+        else:
+            start = chunk.index
 
         dist_mat = distance_matrix(xyz.values, xyz.values)
         dist_df = pd.DataFrame(
@@ -196,8 +199,9 @@ def cis_distance_graph_df(_3dg_path, chrom=None, fo=None, max_dist=2000000, bins
         return dist_long_df[['chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2', 'distance']]
     if chrom is not None:
         structure = structure.loc[chrom]
-        df = process_chunk(structure)
-    df = structure.groupby(level=0).apply(process_chunk).reset_index(drop=True) # chrom1, start1, end1, chrom2, start2, end2, distance
+        df = process_chunk(structure, chrom)
+    else:
+        df = structure.groupby(level=0).apply(process_chunk).reset_index(drop=True) # chrom1, start1, end1, chrom2, start2, end2, distance
     if fo is None:
         return df
     else:
