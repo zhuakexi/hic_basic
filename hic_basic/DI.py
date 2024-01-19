@@ -164,7 +164,8 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, filt_fdr=0.
 
     combined_df = da.stack(dfs, axis=1)
     combined_df = dd.from_dask_array(combined_df, columns=[f"sample{i}" for i in range(m1 + m2)])
-    #print(combined_df.npartitions)
+    combined_df = combined_df.repartition(npartitions=n_jobs)
+    print(combined_df.npartitions)
     # 计算均值
     meanA = combined_df.iloc[:, :m1].mean(axis=1)
     meanB = combined_df.iloc[:, m1:m1+m2].mean(axis=1)

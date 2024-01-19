@@ -16,7 +16,7 @@ class TestDI(unittest.TestCase):
         if not os.path.exists(self.outdir):
             os.makedirs(self.outdir)
         self._3dg_path_small = "/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg"
-        self._3dg_path_big = "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.20k.4.3dg"
+        self._3dg_path_middle = "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.200k.4.3dg"
     # def test_normalize_band_dd(self):
     #     n = 1000
     #     chrom1 = np.random.choice(['chr1', 'chr2', 'chr3'], size=n)
@@ -89,7 +89,7 @@ class TestDI(unittest.TestCase):
     def test_simpleDiff(self):
         test_cases = [
             ([self._3dg_path_small]*30, [self._3dg_path_small]*20, "chr1", "mm10", os.path.join(self.outdir, "test_simpleDiff.small.parquet"), 0.05, 5, 2000000, 1000000, 16),
-            ([self._3dg_path_big]*30, [self._3dg_path_big]*20, "chr1(mat)", "hg19_dip", os.path.join(self.outdir, "test_simpleDiff.big.parquet"), 0.05, 5, 2000000, 20000, 8),
+            ([self._3dg_path_middle]*30, [self._3dg_path_middle]*20, "chr1(mat)", "hg19_dip", os.path.join(self.outdir, "test_simpleDiff.middle.parquet"), 0.05, 5, 2000000, 200000, 8),
         ]
         for groupA, groupB, chrom, genome, fo, filt_fdr, max_3d_dist, max_dist, binsize, n_jobs in test_cases:
             with self.subTest(groupA=groupA, groupB=groupB, chrom=chrom, genome=genome, fo=fo, filt_fdr=filt_fdr, max_3d_dist=max_3d_dist, max_dist=max_dist, binsize=binsize, n_jobs=n_jobs):
