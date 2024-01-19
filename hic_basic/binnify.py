@@ -3,7 +3,7 @@
 import pandas as pd, numpy as np
 #import datashader as ds
 #import datashader.transfer_functions as tf
-import pickle as pkl
+#import pickle as pkl
 #import xarray as xr
 from .data import chromosomes
 
@@ -106,9 +106,11 @@ class GenomeIdeograph:
             offsets_l2 = pd.Series(np.insert(cumul_offsets_l2.values, 0, 0)[:-1], index=cumul_offsets_l2.index).to_dict()
 
             # 计算 pixel_id
-            df['pixel_id'] = (df['chrom1'].map(offsets_l2) + 
-                              (df['start1'] // binsize) * df['chrom1'].map(offsets_l1) +
-                              (df['start2'] // binsize))
+            df = df.assign(
+                pixel_id = (df['chrom1'].map(offsets_l2)
+                            + (df['start1'] // binsize) * df['chrom1'].map(offsets_l1)
+                            +(df['start2'] // binsize))
+                )
         else:
             raise NotImplementedError("inter-chrom not implemented")
 

@@ -67,13 +67,18 @@ class TestSimpute(unittest.TestCase):
                     self.check_distance_graph(_3dg_path, pixels)
     def test_cis_distance_graph_df(self):
         test_cases = [
-            (self._3dg_path_small, None, None, 20000000, 1000000),
-            (self._3dg_path_small, "chr1(mat)", None, 20000000, 20000),
+            (self._3dg_path_small, None, None, None, 20000000, 1000000),
+            (self._3dg_path_small, "chr1", None, None, 20000000, 1000000),
+            (self._3dg_path_big, "chr1(mat)", "hg19_dip", None, 20000000, 20000),
         ]
-        for _3dg_path, chrom, fo, max_dist, binsize in test_cases:
-            with self.subTest(_3dg_path=_3dg_path, chrom=chrom, fo=fo, max_dist=max_dist, binsize=binsize):
-                pixels = cis_distance_graph_df(_3dg_path, chrom, max_dist=max_dist, binsize=binsize)
+        for _3dg_path, chrom, genome, fo, max_dist, binsize in test_cases:
+            with self.subTest(_3dg_path=_3dg_path, chrom=chrom, genome=genome, fo=fo, max_dist=max_dist, binsize=binsize):
+                pixels = cis_distance_graph_df(_3dg_path, chrom, genome, max_dist=max_dist, binsize=binsize)
                 self.assertTrue(isinstance(pixels, pd.DataFrame))
                 self.check_distance_graph(_3dg_path, pixels)
+                if genome is not None:
+                    self.assertTrue(pixels["pixel_id"].is_unique)
+                else:
+                    pass
 if __name__ == '__main__':
     unittest.main()
