@@ -102,12 +102,12 @@ def simpleDiff_test(df, m1, m2):
     stats_df.columns = ['pvalue']
 
     return stats_df
-def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, filt_fdr=0.05, max_3d_dist=5, 
+def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, tmp_dir=".", filt_fdr=0.05, max_3d_dist=5, 
                max_dist=2000000, binsize=20000, n_jobs=16, memory_limit='32GB'):
     """
     Input:
-        groupA: _3dg_file paths for groupA
-        groupB: _3dg_file paths for groupB
+        groupA: imputed .parquet file path for groupA
+        groupB: imputed .parquet file paths for groupB
         fo: output parquet file
         filt_fdr: filter pixels with fdr > filt_fdr, if None, no filtering
         n_jobs: number of jobs
@@ -123,12 +123,12 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, filt_fdr=0.
         )
     m1, m2 = len(groupA), len(groupB)
     ideograph = GenomeIdeograph(genome)
-    # 读取和处理 groupA 和 groupB 的文件
+    # read imputes
     dfs = []
-    for i, _3dg_path in enumerate(groupA + groupB):
-        df = cis_distance_graph_df(_3dg_path, chrom=chrom, genome=genome, fo=None, max_dist=max_dist, binsize=binsize)
+    for i, imputed_path in enumerate(groupA + groupB):
+        #df = cis_distance_graph_df(_3dg_path, chrom=chrom, genome=genome, fo=None, max_dist=max_dist, binsize=binsize)
+        df = dd.read_parquet(imputed_path)
         df = normalize_band(df)
-        df = df.set_index("pixel_id")
         # transform normalized distance to dask array
         start_id = ideograph.pixel_id(
             pd.Series(
@@ -145,12 +145,6 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, filt_fdr=0.
             ),
             binsize=binsize
         )
-        # new_df = dd.from_array(
-        #     np.full(end_id - start_id + 1, np.nan),
-        #     columns=["z_normalized_distance"],
-        #     chunksize=1000000
-        # )
-        # new_df.index = dd.from_array(np.arange(start_id, end_id + 1))
         length = end_id - start_id + 1
         values = da.full(length, np.nan, chunks=chunksize)
         index = da.arange(start_id, end_id + 1, chunks=chunksize)
@@ -164,8 +158,8 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, filt_fdr=0.
 
     combined_df = da.stack(dfs, axis=1)
     combined_df = dd.from_dask_array(combined_df, columns=[f"sample{i}" for i in range(m1 + m2)])
-    combined_df = combined_df.repartition(npartitions=n_jobs)
-    print(combined_df.npartitions)
+    #combined_df = combined_df.repartition(npartitions=n_jobs)
+    print("combined_df.npartitions:",combined_df.npartitions)
     # 计算均值
     meanA = combined_df.iloc[:, :m1].mean(axis=1)
     meanB = combined_df.iloc[:, m1:m1+m2].mean(axis=1)
