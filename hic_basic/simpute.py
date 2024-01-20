@@ -88,18 +88,37 @@ def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000,
         boundscheck = True,
         ensure_sorted = True,
     )
-def calculate_distance(row1, row2):
+def parse_3dg_dask(_3dg_path):
     """
-    Calculate Euclidean distance between two points.
+    Parse 3dg file to dask dataframe.
+    Input:
+        _3dg_path: str, path to 3dg file
+    Output:
+        structure: dask dataframe, index is (chr, pos), columns are x, y, z
     """
-    return euclidean(row1[['x', 'y', 'z']], row2[['x', 'y', 'z']])
-def cis_distance_graph(_3dg_path, fo=None, max_dist=2000000, binsize=20000, n_jobs=4):
+    structure = dd.read_csv(
+        _3dg_path,
+        sep="\t",
+        header=None,
+        names=["chr", "pos", "x", "y", "z"],
+        dtype={"chr": str, "pos": int, "x": float, "y": float, "z": float},
+        blocksize=None
+    )
+    return structure
+# def calculate_distance(row1, row2):
+#     """
+#     Calculate Euclidean distance between two points.
+#     """
+#     return euclidean(row1[['x', 'y', 'z']], row2[['x', 'y', 'z']])
+def cis_distance_graph(_3dg_path, fo=None, genome=None, max_dist=2000000, binsize=20000, n_jobs=None):
     """
     Generate distance matrix (store in bedpe-like format) from 3dg file.
     Only cis region is considered.
     Input:
         _3dg_path: str, path to 3dg file
         fo: str, path to output parquet file, if None, return dataframe
+        genome: give genome name or length path and add pixel_id to output
+            if None, pixel_id will not be added
         max_dist: int, pixels with distance larger than max_dist will be discarded
         binsize: int, binsize of input 3dg file
         n_jobs: int, number of jobs to run in parallel
@@ -107,46 +126,52 @@ def cis_distance_graph(_3dg_path, fo=None, max_dist=2000000, binsize=20000, n_jo
         df: n * 7 dask dataframe, (chrom1, start1, end1, chrom2, start2, end2, distance)
         None if fo is not None
     """
-    # --- load data ---
-    structure = parse_3dg(_3dg_path)
-
-    # Reset index and add index columns to the DataFrame
-    structure = structure.reset_index()
-    structure.columns = ['chrom', 'pos', 'x', 'y', 'z']
-    
-    # Convert to Dask DataFrame for parallel processing
-    ddf = dd.from_pandas(structure, npartitions=n_jobs)
-
-    # Define a delayed function for processing chunks
-    def process_chunk(df_chunk):
-        results = []
-        chrom = df_chunk['chrom'].iloc[0]
-        for i in range(len(df_chunk)):
-            for j in range(i, len(df_chunk)):  # Only compute upper triangle
-                if abs(df_chunk['pos'].iloc[i] - df_chunk['pos'].iloc[j]) <= max_dist:
-                    dist = calculate_distance(df_chunk.iloc[i], df_chunk.iloc[j])
-                    results.append([chrom, df_chunk['pos'].iloc[i], df_chunk['pos'].iloc[i] + binsize, 
-                                    chrom, df_chunk['pos'].iloc[j], df_chunk['pos'].iloc[j] + binsize, 
-                                    dist])
-        return pd.DataFrame(results, columns=['chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2', 'distance'])
-
-    # Process each chromosome using Dask
-    chroms = structure['chrom'].unique()
-    delayed_results = []
-    for chrom in chroms:
-        chrom_ddf = ddf[ddf['chrom'] == chrom].compute()  # Compute each chromosome separately
-        delayed_results.append(delayed(process_chunk)(chrom_ddf))
-
-    # Combine results and save to Parquet
-    ddf_result = dd.from_delayed(delayed_results)
-    ddf_result = ddf_result.repartition(npartitions=4)
-    if fo is None:
-        return ddf_result
+    # --- set dask options ---
+    if n_jobs is None:
+        dask.config.set(scheduler='processes')
     else:
-        dask.config.set(scheduler='single-threaded')
+        dask.config.set(scheduler='processes', num_workers=n_jobs)
+    # --- load data ---
+    structure = parse_3dg_dask(_3dg_path)
+    # n*3 -> n**2*1
+    def chrom_dist_mat_long(chunk):
+        chunk = chunk.assign(
+            dummy=1
+        ).merge(
+            chunk.assign(dummy=1),
+            on="dummy"
+        ).drop(
+            "dummy", axis=1
+        )
+        print(chunk.shape)
+        chunk.columns = ["chrom1", "start1", "x1", "y1", "z1", "chrom2", "start2", "x2", "y2", "z2"]
+        chunk = chunk.loc[chunk["start1"] <= chunk["start2"]]
+        # dask flavor euclidean distance
+        chunk["distance"] = chunk[["x1", "y1", "z1", "x2", "y2", "z2"]].apply(
+            lambda row : (row[["x1", "y1", "z1"]] - row[["x2", "y2", "z2"]]).pow(2).sum().pow(0.5),
+            axis=1,
+            meta=("x", "f8")
+        )
+        chunk = chunk.loc[chunk["distance"] <= max_dist]
+        chunk["end1"] = chunk["start1"] + binsize
+        chunk["end2"] = chunk["start2"] + binsize
+        chunk = chunk[["chrom1", "start1", "end1", "chrom2", "start2", "end2", "distance"]]
+        return chunk
+    dist_bedpe = structure.groupby("chr").apply(chrom_dist_mat_long, meta=("x", "f8")).reset_index(drop=True)
+    print(dist_bedpe.head())
+    if genome is not None:
+        ideograph = GenomeIdeograph(genome)
+        dist_bedpe = ideograph.join_pixel_id(dist_bedpe, binsize, intra=True)
+        dist_bedpe = dist_bedpe[["pixel_id", "chrom1", "start1", "end1", "chrom2", "start2", "end2", "distance"]]
+        dist_bedpe.set_index("pixel_id", inplace=True)
+    else:
+        pass
+    if fo is None:
+        return dist_bedpe
+    else:
         print("Saving to Parquet...")
         io_start = time.time()
-        ddf_result.to_parquet(fo)
+        dist_bedpe.to_parquet(fo)
         io_end = time.time()
         print(f"IO time: {io_end - io_start}")
         return None
@@ -171,6 +196,7 @@ def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=
         df: n * 7 dataframe, (chrom1, start1, end1, chrom2, start2, end2, distance)
         None if fo is not None
     """
+    chunksize = 100000
     # --- load data ---
     structure = parse_3dg(_3dg_path) # (chr, pos): x, y, z
     if genome is not None:
