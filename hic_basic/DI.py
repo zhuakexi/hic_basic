@@ -1,10 +1,10 @@
 from functools import reduce
 
+import dask
 import dask.array as da
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-from dask import delayed
 from dask.distributed import Client
 from hic_basic.binnify import GenomeIdeograph
 from hic_basic.simpute import cis_distance_graph, cis_distance_graph_df
@@ -85,20 +85,77 @@ def multiple_testing_correction(pvalues, correction_type="FDR"):
             pvalue, index = vals
             qvalues[index] = new_values[i]
     return qvalues
-def simpleDiff_test(df, m1, m2):
+def test_row(row, m1, m2):
     """
     Input:
-        df: n * (m1 + m2) dask dataframe, n is pixels to be tested, m1 and m2 are number of samples in each group
+        row: a row of combined_df
+        m1: number of samples in groupA
+        m2: number of samples in groupB
     Output:
-        df: n * 1 dask dataframe, pvalue
+        p-value of mannwhitneyu test
     """
-    assert(isinstance(df, dd.DataFrame))
-    stats_values = df.apply(
-        lambda x: mannwhitneyu(x[:m1], x[m1:m1+m2], alternative="two-sided").pvalue,
-        axis=1,
-        meta=('pvalue', 'f8')
+    # test
+    return mannwhitneyu(row[:m1], row[m1:], alternative="two-sided")[1]
+@dask.delayed
+def process_file(imputed_path, chrom, binsize, chunksize):
+    # load data
+    df = dd.read_parquet(imputed_path)
+    # zscore normalization
+    df = df.repartition(npartitions=100)
+    value_col_name = df.columns[-1]
+    df['band'] = (df['start2'] - df['start1']) // binsize
+    if chrom is None:
+        grouper = ['chrom1', 'chrom2', 'band']
+    else:
+        grouper = "band"
+    df[f'z_normalized_{value_col_name}'] = df.groupby(grouper)[value_col_name].transform(
+        lambda x: (x - x.mean()) / x.std(),
+        meta=(f'z_normalized_{value_col_name}', 'f8')
     )
-    return dd.from_dask_array(stats_values, columns=["pvalue"])
+    # add pixel_id
+    df = df.map_partitions(
+        lambda df : ideograph.join_pixel_id(
+            df,
+            binsize=binsize
+        )
+    )
+    # extend to all possible pixels
+    df = df.set_index("pixel_id", nparticitions=100)
+    start_id = ideograph.pixel_id(
+        pd.Series(
+            [chrom, 0, binsize, chrom, 0, binsize],
+            index = ["chrom1", "start1", "end1", "chrom2", "start2", "end2"]
+        ),
+        binsize=binsize
+    )
+    last_bin = ideograph.chromosomes.loc[chrom, "length"] - ideograph.chromosomes.loc[chrom, "length"] % binsize
+    end_id = ideograph.pixel_id(
+        pd.Series(
+            [chrom, last_bin, ideograph.chromosomes.loc[chrom], chrom, last_bin, ideograph.chromosomes.loc[chrom]],
+            index = ["chrom1", "start1", "end1", "chrom2", "start2", "end2"]
+        ),
+        binsize=binsize
+    )
+    all_possible_pixels = da.stack(
+        [
+            da.arange(start_id, end_id + 1, chunks=chunksize), # index
+            da.full(end_id + 1 - start_id, np.nan, chunks=chunksize) # values
+        ],
+        axis=1
+    )
+    all_possible_pixels = dd.from_dask_array(
+        da.arange(start_id, end_id + 1, chunks=chunksize),
+        columns=["pixel_id"]
+    )
+    all_possible_pixels = all_possible_pixels.set_index("pixel_id", npartitions=100)
+    extended_df = dd.merge(
+        all_possible_pixels,
+        df,
+        how="left",
+        left_index=True,
+        right_index=True
+    )
+    return extended_df["z_normalized_distance"].to_dask_array(lengths=True)
 def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist=5, 
                max_dist=2000000, binsize=20000, n_jobs=16, memory_limit='32GB'):
     """
@@ -113,6 +170,7 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist
             (chrom1, start1, end1, chrom2, start2, end2, meanA, meanB, diff, pvalue, qvalue)
     """
     chunksize = 100000
+
     client = Client(
         n_workers=n_jobs,
         threads_per_worker=1,
@@ -120,63 +178,39 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist
         )
     m1, m2 = len(groupA), len(groupB)
     ideograph = GenomeIdeograph(genome)
-    # read imputes
+
+    # load all data
     dfs = []
     for i, imputed_path in enumerate(groupA + groupB):
-        #df = cis_distance_graph_df(_3dg_path, chrom=chrom, genome=genome, fo=None, max_dist=max_dist, binsize=binsize)
-        df = dd.read_parquet(
-            imputed_path
-            )
-        df = normalize_band(df, chrom=chrom, max_dist=max_dist, binsize=binsize)
-        df = ideograph.join_pixel_id(df, binsize=binsize)
-        df = df.set_index("pixel_id", npartiitions="auto")
-            
-        # transform normalized distance to dask array
-        start_id = ideograph.pixel_id(
-            pd.Series(
-                [chrom, 0, binsize, chrom, 0, binsize],
-                index = ["chrom1", "start1", "end1", "chrom2", "start2", "end2"]
-            ),
-            binsize=binsize
-        )
-        last_bin = ideograph.chromosomes.loc[chrom, "length"] - ideograph.chromosomes.loc[chrom, "length"] % binsize
-        end_id = ideograph.pixel_id(
-            pd.Series(
-                [chrom, last_bin, ideograph.chromosomes.loc[chrom], chrom, last_bin, ideograph.chromosomes.loc[chrom]],
-                index = ["chrom1", "start1", "end1", "chrom2", "start2", "end2"]
-            ),
-            binsize=binsize
-        )
-        length = end_id - start_id + 1
-        values = da.full(length, np.nan, chunks=chunksize)
-        index = da.arange(start_id, end_id + 1, chunks=chunksize)
-        new_df = dd.from_dask_array(values, columns=["z_normalized_distance"])
-        new_df.index = dd.from_dask_array(index)
-        new_df["z_normalized_distance"] = new_df["z_normalized_distance"].fillna(df["z_normalized_distance"])
-        #print(new_df.npartitions)
-        dfs.append(
-            new_df["z_normalized_distance"].to_dask_array(lengths=True)
-        )
-
-    combined_df = da.stack(dfs, axis=1)
+        dfs.append(process_file(imputed_path, chrom, binsize, chunksize))
+    combined_df = da.stack(
+        dd.compute(*dfs),
+        axis=1
+    )
     combined_df = dd.from_dask_array(combined_df, columns=[f"sample{i}" for i in range(m1 + m2)])
     print("combined_df.npartitions:",combined_df.npartitions)
+
+    # calculate
     meanA = combined_df.iloc[:, :m1].mean(axis=1)
     meanB = combined_df.iloc[:, m1:m1+m2].mean(axis=1)
-    concerned_indi = ((meanA < max_3d_dist) | (meanB < max_3d_dist)) & (meanA.notnull() & meanB.notnull())
-
-    # 调用 simpleDiff_test 计算 p 值
-    pvalues = simpleDiff_test(combined_df[concerned_indi], m1, m2)
-
-    # 整理结果
-    # id_df = combined_df[['chrom1', 'start1', 'chrom2', 'start2']]
-    # id_df['end1'] = id_df['start1'] + binsize
-    # id_df['end2'] = id_df['start2'] + binsize
-    # result_df = dd.concat([id_df.loc[concerned_indi], pvalues], axis=1)
-    result_df = pvalues
-    result_df['meanA'] = meanA
-    result_df['meanB'] = meanB
-    result_df['diff'] = meanA - meanB
+    #concerned_indi = ((meanA < max_3d_dist) | (meanB < max_3d_dist)) & (meanA.notnull() & meanB.notnull())
+    #combined_df = combined_df.loc[concerned_indi]
+    # pvalues = combined_df.map_partitions(
+    #     lambda df: mannwhitneyu(df.iloc[:, :m1], df.iloc[:, m1:m1+m2], alternative="two-sided").pvalue,
+    #     meta=('pvalue', 'f8')
+    # )
+    pvalues = combined_df.apply(test_row, axis=1, args=(m1, m2), meta=('pvalue', 'f8'))
+    # meanA, meanB, diff, pvalues
+    result_df = dd.concat(
+        [
+            meanA,
+            meanB,
+            meanA - meanB,
+            pvalues
+        ],
+        axis=1
+    )
+    result_df.columns = ["meanA", "meanB", "diff", "pvalue"]
 
     # 保存结果
     result_df.to_parquet(fo)
