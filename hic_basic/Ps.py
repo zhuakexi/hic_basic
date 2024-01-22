@@ -39,10 +39,10 @@ def ps_curve(clr, genome, nproc):
     Output:
         cvd_merged( ps curve ), der( ps curve derivative ); list of dataframe
     """
-    arms = get_full_chrom_arm_view(clr, genome)
+    #arms = get_full_chrom_arm_view(clr, genome)
     cvd_smooth_agg = cooltools.expected_cis(
         clr = clr,
-        view_df = arms,
+        view_df = None,
         smooth = True,
         aggregate_smoothed = True,
         nproc = nproc
