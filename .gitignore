@@ -8,3 +8,6 @@ tests/output
 # on jupyter notebook
 *.ipynb
 .ipynb_checkpoints/
+notebooks/
+# on dask
+dask-worker-space/
