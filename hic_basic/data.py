@@ -54,6 +54,7 @@ def chromosomes(genome, order=False):
     files = {
         "hg19" : ref_dir / "hg19.len.tsv",
         "hg19_dip" : ref_dir / "hg19.dip.len.tsv",
+        "GRCh38" : ref_dir / "GRCh38.len.tsv",
         "mm10" : ref_dir / "mm10.len.tsv",
         "mm10_dip" : ref_dir / "mm10.dip.len.tsv",
     }
