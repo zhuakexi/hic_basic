@@ -5,7 +5,9 @@ import sys
 sys.path.insert(0, "/share/home/ychi/dev/hic_basic")
 sys.path.insert(0, "/share/home/ychi/dev/hires_utils")
 sys.path.insert(0, "/share/home/ychi/dev/sperm_struct")
-from hic_basic.DI import normalize_band, multiple_testing_correction, calculate_stats, simpleDiff_test, simpleDiff
+from pathlib import Path
+
+from hic_basic.DI import normalize_band, multiple_testing_correction, simpleDiff_test, simpleDiff
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -18,6 +20,7 @@ class TestDI(unittest.TestCase):
         self._3dg_path_small = "/shareb/ychi/repo/sperm43/3dg_c/BJ8017.clean.1m.3.3dg"
         self._3dg_path_middle = "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.200k.4.3dg"
         self._3dg_path_big = "/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.20k.4.3dg"
+        self._imputed_small =  Path(os.path.dirname(__file__)) / "output" / "simpute" / "cis_distance_graph_small.parquet"
     # def test_normalize_band_dd(self):
     #     n = 1000
     #     chrom1 = np.random.choice(['chr1', 'chr2', 'chr3'], size=n)
@@ -89,9 +92,10 @@ class TestDI(unittest.TestCase):
     # Testing simpleDiff function would require a more complex setup and is not included here
     def test_simpleDiff(self):
         test_cases = [
-            ([self._3dg_path_small]*30, [self._3dg_path_small]*20, "chr1", "mm10", os.path.join(self.outdir, "test_simpleDiff.small.parquet"), 0.05, 5, 2000000, 1000000, 16),
-            ([self._3dg_path_middle]*30, [self._3dg_path_middle]*20, "chr1(mat)", "hg19_dip", os.path.join(self.outdir, "test_simpleDiff.middle.parquet"), 0.05, 5, 2000000, 200000, 8),
-            ([self._3dg_path_big]*30, [self._3dg_path_big]*20, "chr1(mat)", "hg19_dip", os.path.join(self.outdir, "test_simpleDiff.big.parquet"), 0.05, 5, 2000000, 20000, 8),
+            #([self._3dg_path_small]*30, [self._3dg_path_small]*20, "chr1", "mm10", os.path.join(self.outdir, "test_simpleDiff.small.parquet"), 0.05, 5, 2000000, 1000000, 16),
+            #([self._3dg_path_middle]*30, [self._3dg_path_middle]*20, "chr1(mat)", "hg19_dip", os.path.join(self.outdir, "test_simpleDiff.middle.parquet"), 0.05, 5, 2000000, 200000, 8),
+            #([self._3dg_path_big]*30, [self._3dg_path_big]*20, "chr1(mat)", "hg19_dip", os.path.join(self.outdir, "test_simpleDiff.big.parquet"), 0.05, 5, 2000000, 20000, 8),
+            ([self._imputed_small]*30, [self._imputed_small]*20, "chr1", "mm10", os.path.join(self.outdir, "test_simpleDiff.imputed.parquet"), 0.05, 5, 2000000, 1000000, 8),
         ]
         for groupA, groupB, chrom, genome, fo, filt_fdr, max_3d_dist, max_dist, binsize, n_jobs in test_cases:
             with self.subTest(groupA=groupA, groupB=groupB, chrom=chrom, genome=genome, fo=fo, filt_fdr=filt_fdr, max_3d_dist=max_3d_dist, max_dist=max_dist, binsize=binsize, n_jobs=n_jobs):
