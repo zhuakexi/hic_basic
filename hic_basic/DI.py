@@ -10,34 +10,41 @@ from hic_basic.binnify import GenomeIdeograph
 from hic_basic.simpute import cis_distance_graph, cis_distance_graph_df
 from scipy.stats import mannwhitneyu
 
-def normalize_band(df):
+def normalize_band(df, chrom=None, max_dist=2000000, binsize=20000):
     """
     Input:
         df: bedpe like dask dataframe, with columns chrom1, start1, end1, chrom2, start2, end2, value
             don't assume value name
+        chrom: if not None, assume df has only intra pixels
+        max_dist: max distance in impuation, used to estimiate partitions
+        binsize: resolution of the data, used to estimiate partitions
     Output:
         df: same as input, with value normalized by band
+        TODO: if max_dist or binsize is None, df is partitioned by chrom1, chrom2
     """
     value_col_name = df.columns[-1]
-    df['band'] = df['start2'] - df['start1']
+    df['band'] = (df['start2'] - df['start1']) // binsize
+    #df = df.set_index('band', divisions=list(range(0, max_dist // binsize + 2)))
+    #df = df.set_index('band', npartitions=max_dist // binsize + 2)
+    df = df.set_index('band',npartitions="auto")
 
     # zscore normalization
-    if isinstance(df, dd.DataFrame):
-        # df = df.reset_index(drop=True)
-        # grouped = df.groupby(['chrom1', 'chrom2', 'band'])[value_col_name]
-        # z_scores = grouped.apply(lambda x: (x - x.mean()) / x.std(), meta=('x', 'f8'))
-        # df[f'z_normalized_{value_col_name}'] = z_scores
-        def zscore_with_reset_index(group):
-            group = group.reset_index(drop=True)
-            return (group[value_col_name] - group[value_col_name].mean()) / group[value_col_name].std(ddof=1)
-
-        z_normalized = df.groupby(['chrom1', 'chrom2', 'band']).apply(zscore_with_reset_index, meta=('z_normalized_value', 'f8')).reset_index(drop=True)
-        df[f'z_normalized_{value_col_name}'] = z_normalized
+    if chrom is None:
+        grouper = ['chrom1', 'chrom2', 'band']
     else:
-        df[f'z_normalized_{value_col_name}'] = df.groupby(['chrom1', 'chrom2', 'band'])[value_col_name].transform(lambda x: (x - x.mean()) / x.std())
+        grouper = "band"
+    if isinstance(df, dd.DataFrame):
+        df[f'z_normalized_{value_col_name}'] = df.groupby(grouper)[value_col_name].transform(
+            lambda x: (x - x.mean()) / x.std(),
+            meta=(f'z_normalized_{value_col_name}', 'f8')
+        )
+    else:
+        df[f'z_normalized_{value_col_name}'] = df.groupby(grouper)[value_col_name].transform(
+            lambda x: (x - x.mean()) / x.std()
+        )
 
     # remove helper cols
-    df = df.drop(columns=['band', value_col_name])
+    #df = df.drop(columns=['band', value_col_name])
 
     return df
 def multiple_testing_correction(pvalues, correction_type="FDR"):
@@ -78,16 +85,6 @@ def multiple_testing_correction(pvalues, correction_type="FDR"):
             pvalue, index = vals
             qvalues[index] = new_values[i]
     return qvalues
-def calculate_stats(row, m1, m2):
-    group1 = row[:m1]
-    group2 = row[m1:m1+m2]
-    # Mann-Whitney U 测试, 注意 mannwhitneyu 需要非空数组
-    if len(group1) > 0 and len(group2) > 0:
-        pvalue = mannwhitneyu(group1, group2, alternative='two-sided').pvalue
-    else:
-        pvalue = np.nan
-    return pvalue
-
 def simpleDiff_test(df, m1, m2):
     """
     Input:
@@ -96,13 +93,13 @@ def simpleDiff_test(df, m1, m2):
         df: n * 1 dask dataframe, pvalue
     """
     assert(isinstance(df, dd.DataFrame))
-    stats_values = df.apply(lambda row: calculate_stats(row, m1, m2), axis=1, meta=('x', 'f8'))
-
-    stats_df = stats_values.to_frame()
-    stats_df.columns = ['pvalue']
-
-    return stats_df
-def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, tmp_dir=".", filt_fdr=0.05, max_3d_dist=5, 
+    stats_values = df.apply(
+        lambda x: mannwhitneyu(x[:m1], x[m1:m1+m2], alternative="two-sided").pvalue,
+        axis=1,
+        meta=('pvalue', 'f8')
+    )
+    return dd.from_dask_array(stats_values, columns=["pvalue"])
+def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist=5, 
                max_dist=2000000, binsize=20000, n_jobs=16, memory_limit='32GB'):
     """
     Input:
@@ -127,8 +124,13 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, tmp_dir="."
     dfs = []
     for i, imputed_path in enumerate(groupA + groupB):
         #df = cis_distance_graph_df(_3dg_path, chrom=chrom, genome=genome, fo=None, max_dist=max_dist, binsize=binsize)
-        df = dd.read_parquet(imputed_path)
-        df = normalize_band(df)
+        df = dd.read_parquet(
+            imputed_path
+            )
+        df = normalize_band(df, chrom=chrom, max_dist=max_dist, binsize=binsize)
+        df = ideograph.join_pixel_id(df, binsize=binsize)
+        df = df.set_index("pixel_id", npartiitions="auto")
+            
         # transform normalized distance to dask array
         start_id = ideograph.pixel_id(
             pd.Series(
@@ -158,12 +160,10 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, tmp_dir="."
 
     combined_df = da.stack(dfs, axis=1)
     combined_df = dd.from_dask_array(combined_df, columns=[f"sample{i}" for i in range(m1 + m2)])
-    #combined_df = combined_df.repartition(npartitions=n_jobs)
     print("combined_df.npartitions:",combined_df.npartitions)
-    # 计算均值
     meanA = combined_df.iloc[:, :m1].mean(axis=1)
     meanB = combined_df.iloc[:, m1:m1+m2].mean(axis=1)
-    concerned_indi = (meanA < max_3d_dist) | (meanB < max_3d_dist)
+    concerned_indi = ((meanA < max_3d_dist) | (meanB < max_3d_dist)) & (meanA.notnull() & meanB.notnull())
 
     # 调用 simpleDiff_test 计算 p 值
     pvalues = simpleDiff_test(combined_df[concerned_indi], m1, m2)
@@ -177,7 +177,6 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, tmp_dir="."
     result_df['meanA'] = meanA
     result_df['meanB'] = meanB
     result_df['diff'] = meanA - meanB
-    # FDR 校正可以在最后进行
 
     # 保存结果
     result_df.to_parquet(fo)
