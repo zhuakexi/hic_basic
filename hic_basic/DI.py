@@ -1,13 +1,9 @@
-from functools import reduce
-
 import dask
 import dask.array as da
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-from dask.distributed import Client
 from hic_basic.binnify import GenomeIdeograph
-from hic_basic.simpute import cis_distance_graph, cis_distance_graph_df
 from scipy.stats import mannwhitneyu
 
 def normalize_band(df, chrom=None, max_dist=2000000, binsize=20000):
@@ -96,12 +92,47 @@ def test_row(row, m1, m2):
     """
     # test
     return mannwhitneyu(row[:m1], row[m1:], alternative="two-sided")[1]
-@dask.delayed
-def process_file(imputed_path, chrom, binsize, chunksize):
+def test_chunk(chunk, m1, m2):
+    """
+    Input:
+        chunk: a chunk of combined_df, pd.DataFrame
+        m1: number of samples in groupA
+        m2: number of samples in groupB
+    Output:
+        p-value of mannwhitneyu test
+    """
+    pvalue = mannwhitneyu(chunk.iloc[:, :m1], chunk.iloc[:, m1:m1+m2], alternative="two-sided").pvalue
+    return pd.Series(pvalue, index=chunk.index)
+def N_partitions(max_dist=2e6, binsize=20e3, chrom_mean_length=100e6, chunksize=100000):
+    """
+    Pick a number of partitions suitable for the data.
+    Input:
+        max_dist: max distance in impuation
+        binsize: resolution of the data
+        chrom_mean_lengths: mean length of chromosomes
+        chunksize: number of rows suitable in memory, 100e3 ~ 6MB
+    Output:
+        number of partitions
+    """
+    nbands = max_dist // binsize
+    nrows = nbands * (chrom_mean_length // binsize)
+    if nrows < chunksize: # 1 if less than chunksize
+        npartitions = 1
+    else:
+        npartitions = nrows // chunksize + 1 # at least 2
+    return npartitions
+def process_file(imputed_path, chrom, genome, max_dist, binsize, chunksize=10000):
+    ideograph = GenomeIdeograph(genome)
+    npartitions = N_partitions(
+        max_dist,
+        binsize,
+        ideograph.chromosomes.loc[chrom, "length"],
+        chunksize
+        )
     # load data
     df = dd.read_parquet(imputed_path)
     # zscore normalization
-    df = df.repartition(npartitions=100)
+    df = df.repartition(npartitions=npartitions)
     value_col_name = df.columns[-1]
     df['band'] = (df['start2'] - df['start1']) // binsize
     if chrom is None:
@@ -120,7 +151,7 @@ def process_file(imputed_path, chrom, binsize, chunksize):
         )
     )
     # extend to all possible pixels
-    df = df.set_index("pixel_id", nparticitions=100)
+    df = df.set_index("pixel_id", npartitions=npartitions)
     start_id = ideograph.pixel_id(
         pd.Series(
             [chrom, 0, binsize, chrom, 0, binsize],
@@ -147,7 +178,7 @@ def process_file(imputed_path, chrom, binsize, chunksize):
         da.arange(start_id, end_id + 1, chunks=chunksize),
         columns=["pixel_id"]
     )
-    all_possible_pixels = all_possible_pixels.set_index("pixel_id", npartitions=100)
+    all_possible_pixels = all_possible_pixels.set_index("pixel_id", npartitions=npartitions)
     extended_df = dd.merge(
         all_possible_pixels,
         df,
@@ -155,9 +186,9 @@ def process_file(imputed_path, chrom, binsize, chunksize):
         left_index=True,
         right_index=True
     )
-    return extended_df["z_normalized_distance"].to_dask_array(lengths=True)
+    return extended_df["z_normalized_distance"]
 def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist=5, 
-               max_dist=2000000, binsize=20000, n_jobs=16, memory_limit='32GB'):
+               max_dist=2000000, binsize=20000, chunksize=10000):
     """
     Input:
         groupA: imputed .parquet file path for groupA
@@ -169,37 +200,33 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist
         df: n * (6+3) dask dataframe
             (chrom1, start1, end1, chrom2, start2, end2, meanA, meanB, diff, pvalue, qvalue)
     """
-    chunksize = 100000
-
-    client = Client(
-        n_workers=n_jobs,
-        threads_per_worker=1,
-        memory_limit=memory_limit
-        )
     m1, m2 = len(groupA), len(groupB)
-    ideograph = GenomeIdeograph(genome)
 
     # load all data
     dfs = []
-    for i, imputed_path in enumerate(groupA + groupB):
-        dfs.append(process_file(imputed_path, chrom, binsize, chunksize))
-    combined_df = da.stack(
-        dd.compute(*dfs),
-        axis=1
-    )
-    combined_df = dd.from_dask_array(combined_df, columns=[f"sample{i}" for i in range(m1 + m2)])
-    print("combined_df.npartitions:",combined_df.npartitions)
+    for imputed_path in groupA + groupB:
+        dfs.append(process_file(imputed_path, chrom, genome, max_dist, binsize, chunksize))
+    combined_df = dd.concat(dfs, axis=1)
+    combined_df.columns = [f"sample{i}" for i in range(m1 + m2)]
+    #combined_df.to_parquet("combined_df.parquet")
+    # combined_df = da.stack(
+    #     dd.compute(*dfs),
+    #     axis=1
+    # )
+    # combined_df = dd.from_dask_array(combined_df, columns=[f"sample{i}" for i in range(m1 + m2)])
+    print("combined_df.npartitions:", combined_df.npartitions)
 
     # calculate
     meanA = combined_df.iloc[:, :m1].mean(axis=1)
     meanB = combined_df.iloc[:, m1:m1+m2].mean(axis=1)
-    #concerned_indi = ((meanA < max_3d_dist) | (meanB < max_3d_dist)) & (meanA.notnull() & meanB.notnull())
-    #combined_df = combined_df.loc[concerned_indi]
-    # pvalues = combined_df.map_partitions(
-    #     lambda df: mannwhitneyu(df.iloc[:, :m1], df.iloc[:, m1:m1+m2], alternative="two-sided").pvalue,
-    #     meta=('pvalue', 'f8')
-    # )
-    pvalues = combined_df.apply(test_row, axis=1, args=(m1, m2), meta=('pvalue', 'f8'))
+    concerned_indi = ((meanA < max_3d_dist) | (meanB < max_3d_dist)) & (meanA.notnull() & meanB.notnull())
+    combined_df = combined_df.loc[concerned_indi]
+    pvalues = combined_df.map_partitions( # return a series
+        test_chunk,
+        m1,
+        m2,
+        meta=('pvalue', 'f8')
+    )
     # meanA, meanB, diff, pvalues
     result_df = dd.concat(
         [
@@ -214,5 +241,4 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist
 
     # 保存结果
     result_df.to_parquet(fo)
-    client.close()
     return result_df
