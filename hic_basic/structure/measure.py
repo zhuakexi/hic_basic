@@ -206,3 +206,28 @@ def _3dg_volume(_3dg, method="convex_hull", **args):
     mesh = _3dg2mesh(_3dg, method, watertight=True, **args)
     mesh = _keep_largest_mesh(mesh)
     return mesh.get_volume()
+def _3dg_radius_of_gyration(_3dg):
+    """
+    Compute radius of gyration of 3dg data structure.
+    Input:
+        _3dg: _3dg data structure (parsing from hickit output .3dg file)
+    Output:
+        radius of gyration
+    """
+    xyz = _3dg.values # (N, 3)
+    xyz = xyz - xyz.mean(axis=0)
+    return np.sqrt((xyz**2).sum(axis=1).mean())
+def _3dg_chrom_radius_of_gyration(_3dg):
+    """
+    Compute radius of gyration of 3dg data structure for each chromosome.
+    Input:
+        _3dg: _3dg data structure (parsing from hickit output .3dg file)
+    Output:
+        n chroms * 1 array
+    """
+    chroms = _3dg.index.get_level_values("chr").unique()
+    return pd.Series(
+        list(map(
+            lambda x:_3dg_radius_of_gyration(_3dg.loc[x]),
+            chroms)),
+        index=chroms)
