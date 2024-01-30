@@ -18,7 +18,8 @@ def ls_md5_files(download_dir):
     Output:
         md5_lines: list of tuples, (parent_dir, md5, filename)
     """
-    md5_files = Path(download_dir).glob('**/md5.txt')
+    subs = ['md5.txt', 'MD5.txt']
+    md5_files = [path for path in Path(download_dir).rglob('*') if path.name in subs]
     #md5_lines = [(md5_file.parent, line.split()) for md5_file in md5_files for line in open(md5_file).readlines()]
     md5_lines = []
     for md5_file in md5_files:
