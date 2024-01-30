@@ -351,17 +351,58 @@ def cli_pairs2cool(filei,fileo,sizef,binsize):
     subprocess.check_output(
         "conda run -n embryo cooler cload pairs -c1 2 -p1 3 -c2 4 -p2 5 %s:%d %s %s " % (sizef,binsize,filei,fileo),
         shell=True)
-def cli_mergecool(incools,outcool):
+def cli_mergecool(incools, outcool, force=False, conda_env=None, cwd=None):
     """
     Merge cool files with same indices to get a consensus heatmap.
     Input:
         incools: list of .cool file path
         outcool: output .cool file path
+        conda_env: (optional) conda environment to run in
+        cwd: (optional) working directory
     """
-    subprocess.check_output(
-        "conda run -n embryo cooler merge %s %s" %(outcool, incools),
-        shell=True
-    )
+    if not force and Path(outcool).exists():
+        print(f"File '{outcool}' already exists. Skipping execution.")
+        return outcool
+    if conda_env is None:
+        conda_run = ""
+    else:
+        conda_run = f"conda run -n {conda_env}"
+
+    # 将输入文件列表转换为字符串
+    incools_str = " ".join(incools)
+    
+    # 构造命令行命令
+    cmd = f"{conda_run} cooler merge {outcool} {incools_str}"
+
+    try:
+        subprocess.check_output(
+            cmd,
+            shell=True,
+            cwd=cwd
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        print(e.output.decode())
+        return False
+def cli_downsample(coolp, output, count=100e6, cis_count=None, fraction=None, threads=8, force=False, conda_env=None, cwd=None):
+    if not force and Path(output).exists():
+        print(f"File '{output}' already exists. Skipping execution.")
+        return output
+    conda = f"conda run -n {conda_env}" if conda_env else ""
+    cis_count = f"--cis-count {cis_count}" if cis_count else ""
+    fraction = f"--frac {fraction}" if fraction else ""
+    count = f"--count {count}" if count else ""
+    cmd = f"{conda} cooler random-sample {count} {cis_count} {fraction} -p {threads} {coolp} {output}"
+    try:
+        subprocess.check_output(
+            cmd,
+            shell=True,
+            cwd=cwd
+        )
+        return output
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        return None
 def cli_balance(coolp, threads=8, force=False, conda_env=None, cwd=None):
     if conda_env is None:
         conda_run = ""
