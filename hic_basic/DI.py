@@ -4,6 +4,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from hic_basic.binnify import GenomeIdeograph
+from hic_basic.plot.hic import _plot_mat
 from scipy.stats import mannwhitneyu
 
 def normalize_band(df, chrom=None, max_dist=2000000, binsize=20000):
@@ -242,12 +243,15 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist
     # 保存结果
     result_df.to_parquet(fo)
     return result_df
-def simpleDiff_postprocess(pvalue_file, genome="mm10", binsize=20000, filt_fdr=0.05, fo=None):
+def simpleDiff_postprocess(pvalue_file, genome="mm10", binsize=20000, filt_fdr=0.05, topDI=0.2, fo=None):
     """
     Input:
         pvalue_file: pvalue file path
             meanA, meanB, diff, pvalue
-        filt_fdr: filter pixels with fdr > filt_fdr, if None, no filtering
+        filt_fdr: filter pixels with fdr > filt_fdr
+            if None, no filtering
+        topDI: mark abs diff > topDI as topDI
+            if topDI is None, don't mark
         fo: output parquet file
     Output:
         df: n * (6+3) dask dataframe
@@ -263,9 +267,41 @@ def simpleDiff_postprocess(pvalue_file, genome="mm10", binsize=20000, filt_fdr=0
     # filter
     if filt_fdr is not None:
         df = df[df["qvalue"] < filt_fdr]
+    if topDI is not None:
+        df = df.assign(topDI = df["diff"].abs() > topDI)
     # transform to bedpe
     ideograph = GenomeIdeograph(genome)
     df = ideograph.join_positions(df, binsize=binsize)
     # 保存结果
-    df.to_parquet(fo)
+    if fo is not None:
+        df.to_parquet(fo)
     return df
+def project_DI(genome, chrom, start, end, binsize, DI):
+    ideograph = GenomeIdeograph(genome)
+    # generate na mat of target region
+    pos = ideograph.bins(binsize, bed=True).query(
+        'chrom == @chrom and start >= @start and start <= @end'
+        )["start"].rename('pos')
+    mat = pd.DataFrame(
+        index=pos,
+        columns=pos,
+        data=np.nan
+    )
+    # fill with DI diff
+    mat = mat.fillna(DI.set_index(["start1", "start2"])["diff"].unstack())
+    return mat
+def plot_DI(genome, chrom, start, end, binsize, DI):
+    mat = project_DI(genome, chrom, start, end, binsize, DI)
+    fig = _plot_mat(
+        mat,
+        vmax=1,
+        donorm=False,
+        zmin=-1,
+        cmap = "RdBu_r",
+    )
+    fig.update_layout(
+        height = 500,
+        width = 500
+    )
+    return fig
+    #fig.show(renderer="png")
