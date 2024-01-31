@@ -242,3 +242,30 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist
     # 保存结果
     result_df.to_parquet(fo)
     return result_df
+def simpleDiff_postprocess(pvalue_file, genome="mm10", binsize=20000, filt_fdr=0.05, fo=None):
+    """
+    Input:
+        pvalue_file: pvalue file path
+            meanA, meanB, diff, pvalue
+        filt_fdr: filter pixels with fdr > filt_fdr, if None, no filtering
+        fo: output parquet file
+    Output:
+        df: n * (6+3) dask dataframe
+            (chrom1, start1, end1, chrom2, start2, end2, meanA, meanB, diff, pvalue, qvalue)
+    """
+    # load all data
+    df = pd.read_parquet(pvalue_file)
+    df = df.reset_index()
+
+    # multiple testing correction
+    # return multiple_testing_correction(df["pvalue"], correction_type="FDR")[:]
+    df = df.assign(qvalue = multiple_testing_correction(df["pvalue"], correction_type="FDR"))
+    # filter
+    if filt_fdr is not None:
+        df = df[df["qvalue"] < filt_fdr]
+    # transform to bedpe
+    ideograph = GenomeIdeograph(genome)
+    df = ideograph.join_positions(df, binsize=binsize)
+    # 保存结果
+    df.to_parquet(fo)
+    return df
