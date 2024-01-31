@@ -107,13 +107,47 @@ class GenomeIdeograph:
 
             # 计算 pixel_id
             df = df.assign(
-                pixel_id = (df['chrom1'].map(offsets_l2)
-                            + (df['start1'] // binsize) * df['chrom1'].map(offsets_l1)
+                pixel_id = (df['chrom1'].map(offsets_l2).astype(int)
+                            + (df['start1'] // binsize) * df['chrom1'].map(offsets_l1).astype(int)
                             +(df['start2'] // binsize))
                 )
         else:
             raise NotImplementedError("inter-chrom not implemented")
 
+        return df
+    def join_positions(self, df, binsize, intra=True):
+        """
+        Add columns 'chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2' to the input DataFrame in a vectorized manner.
+        Input:
+            df: DataFrame, bedpe-like with column 'pixel_id'
+            binsize: int, size of the bins used in pixelation
+        Output:
+            DataFrame with additional columns 'chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2'
+        """
+        if intra:
+            count_l1 = (self.chromosomes["length"] // binsize)
+            cumul_l2 = ((self.chromosomes["length"] // binsize) ** 2).cumsum()
+            offsets_l2 = pd.Series(np.insert(cumul_l2.values, 0, 0)[:-1], index=cumul_l2.index).to_dict()
+            l2_boundaries = np.insert(cumul_l2.values, 0, 0)
+            l2_labels = cumul_l2.index
+            # get chr1
+            chrom1 = pd.cut(df["pixel_id"], bins=l2_boundaries, labels=l2_labels, right=False)
+            sub_chrom_offsets = df["pixel_id"] - chrom1.map(offsets_l2).astype(int)
+            dim1_unit = chrom1.map(count_l1).astype(int) # cost how many dim2 for dim1 to gain 1
+            start1 = (sub_chrom_offsets // dim1_unit) * binsize
+            end1 = start1 + binsize
+            start2 = (sub_chrom_offsets % dim1_unit) * binsize
+            end2 = start2 + binsize
+            df = df.assign(
+                chrom1 = chrom1,
+                start1 = start1,
+                end1 = end1,
+                chrom2 = chrom1,
+                start2 = start2,
+                end2 = end2
+            )[["chrom1","start1","end1","chrom2","start2","end2","pixel_id","meanA","meanB","diff","pval"]]
+        else:
+            raise NotImplementedError("inter-chrom not implemented")
         return df
 
 # def symmetry(X):
