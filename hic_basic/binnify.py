@@ -145,7 +145,7 @@ class GenomeIdeograph:
                 chrom2 = chrom1,
                 start2 = start2,
                 end2 = end2
-            )[["chrom1","start1","end1","chrom2","start2","end2","pixel_id","meanA","meanB","diff","pval"]]
+            )
         else:
             raise NotImplementedError("inter-chrom not implemented")
         return df
