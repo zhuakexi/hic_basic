@@ -178,6 +178,7 @@ def cis_distance_graph(_3dg_path, fo=None, genome=None, max_dist=2000000, binsiz
 def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=2000000, binsize=20000, fill=False):
     """
     Generate distance matrix (store in bedpe-like format) from 3dg file.
+    TODO: fix max_dist, now is using 3d distance mistakenly!
     Only cis region is considered.
     pandas.DataFrame version, all in memory.
     Input:
@@ -225,7 +226,7 @@ def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=
             )
 
         # keep triu
-        mask = np.triu(np.ones(dist_df.shape, dtype=bool), k=1)
+        mask = np.triu(np.ones(dist_df.shape, dtype=bool), k=1) # bool matrix
         dist_long_df = dist_df.where(mask).stack()
         dist_long_df.name = "distance"
         dist_long_df = dist_long_df.reset_index()
