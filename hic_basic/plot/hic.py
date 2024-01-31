@@ -169,6 +169,7 @@ def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diag
         vmax = vmax,
         ignore_diags = ignore_diags,
         donorm = donorm,
+        balancing=balance,
         **args
     )
 
