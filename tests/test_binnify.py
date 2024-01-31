@@ -7,6 +7,7 @@ sys.path.insert(0, "/share/home/ychi/dev/hires_utils")
 sys.path.insert(0, "/share/home/ychi/dev/sperm_struct")
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from hic_basic.binnify import GenomeIdeograph
 
@@ -56,5 +57,20 @@ class TestGenomeIdeograph(unittest.TestCase):
         self.assertTrue('pixel_id' in bedpe.columns)
         # must give uniq id
         self.assertTrue(bedpe["pixel_id"].is_unique)
+    def test_join_positions(self):
+        binsize = 200000
+        df = pd.DataFrame(
+            {
+                "pixel_id" : np.random.randint(0, 1000000, 1000),
+                "meanA" : np.random.rand(1000),
+                "meanB" : np.random.rand(1000),
+                "diff" : np.random.rand(1000),
+                "pval" : np.random.rand(1000)
+            }
+        )
+        orig_pixel_id = df["pixel_id"].copy()
+        res = self.genome.join_positions(df, binsize).drop(columns=["pixel_id"])
+        taret_pixel_id = self.genome.join_pixel_id(res, binsize)["pixel_id"]
+        self.assertTrue(all(orig_pixel_id == taret_pixel_id))
 if __name__ == '__main__':
     unittest.main()
