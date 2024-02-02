@@ -89,7 +89,7 @@ class GenomeIdeograph:
         else: # not implemented
             raise NotImplementedError("inter-chrom not implemented")
         return pixel_id
-    def join_pixel_id(self, df, binsize, intra=True):
+    def join_pixel_id(self, df, binsize, intra=True, filep=None):
         """
         Add a 'pixel_id' column to the input DataFrame in a vectorized manner.
         Input:
@@ -99,16 +99,19 @@ class GenomeIdeograph:
         Output:
             DataFrame with an additional 'pixel_id' column
         """
+        print("binnify: \n",type(df))
+        print("binnify: \n", df)
+        if filep is not None:
+            print("binnify: \n", filep)
         if intra:
             # 计算每个染色体长度的累积和，用于确定每个染色体的像素偏移
             offsets_l1 = (self.chromosomes["length"] // binsize).to_dict()
             cumul_offsets_l2 = ((self.chromosomes["length"] // binsize) ** 2).cumsum()
             offsets_l2 = pd.Series(np.insert(cumul_offsets_l2.values, 0, 0)[:-1], index=cumul_offsets_l2.index).to_dict()
-
             # 计算 pixel_id
             df = df.assign(
                 pixel_id = (df['chrom1'].map(offsets_l2).astype(int)
-                            + (df['start1'] // binsize) * df['chrom1'].map(offsets_l1).astype(int)
+                            + (df['start1'] // binsize) * (df['chrom1'].map(offsets_l1).astype(int))
                             +(df['start2'] // binsize))
                 )
         else:

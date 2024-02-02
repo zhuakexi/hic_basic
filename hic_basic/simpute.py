@@ -232,7 +232,9 @@ def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=
         dist_long_df = dist_long_df.reset_index()
 
         # keep distance <= max_dist
-        dist_long_df = dist_long_df.loc[dist_long_df['distance'] <= max_dist]
+        dist_long_df = dist_long_df.loc[(dist_long_df["start1"]-dist_long_df["start2"]).abs() <= max_dist]
+
+        # convert to bedpe-like format
         dist_long_df['chrom1'] = chrom
         dist_long_df['chrom2'] = chrom
         dist_long_df['end1'] = dist_long_df['start1'] + binsize
