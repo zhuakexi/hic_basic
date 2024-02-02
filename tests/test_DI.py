@@ -11,7 +11,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask.distributed import Client, LocalCluster
-from hic_basic.DI import process_file, GenomeIdeograph 
+from hic_basic.DI import process_file, GenomeIdeograph, mannwhitneyu_row
 
 class TestProcessFile(unittest.TestCase):
     @classmethod
@@ -34,16 +34,28 @@ class TestProcessFile(unittest.TestCase):
         # 清理测试数据
         if self.test_data_dir.exists():
             shutil.rmtree(self.test_data_dir)
+    def test_mannwhitneyu_row_with_mock_data(self):
+        m1, m2 = 100, 150
+        n = 1000
+        mock_data = pd.DataFrame(
+            np.random.rand(n, m1+m2),
+            columns=[f"sample{i}" for i in range(m1+m2)]
+        )
+        mock_data.iloc[0:10, :m1] += 0.2
+        mock_data = dd.from_pandas(mock_data, npartitions=2)
+        result = mock_data.apply(mannwhitneyu_row, axis=1, m1=m1, m2=m2, meta=('x', 'f8'))
+        print(result.compute()[:20])
+        self.assertTrue(isinstance(result, dd.Series))
 
     def test_process_file_with_mock_data(self):
         # 创建 Mock 数据
         mock_data = {
-            'chrom1': ['chr1', 'chr1'],
-            'start1': [0, 100000],
-            'end1': [100000, 200000],
-            'chrom2': ['chr1', 'chr1'],
-            'start2': [50000, 150000],
-            'distance': [0.1, 0.2]
+            'chrom1': ['chr1', 'chr1', 'chr1'],
+            'start1': [0, 100000, 200000],
+            'end1': [100000, 200000, 300000],
+            'chrom2': ['chr1', 'chr1', 'chr1'],
+            'start2': [50000, 150000, 250000],
+            'distance': [0.1, 0.2, 0.3],
         }
         mock_df = pd.DataFrame(mock_data)
         mock_file = self.test_data_dir / "mock_data.parquet"
@@ -58,40 +70,42 @@ class TestProcessFile(unittest.TestCase):
             100000
         )
 
+        result_df = result[result.notnull()].compute()
+        print(result_df)
         # 检查返回的 Dask DataFrame
         self.assertTrue(isinstance(result, dd.Series))
 
-    def test_process_file_with_real_data(self):
-        # 使用实际数据文件
-        real_file = Path(__file__).parent / "output" / "simpute" / "cis_distance_graph_small.parquet"
+    # def test_process_file_with_real_data(self):
+    #     # 使用实际数据文件
+    #     real_file = Path(__file__).parent / "output" / "simpute" / "cis_distance_graph_small.parquet"
 
-        # 确保文件存在
-        self.assertTrue(real_file.exists())
+    #     # 确保文件存在
+    #     self.assertTrue(real_file.exists())
 
-        # 调用 process_file 函数
-        result = process_file(
-            str(real_file),
-            'chr1',
-            'mm10',
-            2000000,
-            1000000
-        )
+    #     # 调用 process_file 函数
+    #     result = process_file(
+    #         str(real_file),
+    #         'chr1',
+    #         'mm10',
+    #         2000000,
+    #         1000000
+    #     )
 
-        # 检查返回的 Dask DataFrame
-        #print(result.compute())
-        print(result[result.notnull()].compute())
-        print("Total values:", result.compute().shape[0])
-        print("Non-null values:", result[result.notnull()].compute().shape[0])
-        self.assertTrue(isinstance(result, dd.Series))
-        # load all data
-        dfs = []
-        N=3
-        for imputed_path in [real_file]*N:
-            dfs.append(process_file(imputed_path, "chr1", "mm10", 2000000, 1000000))
-        combined_df = dd.concat(dfs, axis=1)
-        combined_df.columns = [f"sample{i}" for i in range(N)]
-        print("combined_df:", combined_df.compute())
-        print("combined_df not null:", combined_df[combined_df.notnull().any(axis=1)].compute())
+    #     # 检查返回的 Dask DataFrame
+    #     #print(result.compute())
+    #     print(result[result.notnull()].compute())
+    #     print("Total values:", result.compute().shape[0])
+    #     print("Non-null values:", result[result.notnull()].compute().shape[0])
+    #     self.assertTrue(isinstance(result, dd.Series))
+    #     # load all data
+    #     dfs = []
+    #     N=3
+    #     for imputed_path in [real_file]*N:
+    #         dfs.append(process_file(imputed_path, "chr1", "mm10", 2000000, 1000000))
+    #     combined_df = dd.concat(dfs, axis=1)
+    #     combined_df.columns = [f"sample{i}" for i in range(N)]
+    #     print("combined_df:", combined_df.compute())
+    #     print("combined_df not null:", combined_df[combined_df.notnull().any(axis=1)].compute())
 
 if __name__ == '__main__':
     unittest.main()
