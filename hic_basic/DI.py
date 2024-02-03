@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import dask
 import dask.array as da
 import dask.dataframe as dd
@@ -5,6 +7,7 @@ import numpy as np
 import pandas as pd
 from hic_basic.binnify import GenomeIdeograph
 from hic_basic.plot.hic import _plot_mat
+from plotly.subplots import make_subplots
 from scipy.stats import mannwhitneyu
 
 def normalize_band(df, chrom=None, max_dist=2000000, binsize=20000):
@@ -315,6 +318,53 @@ def project_DI(genome, chrom, start, end, binsize, DI):
     # fill with DI diff
     mat = mat.fillna(DI.set_index(["start1", "start2"])["diff"].unstack())
     return mat
+def pileup_impute(imputes, genome, binsize, chrom, start, end,zscore=False,symmetric=True):
+    ideograph = GenomeIdeograph(genome)
+    # generate na mat of target region
+    pos = ideograph.bins(binsize, bed=True).query(
+        'chrom == @chrom and start >= @start and start <= @end'
+        )["start"].rename('pos')
+    pileups = pd.DataFrame(
+        index=pos,
+        columns=pos,
+        data=0
+    )
+    valid_samples = 0
+    for i, imputed in enumerate(imputes):
+        imputed = str(imputed).format(chrom=chrom)
+        if not Path(imputed).exists():
+            print("Warning: file not found", imputed)
+            continue
+        valid_samples += 1
+        mat = pd.DataFrame(
+            index=pos,
+            columns=pos,
+            data=np.nan
+        )
+        pixels = pd.read_parquet(imputed)
+        if zscore:
+            # zscore normalization
+            value_col_name = pixels.columns[-1]
+            pixels['band'] = (pixels['start2'] - pixels['start1']) // binsize
+            pixels[f'z_normalized_{value_col_name}'] = pixels.groupby("band")[value_col_name].transform(
+                lambda x: (x - x.mean()) / x.std()
+            )
+            pixels = pixels[["start1","start2","z_normalized_distance"]]
+            pixels.columns = ["start1", "start2", "distance"]
+        else:
+            pass
+        mat = mat.fillna(pixels.set_index(["start1", "start2"])["distance"].unstack())
+        mat = mat.fillna(0)
+        pileups += mat
+        if i % 100 == 0:
+            print(i,"done.")
+    # calculate average
+    pileups = pileups / valid_samples
+    if symmetric:
+        pileups = pileups + pileups.T
+    return pileups
+
+#   --- plot ---
 def plot_DI(genome, chrom, start, end, binsize, DI):
     mat = project_DI(genome, chrom, start, end, binsize, DI)
     fig = _plot_mat(
@@ -330,3 +380,39 @@ def plot_DI(genome, chrom, start, end, binsize, DI):
     )
     return fig
     #fig.show(renderer="png")
+def plot_compare_impute(imputesA, imputesB, genome, binsize, chrom, start, end, zscore=True, subplot_titles=("A", "B", "A-B")):
+    mats = []
+    for imputes in [imputesA, imputesB]:
+        mats.append(
+            pileup_impute(
+                imputes,
+                genome,
+                binsize,
+                chrom,
+                start,
+                end,
+                zscore=zscore
+            )
+        )
+    mats.append(mats[0] - mats[1])
+    figure = make_subplots(
+        rows=1, cols=3,
+        subplot_titles=subplot_titles
+    )
+    for i, mat in enumerate(mats):
+        figure.add_trace(
+            _plot_mat(
+                mat,
+                donorm = False,
+                cmap="RdBu_r",
+                zmin = -0.5,
+                zmax = 0.5
+            ).data[0],
+            row=1, col=i+1
+        )
+    figure.update_layout(
+        height = 400,
+        width = 900
+    )
+    return figure
+chrom, start,end = "chr1", 135e6, 155e6
