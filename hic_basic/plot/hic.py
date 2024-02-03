@@ -420,6 +420,65 @@ def plot_compare_cool_track_hor(
         title = title
     )
     return figure
+
+def plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels):
+    # extract outline pixels in the region
+    clr = Cooler(str(coolpA))
+    if outline_pixels is not None:
+        valid_bins = clr.bins().fetch(region)[["chrom","start","end"]]
+        valid_bins_reset = valid_bins.reset_index(drop=True)
+        valid_pixels = pd.merge(valid_bins_reset.assign(key=1), valid_bins_reset.assign(key=1), on='key').drop('key', axis=1)
+        valid_pixels.columns = ['chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2']
+        print("Input pixels:", outline_pixels.shape[0])
+        outline_pixels = pd.merge(
+            left = outline_pixels,
+            right = valid_pixels,
+            how = "inner",
+            on = ["chrom1","start1","end1","chrom2","start2","end2"]
+        )
+        print("Pixels in region:", outline_pixels.shape[0])
+    # plot
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles = ["A","B"]
+    )
+    for i, coolp in enumerate([coolpA, coolpB]):
+        fig.add_trace(
+            plot_cool(
+                coolp,
+                region = region
+            ).data[0],
+            row=1,
+            col=i+1
+        )
+        if outline_pixels is not None:
+            for _, row in outline_pixels.iterrows():
+                start1, end1, start2, end2 = row[["start1","end1","start2","end2"]]
+                if end1 - start1 != end2 - start2:
+                    raise ValueError("Different region length")
+                else:
+                    binsize = end1 - start1
+                fig.add_shape(
+                    type="circle",
+                    x0=start1 - 0.5 * binsize,
+                    y0=start2 - 0.5 * binsize,
+                    x1=end1 - 0.5 * binsize,
+                    y1=end2 - 0.5 * binsize,
+                    line=dict(
+                        color="RoyalBlue",
+                        width=1,
+                    ),
+                    xref=f"x{i+1}",
+                    yref=f"y{i+1}"
+                )
+        else:
+            pass
+    fig.update_layout(
+        height = 500,
+        width = 800
+    )
+    return fig
 def plot_tiling_compartment(coolps, eigs_files, region, title, balance=False):
     """
     Plot cooler with additional track files
