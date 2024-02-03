@@ -1,10 +1,10 @@
 from pathlib import Path
 
-import dask
 import dask.array as da
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+from dask import delayed
 from hic_basic.binnify import GenomeIdeograph
 from hic_basic.plot.hic import _plot_mat
 from plotly.subplots import make_subplots
@@ -271,7 +271,106 @@ def simpleDiff(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist
     # 保存结果
     result_df.to_parquet(fo)
     return result_df
-def simpleDiff_postprocess(pvalue_file, genome="mm10", binsize=20000, filt_fdr=0.05, topDI=0.2, fo=None):
+def imputed_reader(imputed_path, sample_id, genome, binsize, max_dist):
+    # --- load data ---
+    df = pd.read_parquet(imputed_path)
+    
+    # --- zscore normalization ---
+    value_col_name = df.columns[-1]
+    df['band'] = (df['start2'] - df['start1']) // binsize
+    df[f'z_normalized_{value_col_name}'] = df.groupby("band")[value_col_name].transform(
+        lambda x: (x - x.mean()) / x.std()
+    )
+    
+    # --- add pixel_id ---
+    ideograph = GenomeIdeograph(genome)
+    count_l1 = (ideograph.chromosomes["length"] // binsize).to_dict()
+    cumul_l2 = ((ideograph.chromosomes["length"] // binsize) ** 2).cumsum()
+    offsets_l2 = pd.Series(np.insert(cumul_l2.values, 0, 0)[:-1], index=cumul_l2.index).to_dict()
+    df["pixel_id"] = (df['chrom1'].map(offsets_l2).astype(int)
+                    + (df['start1'] // binsize) * (df['chrom1'].map(count_l1).astype(int))
+                    +(df['start2'] // binsize))
+    
+    # --- prepare output ---
+    df = df.assign(
+        sample_id = sample_id
+    )
+    # filter out linear-far pixels
+    df = df.loc[(df["start1"] - df["start2"]).abs() < max_dist]
+    return df[["pixel_id", "sample_id", f'z_normalized_{value_col_name}']]
+# def simpleDiff_pivot(groupA, groupB, chrom="chr1", genome="mm10", fo=None, max_3d_dist=5, 
+#                max_dist=2000000, binsize=20000, chunksize=10000, cache=None):
+#     """
+#     Input:
+#         groupA: imputed .parquet file path for groupA
+#         groupB: imputed .parquet file paths for groupB
+#         fo: output parquet file
+#         filt_fdr: filter pixels with fdr > filt_fdr, if None, no filtering
+#         n_jobs: number of jobs
+#     Output:
+#         df: n * (6+3) dask dataframe
+#             (chrom1, start1, end1, chrom2, start2, end2, meanA, meanB, diff, pvalue, qvalue)
+#     """
+#     m1, m2 = len(groupA), len(groupB)
+
+#     # load all data
+#     dfs = [
+#         delayed(imputed_reader)(imputed_path, sample_id, genome, binsize, max_dist)
+#         for sample_id, imputed_path in enumerate(groupA + groupB)
+#         ]
+#     combined_df = dd.from_delayed(
+#         dfs,
+#         meta = { "pixel_id": "i8", "sample_id": "i8", "z_normalized_distance": "f8" }
+#         )
+#     combined_df["sample_id"] = combined_df["sample_id"].astype("category")
+#     combined_df["sample_id"] = combined_df["sample_id"].cat.set_categories(
+#         list(range(m1 + m2))
+#     )
+#     combined_df["sample_id"] = combined_df["sample_id"].cat.as_known()
+#     combined_df = combined_df.pivot_table(
+#             index="pixel_id",
+#             columns="sample_id",
+#             values="z_normalized_distance",
+#             aggfunc="sum"
+#     )
+#     combined_df.columns = [f"sample{i}" for i in range(m1 + m2)]
+#     print("combined_df.npartitions:", combined_df.npartitions)
+ 
+#     if cache is not None:
+#         combined_df.to_parquet(cache)
+
+#     # calculate
+#     print("start calculate")
+#     meanA = combined_df.iloc[:, :m1].mean(axis=1)
+#     meanB = combined_df.iloc[:, m1:m1+m2].mean(axis=1)
+#     concerned_indi = ((meanA < max_3d_dist) | (meanB < max_3d_dist)) & (meanA.notnull() & meanB.notnull())
+#     combined_df = combined_df.loc[concerned_indi]
+#     pvalues = combined_df.apply(
+#         mannwhitneyu_row,
+#         axis=1,
+#         args=(m1, m2),
+#         meta=('pvalue', 'f8')
+#     )
+#     # meanA, meanB, diff, pvalues
+#     result_df = dd.concat(
+#         [
+#             meanA,
+#             meanB,
+#             meanA - meanB,
+#             pvalues
+#         ],
+#         axis=1
+#     )
+#     result_df.columns = ["meanA", "meanB", "diff", "pvalue"]
+
+#     # 保存结果
+#     result_df.to_parquet(fo)
+#     return result_df
+def read_pvalues(pval_path, chrom):
+    df = pd.read_parquet(pval_path)
+    df = df.assign(chrom=chrom)
+    return df
+def simpleDiff_postprocess(pvalue_files, chroms, genome="mm10", binsize=20000, filt_fdr=0.05, topDI=0.2, fo=None):
     """
     Input:
         pvalue_file: pvalue file path
@@ -286,9 +385,12 @@ def simpleDiff_postprocess(pvalue_file, genome="mm10", binsize=20000, filt_fdr=0
             (chrom1, start1, end1, chrom2, start2, end2, meanA, meanB, diff, pvalue, qvalue)
     """
     # load all data
-    df = pd.read_parquet(pvalue_file)
+    df = dd.from_delayed([
+        delayed(read_pvalues)(pval_path, chrom)
+        for chrom, pval_path in zip(chroms, pvalue_files)
+        ])
     df = df.reset_index()
-
+    df = df.compute()
     # multiple testing correction
     # return multiple_testing_correction(df["pvalue"], correction_type="FDR")[:]
     df = df.assign(qvalue = multiple_testing_correction(df["pvalue"], correction_type="FDR"))
@@ -411,8 +513,9 @@ def plot_compare_impute(imputesA, imputesB, genome, binsize, chrom, start, end, 
             row=1, col=i+1
         )
     figure.update_layout(
-        height = 400,
-        width = 900
+        margin = dict(l=0, r=0, t=30, b=0),
+        height = 325,
+        width = 1000
     )
     return figure
 chrom, start,end = "chr1", 135e6, 155e6
