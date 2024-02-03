@@ -415,13 +415,13 @@ def plot_compare_cool_track_hor(
     figure.update_layout(
         paper_bgcolor = "white",
         plot_bgcolor = "white",
-        height = 450,
+        height = 400,
         width = 900,
         title = title
     )
     return figure
 
-def plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels):
+def plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels, subplot_titles=["A","B"]):
     # extract outline pixels in the region
     clr = Cooler(str(coolpA))
     if outline_pixels is not None:
@@ -441,7 +441,7 @@ def plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels):
     fig = make_subplots(
         rows=1,
         cols=2,
-        subplot_titles = ["A","B"]
+        subplot_titles = subplot_titles
     )
     for i, coolp in enumerate([coolpA, coolpB]):
         fig.add_trace(
@@ -475,8 +475,9 @@ def plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels):
         else:
             pass
     fig.update_layout(
-        height = 500,
-        width = 800
+        margin = dict(l=0, r=10, t=30, b=0),
+        height = 350,
+        width = 700
     )
     return fig
 def plot_tiling_compartment(coolps, eigs_files, region, title, balance=False):
