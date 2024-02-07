@@ -366,6 +366,83 @@ def imputed_reader(imputed_path, sample_id, genome, binsize, max_dist):
 #     # 保存结果
 #     result_df.to_parquet(fo)
 #     return result_df
+
+# --- hyperparameter search ---
+# prepare data
+def imputed_reader_strID(imputed_path, sample_id, binsize=20000, max_dist=None):
+    """
+    Read in imputed data, zscore normalize, and add pixel_id
+    Input:
+        imputed_path: path to imputed data
+        sample_id: sample id, used as output column name
+        binsize: resolution of the data
+        max_dist: max distance in impuation
+    Output:
+        dd.Series: zscore normalized distance
+    """
+    # --- load data ---
+    df = dd.read_parquet(imputed_path)
+    
+    # --- zscore normalization ---
+    value_col_name = df.columns[-1]
+    df['band'] = (df['start2'] - df['start1']) // binsize
+    df[f'z_normalized_{value_col_name}'] = df.groupby("band")[value_col_name].transform(
+        lambda x: (x - x.mean()) / x.std(),
+        meta=(f'z_normalized_{value_col_name}', 'f8')
+    )
+    
+    # --- add pixel_id ---
+    df["pixel_id"] = df["chrom1"] + ":" + df["start1"].astype(str) + "-" + df["start2"].astype(str)
+    
+    # --- filter out linear-far pixels ---
+    if max_dist is not None:
+        df = df.loc[(df["start1"] - df["start2"]).abs() < max_dist]
+
+    # --- prepare output ---
+    df = df.set_index("pixel_id")
+    return df[f'z_normalized_{value_col_name}'].rename(sample_id)
+def get_sample_name(imputed_path):
+    """
+    Get sample name from file with many possible suffix.
+    Input:
+        imputed_path: path to imputed data
+    Output:
+        sample name
+    """
+    return Path(imputed_path).stem.split(".")[0]
+def gen_design_matrix(imputed_paths, fo=None, binsize=20000, max_dist=None):
+    """
+    Horizontal concat all imputed data, with pixel_id as index
+    Input:
+        imputed_paths: list of imputed data paths
+        fo: output parquet file, write to fo if not None(will trigger computation)
+            if None, return dask dataframe
+        binsize: resolution of the data
+        max_dist: max distance in impuation
+    Output:
+        dd.DataFrame: n * m dask dataframe
+            (chrom, start1, start2, sample1, sample2, ...)
+    """
+    # concat all data
+    combined_df = dd.concat(
+        [
+            imputed_reader_strID(fp, get_sample_name(fp), binsize, max_dist)
+            for fp in imputed_paths[:]
+            ],
+        axis=1
+        )
+    # expand pixel_id
+    positions = combined_df.index.str.extract(
+        r"(chr\d+):(\d+)-(\d+)",
+        expand=True
+    )
+    positions.columns = ["chrom", "start1", "start2"]
+    positions.index = combined_df.index
+    combined_df = dd.concat([positions, combined_df], axis=1)
+    if fo is not None:
+        combined_df.to_parquet(fo, write_index=False)
+    return combined_df
+# --- postprocess ---
 def read_pvalues(pval_path, chrom):
     df = pd.read_parquet(pval_path)
     df = df.assign(chrom=chrom)
