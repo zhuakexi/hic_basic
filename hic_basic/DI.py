@@ -410,11 +410,12 @@ def get_sample_name(imputed_path):
         sample name
     """
     return Path(imputed_path).stem.split(".")[0]
-def gen_design_matrix(imputed_paths, fo=None, binsize=20000, max_dist=None):
+def gen_design_matrix(imputed_paths, sample_names=None, fo=None, binsize=20000, max_dist=None):
     """
     Horizontal concat all imputed data, with pixel_id as index
     Input:
         imputed_paths: list of imputed data paths
+        sample_names: list of sample names, if None, derive from imputed_paths
         fo: output parquet file, write to fo if not None(will trigger computation)
             if None, return dask dataframe
         binsize: resolution of the data
@@ -424,13 +425,22 @@ def gen_design_matrix(imputed_paths, fo=None, binsize=20000, max_dist=None):
             (chrom, start1, start2, sample1, sample2, ...)
     """
     # concat all data
-    combined_df = dd.concat(
-        [
-            imputed_reader_strID(fp, get_sample_name(fp), binsize, max_dist)
-            for fp in imputed_paths[:]
-            ],
-        axis=1
-        )
+    if sample_names is None:
+        combined_df = dd.concat(
+            [
+                imputed_reader_strID(fp, get_sample_name(fp), binsize, max_dist)
+                for fp in imputed_paths[:]
+                ],
+            axis=1
+            )
+    else: # use provided sample names
+        combined_df = dd.concat(
+            [
+                imputed_reader_strID(fp, sample, binsize, max_dist)
+                for fp, sample in zip(imputed_paths, sample_names)
+                ],
+            axis=1
+            )
     # expand pixel_id
     positions = combined_df.index.str.extract(
         r"(chr\d+):(\d+)-(\d+)",
