@@ -452,6 +452,40 @@ def gen_design_matrix(imputed_paths, sample_names=None, fo=None, binsize=20000, 
     if fo is not None:
         combined_df.to_parquet(fo, write_index=False)
     return combined_df
+def mannwhitneyu_row_labeled(row, groupA, groupB):
+    group1 = row[groupA]
+    group2 = row[groupB]
+    _, p_value = mannwhitneyu(group1, group2, alternative='two-sided', use_continuity=False)
+    return p_value
+def mannwhitneyu_test_pandas(task_name, combined_df, groupA, groupB, max_3d_dist):
+    #print("mannwhitneyu_test_pandas:", type(groupA), type(groupB))
+    combined_df['meanA'] = combined_df[groupA].mean(axis=1)
+    combined_df['meanB'] = combined_df[groupB].mean(axis=1)
+    
+    # 选取满足条件的行
+    combined_df = combined_df[
+        ((combined_df['meanA'] < max_3d_dist) | (combined_df['meanB'] < max_3d_dist)) & 
+        (combined_df['meanA'].notnull() & combined_df['meanB'].notnull())
+    ]
+    
+    # 计算差异和p值
+    combined_df['diff'] = combined_df['meanA'] - combined_df['meanB']
+    combined_df['pvalues'] = combined_df.apply(
+        lambda row: mannwhitneyu_row_labeled(row, groupA, groupB),
+        axis=1
+    )
+    # combined_df["task_name"] = task_name
+    
+    # result_df = combined_df[
+    #     ['task_name', 'meanA', 'meanB', 'diff', 'pvalues']
+    #     ]
+    #
+    #return result_df
+
+    # multiple testing correction
+    pvalues = combined_df['pvalues'].tolist()
+    qvalues = multiple_testing_correction(pvalues)
+    return len(qvalues[qvalues < 0.05])
 # --- postprocess ---
 def read_pvalues(pval_path, chrom):
     df = pd.read_parquet(pval_path)
