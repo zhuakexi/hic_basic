@@ -457,20 +457,38 @@ def mannwhitneyu_row_labeled(row, groupA, groupB):
     group2 = row[groupB]
     _, p_value = mannwhitneyu(group1, group2, alternative='two-sided', use_continuity=False)
     return p_value
-def mannwhitneyu_test_pandas(task_name, combined_df, groupA, groupB, max_3d_dist):
+def mannwhitneyu_test_pandas(task_name, combined_df, groupA, groupB, max_3d_dist, withdf=False):
     #print("mannwhitneyu_test_pandas:", type(groupA), type(groupB))
+
+    # check samples
+    orig_groupA, orig_groupB = groupA, groupB
+    groupA = []
+    for sample in orig_groupA:
+        if sample in combined_df.columns:
+            groupA.append(sample)
+        else:
+            print(f"[mannwhitneyu_test_pandas] warning: [task {task_name}] groupA sample {sample} not found in combined_df, ignored.")
+    groupB = []
+    for sample in orig_groupB:
+        if sample in combined_df.columns:
+            groupB.append(sample)
+        else:
+            print(f"[mannwhitneyu_test_pandas] warning: task \
+                    {task_name} groupB sample {sample} not found in combined_df, ignored.")
+
+    # calculate mean
     combined_df = combined_df.assign(
         meanA = combined_df[groupA].mean(axis=1),
         meanB = combined_df[groupB].mean(axis=1)
     )
     
-    # 选取满足条件的行
+    # select pixels
     combined_df = combined_df[
         ((combined_df['meanA'] < max_3d_dist) | (combined_df['meanB'] < max_3d_dist)) & 
         (combined_df['meanA'].notnull() & combined_df['meanB'].notnull())
     ]
     
-    # 计算差异和p值
+    # calculate pvalues
     combined_df = combined_df.assign(
         diff = combined_df['meanA'] - combined_df['meanB'],
         pvalues = combined_df.apply(
@@ -480,9 +498,18 @@ def mannwhitneyu_test_pandas(task_name, combined_df, groupA, groupB, max_3d_dist
     )
 
     # multiple testing correction
-    pvalues = combined_df['pvalues'].tolist()
-    qvalues = multiple_testing_correction(pvalues)
-    return len(qvalues[qvalues < 0.05])
+    if withdf: # return df
+        combined_df = combined_df.assign(
+            qvalues = multiple_testing_correction(combined_df['pvalues']),
+            task = task_name
+        )
+        res = combined_df[["task","chrom", "start1", "start2", "meanA", "meanB", "diff", "pvalues", "qvalues"]]
+        res = res[res["qvalues"] < 0.05]
+    else: # return number of significant pixels
+        pvalues = combined_df['pvalues'].tolist()
+        qvalues = multiple_testing_correction(pvalues)
+        res = len(pvalues), len(qvalues[qvalues < 0.05])
+    return res
 # --- postprocess ---
 def read_pvalues(pval_path, chrom):
     df = pd.read_parquet(pval_path)
