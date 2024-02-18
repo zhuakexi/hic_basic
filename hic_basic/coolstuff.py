@@ -4,6 +4,7 @@ import os.path as op
 import tempfile
 import yaml
 from pathlib import Path
+from typing import List, Union
 
 import cooler
 import numpy as np
@@ -32,6 +33,68 @@ from .utils import binnify
 #     chromsizes = read_chromsizes(chromsizes_file, all_names=True)
 #     bins = binnify(chromsizes, binsize)
 #     return bins
+
+# --- warm it --- #
+def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:bool=False):
+    """
+    Fetch matrix from cooler file with proper index and columns.
+    Input:
+        cool: cooler file path
+        region: genome region to fetch.
+            "chr1" or "chr1:1000000-2000000":
+                ucsc styl, get intra-chrom matrix
+            ["chr1:1,000,000-2,000,000", "chr2"]:
+                list of region string to get inter-chrom matrix
+            slice(0,-1):
+                slicer syntax, treat the whole genome as a big matrix,get intra-chrom matrix
+                Note: can only cross chrom boundaries when using slicer syntax
+                For example slice(0,-1) for whole genome.
+            [slice(0,1000000), slice(1000000,2000000)]:
+                inter-chrom matrix using slicer syntax
+        balance: balance or not, bool
+    Output:
+        pd.DataFrame
+    """
+    no_fetch = False # whether to use.fetch method, if False, using slicer syntax
+    clr = cooler.Cooler(cool)
+    if isinstance(region, str): # "chr1" or "chr1:1000000-2000000"
+        region = [region]
+    elif isinstance(region, list):
+        if isinstance(region[0], slice): # [slice(0,1000000), slice(1000000,2000000)]
+            no_fetch = True
+        pass
+    elif isinstance(region, slice): # slice(0,-1)
+        region = [region]
+        no_fetch = True
+    else:
+        raise ValueError("[Error in cool2mat]: Region must be str or list or slice, read doc for more info.")
+    if no_fetch:
+        # use slicer syntax
+        mat = clr.matrix(balance=balance)[region[0]] if len(region) == 1 else clr.matrix(balance=balance)[region[0], region[1]] # because can't unpack in slicer
+        mat = pd.DataFrame(mat)
+        if len(region) == 1:
+            index = clr.bins()[region[0]]
+            columns = clr.bins()[region[0]]
+        else:
+            # inter-chromosome region
+            index = clr.bins()[region[0]] # first region as index, same as cooler matrix fetch
+            columns = clr.bins()[region[1]]
+    else:
+        mat = clr.matrix(balance=balance).fetch(*region)
+        mat = pd.DataFrame(mat)
+        if len(region) == 1:
+            index = clr.bins().fetch(region[0])
+            columns = clr.bins().fetch(region[0])
+        else:
+            # inter-chromosome region
+            index = clr.bins().fetch(region[0]) # first region as index, same as cooler matrix fetch
+            columns = clr.bins().fetch(region[1])
+    mat.columns = columns["start"]
+    mat.columns.name = "region 2"
+    mat.index = index["start"]
+    mat.index.name = "region 1"
+    return mat
+# --- cool it --- #
 def gen_bins(genome, binsize):
     """
     Generate "bins" for cooler api.
