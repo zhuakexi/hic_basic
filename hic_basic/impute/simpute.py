@@ -15,7 +15,7 @@ from scipy.spatial.distance import euclidean
 from scipy.spatial import distance_matrix
 from sklearn.neighbors import radius_neighbors_graph
 
-from .coolstuff import gen_bins
+from ..coolstuff import gen_bins
 
 def boolean_radius_neighbor(df, min_dist=3, n_jobs=4):
     """

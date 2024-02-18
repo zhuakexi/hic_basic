@@ -12,7 +12,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from scipy.spatial.distance import euclidean
-from hic_basic.simpute import boolean_radius_neighbor, cis_proximity_graph, cis_distance_graph, \
+from hic_basic.impute.simpute import boolean_radius_neighbor, cis_proximity_graph, cis_distance_graph, \
     cis_distance_graph_df, parse_3dg_dask
 from hires_utils.hires_io import parse_3dg
 
