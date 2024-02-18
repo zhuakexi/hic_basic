@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from hic_basic.coolstuff import cli_pileup, cli_expected
+from hic_basic.coolstuff import cool2mat, cli_pileup, cli_expected
 from hic_basic.plot.hic import _plot_mat
 
 class TestCoolstuff(unittest.TestCase):
@@ -19,6 +19,24 @@ class TestCoolstuff(unittest.TestCase):
         self.coolp = "/share/Data/ychi/raw/Bonev2017/ES.mcool::resolutions/20000"
         self.coolp1M = "/share/Data/ychi/raw/Bonev2017/ES.mcool::resolutions/1000000"
         self.IS = Path(os.path.dirname(__file__)) / "data" / "mm10.HOXA.IS.tsv"
+    def test_cool2mat(self):
+        sample_cool = self.coolp1M
+        regions = [
+            "chr1",
+            "chr1:1000000-2000000",
+            ["chr1:1,000,000-2,000,000", "chr2"],
+            slice(0,-1),
+            [slice(0,1000000), slice(1000000,2000000)]
+        ]
+
+        for region in regions:
+            # Call the function with the sample inputs
+            result = cool2mat(sample_cool, region)
+            # Check the result
+            print(result.shape)
+            print(result.head())
+            self.assertIsInstance(result, pd.DataFrame)
+
     def test_cli_pileup(self):
         """
         Test the cli_pileup function.
