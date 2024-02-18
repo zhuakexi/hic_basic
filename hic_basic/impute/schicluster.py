@@ -1,7 +1,12 @@
+from typing import Optional
+
 import numpy as np
+import pandas as pd
 import scipy as sp
+from cooler import Cooler
 from scipy import signal, ndimage
-# schicluster
+from ..coolstuff import cool2mat
+# --- schicluster --- #
 def solve_rwr_inverse(stoch_matrix, alpha = 0.05):
     m = stoch_matrix*(1-alpha)
     m = m.transpose()
@@ -39,21 +44,42 @@ def schicluster_imputation_for_mat(mat,alpha=0.05,kernel_size=3,sigma=2,if_convo
     mat = mat / np.nansum(mat, axis = 0)
 
     mat = solve_rwr_inverse(mat,alpha)
-    return mat    
-
-def normalize_matrix(matrix):
+    return mat
+# --- imputation main --- #
+def schicluster_impute(
+    coolp, chroms, outprefix,
+    max_dist:Optional[int] = 20000000,
+    alpha:float = 0.05, kernel_size:int = 3, sigma:int = 2, if_convolve:bool = True
+):
     """
-    z-score normalization for band
+    Impute Hi-C matrix using schicluster method from cooler file.
+    Input:
+        coolp: cooler file
+        chroms: list of chromosomes, list
+        outprefix: output prefix, str
+        max_dist: max linear distance, int
+        alpha: alpha, float
+        kernel_size: kernel size, int
+        sigma: sigma, float
+        if_convolve: if convolve, bool
+    Output:
+        write imputed matrix to outprefix.{chrom}.parquet
     """
-    from scipy.stats import zscore
-    normalized_matrix = np.zeros_like(matrix)
-    for i in range(-matrix.shape[0] + 1, matrix.shape[1]):
-        band = matrix.diagonal(i)
-        normalized_band = zscore(band)
-        
-        if i >= 0:
-            np.fill_diagonal(normalized_matrix[i:], normalized_band)
-        else:
-            np.fill_diagonal(normalized_matrix[:, -i:], normalized_band)
-    
-    return normalized_matrix
+    for chrom in chroms:
+        mat = cool2mat(coolp, chrom, balance = False)
+        imputed = schicluster_imputation_for_mat(
+            mat.copy().values,
+            alpha, kernel_size, sigma, if_convolve
+            )
+        result = pd.DataFrame(
+            imputed,
+            index = mat.index,
+            columns = mat.columns
+            )
+        result = result.stack().reset_index()
+        result.columns = ["start1", "start2", "imputed"]
+        result = result.assign(chrom = chrom)
+        if max_dist is not None:
+            result = result.query("start2 - start1 <= @max_dist")
+        result = result[["chrom", "start1", "start2", "imputed"]]
+        result.to_parquet(f"{outprefix}.{chrom}.parquet")
