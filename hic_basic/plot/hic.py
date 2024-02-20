@@ -17,7 +17,7 @@ import bioframe
 
 from .utils import filling_l2r_mpl, pcolormesh_45deg, tiling_mat
 from ..compartment import compartments
-
+from ..coolstuff import cool2mat
 # --- Hi-C heatmap plot ---
 def _plot_mat_mpl(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
     mat = mat.copy()
@@ -111,11 +111,11 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap
         title=title
     )
     return fig
-def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diags=True, donorm=True, **args):
+def plot_cool(coolp, title="", region="chr1",vmax=100, balance=False, ignore_diags=True, donorm=True, **args):
     """"
     Plot heatmap of single cooler file.
     Input:
-        cool: path to cooler file.
+        coolp: path to cooler file.
         title: name of the plot.
         region: genome region to plot.
             "chr1" or "chr1:1000000-2000000" or ["chr1:1,000,000-2,000,000", "chr2"] or
@@ -125,44 +125,7 @@ def plot_cool(cool, title="", region="chr1",vmax=100, balance=False, ignore_diag
         balance: whether to load balanced cooler matrix.
         norm: whether to use lognorm.
     """
-    using_index = False # using [] or fetch
-    clr = cooler.Cooler(cool)
-    if isinstance(region, str):
-        region = [region]
-    elif isinstance(region, list):
-        if isinstance(region[0], slice):
-            using_index = True
-        pass
-    elif isinstance(region, slice):
-        region = [region]
-        using_index = True
-    else:
-        raise ValueError("region must be str or list or slice")
-    if using_index:
-        # input is slicer or list of slicer
-        mat = clr.matrix(balance=balance)[region[0]] if len(region) == 1 else clr.matrix(balance=balance)[region[0], region[1]] # because can't unpack in slicer
-        mat = pd.DataFrame(mat)
-        if len(region) == 1:
-            index = clr.bins()[region[0]]
-            columns = clr.bins()[region[0]]
-        else:
-            # inter-chromosome region
-            index = clr.bins()[region[0]] # first region as index, same as cooler matrix fetch
-            columns = clr.bins()[region[1]]
-    else:
-        mat = clr.matrix(balance=balance).fetch(*region)
-        mat = pd.DataFrame(mat)
-        if len(region) == 1:
-            index = clr.bins().fetch(region[0])
-            columns = clr.bins().fetch(region[0])
-        else:
-            # inter-chromosome region
-            index = clr.bins().fetch(region[0]) # first region as index, same as cooler matrix fetch
-            columns = clr.bins().fetch(region[1])
-    mat.columns = columns["start"]
-    mat.columns.name = "region 2"
-    mat.index = index["start"]
-    mat.index.name = "region 1"
+    mat = cool2mat(coolp, region, balance=balance)
     return _plot_mat(
         mat,
         title = title,
