@@ -47,7 +47,7 @@ def schicluster_imputation_for_mat(mat,alpha=0.05,kernel_size=3,sigma=2,if_convo
     return mat
 # --- imputation main --- #
 def schicluster_impute(
-    coolp, chroms, outprefix,
+    coolp, region, fo,
     max_dist:Optional[int] = 20000000,
     alpha:float = 0.05, kernel_size:int = 3, sigma:int = 2, if_convolve:bool = True
 ):
@@ -55,31 +55,33 @@ def schicluster_impute(
     Impute Hi-C matrix using schicluster method from cooler file.
     Input:
         coolp: cooler file
-        chroms: list of chromosomes, list
-        outprefix: output prefix, str
+        region: region to impute, normally a chromosome,
+            otherwise maybe incompatible with downstream analysis.
+            See cool2mat's region argument
+        fo: output file, str
         max_dist: max linear distance, int
         alpha: alpha, float
         kernel_size: kernel size, int
         sigma: sigma, float
         if_convolve: if convolve, bool
     Output:
-        write imputed matrix to outprefix.{chrom}.parquet
+        write imputed matrix to fo
     """
-    for chrom in chroms:
-        mat = cool2mat(coolp, chrom, balance = False)
-        imputed = schicluster_imputation_for_mat(
-            mat.copy().values,
-            alpha, kernel_size, sigma, if_convolve
-            )
-        result = pd.DataFrame(
-            imputed,
-            index = mat.index,
-            columns = mat.columns
-            )
-        result = result.stack().reset_index()
-        result.columns = ["start1", "start2", "imputed"]
-        result = result.assign(chrom = chrom)
-        if max_dist is not None:
-            result = result.query("start2 - start1 <= @max_dist")
-        result = result[["chrom", "start1", "start2", "imputed"]]
-        result.to_parquet(f"{outprefix}.{chrom}.parquet")
+    coolp = str(coolp)
+    mat = cool2mat(coolp, region, balance = False)
+    imputed = schicluster_imputation_for_mat(
+        mat.copy().values,
+        alpha, kernel_size, sigma, if_convolve
+        )
+    result = pd.DataFrame(
+        imputed,
+        index = mat.index,
+        columns = mat.columns
+        )
+    result = result.stack().reset_index()
+    result.columns = ["start1", "start2", "imputed"]
+    result = result.assign(chrom = region)
+    if max_dist is not None:
+        result = result.query("start2 - start1 <= @max_dist and start2 - start1 >= 0")
+    result = result[["chrom", "start1", "start2", "imputed"]]
+    result.to_parquet(fo)
