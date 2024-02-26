@@ -73,22 +73,50 @@ class PyMolRender:
             code = f"pymol -cq {self.script_file_path}"
         subprocess.run(code, shell=True)
 # --- basic modes --- #
-def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol"):
+def surface_territory_pymol(_3dg, png, dcmap="dip_c", tmpdir=None, conda="pymol"):
     """
     Render surface, color by each chromosome.
     Input:
         _3dg: _3dg file path
         png: output png file path
+        dcmap: discrete color map.
+            dip_c: each chromosome has a different rainbow color
         tmpdir: directory to save intermediate files
         conda: conda environment name, None for no conda
     """
-    with PyMolRender(
-        Path(__file__).parent / "pml" / "surface_territory.pml",
-        png, tmpdir,conda
-        ) as render:
-        render.gen_cif(_3dg)
-        render.gen_script()
-        render.render()
+    if dcmap == "dip_c":
+        with PyMolRender(
+            # using b_factor to achieve discrete color map
+            Path(__file__).parent / "pml" / "surface_b_factor.pml",
+            png, tmpdir, conda
+            ) as render:
+            _3dg = parse_3dg(_3dg)
+            chroms = _3dg.index.get_level_values(0).unique()
+            b_factor = pd.merge(
+                _3dg.reset_index(),
+                pd.DataFrame(
+                    {"chr":chroms, "b_factor":range(1, len(chroms)+1)}
+                ),
+                on="chr"
+            )[["chr","pos","b_factor"]]
+            render.gen_cif(
+                StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+                StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
+                dupref = False
+                )
+            vmin, vmax = b_factor["b_factor"].min(), b_factor["b_factor"].max()
+            render.gen_script(
+                cmap=f"rainbow, all, {vmin}, {vmax}"
+                )
+            render.render()
+    else:
+        with PyMolRender(
+            Path(__file__).parent / "pml" / "surface_territory.pml",
+            png, tmpdir,conda
+            ) as render:
+            render.gen_cif(_3dg)
+            render.gen_script()
+            render.render()
     return png
 def clip_territory_pymol(_3dg, png, clip=0, slab=2, tmpdir=None, conda="pymol", **args):
     """
