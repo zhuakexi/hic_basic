@@ -77,7 +77,7 @@ def chromosomes(genome, order=False):
             raise ValueError("ref: neither valid abbrevations nor valid reference file")
     if isinstance(order, bool):
         if order: # using default order
-            data.index = data.index.as_ordered()
+            data.index = pd.CategoricalIndex(data.index, categories=data.index, ordered=True)
     else: # provided order
         data.index = pd.CategoricalIndex(data.index, categories=order, ordered=True)
     return data
@@ -115,6 +115,10 @@ def fetch_cent_chromlen(genome):
     """
     # mouse cytoband file does not have centromeric, gvar, and stalk regions
     # using gap files instead
+    cytoband_files = {
+        "hg19" : ref_dir / "hg19_cytoBand.txt.gz",
+        "GRCh38" : ref_dir / "GRCh38.cytoBandIdeo.txt.gz"# ftp://hgdownload.cse.ucsc.edu/goldenPath/hg38/database/CytoBandIdeo.txt.gz
+    }
     gap_files = {
         "mm10" : ref_dir / "mm10_gap.csv.gz"
     }
@@ -140,25 +144,56 @@ def fetch_cent_chromlen(genome):
                 if row.type == "centromere":
                     res.append(Cent(row.chrom, row.chromStart, row.chromEnd))
             res.append(Cent("chrY", 4050275, 4181802)) #see https://www.ncbi.nlm.nih.gov/grc/mouse/issues/MG-4414
+        cent_chromlen = {row.chrom : [row.start, row.end] for row in res}
+        # transform to dataframe
+        cent_chromlen = pd.DataFrame(cent_chromlen).T
+        cent_chromlen.columns = ["start","end"]
+        cent_chromlen.index.name = "chrom"
+        # # add chromosome length
+        # with open(len_files[genome],"r") as f:
+        #     fcsv = csv.reader(f, delimiter="\t")
+        #     #header
+        #     #header = next(fcsv)
+        #     header = ["chromosome", "length"]
+        #     # dtypes
+        #     dtypes = [str, int]
+        #     Len = namedtuple("Len", header)
+        #     res = []
+        #     for row in fcsv:
+        #         row = Len(*(convert(value) for convert, value in zip(dtypes, row)))
+        #         res.append(row)
+        # for row in res:
+        #     if row.chromosome in cent_chromlen:
+        #         cent_chromlen[row.chromosome].append(row.length)
     else:
-        raise ValueError("Only mm10 is supported for now.")
-    cent_chromlen = {row.chrom : [row.start, row.end] for row in res}
-    if genome == "mm10":
-        with open(len_files[genome],"r") as f:
-            fcsv = csv.reader(f, delimiter="\t")
-            #header
-            #header = next(fcsv)
-            header = ["chromosome", "length"]
-            # dtypes
-            dtypes = [str, int]
-            Len = namedtuple("Len", header)
-            res = []
-            for row in fcsv:
-                row = Len(*(convert(value) for convert, value in zip(dtypes, row)))
-                res.append(row)
-    for row in res:
-        if row.chromosome in cent_chromlen:
-            cent_chromlen[row.chromosome].append(row.length)
+        cytoband = pd.read_table(
+            cytoband_files[genome],
+            names=["chrom", "start", "end", "name", "gieStain"]
+        )
+        cent_chromlen = cytoband.query(
+            'gieStain == "acen"'
+            ).groupby(
+                'chrom'
+                ).aggregate(
+                    {
+                        "start": "min",
+                        "end": "max"
+                    }
+                )
+        #cent_chromlen = cent_chromlen.set_index("chrom")
+    # add length
+    lengths = chromosomes(genome, order=True)
+    cent_chromlen.index = pd.Categorical(
+        cent_chromlen.index,
+        categories=lengths.index, # length index is already ordered
+        ordered=True
+    )
+    cent_chromlen = pd.concat(
+        [cent_chromlen, lengths["length"].rename("chrom_length")],
+        axis=1,
+        join="inner"
+    )
+    cent_chromlen = cent_chromlen.sort_index()
     #print(cent_chromlen)
     return cent_chromlen
 def id2name(genelist, genome):
