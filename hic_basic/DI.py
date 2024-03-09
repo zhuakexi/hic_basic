@@ -371,9 +371,15 @@ def imputed_reader(imputed_path, sample_id, genome, binsize, max_dist):
 # prepare data
 def imputed_reader_strID(imputed_path, sample_id, binsize=20000, max_dist=None):
     """
-    Read in imputed data, zscore normalize, and add pixel_id
+    Read in imputed data, zscore normalize, and add pixel_id.
+    Note: this function treat imputation as intra-chromosomal.
+    It assumes all row has the same chrom1, chrom2. It then do groupby only on band,
+    and code pixel_id as chrom1:start1-start2.
     Input:
-        imputed_path: path to imputed data
+        imputed_path: path to imputed data.
+            It should be a parquet file with columns chrom1, start1, start2, value,
+            or chrom, start1, start2, value. Value col name is not assumed.
+            More columns are allowed and ignored.
         sample_id: sample id, used as output column name
         binsize: resolution of the data
         max_dist: max distance in impuation
@@ -382,6 +388,12 @@ def imputed_reader_strID(imputed_path, sample_id, binsize=20000, max_dist=None):
     """
     # --- load data ---
     df = dd.read_parquet(imputed_path)
+
+    # --- check chrom col ---
+    if "chrom1" not in df.columns:
+        if "chrom" in df.columns:
+            # using a pure intra imputer
+            df = df.rename(columns={"chrom": "chrom1"})
     
     # --- zscore normalization ---
     value_col_name = df.columns[-1]
