@@ -100,6 +100,29 @@ def plot_ps_curve(cvd_smooth_agg, ps_col="balanced.avg.smoothed.agg"):
         plot_bgcolor = "rgba(0,0,0,0)",
     )
     return fig
+def plot_ps_curves(cvd_smooth_aggs, batches, subset=None):
+    # If no subset is provided, use the full list of batches
+    if subset is None:
+        subset = batches
+    # Creating a color map for the batches
+    color_map = dict(zip(batches, px.colors.qualitative.Plotly))
+    fig = px.scatter(
+        cvd_smooth_aggs.reset_index(),
+        x="s_bp",
+        y=subset,
+        color_discrete_map=color_map,
+        log_x=True,
+        log_y=True,
+    )
+    fig.update_layout(
+        xaxis_title = "Distances(bp)",
+        yaxis_title = "Contact Probability P(s)",
+        height = 500,
+        width = 600,
+        title = "P(s) curve",
+        plot_bgcolor = "rgba(0,0,0,0)",
+    )
+    return fig
 def plot_ps_curve_all_chromosomes(cvd_smooth_agg, ps_col="balanced.avg.smoothed", highlight_chroms=None, subset=None):
     chroms = cvd_smooth_agg["region1"].unique()
     if subset is not None:
