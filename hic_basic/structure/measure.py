@@ -194,6 +194,21 @@ def calc_depth(_3dg):
     res = scene.compute_signed_distance(query_points)
     #eturn res
     return _3dg.assign(depth=res.numpy())
+def radial_position(_3dg:pd.DataFrame):
+    """
+    Calculate the radial position of each chromatin bin.
+    Input:
+        inner _3dg data structure (parsing from hickit output .3dg file)
+    Output:
+        same dataframe with new column 'radial_position'
+    """
+    xyz = _3dg.values # (N, 3)
+    ref_pos = xyz.mean(axis=0)
+    mean_radius = np.sqrt(((xyz - ref_pos)**2).sum(axis=1)).mean()
+    radial_positions = np.sqrt(((xyz - ref_pos)**2).sum(axis=1)) / mean_radius
+    return _3dg.assign(
+        radial_position=radial_positions
+        )
 def _3dg_volume(_3dg, method="convex_hull", **args):
     """
     Compute volume of 3dg data structure.
