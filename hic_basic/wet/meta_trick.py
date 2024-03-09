@@ -16,7 +16,19 @@ def merge_meta(*dfs):
         print("Cols good.")
     print("Resulting in %d samples." % new_meta.shape[0])
     return new_meta
-
+def rmsd_filter(meta, reso="20k", rmsd_thres=1, samples=True):
+    rmsd_cols = meta.columns[
+        meta.columns.str.contains(f"{reso}_\d+_\d+_rmsd", regex=True)
+        ]
+    dat = meta[rmsd_cols]
+    # value of the third smallest groups
+    working_rmsd = dat[dat.rank(
+        axis=1
+    ) == 3].max(axis=1)
+    if samples:
+        return meta[working_rmsd < rmsd_thres].index
+    else: # give boolean mask
+        return working_rmsd < rmsd_thres
 def last_mouse(df):
     """
     Find last batch number.
