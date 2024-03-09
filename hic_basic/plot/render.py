@@ -255,18 +255,18 @@ def centelo_relpos(positions_2col, genome, dupref=False):
             chrom = chrom_rm_suffix(chrom)
         else:
             pass
-        if chrom not in centromeres:
+        if chrom not in centromeres.index:
             # without reference
             print(f"Warning: {chrom} not in centromeres, set b factor to 0.5")
             relpos = 0.5
             b_factor.append(relpos)
             continue
-        if pos < centromeres[chrom][0]:
+        if pos < centromeres.loc[chrom, "start"]:
             # left arm
-            relpos = (centromeres[chrom][0] - pos) / (centromeres[chrom][0] - 0 )
-        elif pos > centromeres[chrom][1]:
+            relpos = (centromeres.loc[chrom, "start"] - pos) / (centromeres.loc[chrom, "start"] - 0 )
+        elif pos > centromeres.loc[chrom, "end"]:
             # right arm
-            relpos = (pos - centromeres[chrom][1]) / (centromeres[chrom][2] - centromeres[chrom][1])
+            relpos = (pos - centromeres.loc[chrom, "end"]) / (centromeres.loc[chrom, "chrom_length"] - centromeres.loc[chrom, "end"])
         else:
             # centromere
             relpos = 0
