@@ -73,7 +73,7 @@ class PyMolRender:
             code = f"pymol -cq {self.script_file_path}"
         subprocess.run(code, shell=True)
 # --- basic modes --- #
-def surface_territory_pymol(_3dg, png, dcmap="dip_c", tmpdir=None, conda="pymol"):
+def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol", dcmap="dip_c"):
     """
     Render surface, color by each chromosome.
     Input:
@@ -91,18 +91,25 @@ def surface_territory_pymol(_3dg, png, dcmap="dip_c", tmpdir=None, conda="pymol"
             png, tmpdir, conda
             ) as render:
             _3dg = parse_3dg(_3dg)
-            chroms = _3dg.index.get_level_values(0).unique()
+            chroms = chrom_rm_suffix(_3dg.index.get_level_values(0)).unique()
             b_factor = pd.merge(
-                _3dg.reset_index(),
-                pd.DataFrame(
-                    {"chr":chroms, "b_factor":range(1, len(chroms)+1)}
+                _3dg.reset_index().assign(
+                    new_chr = chrom_rm_suffix(_3dg.index.get_level_values(0))
                 ),
-                on="chr"
-            )[["chr","pos","b_factor"]]
+                pd.DataFrame(
+                    {"new_chr":chroms, "b_factor":range(1, len(chroms)+1)}
+                ),
+                on="new_chr"
+            )[["new_chr","pos","b_factor"]]
+            b_factor = b_factor.drop_duplicates(
+                subset=["new_chr","pos"],
+                keep="first"
+            )
+            b_factor = b_factor.rename(columns={"new_chr":"chr"})
             render.gen_cif(
                 StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
                 StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
-                dupref = False
+                dupref = True
                 )
             vmin, vmax = b_factor["b_factor"].min(), b_factor["b_factor"].max()
             render.gen_script(
