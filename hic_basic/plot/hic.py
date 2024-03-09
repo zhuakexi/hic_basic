@@ -443,7 +443,7 @@ def plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels, subplot_tit
         width = 700
     )
     return fig
-def plot_tiling_compartment(coolps, eigs_files, region, title, balance=False):
+def plot_tiling_compartment(coolps, eigs_files, region, title, strip=True, balance=False):
     """
     Plot cooler with additional track files
     """
@@ -463,6 +463,22 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, balance=False):
         region_mat1,
         region_mat2
     )
+    pos = clrs[0].bins()[bin_s:bin_e]["start"]
+    region_mat = pd.DataFrame(region_mat, index=pos, columns=pos)
+    if strip:
+        # strip consecutive 0s on left or right side
+        for i in range(region_mat.shape[0]):
+            if np.all(region_mat.iloc[i,:] == 0):
+                i_s = i
+            else:
+                i_s = i
+                break
+        for i in range(region_mat.shape[0]-1, -1, -1):
+            if np.all(region_mat.iloc[i,:] == 0):
+                i_e = i
+            else:
+                break
+        region_mat = region_mat.iloc[i_s:i_e,i_s:i_e]
     figure = make_subplots(
         rows=2,
         cols=2,
