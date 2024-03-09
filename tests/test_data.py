@@ -38,7 +38,10 @@ class TestData(unittest.TestCase):
         """
         # fetch_cent_chromlen
         cent_chromlen = fetch_cent_chromlen("mm10")
-        print(cent_chromlen["chrY"])
-        self.assertTrue("chrY" in cent_chromlen.keys())
+        print(cent_chromlen.loc["chrY"])
+        self.assertTrue("chrY" in cent_chromlen.index)
+        cent_chromlen = fetch_cent_chromlen("GRCh38")
+        print(cent_chromlen.loc["chrY"])
+        self.assertTrue("chrY" in cent_chromlen.index)
 if __name__ == "__main__":
     unittest.main()
