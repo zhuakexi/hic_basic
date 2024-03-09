@@ -46,7 +46,8 @@ def chromosomes(genome, order=False):
     """
     Get chromosome lengths.
     Input:
-        genome: genome name or chromosome length table; string or pd.DataFrame
+        genome: genome name or chromosome length table; string or pd.DataFrame;
+            Now support hg19, hg19_dip, GRCh38, GRCh38_dip, mm10, mm10_dip
         order: if True, order chromosomes by length, if list order chromosomes by the list; bool or list
     Return:
         pandas.DataFrame
@@ -55,6 +56,7 @@ def chromosomes(genome, order=False):
         "hg19" : ref_dir / "hg19.len.tsv",
         "hg19_dip" : ref_dir / "hg19.dip.len.tsv",
         "GRCh38" : ref_dir / "GRCh38.len.tsv",
+        "GRCh38_dip" : ref_dir / "GRCh38.dip.len.tsv",
         "mm10" : ref_dir / "mm10.len.tsv",
         "mm10_dip" : ref_dir / "mm10.dip.len.tsv",
     }
