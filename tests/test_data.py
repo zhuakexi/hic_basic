@@ -43,5 +43,9 @@ class TestData(unittest.TestCase):
         cent_chromlen = fetch_cent_chromlen("GRCh38")
         print(cent_chromlen.loc["chrY"])
         self.assertTrue("chrY" in cent_chromlen.index)
+        # test dip
+        cent_chromlen = fetch_cent_chromlen("mm10_dip")
+        print(cent_chromlen)
+        self.assertTrue("chr1(mat)" in cent_chromlen.index)
 if __name__ == "__main__":
     unittest.main()

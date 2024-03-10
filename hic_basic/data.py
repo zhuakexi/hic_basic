@@ -125,10 +125,17 @@ def fetch_cent_chromlen(genome):
     len_files = {
         "mm10" : ref_dir / "mm10.len.tsv"
     }
-    if genome == "mm10":
+    DIP=False
+    if genome.endswith("dip"):
+        DIP=True
+        base_genome, _ = genome.split("_")
+    else:
+        base_genome = genome
+    # fetch base genome centromeres
+    if base_genome == "mm10":
         # mouse cytoband file does not have centromeric, gvar, and stalk regions
         # using gap files instead
-        with gzip.open(gap_files[genome],"rt") as f:
+        with gzip.open(gap_files[base_genome],"rt") as f:
             fcsv = csv.reader(f)
             #header
             header = next(fcsv)
@@ -149,25 +156,9 @@ def fetch_cent_chromlen(genome):
         cent_chromlen = pd.DataFrame(cent_chromlen).T
         cent_chromlen.columns = ["start","end"]
         cent_chromlen.index.name = "chrom"
-        # # add chromosome length
-        # with open(len_files[genome],"r") as f:
-        #     fcsv = csv.reader(f, delimiter="\t")
-        #     #header
-        #     #header = next(fcsv)
-        #     header = ["chromosome", "length"]
-        #     # dtypes
-        #     dtypes = [str, int]
-        #     Len = namedtuple("Len", header)
-        #     res = []
-        #     for row in fcsv:
-        #         row = Len(*(convert(value) for convert, value in zip(dtypes, row)))
-        #         res.append(row)
-        # for row in res:
-        #     if row.chromosome in cent_chromlen:
-        #         cent_chromlen[row.chromosome].append(row.length)
     else:
         cytoband = pd.read_table(
-            cytoband_files[genome],
+            cytoband_files[base_genome],
             names=["chrom", "start", "end", "name", "gieStain"]
         )
         cent_chromlen = cytoband.query(
@@ -181,6 +172,22 @@ def fetch_cent_chromlen(genome):
                     }
                 )
         #cent_chromlen = cent_chromlen.set_index("chrom")
+    # additional treatment for diploid genomes
+    if DIP:
+        lengths = chromosomes(genome)
+        lengths = lengths.assign(
+            new_chrom = chrom_rm_suffix(lengths.index)
+        )
+        cent_chromlen = pd.merge(
+            cent_chromlen,
+            lengths,
+            left_index=True,
+            right_on="new_chrom",
+            how="right"
+        )
+        cent_chromlen = cent_chromlen[["start", "end"]]
+    else:
+        pass
     # add length
     lengths = chromosomes(genome, order=True)
     cent_chromlen.index = pd.Categorical(
