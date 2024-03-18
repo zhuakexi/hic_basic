@@ -307,7 +307,8 @@ def surface_centelo_pymol(_3dg_file, png, genome="mm10", tmpdir=None,
             )
         render.render()
         return png
-def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda="pymol", **args):
+def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, slab=2, tmpdir=None, 
+                       cif_name=None, dupref=False, conda="pymol", **args):
     """
     Render clip view, color centromere-telomere.
     Input:
@@ -329,6 +330,7 @@ def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, slab=2, tmpdir=Non
         tmp_cif = render.gen_cif(
             StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
             StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
+            dupref=False, # if dupref in relpos, don't do it again in mmcif
             **args
             )
         if cif_name is not None:

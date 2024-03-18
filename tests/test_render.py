@@ -104,6 +104,19 @@ class TestRender(unittest.TestCase):
             conda=None
             )
         self.assertTrue(Path(outpng).exists())
+    def test_clip_centelo_pymol_dip(self):
+        print("Test_clip_centelo_pymol_dip")
+        outpng = os.path.join(os.path.dirname(__file__), "output", "clip_centelo_pymol_dip.png")
+        # centelo
+        clip_centelo_pymol(
+            #"/sharec/ychi/repo/sperm56_mESC/3dg_c/ESCO1008.clean.20k.5.3dg",
+            "/sharec/ychi/repo/sperm56_mESC/3dg_c/ESCO1008.clean.1m.5.3dg",
+            outpng,
+            "mm10",
+            tmpdir=os.path.join(os.path.dirname(__file__), "output"),
+            conda=None,
+            dupref=True
+            )
     def test_clip_single_centelo_pymol(self):
         print("Test_clip_single_centelo_pymol")
         outpng = os.path.join(os.path.dirname(__file__), "output", "clip_single_centelo_pymol.png")
