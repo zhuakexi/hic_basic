@@ -34,6 +34,12 @@ class TestGenomeIdeograph(unittest.TestCase):
         self.assertTrue('chrom' in bins_bed.columns)
         self.assertTrue('start' in bins_bed.columns)
         self.assertTrue('end' in bins_bed.columns)
+    def test_bins_order(self):
+        binsize = 1000
+        bins = self.genome.bins(binsize, bed=True, order=True)
+        print(bins)
+        # chr1, chr2 ... not chr1, chr10, chr11, chr12, ...
+        self.assertTrue(bins.query('chrom == "chr2"').index[0] < bins.query('chrom == "chr11"').index[0])
     def test_pixel_id(self):
         binsize = 1000
         row = pd.Series({
