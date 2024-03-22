@@ -13,8 +13,9 @@ from cooler import Cooler
 from cooler.create import sanitize_records, aggregate_records
 from cytoolz import compose # fail in HPC
 
-from .hicio import schicluster2mat
+from .binnify import GenomeIdeograph
 from .data import chromosomes
+from .hicio import schicluster2mat
 from .utils import binnify
 
 # from .utils import read_chromsizes
@@ -300,6 +301,63 @@ def hic_pileup(scool, grouping, cache_pattern="{}.pileup.cool",mergebuf=1e6):
             [scool+"::/cells/{}".format(i) for i in samples],
             mergebuf
         )
+def iter_pixels(clr, chunksize=1e6, join=True):
+    chunksize = int(chunksize)
+    tot = clr.pixels().shape[0]
+    for i in range(0, tot, chunksize):
+        yield clr.pixels(join=join)[i:i+chunksize]
+def reset_cool_bins(coolpin, coolpout, genome="GRCh38", chunksize=1e6):
+    clr = cooler.Cooler(coolpin)
+    binsize = clr.binsize
+    new_bins = GenomeIdeograph(
+        genome).bins(
+            binsize,
+            bed=True,
+            order=True
+        )
+    new_bins = new_bins.assign(
+        bin_id = new_bins.index
+    )
+    # add bin1_id
+    new_bins1 = new_bins.copy()
+    new_bins1.columns = ["chrom1", "start1", "end1", "bin1_id"]
+    pixel_chunks_id1 = (
+        pd.merge(
+            pixel_chunk,
+            new_bins1[['chrom1', 'start1', 'end1', 'bin1_id']],
+            on=["chrom1", "start1", "end1"],
+        )
+        for pixel_chunk in iter_pixels(
+            clr, chunksize=chunksize, join=True)
+    )
+    # add bin2_id
+    new_bins2 = new_bins.copy()
+    new_bins2.columns = ["chrom2", "start2", "end2", "bin2_id"]
+    pixel_chunks_id1_id2 = (
+        pd.merge(
+            pixel_chunk,
+            new_bins2[['chrom2', 'start2', 'end2', 'bin2_id']],
+            on=["chrom2", "start2", "end2"],
+        )
+        for pixel_chunk in pixel_chunks_id1
+    )
+    # prepare inputs
+    new_bins = new_bins[["chrom", "start", "end"]]
+    pixel_chunks_tidy = (
+        pixel_chunk[[
+            "bin1_id", "bin2_id", "count"
+        ]].dropna(
+            axis=0,
+            how="any",
+            subset=["bin1_id", "bin2_id"]
+        ) # drop pixels not present in new_bins
+        for pixel_chunk in pixel_chunks_id1_id2
+    )
+    cooler.create_cooler(
+        coolpout,
+        new_bins,
+        pixel_chunks_tidy
+    )
 
 # --- distiller-nf helper functions ---
 def gen_config(
