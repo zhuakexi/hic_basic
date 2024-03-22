@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from hic_basic.coolstuff import cool2mat, cli_pileup, cli_expected
+from hic_basic.coolstuff import cool2mat, cli_pileup, cli_expected, reset_cool_bins
 from hic_basic.plot.hic import _plot_mat
 
 class TestCoolstuff(unittest.TestCase):
@@ -95,6 +95,19 @@ class TestCoolstuff(unittest.TestCase):
             output,
             cwd=self.outdir
         )
+        self.assertTrue(output.exists())
+    def test_reset_cool_bins(self):
+        """
+        Restrict the cool bins to the standard chromosomes.
+        """
+        coolp = self.coolp1M
+        output = self.outdir / "reset_cool_bins.1M.cool"
+        reset_cool_bins(
+            str(coolp),
+            str(output),
+            genome="mm10", chunksize=1e6
+            )
+        # check existence
         self.assertTrue(output.exists())
 if __name__ == "__main__":
     unittest.main()
