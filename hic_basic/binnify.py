@@ -14,6 +14,7 @@ class GenomeIdeograph:
             or lengths file_path(csv format:: chrom, lengths)
         """
         self.chromosomes = chromosomes(ref)
+        self.chromosomes_order = chromosomes(ref, order=True)
         # transform to ordered categorical
         # not easy to use in normal tasks, but useful in binned data
         chroms = self.chromosomes.index.to_list()
@@ -37,7 +38,7 @@ class GenomeIdeograph:
             breaks.append(length) # don't forget the rightmost point
             all_breaks[chrom] = breaks
         return all_breaks
-    def bins(self, binsize:int, bed=False):
+    def bins(self, binsize:int, bed=False, order=False):
         """
         Get binned reference(IntervalIdex version)
         Input:
@@ -47,7 +48,8 @@ class GenomeIdeograph:
            intervals of each bin(
                 dict of IntervalIndex)        
         """
-
+        if order:
+            assert bed, "order only works with bed"
         binsize = int(binsize)
         breaks = self.breaks(binsize)
         bins = {chrom : pd.IntervalIndex.from_breaks(
@@ -66,6 +68,15 @@ class GenomeIdeograph:
                 for chrom in bins
             ]
             bins = pd.concat(bins)
+            bins = bins.reset_index(drop=True)
+        if order:
+            bins["chrom"] = pd.Categorical(
+                bins["chrom"],
+                categories=self.chromosomes_order.index,
+                ordered=True
+            )
+            bins = bins.sort_values(["chrom","start"])
+            bins = bins.reset_index(drop=True)
         return bins
     def pixel_id(self, row, binsize:int, intra=True):
         """
