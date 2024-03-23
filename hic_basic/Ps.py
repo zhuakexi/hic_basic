@@ -28,7 +28,7 @@ def get_full_chrom_arm_view(clr, genome):
     
     arms = arms[arms.chrom.isin(clr.chromnames)].reset_index(drop=True)
     return arms
-def ps_curve(coolp, view_df=None, all_region=False, nproc=4):
+def ps_curve(coolp, view_df=None, all_region=False, nproc=4, clr_weight_name="weight"):
     """
     Get P(s) curve of a balanced clr.
     cooltools version 0.5.1 or higher is required.
@@ -38,6 +38,7 @@ def ps_curve(coolp, view_df=None, all_region=False, nproc=4):
         all_region: if True, return cis-exp for all regions
             else, return aggregated Ps and derivative
         nproc: number of processes to use
+        clr_weight_name: weight column name
     Output:
         if all_region:
             cvd_smooth_agg( ps curve ), dataframe
@@ -51,19 +52,24 @@ def ps_curve(coolp, view_df=None, all_region=False, nproc=4):
         clr = clr,
         view_df = view_df, # if None, use all chromosomes
 
-        smooth = True, # use smoothing with expanding windows
-        aggregate_smoothed = True, # add a new column with the average of regions
-        nproc = nproc
+        smooth = True, # use smoothing with expanding windows: balanced.avg.smoothed
+        aggregate_smoothed = True, # add a new column with the average of regions: balanced.avg.smoothed.agg
+        nproc = nproc,
+        clr_weight_name = clr_weight_name, # weight column name
     )
     # adding real distance in bp
     cvd_smooth_agg['s_bp'] = cvd_smooth_agg['dist'] * clr.binsize
     # drop first 2 diagonals
     cvd_smooth_agg['balanced.avg.smoothed.agg'].loc[cvd_smooth_agg['dist'] < 2] = np.nan
     if all_region:
+        # Ps-curve calculated within each region
+        # so per-chromosome Ps-curve ploting is very natural, just use the
+        # balanced.avg.smoothed col in cvd_smooth_agg directly
         return cvd_smooth_agg
     else:
         # Just take a single value for each genomic separation
-        # because all regions with the same separation have the same balanced.avg.smoothed.agg
+        # because balanced.avg.smoothed.agg is the mean of all regions at that separation
+        # so all regions with the same "dist" col have the same balanced.avg.smoothed.agg value
         cvd_merged = cvd_smooth_agg.drop_duplicates(subset=['dist'])[['s_bp', 'balanced.avg.smoothed.agg']]
         # Calculate derivative in log-log space
         der = np.gradient(np.log(cvd_merged['balanced.avg.smoothed.agg']),
@@ -100,12 +106,13 @@ def plot_ps_curve(cvd_smooth_agg, ps_col="balanced.avg.smoothed.agg"):
         plot_bgcolor = "rgba(0,0,0,0)",
     )
     return fig
-def plot_ps_curves(cvd_smooth_aggs, batches, subset=None):
+def plot_ps_curves(cvd_smooth_aggs, batches, subset=None, color_map=None):
     # If no subset is provided, use the full list of batches
     if subset is None:
         subset = batches
     # Creating a color map for the batches
-    color_map = dict(zip(batches, px.colors.qualitative.Plotly))
+    if color_map is None:
+        color_map = dict(zip(batches, px.colors.qualitative.Plotly))
     fig = px.scatter(
         cvd_smooth_aggs.reset_index(),
         x="s_bp",
