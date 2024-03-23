@@ -524,7 +524,8 @@ def cli_downsample(coolp, output, count=100e6, cis_count=None, fraction=None, th
     except subprocess.CalledProcessError as e:
         print(e.output)
         return None
-def cli_balance(coolp, threads=8, force=False, conda_env=None, cwd=None):
+def cli_balance(coolp, threads=8, force=False, name="weight", cis_only=False, trans_only=False, conda_env=None, cwd=None):
+    assert not (cis_only and trans_only)
     if conda_env is None:
         conda_run = ""
     else:
@@ -533,7 +534,9 @@ def cli_balance(coolp, threads=8, force=False, conda_env=None, cwd=None):
         force = "--force"
     else:
         force = ""
-    cmd = f"{conda_run} cooler balance {force} --nproc {threads} {coolp}"
+    cis_only = "--cis-only" if cis_only else ""
+    trans_only = "--trans-only" if trans_only else ""
+    cmd = f"{conda_run} cooler balance {force} {cis_only} {trans_only} --name {name} --nproc {threads} {coolp}"
     try:
         subprocess.check_output(
             cmd,
