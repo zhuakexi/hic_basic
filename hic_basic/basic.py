@@ -36,3 +36,46 @@ def add_pmUMIs(adata, inplace=True):
         return None
     else:
         return data
+def chrom_cov(pairs: pd.DataFrame)-> pd.DataFrame:
+    """
+    Calculate the contact coverage of each chromosome.
+    Input:
+        pairs: DataFrame, must have ["chr1","chr2"] in columns
+    Output:
+        DataFrame with index as chromosome and columns as:
+            intra: intra-chromosomal contacts
+            tot: total contacts
+    Note:
+        total contacts equals to:
+            (res["tot"].sum() + res["intra"].sum()) / 2
+    """
+    chr_pairs_count = pairs.groupby(
+        ["chr1", "chr2"]
+        ).size().rename(
+            "count"
+            ).reset_index()
+    intra = chr_pairs_count.query('chr1 == chr2')[["chr1","count"]]
+    intra.columns = ["chr", "intra"]
+    inter = chr_pairs_count.query('chr1 != chr2')
+    # add chrom1 inter for each chrom
+    res = pd.merge(
+        intra,
+        inter.groupby("chr1")["count"].sum().rename("chrom1_inter"),
+        left_on = ["chr"],
+        right_index = True,
+        how="left"
+        )
+    # add chrom2 inter for each chrom
+    res = pd.merge(
+        res,
+        inter.groupby("chr2")["count"].sum().rename("chrom2_inter"),
+        left_on = ["chr"],
+        right_index = True,
+        how="left"
+        )
+    res = res.fillna(0)
+    res = res.set_index("chr")
+    res = res.assign(
+        tot = res["intra"] + res["chrom1_inter"] + res["chrom2_inter"],
+    )
+    return res[["intra","tot"]]
