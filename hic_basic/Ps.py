@@ -74,6 +74,7 @@ def ps_curve(coolp, view_df=None, all_region=False, nproc=4, clr_weight_name="we
         # Calculate derivative in log-log space
         der = np.gradient(np.log(cvd_merged['balanced.avg.smoothed.agg']),
                     np.log(cvd_merged['s_bp']))
+        der = pd.DataFrame({'s_bp': cvd_merged['s_bp'], 'derivative': der})
         return cvd_merged, der
 def plot_ps_curve(cvd_smooth_agg, ps_col="balanced.avg.smoothed.agg"):
     """
