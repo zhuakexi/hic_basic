@@ -14,6 +14,9 @@ from hic_basic.binnify import GenomeIdeograph
 class TestGenomeIdeograph(unittest.TestCase):
     def setUp(self):
         self.genome = GenomeIdeograph('mm10')
+        self.outdir = Path(os.path.dirname(__file__)) / "output" / "binnify"
+        if not self.outdir.exists():
+            self.outdir.mkdir(parents=True)
     def test_chromosomes(self):
         print(self.genome.chromosomes.index.dtype)
     def test_breaks(self):
@@ -40,6 +43,12 @@ class TestGenomeIdeograph(unittest.TestCase):
         print(bins)
         # chr1, chr2 ... not chr1, chr10, chr11, chr12, ...
         self.assertTrue(bins.query('chrom == "chr2"').index[0] < bins.query('chrom == "chr11"').index[0])
+    def test_bins_order_output(self):
+        binsize = 1000000
+        bins = self.genome.bins(binsize, bed=True, order=True)
+        print(bins)
+        bins.to_csv(self.outdir / "mm10.1m.bed.tsv.gz", sep="\t", index=False)
+        self.assertTrue(os.path.exists(self.outdir / "mm10.1m.bed.tsv.gz"))
     def test_pixel_id(self):
         binsize = 1000
         row = pd.Series({
