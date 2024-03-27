@@ -25,20 +25,33 @@ class GenomeIdeograph:
             ordered=True
         )
         self.chromosomes.set_index("chrom", inplace=True)
-    def breaks(self, binsize:int):
-        # Get binned reference(int version)
-        ##  Return:
-        ##    breaks of bins(dict of list)
+    def breaks(self, binsize:int, flavor="hickit"):
+        """
+        Get binned reference(int version)
+        Input:
+            binsize: int
+            flavor: str, "hickit" or "bedtools"
+        Return:
+           breaks of bins(dict of list)
+        Note:
+            For hickit-flavored binning, the size of the last bin 
+            >= 0.5 * binsize and < 1.5 * binsize. For bedtools-flavored binning, 
+            the size of the last bin > 0 and <= binsize.
+        """
+        assert flavor in ["hickit","bedtools"], "flavor should be hickit or bedtools"
         binsize = int(binsize)
         data = self.chromosomes.iloc[:,0].to_dict()
         all_breaks = {}
         for chrom in data:
             length = data[chrom]
             breaks = list(range(0, length, binsize))
+            if flavor == "hickit":
+                if length - breaks[-1] < 0.5 * binsize:
+                    breaks.pop()
             breaks.append(length) # don't forget the rightmost point
             all_breaks[chrom] = breaks
         return all_breaks
-    def bins(self, binsize:int, bed=False, order=False):
+    def bins(self, binsize:int, bed=False, order=False, flavor="hickit"):
         """
         Get binned reference(IntervalIdex version)
         Input:
@@ -51,7 +64,7 @@ class GenomeIdeograph:
         if order:
             assert bed, "order only works with bed"
         binsize = int(binsize)
-        breaks = self.breaks(binsize)
+        breaks = self.breaks(binsize, flavor=flavor)
         bins = {chrom : pd.IntervalIndex.from_breaks(
                 breaks[chrom], closed="left",
                 name=chrom,dtype='interval[int64]')
@@ -163,7 +176,18 @@ class GenomeIdeograph:
         else:
             raise NotImplementedError("inter-chrom not implemented")
         return df
-
+def bed_center(bed_df):
+    """
+    Get center of each bin
+    Input:
+        bed_df: DataFrame, bed-like with columns 'chrom', 'start', 'end'
+    Output:
+        DataFrame with additional column 'center'
+    """
+    bed_df = bed_df.assign(
+        center = (bed_df["start"] + bed_df["end"]) // 2
+    )
+    return bed_df
 # def symmetry(X):
 #     # flip lower-triangle-part and add 
 #     #  it to upper-triangle

@@ -25,6 +25,15 @@ class TestGenomeIdeograph(unittest.TestCase):
         self.assertIsInstance(breaks, dict)
         for chrom in breaks:
             self.assertTrue(all(i <= j for i, j in zip(breaks[chrom], breaks[chrom][1:])))  # Assert that each list is sorted
+    def test_breaks_hickit_flavor(self):
+        binsize = 20000
+        breaks = GenomeIdeograph("GRCh38").breaks(binsize, flavor="hickit")
+        self.assertEqual(breaks["chr6"][-2], 170800000 - 20000) # last is length of chromosome
+        self.assertEqual(breaks["chr21"][-2], 46700000 - 20000)
+        # give up on last bin for > 0.5 binsize constraint
+        for chrom in ["chr6","chr7","chr11","chr13","chr14"]:
+            self.assertLess(breaks[chrom][-2] + binsize, breaks[chrom][-1])
+
     def test_bins(self):
         binsize = 1000
         bins = self.genome.bins(binsize)
