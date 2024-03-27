@@ -91,6 +91,39 @@ class GenomeIdeograph:
             bins = bins.sort_values(["chrom","start"])
             bins = bins.reset_index(drop=True)
         return bins
+    def coarsen_grouper(self, binsize1:int, binsize2:int, flavor:str="hickit")->pd.Series:
+        """
+        Get grouper to map from binsize1 to a bigger binsize2.
+        Input:
+            binsize1: int
+            binsize2: int
+            flavor: str, "hickit" or "bedtools"
+        Output:
+            pd.Series, 2-level index (chrom, start) from binsize1 as index,
+                tuple (chrom, start) from binsize2 as value
+        """
+        def new_start(row, chrom_intervals=None):
+            #print(row)
+            middle = (row["start"] + row["end"]) // 2
+            interval = chrom_intervals[row["chrom"]][middle]
+            return (row["chrom"], interval.left)
+        small_bed = self.bins(binsize1, bed=True, order=True, flavor=flavor)
+        big_intervals = self.bins(binsize2, bed=False, order=False, flavor=flavor)
+        big_intervals = {
+            chrom : intervals.to_series()
+            for chrom, intervals in big_intervals.items()
+        }
+        small_bed = small_bed.assign(
+            new_pos = small_bed.apply(
+                new_start,
+                axis=1,
+                chrom_intervals = big_intervals
+            )
+        )
+        small_bed = small_bed.set_index(
+            ["chrom","start"]
+        ).drop(columns="end")
+        return small_bed["new_pos"]
     def pixel_id(self, row, binsize:int, intra=True):
         """
         Get pixel_id from row
