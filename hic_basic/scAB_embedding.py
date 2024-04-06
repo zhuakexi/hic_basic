@@ -31,13 +31,18 @@ def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dropXY=True):
     with gzip.open(pairsf,"rt") as f:
         for line in dropwhile(lambda x:x.startswith("#"),f):
             pairs.append(line.strip().split("\t"))
-    color_data = {}
-    with open(color_file,"rt") as f:
-        for color_file_line in f:
-            hom_name, ref_locus, color = color_file_line.strip().split("\t")
-            ref_locus = int(ref_locus)
-            color = float(color)
-            color_data[(hom_name, ref_locus)] = color
+    if isinstance(color_file,str):
+        color_data = {}
+        with open(color_file,"rt") as f:
+            for color_file_line in f:
+                hom_name, ref_locus, color = color_file_line.strip().split("\t")
+                ref_locus = int(ref_locus)
+                color = float(color)
+                color_data[(hom_name, ref_locus)] = color
+    elif isinstance(color_file, pd.DataFrame):
+        color_data = color_file.set_index(["chrom","start"])["CpG"]
+    else:
+        raise ValueError("color_file must be str or pd.DataFrame")
     # smoothing
     smooth_color_data = {}
     ## bin locus
@@ -97,7 +102,13 @@ def fill_color(data, color_file, grt_full=True):
     #    grt_full: guarantee that output dataframe is NA free,
     #        this will drop all col's that can't be filled by ref color_file
     """
-    ref_color = pd.read_table(color_file,names=["chrom","pos","CpG"])
+    if isinstance(color_file,str):
+        ref_color = pd.read_table(color_file,names=["chrom","pos","CpG"])
+    elif isinstance(color_file, pd.DataFrame):
+        ref_color = color_file[["chrom","start","CpG"]]
+        ref_color.columns = ["chrom","pos","CpG"]
+    else:
+        raise ValueError("color_file must be str or pd.DataFrame")
     ref_color.set_index(["chrom","pos"],inplace=True)
     ref_color.index = ref_color.index.to_flat_index()
     # filling data with ref CpG file
@@ -106,7 +117,7 @@ def fill_color(data, color_file, grt_full=True):
     if grt_full:
         filled_data = filled_data.dropna(axis=1)
     return filled_data
-def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dropXY=True, col_thresh=0.9, row_thresh=0.9,threads=24):
+def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dropXY=True, col_thresh=0.9, row_thresh=0.9,fill_color=True, threads=24):
     """
     Input:
         filesp: dataframe, must have file_col col
@@ -137,8 +148,11 @@ def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dr
     ares = list(res)
     print("Stacking color...")
     color_result = stack_dict(ares, filesp.index, col_thresh, row_thresh)
-    print("Filling color...")
-    color_result = fill_color(color_result, color_file)
+    if fill_color:
+        print("Filling color...")
+        color_result = fill_color(color_result, color_file)
+    else:
+        pass
     return color_result
 def do_umap(data,ndims=30):
     # do exactly what Seurat RunUMAP do
