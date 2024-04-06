@@ -71,7 +71,7 @@ log_fall = [
     [1/10**1,'rgb(128, 0, 38)'],
     [1/10**0,'rgb(0, 0, 0)'],
 ]
-def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False, **args):
+def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False, fillna=True, **args):
     """
     TODO:
         1.make a real colorscale bar according to LogNorm
@@ -92,11 +92,14 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap
             mat = LogNorm(vmin=np.nanmin(mat) if np.nanmin(mat) > 0 else 0.0001, vmax=np.nanmax(mat), clip=True)(mat).data # balanced cooler(don't know why mat+=1 failed here)
         else:
             mat = LogNorm(vmin=1, vmax=vmax, clip=True)(mat).data
+    if fillna:
+        # fillna with 0
+        mat = np.nan_to_num(mat, nan=0)
     fig = go.Figure()
-    default_args = dict(
-        zmax = vmax,
-    )
-    default_args.update(args)
+    # default_args = dict(
+    #     zmax = vmax,
+    # )
+    # default_args.update(args)
     fig.add_trace(
         go.Heatmap(
             z = mat,
@@ -104,7 +107,8 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap
             y = index,
             colorscale=fall if cmap=="fall" else cmap, # don't know why log_fall failed here
             showscale=False,
-            **default_args
+            #**default_args
+            **args
         )
     )
     fig.update_layout(
@@ -443,21 +447,26 @@ def plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels, subplot_tit
         width = 700
     )
     return fig
-def plot_tiling_compartment(coolps, eigs_files, region, title, strip=True, balance=False):
+def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=True,
+                            balance=False, cmap="RdBu", donorm=False, Enames=["E1","E1"], **args):
     """
     Plot cooler with additional track files
     """
     clrs = [Cooler(str(coolp)) for coolp in coolps]
     eigs = [pd.read_table(eigs_file) for eigs_file in eigs_files]
     bin_s, bin_e = clrs[0].extent(region)
-    region_mat1 = compartments(
-        clrs[0].matrix(balance = balance).fetch(region),
-        matrixonly = True
-    )
-    region_mat2 = compartments(
-        clrs[1].matrix(balance = balance).fetch(region),
-        matrixonly = True
-    )
+    if corr:
+        region_mat1 = compartments(
+            clrs[0].matrix(balance = balance).fetch(region),
+            matrixonly = True
+        )
+        region_mat2 = compartments(
+            clrs[1].matrix(balance = balance).fetch(region),
+            matrixonly = True
+        )
+    else:
+        region_mat1 = clrs[0].matrix(balance = balance).fetch(region)
+        region_mat2 = clrs[1].matrix(balance = balance).fetch(region)
     #return region_mat1, region_mat2
     region_mat = tiling_mat(
         region_mat1,
@@ -477,6 +486,7 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, strip=True, balan
             if np.all(region_mat.iloc[i,:] == 0):
                 i_e = i
             else:
+                i_e = i
                 break
         region_mat = region_mat.iloc[i_s:i_e,i_s:i_e]
     figure = make_subplots(
@@ -488,13 +498,19 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, strip=True, balan
         column_widths = [2,10]
     )
     # add heatmap
-    mat_fig = _plot_mat(region_mat,cmap="RdBu",donorm=False)
+    mat_fig = _plot_mat(
+        region_mat,
+        cmap=cmap,
+        donorm=donorm,
+        **args
+        )
     figure.add_trace(
         mat_fig.data[0],
         row=1,
         col=2
     )
     # add eigen value 1
+    Ename = Enames[1]
     dat = pd.merge(
         left = clrs[1].bins()[bin_s:bin_e],
         right = eigs[1],
@@ -502,9 +518,9 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, strip=True, balan
         on = ("chrom","start","end")
     ).copy()
     dat = dat.assign(AB = "A")
-    dat.loc[dat["E1"] <0, "AB"] = "B"
+    dat.loc[dat[Ename] <0, "AB"] = "B"
     eigs_fig = px.bar(
-        dat, y="start", x ="E1", color="AB",
+        dat, y="start", x =Ename, color="AB",
         color_discrete_map={"A":"red","B":"blue"},
         orientation='h'
     )
@@ -514,6 +530,7 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, strip=True, balan
     for trace in eigs_fig.data:
         figure.add_trace(trace, row=1, col=1)
     # add eigen value 2
+    Ename = Enames[0]
     dat = pd.merge(
         left = clrs[0].bins()[bin_s:bin_e],
         right = eigs[0],
@@ -521,9 +538,9 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, strip=True, balan
         on = ("chrom","start","end")
     ).copy()
     dat = dat.assign(AB = "A")
-    dat.loc[dat["E1"] <0, "AB"] = "B"
+    dat.loc[dat[Ename] <0, "AB"] = "B"
     eigs_fig = px.bar(
-        dat, x="start", y ="E1", color="AB",
+        dat, x="start", y =Ename, color="AB",
         color_discrete_map={"A":"red","B":"blue"},
         #orientation='h'
     )
@@ -690,11 +707,11 @@ def plot_compartment(coolp, eigs_file, region, title, strip=False, balance=False
         title = title
     )
     return figure
-def plot_saddle_mpl(file, title):
+def plot_saddle_mpl(file, title, vmin=10**(-1),vmax=10**1):
     saddle = np.load(file, allow_pickle=True)
 
     plt.figure(figsize=(6,6))
-    norm = LogNorm(    vmin=10**(-1), vmax=10**1)
+    norm = LogNorm(vmin=vmin, vmax=vmax)
     im = plt.imshow(
         saddle['saddledata'],
         cmap='RdBu_r',
