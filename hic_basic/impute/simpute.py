@@ -10,6 +10,7 @@ import pandas as pd
 from dask.delayed import delayed
 from hic_basic.binnify import GenomeIdeograph
 from hires_utils.hires_io import parse_3dg
+from hires_utils.mmcif import chrom_rm_suffix
 from scipy.sparse import triu
 from scipy.spatial.distance import euclidean
 from scipy.spatial import distance_matrix
@@ -17,26 +18,108 @@ from sklearn.neighbors import radius_neighbors_graph
 
 from ..coolstuff import gen_bins
 
-def boolean_radius_neighbor(df, min_dist=3, n_jobs=4):
+def boolean_radius_neighbor(df, min_dist=3, n_jobs=4, pixels=True):
     """
     generate boolean matrix from dataframe
     Input:
         df: dataframe, index is position, columns are x, y, z
         min_dist: int, minimum distance to be considered as neighbor
         n_jobs: int, number of jobs to run in parallel
+        pixels: bool, if True, return pixels, otherwise return graph
     Output:
-        graph: boolean matrix, True if two points are neighbors
+        if pixels:
+            dataframe: bedpe-like dataframe, columns are chrom1, start1, chrom2, start2, count
+        else:
+            graph: CSR format boolean matrix, True if two points are neighbors
     """
-    graph = radius_neighbors_graph(
-        df.values,
-        min_dist,
-        mode = "distance",
-        metric = "minkowski",
-        p = 2,
-        include_self = False,
-        n_jobs=n_jobs)
-    return triu(graph)
-def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000, n_jobs=4):
+    df = df.reset_index(drop=True)
+    if pixels:
+        # --- get distance matrix ---
+        xyz = df[["x","y","z"]]
+        graph = radius_neighbors_graph(
+            xyz.values,
+            min_dist,
+            mode = "distance",
+            metric = "minkowski",
+            p = 2,
+            include_self = False,
+            n_jobs=n_jobs)
+        graph = triu(graph)
+        # --- transform to pixels ---
+        site = df[["chrom","start"]]
+        row_id, col_id = graph.nonzero()
+        bin1 = site.loc[row_id].reset_index(drop=True)
+        bin1.columns = ["chrom1", "start1"]
+        bin2 = site.loc[col_id].reset_index(drop=True)
+        bin2.columns = ["chrom2", "start2"]
+        pixels = pd.concat([bin1, bin2], axis=1)
+        pixels = pixels.assign(
+            count = 1
+        )
+        return pixels
+    else:
+        graph = radius_neighbors_graph(
+            df.values,
+            min_dist,
+            mode = "distance",
+            metric = "minkowski",
+            p = 2,
+            include_self = False,
+            n_jobs=n_jobs)
+        return triu(graph)
+# def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000, n_jobs=4):
+#     """
+#     Genereate 0,1 cooler file of region proximity from 3dg file.
+#     Only cis region is considered.
+#     Input:
+#         _3dg_path: str, path to 3dg file
+#         fo: str, path to output cooler file
+#         min_dist: int, minimum distance to be considered as neighbor
+#         genome: str, genome version
+#         binsize: int, binsize
+#     Output:
+#         None
+#     """
+#     # --- load data ---
+#     structure = parse_3dg(_3dg_path)
+#     bins = gen_bins(genome, binsize)
+#     # --- lign bins and structure ---
+#     structure = structure.reset_index()
+#     structure.columns = ["chrom", "start", "x", "y", "z"]
+#     index_structure = pd.merge(
+#         bins, structure.reset_index(),
+#         left_on=["chrom","start"], right_on=["chrom","start"], how="left").dropna()[["chrom","x","y","z"]]
+#     # --- prepare pixels for cooler ---
+#     chunks = (chunk[["x","y","z"]] for _, chunk in index_structure.groupby("chrom"))
+#     local_pixels = (
+#         (
+#             boolean_radius_neighbor(chunk, min_dist=min_dist, n_jobs=n_jobs).nonzero(),
+#             pd.Series(chunk.index, index=list(range(chunk.shape[0]))) 
+#             )
+#         for chunk in chunks
+#         )
+#     pixels = (
+#         {
+#             "bin1_id" : lifter[idx[0]].values,
+#             "bin2_id" : lifter[idx[1]].values,
+#             "count" : np.ones(idx[0].shape[0])
+#         } for idx, lifter in local_pixels
+#     )
+#     # --- generate cooler ---
+#     cooler.create_cooler(
+#         fo,
+#         bins,
+#         pixels,
+#         dtypes={"count": int},
+#         symmetric_upper = True,
+#         assembly = genome,
+#         ordered = False, # groupby doesn't ensure order
+#         triucheck = True,
+#         dupcheck = True,
+#         boundscheck = True,
+#         ensure_sorted = True,
+#     )
+def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000, agg_dip=False, n_jobs=4):
     """
     Genereate 0,1 cooler file of region proximity from 3dg file.
     Only cis region is considered.
@@ -46,39 +129,57 @@ def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000,
         min_dist: int, minimum distance to be considered as neighbor
         genome: str, genome version
         binsize: int, binsize
+        agg_dip: if True, aggregate diploid structure
     Output:
         None
     """
     # --- load data ---
     structure = parse_3dg(_3dg_path)
-    bins = gen_bins(genome, binsize)
-    # --- lign bins and structure ---
+    bins = GenomeIdeograph(
+        genome
+        ).bins(
+            binsize,
+            bed = True,
+            order = True
+            )
+    bins = bins.assign(
+        bin_id = bins.index
+    )
+    # --- prepare pixels for cooler ---
     structure = structure.reset_index()
     structure.columns = ["chrom", "start", "x", "y", "z"]
-    index_structure = pd.merge(
-        bins, structure.reset_index(),
-        left_on=["chrom","start"], right_on=["chrom","start"], how="left").dropna()[["chrom","x","y","z"]]
-    # --- prepare pixels for cooler ---
-    chunks = (chunk[["x","y","z"]] for _, chunk in index_structure.groupby("chrom"))
-    local_pixels = (
-        (
-            boolean_radius_neighbor(chunk, min_dist=min_dist, n_jobs=n_jobs).nonzero(),
-            pd.Series(chunk.index, index=list(range(chunk.shape[0]))) 
-            )
-        for chunk in chunks
-        )
     pixels = (
-        {
-            "bin1_id" : lifter[idx[0]].values,
-            "bin2_id" : lifter[idx[1]].values,
-            "count" : np.ones(idx[0].shape[0])
-        } for idx, lifter in local_pixels
+        boolean_radius_neighbor(chunk, min_dist=min_dist, n_jobs=n_jobs, pixels=True)
+        for _, chunk in structure.groupby("chrom")
     )
+    # add bin1_id
+    bin1_id_pixels = (
+        pd.merge(
+            pixel if not agg_dip else pixel.assign(new_chrom=chrom_rm_suffix(pixel["chrom1"])),
+            bins,
+            left_on=["chrom1", "start1"] if not agg_dip else ["new_chrom", "start1"],
+            right_on=["chrom", "start"],
+            how="inner"
+        )[["bin_id","chrom2","start2","count"]].rename(columns={"bin_id":"bin1_id"})
+        for pixel in pixels
+    )
+    # add bin2_id
+    bin1_2_id_pixels = (
+        pd.merge(
+            pixel if not agg_dip else pixel.assign(new_chrom=chrom_rm_suffix(pixel["chrom2"])),
+            bins,
+            left_on=["chrom2", "start2"] if not agg_dip else ["new_chrom", "start2"],
+            right_on=["chrom", "start"],
+            how="inner"
+        )[["bin1_id", "bin_id", "count"]].rename(columns={"bin_id":"bin2_id"})
+        for pixel in bin1_id_pixels
+    )
+
     # --- generate cooler ---
     cooler.create_cooler(
         fo,
         bins,
-        pixels,
+        bin1_2_id_pixels,
         dtypes={"count": int},
         symmetric_upper = True,
         assembly = genome,
