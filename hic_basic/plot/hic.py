@@ -721,6 +721,58 @@ def plot_saddle_mpl(file, title, vmin=10**(-1),vmax=10**1):
     plt.ylabel("saddle category")
     plt.colorbar(im, label='obs/exp', pad=0.025, shrink=0.7)
     plt.title(title)
+def plot_saddle(file, title, vmin=10**(-1), vmax=10**1, **kwargs):
+    saddle = np.load(file, allow_pickle=True)
+    saddledata = saddle['saddledata']
+    strength = saddle['saddle_strength'][10]
+    # fig = go.Figure(data=go.Heatmap(
+    #     z=saddledata,
+    #     colorscale='RdBu_r', # 使用红蓝色彩
+    #     zmin=vmin, # 设置色彩映射的最小值
+    #     zmax=vmax, # 设置色彩映射的最大值
+    #     colorbar=dict(title='obs/exp'), # 颜色条属性,
+    #     **kwargs
+    # ))
+    fig = px.imshow(
+        saddledata,
+        color_continuous_scale='RdBu_r',
+        zmin=vmin,
+        zmax=vmax,
+        **kwargs
+    )
+    fig.add_annotation(
+        text=f"strength={strength:.2f}",
+        x=1,
+        y=0.95,
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font=dict(
+            size=16,
+            color="black"
+        ),
+        bgcolor="white",
+        opacity=0.5
+    )
+    # 设置图表的标题和坐标轴标签
+    fig.update_layout(
+        title=title,
+        xaxis_title="saddle category",
+        yaxis_title="saddle category",
+        height = 500,
+        width = 500,
+        coloraxis_colorbar=dict(
+            title='obs/exp',
+            thicknessmode='pixels',
+            thickness=15,
+            lenmode='pixels',
+            len=200,
+            yanchor='bottom',
+            y=0.5
+        )
+    )
+    
+    return fig
 # --- diagonal-track plot ---
 def plot_IS(IS_file):
     pass
