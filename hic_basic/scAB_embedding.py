@@ -4,14 +4,17 @@
 # Cell 184, no. 3 (February 2021): 741-758.e17. https://doi.org/10.1016/j.cell.2020.12.032.
 
 import gzip
-from itertools import dropwhile
+from concurrent import futures
+from itertools import dropwhile, repeat
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
+import toolz
 from sklearn import preprocessing
 from sklearn.decomposition import PCA
+from sklearn.neighbors import radius_neighbors_graph
 from umap import UMAP
-import pandas as pd
-from concurrent import futures
-from itertools import repeat
 
 def get_bin_locus(pos,size):
     return int( round( float(pos) / size) ) * size
@@ -76,6 +79,91 @@ def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dropXY=True):
             smooth_color_data = {k:v for k,v in smooth_color_data.items()
                                  if k[0] not in ["chrX","chrY","chrX(mat)","chrX(pat)","chrY(mat)","chrY(pat)"]}
     return smooth_color_data
+def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame:
+    """
+    Calculate intermingling metrics for each particle in 3dg file.
+    Input:
+        _3dg: dataframe, result of hic_basic.hicio parse_3dg
+        color_file: reference linear CpG density
+        min_dist: int, minimum distance to be considered as neighbor
+        n_jobs: int, number of jobs to run in parallel
+    Output:
+        dataframe with same index, and a scAB column
+    """
+    # --- load data ---
+    if isinstance(color_file, pd.DataFrame):
+        color_data = color_file.set_index(["chrom","start"])["CpG"]
+    elif isinstance(color_file,str) or isinstance(color_file,Path):
+        color_data = pd.read_table(
+            color_file,names=["chrom","start","CpG"],
+            index_col=["chrom","start"]
+            )[["CpG"]]
+    _3dg = _3dg.copy()
+    _3dg_e = pd.concat(
+        [
+            _3dg,
+            color_data
+        ],
+        axis=1,
+        join="outer"
+    ).loc[_3dg.index]
+    # --- generate radius neighbor ---
+    # get sparse matrix, basically tuple of two arrays, (row, col)
+    RN = radius_neighbors_graph(
+        _3dg_e[["x","y","z"]].values,
+        min_dist,
+        mode = "distance",
+        metric = "minkowski",
+        p = 2,
+        include_self = False,
+        n_jobs=n_jobs
+        ).nonzero()
+    # --- count RN chromosome distribution for each particle ---
+    # seq
+    #for_CpG_count = ((i, _3dg_e.iat[j, 3]) for i, j in zip(*RN))
+    for_CpG_count = pd.DataFrame(
+        {
+            "index":RN[0],
+            "neighbor_CpG":_3dg_e.iloc[RN[1]]["CpG"].values
+        }
+    ).values.tolist()
+    #print(for_CpG_count[200:300])
+    # init
+    # (CpG_sum, n_neighbors)
+    init_CpG_count = (0,0)
+    # binop
+    def CpG_stat(acc, x):
+        """
+        Add value to CpG sum and neighbor count.
+        Input:
+            acc: original stat, 2-tuple, (CpG_sum, n_neighbors)
+            x: input_line, (index, neighbor CpG value)
+        Ouput:
+            new_acc: updated stat
+        """
+        return (acc[0]+x[1], acc[1]+1)
+    # start reduce
+    per_bin_count = toolz.reduceby(
+        lambda x: x[0], # key
+        CpG_stat,
+        for_CpG_count,
+        init_CpG_count
+    )
+    # --- generate frequency table ---
+    CpG_count_table = pd.DataFrame(
+        per_bin_count,
+        index=["CpG_sum","n_neighbors"]
+    ).T
+    print(CpG_count_table)
+    # tidy up index
+    CpG_count_table = pd.concat(
+        [_3dg.reset_index(), CpG_count_table],
+        axis=1,
+        join="outer"
+    )
+    # --- calculate meaningful metrics ---
+    CpG_count_table["scAB"] = CpG_count_table["CpG_sum"] / CpG_count_table["n_neighbors"]
+    return CpG_count_table
 def stack_dict(ares, sample_name:None, col_thresh=0.9, row_thresh=0.9):
     """
     # stack list of dict, drop bad rows and columns
