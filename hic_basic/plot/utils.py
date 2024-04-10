@@ -9,12 +9,13 @@ def filling_l2r_plotly(rows, cols, features):
     Return:
         row, col, index, feature
     """
+    features_iter = iter(features)
     for i in range(rows):
         for j in range(cols):
             k = i * cols + j
             try:
-                feature = features[k]
-            except IndexError:
+                feature = next(features_iter)
+            except StopIteration:
                 feature = None
             yield i+1, j+1, k, feature
 def filling_l2r_mpl(rows, cols, features):
