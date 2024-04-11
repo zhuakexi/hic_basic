@@ -107,6 +107,7 @@ def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame
         axis=1,
         join="outer"
     ).loc[_3dg.index]
+    del color_data
     # --- generate radius neighbor ---
     # get sparse matrix, basically tuple of two arrays, (row, col)
     RN = radius_neighbors_graph(
@@ -118,6 +119,7 @@ def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame
         include_self = False,
         n_jobs=n_jobs
         ).nonzero()
+    del _3dg
     # --- count RN chromosome distribution for each particle ---
     # seq
     #for_CpG_count = ((i, _3dg_e.iat[j, 3]) for i, j in zip(*RN))
@@ -127,6 +129,7 @@ def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame
             "neighbor_CpG":_3dg_e.iloc[RN[1]]["CpG"].values
         }
     ).values.tolist()
+    del RN
     #print(for_CpG_count[200:300])
     # init
     # (CpG_sum, n_neighbors)
@@ -153,6 +156,7 @@ def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame
         for_CpG_count,
         init_CpG_count
     )
+    del for_CpG_count
     # --- generate frequency table ---
     CpG_count_table = pd.DataFrame(
         per_bin_count,
@@ -165,6 +169,7 @@ def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame
         axis=1,
         join="outer"
     )
+    del _3dg_e
     # --- calculate meaningful metrics ---
     CpG_count_table["scAB"] = CpG_count_table["CpG_sum"] / CpG_count_table["n_neighbors"]
     return CpG_count_table
