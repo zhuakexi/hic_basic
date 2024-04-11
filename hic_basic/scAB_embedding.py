@@ -140,8 +140,12 @@ def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame
             x: input_line, (index, neighbor CpG value)
         Ouput:
             new_acc: updated stat
+        Note: if nan, will be ignored
         """
-        return (acc[0]+x[1], acc[1]+1)
+        if np.isnan(x[1]):
+            return acc
+        else:
+            return (acc[0]+x[1], acc[1]+1)
     # start reduce
     per_bin_count = toolz.reduceby(
         lambda x: x[0], # key
