@@ -1,6 +1,7 @@
 from math import ceil
 
 import pandas as pd
+import seaborn as sns
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -71,6 +72,10 @@ log_fall = [
     [1/10**1,'rgb(128, 0, 38)'],
     [1/10**0,'rgb(0, 0, 0)'],
 ]
+fruitpunch = sns.blend_palette(['white', 'red'], as_cmap=True)
+num_colors = 256
+colors = [fruitpunch(i) for i in range(num_colors)]
+fruitpunch = ['rgb({},{},{})'.format(int(c[0]*255), int(c[1]*255), int(c[2]*255)) for c in colors]
 def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False, fillna=True, **args):
     """
     TODO:
