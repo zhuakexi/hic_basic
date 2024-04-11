@@ -154,7 +154,7 @@ def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame
         per_bin_count,
         index=["CpG_sum","n_neighbors"]
     ).T
-    print(CpG_count_table)
+    #print(CpG_count_table)
     # tidy up index
     CpG_count_table = pd.concat(
         [_3dg.reset_index(), CpG_count_table],
