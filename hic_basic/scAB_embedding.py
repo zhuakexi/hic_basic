@@ -119,7 +119,6 @@ def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame
         include_self = False,
         n_jobs=n_jobs
         ).nonzero()
-    del _3dg
     # --- count RN chromosome distribution for each particle ---
     # seq
     #for_CpG_count = ((i, _3dg_e.iat[j, 3]) for i, j in zip(*RN))
