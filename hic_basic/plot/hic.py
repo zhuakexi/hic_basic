@@ -606,6 +606,7 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
     # --- prepare heatmap --- #
     region_mat = compartments(
         clr.matrix(balance = balance).fetch(region),
+        normalize= False if balance else True, # don't balance twice
         matrixonly = True
     )
     pos = clr.bins()[bin_s:bin_e]["start"]
