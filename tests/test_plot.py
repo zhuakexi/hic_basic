@@ -69,5 +69,21 @@ class TestPlot(unittest.TestCase):
         )
         fig.write_image(str(out_png), width=700, height=700)
         self.assertTrue(out_png.exists())
+    def test_plot_compartment_balance(self):
+        """
+        Test the plot_IS function.
+        """
+        out_png = out_png = self.outdir / "plot_compartment_balance.png"
+        ddir = Path("/shareb/ychi/repo/sperm_struct/notebooks/data2")
+        fig = plot_compartment(
+            str(ddir / "mESC_allmerge.1k.mcool::resolutions/1000000"),
+            ddir / "mESC_allmerge.cis.vecs.tsv",
+            region="chr3",
+            title = "mESC_allmerge chr3 compartment",
+            balance=True,
+            strip=True
+        )
+        fig.write_image(str(out_png), width=700, height=700)
+        self.assertTrue(out_png.exists())
 if __name__ == "__main__":
     unittest.main()
