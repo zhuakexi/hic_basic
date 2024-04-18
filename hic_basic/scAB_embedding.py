@@ -18,7 +18,7 @@ from umap import UMAP
 
 def get_bin_locus(pos,size):
     return int( round( float(pos) / size) ) * size
-def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dropXY=True):
+def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dupref=False,dropXY=True):
     """
     Calculate 3D CpG density of each chromosome bin
     Input:
@@ -27,8 +27,12 @@ def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dropXY=True):
         bin_size: binsize of color_file(and the result output)
         merge_haplotypes: whether treat maternal paternal chromosome differently,
             when False, chromosomes must be like "chr1(mat)"
+        dupref: whether to duplicate reference CpG density for both homologous chromosomes
+            In practice, this is implemented by omitting the suffix in homologous chromosome name when querying color_file
         dropXY: only output autosome result
     """
+    if dupref:
+        assert merge_haplotypes == False, "dupref only when use hap color_file and want to keep both homologous chromosomes"
     # read in data
     pairs = []
     with gzip.open(pairsf,"rt") as f:
@@ -56,23 +60,33 @@ def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dropXY=True):
             # omit pairs-file's phasing col and dip-file's phased chrom name
             hom_name1 = con[1].split("(")[0]
             hom_name2 = con[3].split("(")[0]
+            k_hom_name1 = hom_name1 # name specific for querying color_data
+            k_hom_name2 = hom_name2
         else:
             # omit pairs-file's phasing col but keep dip-file's phased chrom name
             hom_name1 = con[1]
             hom_name2 = con[3]
+            if dupref: # duplicate reference CpG density for both homologous chromosomes
+                k_hom_name1 = hom_name1.split("(")[0] # name specific for querying color_data
+                k_hom_name2 = hom_name2.split("(")[0]
+            else:
+                k_hom_name1 = hom_name1
+                k_hom_name2 = hom_name2
         bin_leg1 = (hom_name1, bin_locus1)
         bin_leg2 = (hom_name2, bin_locus2)
+        k_bin_leg1 = (k_hom_name1, bin_locus1)
+        k_bin_leg2 = (k_hom_name2, bin_locus2)
     ## recording con-color
         if bin_leg1 == bin_leg2:
             continue
-        if bin_leg1 in color_data:
+        if k_bin_leg1 in color_data:
             if bin_leg2 not in smooth_color_data:
                 smooth_color_data[bin_leg2] = []
-            smooth_color_data[bin_leg2].append(color_data[bin_leg1])
-        if bin_leg2 in color_data:
+            smooth_color_data[bin_leg2].append(color_data[k_bin_leg1])
+        if k_bin_leg2 in color_data:
             if bin_leg1 not in smooth_color_data:
                 smooth_color_data[bin_leg1] = []
-            smooth_color_data[bin_leg1].append(color_data[bin_leg2])
+            smooth_color_data[bin_leg1].append(color_data[k_bin_leg2])
     for bin_leg in smooth_color_data:
         smooth_color_data[bin_leg] = np.mean(smooth_color_data[bin_leg])
     if dropXY == True:
@@ -213,7 +227,7 @@ def fill_color(data, color_file, grt_full=True):
     if grt_full:
         filled_data = filled_data.dropna(axis=1)
     return filled_data
-def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dropXY=True, col_thresh=0.9, row_thresh=0.9,fill_color=True, threads=24):
+def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dropXY=True, dupref=False, col_thresh=0.9, row_thresh=0.9,fill_color=True, threads=24):
     """
     Input:
         filesp: dataframe, must have file_col col
@@ -239,6 +253,7 @@ def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dr
             repeat(color_file,filesp.shape[0]),
             repeat(binsize, filesp.shape[0]),
             repeat(merge_haplotypes, filesp.shape[0]),
+            repeat(dupref, filesp.shape[0]),
             repeat(dropXY, filesp.shape[0])
         )
     ares = list(res)
