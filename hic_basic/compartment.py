@@ -31,7 +31,7 @@ def distance_law_from_mat(matrix, indices=None, log_bins=True, base=1.1):
         included_bins[indices] = True
     D = np.array(
         [
-            np.average(matrix.diagonal(j)[included_bins[: n - j]])
+            np.nanmean(matrix.diagonal(j)[included_bins[: n - j]])
             for j in range(n)
         ]
     )
@@ -189,7 +189,7 @@ def compartments(M, normalize=True, matrixonly=False):
     N /= dist_mat
     #N = N/dist_mat
     # Computation of the correlation matrice:"""
-    N = np.corrcoef(N)
+    N = pd.DataFrame(N).corr().values # use pandas to treat NaNs
     N[np.isnan(N)] = 0.0
 
     if matrixonly:
