@@ -586,7 +586,7 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=
         title = title
     )
     return figure
-def plot_compartment(coolp, eigs_file, region, title, strip=False, balance=False, **args):
+def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=False, balance=False, **args):
     """
     Plot distance-normalized Hi-C correlation matrix with compartment track.
     Input:
@@ -594,6 +594,7 @@ def plot_compartment(coolp, eigs_file, region, title, strip=False, balance=False
         eigs_file: path to eigen vector file.
         region: genome region to plot.
         title: name of the plot.
+        eigen_col: which eigen vector to plot.
         strip: whether to strip the consecutive 0s in the matrix.
         balance: whether to load balanced cooler matrix.
     """
@@ -646,11 +647,11 @@ def plot_compartment(coolp, eigs_file, region, title, strip=False, balance=False
         on = ("chrom","start","end")
     ).copy()
     dat = dat.assign(AB = "A")
-    dat.loc[dat["E1"] <0, "AB"] = "B"
+    dat.loc[dat[eigen_col] <0, "AB"] = "B"
     if strip:
         dat = dat.iloc[i_s:i_e,:]
     eigs_fig = px.bar(
-        dat, y="start", x ="E1", color="AB",
+        dat, y="start", x =eigen_col, color="AB",
         color_discrete_map={"A":"red","B":"blue"},
         orientation='h'
     )
@@ -667,11 +668,11 @@ def plot_compartment(coolp, eigs_file, region, title, strip=False, balance=False
         on = ("chrom","start","end")
     ).copy()
     dat = dat.assign(AB = "A")
-    dat.loc[dat["E1"] <0, "AB"] = "B"
+    dat.loc[dat[eigen_col] <0, "AB"] = "B"
     if strip:
         dat = dat.iloc[i_s:i_e,:]
     eigs_fig = px.bar(
-        dat, x="start", y ="E1", color="AB",
+        dat, x="start", y =eigen_col, color="AB",
         color_discrete_map={"A":"red","B":"blue"},
         #orientation='h'
     )
