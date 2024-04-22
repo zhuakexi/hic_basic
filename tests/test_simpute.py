@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from scipy.spatial.distance import euclidean
 from hic_basic.impute.simpute import boolean_radius_neighbor, cis_proximity_graph, cis_distance_graph, \
-    cis_distance_graph_df, parse_3dg_dask
+    cis_distance_graph_df, parse_3dg_dask, DMimpute
 from hires_utils.hires_io import parse_3dg
 
 class TestSimpute(unittest.TestCase):
@@ -27,6 +27,11 @@ class TestSimpute(unittest.TestCase):
         _3dg_path = self._3dg_path_small
         fo = str(self.outdir / "cis_proximity_graph.cool")
         cis_proximity_graph(_3dg_path, fo, genome="mm10", binsize=1000000)
+        self.assertTrue(os.path.exists(fo))
+    def test_DMimpute(self):
+        _3dg_path = self._3dg_path_small
+        fo = str(self.outdir / "DMimpute.cool")
+        fo = DMimpute(_3dg_path, fo, genome="mm10", max_dist=None, binsize=1000000)
         self.assertTrue(os.path.exists(fo))
     def test_parse_3dg_dask(self):
         _3dg_path = self._3dg_path_small
