@@ -290,6 +290,7 @@ def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=
             if None, pixel_id will not be added
         fo: str, path to output parquet file, if None, return dataframe
         max_dist: int, pixels with distance larger than max_dist will be discarded
+            if None, all pixels will be returned
         binsize: int, binsize of input 3dg file
         fill: return all possible pixels (< max_dist of course), fill missing pixels with NaN
             only valid when both chrom and genome are specified
@@ -396,3 +397,110 @@ def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=
         io_end = time.time()
         print(f"IO time: {io_end - io_start}")
         return None
+def DMimpute(_3dg_path, fo, genome="GRCh38", binsize=20000, agg_dip=False, max_dist=None):
+    """
+    Generate distance matrix (store in cooler) from 3dg file.
+    Only cis region is considered.
+    Input:
+        _3dg_path: str, path to 3dg file
+        genome: give genome name or length path and add pixel_id to output
+            if None, pixel_id will not be added
+        fo: str, path to output parquet file
+        max_dist: int, pixels with distance larger than max_dist will be discarded
+            if None, all pixels will be returned
+        binsize: int, binsize of input 3dg file
+        agg_dip: if True, aggregate diploid structure
+    Output:
+        fo filepath
+    """
+    chunksize = 100000
+    # --- load data ---
+    structure = parse_3dg(_3dg_path) # (chr, pos): x, y, z
+    def process_chunk(chunk, chrom=None):
+        xyz = chunk[["x","y","z"]]
+        if chrom is None:
+            chrom = chunk.index.get_level_values(0)[0]
+            start = chunk.index.get_level_values(1)
+        else:
+            start = chunk.index.get_level_values(1)
+
+        dist_mat = distance_matrix(xyz.values, xyz.values)
+        dist_df = pd.DataFrame(
+            dist_mat,
+            index=pd.Index(start,name="start1"),
+            columns=pd.Index(start,name="start2")
+            )
+
+        # keep triu
+        mask = np.triu(np.ones(dist_df.shape, dtype=bool), k=1) # bool matrix
+        dist_long_df = dist_df.where(mask).stack()
+        dist_long_df.name = "distance"
+        dist_long_df = dist_long_df.reset_index()
+
+        # keep distance <= max_dist
+        if max_dist is not None:
+            dist_long_df = dist_long_df.loc[(dist_long_df["start1"]-dist_long_df["start2"]).abs() <= max_dist]
+
+        # convert to bedpe-like format
+        dist_long_df['chrom1'] = chrom
+        dist_long_df['chrom2'] = chrom
+        dist_long_df['end1'] = dist_long_df['start1'] + binsize
+        dist_long_df['end2'] = dist_long_df['start2'] + binsize
+        dist_long_df = dist_long_df[['chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2', 'distance']]
+        dist_long_df = dist_long_df.rename(columns={"distance":"count"})
+
+        return dist_long_df
+    bins = GenomeIdeograph(
+        genome
+        ).bins(
+            binsize,
+            bed = True,
+            order = True
+            )
+    bins = bins.assign(
+        bin_id = bins.index
+    )
+    # --- prepare pixels for cooler ---
+    structure.index.names = ["chrom", "start"]
+    pixels = (
+        process_chunk(chunk, chrom)
+        for chrom, chunk in structure.groupby(level=0, observed=True)
+    )
+    # add bin1_id
+    bin1_id_pixels = (
+        pd.merge(
+            pixel if not agg_dip else pixel.assign(new_chrom=chrom_rm_suffix(pixel["chrom1"])),
+            bins,
+            left_on=["chrom1", "start1"] if not agg_dip else ["new_chrom", "start1"],
+            right_on=["chrom", "start"],
+            how="inner"
+        )[["bin_id","chrom2","start2","count"]].rename(columns={"bin_id":"bin1_id"})
+        for pixel in pixels
+    )
+    # add bin2_id
+    bin1_2_id_pixels = (
+        pd.merge(
+            pixel if not agg_dip else pixel.assign(new_chrom=chrom_rm_suffix(pixel["chrom2"])),
+            bins,
+            left_on=["chrom2", "start2"] if not agg_dip else ["new_chrom", "start2"],
+            right_on=["chrom", "start"],
+            how="inner"
+        )[["bin1_id", "bin_id", "count"]].rename(columns={"bin_id":"bin2_id"})
+        for pixel in bin1_id_pixels
+    )
+
+    # --- generate cooler ---
+    cooler.create_cooler(
+        str(fo),
+        bins,
+        bin1_2_id_pixels,
+        dtypes={"count": float},
+        symmetric_upper = True,
+        assembly = genome,
+        ordered = False, # groupby doesn't ensure order
+        triucheck = True,
+        dupcheck = True,
+        boundscheck = True,
+        ensure_sorted = True,
+    )
+    return fo
