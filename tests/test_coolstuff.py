@@ -34,7 +34,9 @@ class TestCoolstuff(unittest.TestCase):
             result = cool2mat(sample_cool, region)
             # Check the result
             print(result.shape)
-            print(result.head())
+            #print(result.head())
+            #print(result.tail())
+            print(result.columns)
             self.assertIsInstance(result, pd.DataFrame)
 
     def test_cli_pileup(self):

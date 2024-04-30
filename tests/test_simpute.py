@@ -28,6 +28,11 @@ class TestSimpute(unittest.TestCase):
         fo = str(self.outdir / "cis_proximity_graph.cool")
         cis_proximity_graph(_3dg_path, fo, genome="mm10", binsize=1000000)
         self.assertTrue(os.path.exists(fo))
+    def test_cis_proximity_graph1(self):
+        _3dg_path = "/shareb/ychi/repo/sperm_struct/formal_pipeline/3dg_c/HuS02_HuSZ147.clean.20k.4.3dg"
+        fo = str(self.outdir / "cis_proximity_graph1.cool")
+        cis_proximity_graph(_3dg_path, fo, genome="GRCh38", binsize=20000)
+        self.assertTrue(os.path.exists(fo))
     def test_DMimpute(self):
         _3dg_path = self._3dg_path_small
         fo = str(self.outdir / "DMimpute.cool")
