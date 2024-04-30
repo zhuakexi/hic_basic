@@ -595,7 +595,7 @@ def cli_saddle(coolp, eigv, expected, outprefix, view, conda_env=None, cwd=None,
         cwd=cwd
     )
     return f"{outprefix}.saddledump.npz", f"{outprefix}.png"
-def cli_IS(coolp, output, windowsizes, balanced=True, threads=8, conda_env=None, cwd=None, force=False):
+def cli_IS(coolp, output, windowsizes, balanced=True, append_raw_scores=True, threads=8, conda_env=None, cwd=None, force=False):
     if not force and Path(output).exists():
         print(f"File '{output}' already exists. Skipping execution.")
         return output
@@ -605,10 +605,11 @@ def cli_IS(coolp, output, windowsizes, balanced=True, threads=8, conda_env=None,
         conda_run = f"conda run -n {conda_env}"
     windowsizes = " ".join(map(str, windowsizes))
     threads = f"-p {threads}"
+    raw_score_option = "--append-raw-scores" if append_raw_scores else ""
     if balanced:
-        cmd = f"{conda_run} cooltools insulation {threads} --threshold Li -o {output} {coolp} {windowsizes}"
+        cmd = f"{conda_run} cooltools insulation {threads} --threshold Li {raw_score_option} -o {output} {coolp} {windowsizes}"
     else:
-        cmd = f'{conda_run} cooltools insulation {threads} --ignore-diags 1 --clr-weight-name "" -o {output} {coolp} {windowsizes}'
+        cmd = f'{conda_run} cooltools insulation {threads} --threshold Li {raw_score_option} --ignore-diags 1 --clr-weight-name "" -o {output} {coolp} {windowsizes}'
     subprocess.check_output(
         cmd,
         shell=True,
@@ -649,7 +650,7 @@ def cli_pileup(coolp, feature, output, format="BED", view=None, expected=None, f
             cwd = cwd
         )
     return output
-def cli_expected(coolp, output, view=None, conda_env=None, cwd=None, threads=8, force=False):
+def cli_expected(coolp, output, balanced=False, view=None, conda_env=None, cwd=None, threads=8, force=False):
     output_path = Path(output)
 
     if not force and output_path.exists():
@@ -658,10 +659,11 @@ def cli_expected(coolp, output, view=None, conda_env=None, cwd=None, threads=8, 
 
     conda_run = f"conda run -n {conda_env}" if conda_env else ""
     view_option = f"--view {view}" if view else ""
-    cmd = (
-        f"{conda_run} cooltools expected-cis -p {threads} -o {output} {view_option} {coolp}"
-    )
-
+    if not balanced:
+        cmd = f'{conda_run} cooltools expected-cis -p {threads} --ignore-diags 1 --clr-weight-name "" -o {output} {view_option} {coolp}'
+    else:
+        cmd = f"{conda_run} cooltools expected-cis -p {threads} -o {output} {view_option} {coolp}"
+    print(cmd)
     subprocess.run(cmd, shell=True, cwd=cwd)
     return output
 # def cli_ct_callTAD(filei,fileo):
