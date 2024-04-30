@@ -209,3 +209,26 @@ def call_compartment(df:pd.DataFrame,norm:bool=True)->tuple:
         ),
         normalize=norm
         )
+def AB_block_ends(orig_data:pd.DataFrame, min_winSize=3, binsize=1000000):
+    """
+    Generate AB bed-like reference from cooltools vecs dataframe.
+    Input:
+        orig_data: chrom, start, end, E1
+    Output:
+        chrom, start, end, AB, mean_E1; one row per block
+    """
+    data = orig_data.copy()
+    data["sign"] = np.sign(data["E1"])
+    data["block"] = (data["sign"].diff(1) != 0).astype('int').cumsum()
+    data["block_size"] = data.groupby("block")["block"].transform("size")
+    data_valid = data[data["block_size"] >= min_winSize].copy()
+    data_valid['c_start'] = data_valid.groupby('block')['start'].transform(lambda x : x.min())
+    data_valid["c_end"] = data_valid.groupby('block')["end"].transform(lambda x : x.max())
+    data_valid["mean_E1"] = data_valid.groupby('block')["E1"].transform(lambda x : x.mean())
+    ends = data_valid.drop_duplicates(subset=["block", "c_start", "c_end"])[["chrom","mean_E1","c_start","c_end"]]
+    ends = ends.assign(AB=pd.NA)
+    ends.loc[ends["mean_E1"]>0, "AB"] = "A"
+    ends.loc[ends["mean_E1"]<0, "AB"] = "B"
+    ends = ends.rename(columns = {"c_start":"start","c_end":"end"})
+    ends = ends.dropna(subset=["AB"])[["chrom","start","end","AB","mean_E1"]]
+    return ends
