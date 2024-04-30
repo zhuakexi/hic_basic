@@ -1,11 +1,22 @@
 # calling TAD using deTOKI
-# migrate to notebook compatible 
+# migrate to notebook compatible
+import os
+from pprint import pprint
+
+#os.environ["OMP_NUM_THREADS"] = "1"
+#os.environ["OPENBLAS_NUM_THREADS"] = "16"
+
 import numpy as np
 import pandas as pd
 from sklearn import decomposition
 import math
 import multiprocessing
-
+try:
+    from threadpoolctl import ThreadpoolController
+    controller = ThreadpoolController()
+    pprint(controller.info())
+except ImportError:
+    print("ThreadpoolController not found")
 ## Run NMF in several times with random initialisation and output consensus matrix
 def corate(A,n,time):
     # Input:
@@ -201,12 +212,14 @@ def part_zero(F:np.ndarray, core:int, window:float, reso:int, delta, length, min
     return pos.astype('int32')
 ## entry function
 def tad(F, core:int=1, reso:int=40, min_val:int=600, max_val:int=1000, window_size_raw:int=8000, delta_raw:int=100):
-#Input:
-#   F: input contact matrix : np.ndarray
-#   reso: resolution of the matrix (kbp)
-#   min, max: tad mean size (kbp)
-#   split: window size (kbp) 
-#   core: treads used
+    '''
+    Input:
+        F: input contact matrix : np.ndarray
+        reso: resolution of the matrix (kbp)
+        min, max: tad mean size (kbp)
+        split: window size (kbp) 
+        core: treads used
+    '''
 
     # length of flanking regions considered
     # by default 400kbp
