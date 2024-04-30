@@ -119,7 +119,7 @@ def boolean_radius_neighbor(df, min_dist=3, n_jobs=4, pixels=True):
 #         boundscheck = True,
 #         ensure_sorted = True,
 #     )
-def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000, agg_dip=False, n_jobs=4):
+def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000, agg_dip=False, flavor="hickit", n_jobs=4):
     """
     Genereate 0,1 cooler file of region proximity from 3dg file.
     Only cis region is considered.
@@ -130,6 +130,7 @@ def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000,
         genome: str, genome version
         binsize: int, binsize
         agg_dip: if True, aggregate diploid structure
+        flavor: str, flavor of binnify, see GenomeIdeograph.bins
     Output:
         None
     """
@@ -140,7 +141,8 @@ def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000,
         ).bins(
             binsize,
             bed = True,
-            order = True
+            order = True,
+            flavor = flavor
             )
     bins = bins.assign(
         bin_id = bins.index
@@ -397,7 +399,7 @@ def cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=
         io_end = time.time()
         print(f"IO time: {io_end - io_start}")
         return None
-def DMimpute(_3dg_path, fo, genome="GRCh38", binsize=20000, agg_dip=False, max_dist=None):
+def DMimpute(_3dg_path, fo, genome="GRCh38", binsize=20000, agg_dip=False, flavor="cooler_compat", max_dist=None):
     """
     Generate distance matrix (store in cooler) from 3dg file.
     Only cis region is considered.
@@ -455,7 +457,8 @@ def DMimpute(_3dg_path, fo, genome="GRCh38", binsize=20000, agg_dip=False, max_d
         ).bins(
             binsize,
             bed = True,
-            order = True
+            order = True,
+            flavor = flavor
             )
     bins = bins.assign(
         bin_id = bins.index
