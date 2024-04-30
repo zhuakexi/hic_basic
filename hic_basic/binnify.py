@@ -30,25 +30,33 @@ class GenomeIdeograph:
         Get binned reference(int version)
         Input:
             binsize: int
-            flavor: str, "hickit" or "bedtools"
+            flavor: str, "hickit", "bedtools" or "cooler_compat"
         Return:
            breaks of bins(dict of list)
         Note:
             For hickit-flavored binning, the size of the last bin 
             >= 0.5 * binsize and < 1.5 * binsize. For bedtools-flavored binning, 
             the size of the last bin > 0 and <= binsize.
+            For cooler_compat-flavored binning, the size of the last bin
+            > binsize is trimmed to binsize.
         """
-        assert flavor in ["hickit","bedtools"], "flavor should be hickit or bedtools"
+        assert flavor in ["hickit","bedtools","cooler_compat"], "flavor should be hickit or bedtools"
         binsize = int(binsize)
         data = self.chromosomes.iloc[:,0].to_dict()
         all_breaks = {}
         for chrom in data:
             length = data[chrom]
             breaks = list(range(0, length, binsize))
-            if flavor == "hickit":
+            if flavor in ["hickit","cooler_compat"]:
                 if length - breaks[-1] < 0.5 * binsize:
                     breaks.pop()
-            breaks.append(length) # don't forget the rightmost point
+            if flavor != "cooler_compat":
+                breaks.append(length) # don't forget the rightmost point
+            else:
+                if length - breaks[-1] > binsize:
+                    breaks.append(breaks[-1] + binsize)
+                else:
+                    breaks.append(length)
             all_breaks[chrom] = breaks
         return all_breaks
     def bins(self, binsize:int, bed=False, order=False, flavor="hickit"):
