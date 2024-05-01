@@ -1,20 +1,20 @@
 from math import ceil
 
+import bioframe
+import cooler
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import seaborn as sns
 import statsmodels.api as sm
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.express as px
-import cooltools.lib.plotting # import the `fall` cmap
-import cooler
 from cooler import Cooler
-import numpy as np
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import bioframe
+from plotly.subplots import make_subplots
+from skimage import exposure
+import cooltools.lib.plotting
 
 from .utils import filling_l2r_mpl, pcolormesh_45deg, tiling_mat
 from ..compartment import compartments
@@ -586,7 +586,8 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=
         title = title
     )
     return figure
-def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=False, balance=False, **args):
+def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=False, balance=False, mask_eig_na=True,
+    give_mat=False, quant=0.005, minmax="min", eq_hist=False, **args):
     """
     Plot distance-normalized Hi-C correlation matrix with compartment track.
     Input:
@@ -597,7 +598,15 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
         eigen_col: which eigen vector to plot.
         strip: whether to strip the consecutive 0s in the matrix.
         balance: whether to load balanced cooler matrix.
+        mask_eig_na: whether to mask the heatmap where eigen value is NA.
+            Note: you need also to set fillna=False in _plot_mat to make it work.
+        give_mat: whether to return the matrix.
+        quant: quantile to set the bright extent.
+        minmax: whether to use min or max to set the bright extent.
+        eq_hist: whether to use equalized histogram.
     """
+    if mask_eig_na:
+        args["fillna"] = False
     clr = Cooler(str(coolp))
     eig = pd.read_table(eigs_file)
     bin_s, bin_e = clr.extent(region)
@@ -632,13 +641,6 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
         horizontal_spacing=0.01,
         row_heights = [10,2],
         column_widths = [2,10]
-    )
-    # add heatmap
-    mat_fig = _plot_mat(region_mat,cmap="RdBu",donorm=False, **args)
-    figure.add_trace(
-        mat_fig.data[0],
-        row=1,
-        col=2
     )
     # add eigen value 1
     dat = pd.merge(
@@ -682,6 +684,53 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
     )
     for trace in eigs_fig.data:
         figure.add_trace(trace, row=2,col=2)
+    eigen_na_mask = dat.loc[dat[eigen_col].isna(),"start"].values
+    if mask_eig_na:
+        region_mat.loc[
+            eigen_na_mask,
+            :
+        ] = np.nan
+        region_mat.loc[
+            :,
+            eigen_na_mask
+        ] = np.nan
+    if eq_hist:
+        region_mat = exposure.equalize_hist(region_mat)
+    # add heatmap
+    mat_fig = _plot_mat(region_mat,cmap="RdBu_r",donorm=False, **args)
+    figure.add_trace(
+        mat_fig.data[0],
+        row=1,
+        col=2
+    )
+    # traces
+    ## heatmap
+    dat = region_mat.values.flatten()
+    dat = dat[~np.isnan(dat)]
+    right = np.quantile(dat, 1-quant)
+    left = np.quantile(dat, quant)
+    if minmax == "min":
+        bright_extent = min(abs(right), abs(left))
+    elif minmax == "max":
+        bright_extent = max(abs(right), abs(left))
+    else:
+        raise ValueError("minmax must be min or max")
+    figure.update_traces(
+        selector=dict(type="heatmap"),
+        zmin = -bright_extent,
+        zmax = bright_extent
+    )
+    ## barplot
+    figure.update_traces(
+        selector=dict(type="bar"),
+        width=clr.binsize,
+        marker=dict(
+            line = dict(
+                color = "purple", # looks better than black
+                width = 0 # this actually tries to removes the line, 
+            )
+        )
+    )
     # layout  
     ## heatmap
     figure.update_xaxes(
@@ -706,6 +755,7 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
         row = 2,
         col = 2
     )
+    # global layout
     figure.update_layout(
         paper_bgcolor = "white",
         plot_bgcolor = "white",
@@ -713,7 +763,10 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
         width = 700,
         title = title
     )
-    return figure
+    if give_mat:
+        return figure, region_mat
+    else:
+        return figure
 def plot_saddle_mpl(file, title, vmin=10**(-1),vmax=10**1):
     saddle = np.load(file, allow_pickle=True)
 

@@ -78,10 +78,12 @@ class TestPlot(unittest.TestCase):
         fig = plot_compartment(
             str(ddir / "mESC_allmerge.1k.mcool::resolutions/1000000"),
             ddir / "mESC_allmerge.cis.vecs.tsv",
-            region="chr3",
-            title = "mESC_allmerge chr3 compartment",
+            region="chrX",
+            title = "mESC_allmerge chrX compartment",
             balance=True,
-            strip=True
+            strip=True,
+            mask_eig_na=True,
+            fillna=True
         )
         fig.write_image(str(out_png), width=700, height=700)
         self.assertTrue(out_png.exists())
