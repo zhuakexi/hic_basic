@@ -36,6 +36,16 @@ from .utils import binnify
 #     return bins
 
 # --- warm it --- #
+def str2slice(clr, region:str):
+    """
+    Convert region string to slice object.
+    Input:
+        clr: cooler file object
+        region: region string, eg. "chr1:1,000,000-2,000,000"
+    Output:
+        slice object
+    """
+    return slice(*clr.extent(region))
 def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:bool=False):
     """
     Fetch matrix from cooler file with proper index and columns.
@@ -61,9 +71,12 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
     if isinstance(region, str): # "chr1" or "chr1:1000000-2000000"
         region = [region]
     elif isinstance(region, list):
-        if isinstance(region[0], slice): # [slice(0,1000000), slice(1000000,2000000)]
+        assert len(region) == 2, "Only support 2 regions for inter-chrom matrix"
+        if isinstance(region[0], slice) and isinstance(region[1], slice): # [slice(0,1000000), slice(1000000,2000000)]
             no_fetch = True
-        pass
+        else: # ["chr1:1,000,000-2,000,000", "chr2"], ["chr1", slice(0,1000000)]
+            region = [region if isinstance(region, slice) else str2slice(clr, region) for region in region]
+            no_fetch = True
     elif isinstance(region, slice): # slice(0,-1)
         region = [region]
         no_fetch = True
