@@ -603,6 +603,9 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
         give_mat: whether to return the matrix.
         quant: quantile to set the bright extent.
         minmax: whether to use min or max to set the bright extent.
+            work with quant.
+            Note: this assumes the matrix values are symmetric around 0.
+            if eq_hist is True, this will be ignored.
         eq_hist: whether to use equalized histogram.
     """
     if mask_eig_na:
@@ -684,7 +687,18 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
     )
     for trace in eigs_fig.data:
         figure.add_trace(trace, row=2,col=2)
-    eigen_na_mask = dat.loc[dat[eigen_col].isna(),"start"].values
+    eig_dat2 = dat.copy()
+
+    if eq_hist:
+        region_mat = pd.DataFrame(
+            exposure.equalize_hist(
+                region_mat.values
+                ),
+            index = region_mat.index,
+            columns = region_mat.columns
+        )
+
+    eigen_na_mask = eig_dat2.loc[dat[eigen_col].isna(),"start"].values
     if mask_eig_na:
         region_mat.loc[
             eigen_na_mask,
@@ -694,8 +708,6 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
             :,
             eigen_na_mask
         ] = np.nan
-    if eq_hist:
-        region_mat = exposure.equalize_hist(region_mat)
     # add heatmap
     mat_fig = _plot_mat(region_mat,cmap="RdBu_r",donorm=False, **args)
     figure.add_trace(
@@ -705,21 +717,28 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
     )
     # traces
     ## heatmap
-    dat = region_mat.values.flatten()
-    dat = dat[~np.isnan(dat)]
-    right = np.quantile(dat, 1-quant)
-    left = np.quantile(dat, quant)
-    if minmax == "min":
-        bright_extent = min(abs(right), abs(left))
-    elif minmax == "max":
-        bright_extent = max(abs(right), abs(left))
+    if not eq_hist:
+        dat = region_mat.values.flatten()
+        dat = dat[~np.isnan(dat)]
+        right = np.quantile(dat, 1-quant)
+        left = np.quantile(dat, quant)
+        if minmax == "min":
+            bright_extent = min(abs(right), abs(left))
+        elif minmax == "max":
+            bright_extent = max(abs(right), abs(left))
+        else:
+            raise ValueError("minmax must be min or max")
+        figure.update_traces(
+            selector=dict(type="heatmap"),
+            zmin = -bright_extent,
+            zmax = bright_extent
+        )
     else:
-        raise ValueError("minmax must be min or max")
-    figure.update_traces(
-        selector=dict(type="heatmap"),
-        zmin = -bright_extent,
-        zmax = bright_extent
-    )
+        figure.update_traces(
+            selector=dict(type="heatmap"),
+            zmin = 0,
+            zmax = 1
+        )
     ## barplot
     figure.update_traces(
         selector=dict(type="bar"),
