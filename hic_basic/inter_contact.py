@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy
 
-from hires_utils.hires_utils.hires_io import parse_pairs
+from hires_utils.hires_io import parse_pairs
 
 def expected_inter(pairs:pd.DataFrame)->pd.DataFrame:
     # calculate expected inter contacts(exp(chra,chrb) = chra_total_frag * chrb_total_frag)
@@ -28,14 +28,17 @@ def pick_triu(matrix:pd.DataFrame) -> pd.DataFrame:
         matrix_stripe = matrix.iloc[i, i + 1 :]
         index.extend([(matrix_stripe.name, sub_index) for sub_index in matrix_stripe.index])
         data.extend(matrix_stripe.values)
-    return pd.Series(index=index, data=data)    
+    return pd.Series(index=pd.MultiIndex.from_tuples(index), data=data)    
 def cell_sig(file_path:str)->pd.Series:
     # calculate cell inter-contact-signature 
     # assume phased dip pairs cell as input, upper triangle not needed.
     # return 1035*1 pd.Series with proper index
     pairs = parse_pairs(file_path) 
     ## generate 46*46 contacts count matrix
-    total_inter = pairs.query('chr1 != chr2').shape[0]
+    total_inter = pairs.query(
+        'chr1 != chr2',
+        engine='python'
+        ).shape[0]
     gp = pairs.groupby(["chr1","chr2"])
     pairs_counts = gp.size() # split-count method
     for_matrix = pairs_counts.reset_index()
