@@ -1,9 +1,11 @@
 import time
+
+import h5py
 import numpy as np
 import pandas as pd
-import h5py
-from scipy.sparse import csr_matrix, vstack
+import plotly.graph_objects as go
 import sklearn.neighbors as NN
+from scipy.sparse import csr_matrix, vstack
 from sklearn import preprocessing
 from sklearn.decomposition import PCA, TruncatedSVD
 
@@ -156,3 +158,38 @@ def NN_spectral_embedding(symdist, k_nn=7): # this is clean version, orig can be
     vecs = vecs[:,tmp]
     
     return pd.DataFrame(vecs[:,1:3],columns=["ev1","ev2"],index=symdist.index)
+
+# --- plot ---
+def plot_elbow(pca:PCA, title="TITLE"):
+    cum_explained_variance = np.cumsum(pca.explained_variance_ratio_)
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x = np.arange(1, len(cum_explained_variance)+1),
+            y = cum_explained_variance,
+            mode = 'lines+markers',
+            name = 'cumulative explained variance'
+        )
+    )
+    fig.update_xaxes(
+        title = 'Number of Components',
+        ticks = 'outside',
+        showline = True,
+        linecolor = 'black',
+        linewidth = 2,
+    )
+    fig.update_yaxes(
+        title = 'Cumulative Explained Variance',
+        tickformat = ',.0%',
+        ticks = 'outside',
+        showline = True,
+        linecolor = 'black',
+        linewidth = 2,
+    )
+    fig.update_layout(
+        title = title,
+        plot_bgcolor = 'rgba(0,0,0,0)',
+        height = 400,
+        width = 600
+    )
+    return fig
