@@ -90,6 +90,7 @@ def intermingle(_3dg, min_dist=3, n_jobs=12, table=False):
     mask = (mask.T == _3dg["chrom"]).T
     intra_near = frequency_table.where(mask, 0).sum(axis=1)
     all_near = frequency_table.sum(axis=1)
+    CT_interior_pref = intra_near
     intermingling_ratio = (all_near - intra_near) / all_near
     frequency_table_r = frequency_table.div(frequency_table.sum(axis=1, skipna=False), axis=0)
     multi_chrom_intermingling = frequency_table_r.apply(shannon_index, axis=1)
@@ -101,7 +102,8 @@ def intermingle(_3dg, min_dist=3, n_jobs=12, table=False):
             _3dg[["chrom","start"]],
             intermingling_ratio.rename("intermingling_ratio"),
             multi_chrom_intermingling.rename("multi_chrom_intermingling"),
-            species_richness.rename("species_richness")
+            species_richness.rename("species_richness"),
+            CT_interior_pref.rename("CT_interior_pref")
         ],
         axis=1,
         join="outer"
