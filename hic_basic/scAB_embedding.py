@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import toolz
+from hires_utils.mmcif import chrom_rm_suffix
 from sklearn import preprocessing
 from sklearn.decomposition import PCA
 from sklearn.neighbors import radius_neighbors_graph
@@ -93,7 +94,7 @@ def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dupref=False,dropXY=
             smooth_color_data = {k:v for k,v in smooth_color_data.items()
                                  if k[0] not in ["chrX","chrY","chrX(mat)","chrX(pat)","chrY(mat)","chrY(pat)"]}
     return smooth_color_data
-def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame:
+def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12, dupref=True)->pd.DataFrame:
     """
     Calculate intermingling metrics for each particle in 3dg file.
     Input:
@@ -113,14 +114,32 @@ def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12)->pd.DataFrame
             index_col=["chrom","start"]
             )[["CpG"]]
     _3dg = _3dg.copy()
-    _3dg_e = pd.concat(
-        [
+    if dupref:
+        _3dg = _3dg.reset_index()
+        _3dg = _3dg.assign(
+            new_chr = chrom_rm_suffix(_3dg["chr"])
+        )
+        color_data = color_data.reset_index()
+        color_data = color_data.rename(
+            columns = {"chrom":"new_chr","start":"pos"}
+        )
+        _3dg_e = pd.merge(
             _3dg,
-            color_data
-        ],
-        axis=1,
-        join="outer"
-    ).loc[_3dg.index]
+            color_data,
+            on = ["new_chr","pos"],
+            how = "outer"
+        )
+        _3dg_e = _3dg_e.set_index(["chr","pos"]).loc[_3dg.set_index(["chr","pos"]).index]
+        _3dg_e = _3dg_e.drop(columns=["new_chr"])
+    else:
+        _3dg_e = pd.concat(
+            [
+                _3dg,
+                color_data
+            ],
+            axis=1,
+            join="outer"
+        ).loc[_3dg.index]
     del color_data
     # --- generate radius neighbor ---
     # get sparse matrix, basically tuple of two arrays, (row, col)
