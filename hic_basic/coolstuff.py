@@ -84,7 +84,7 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
         raise ValueError("[Error in cool2mat]: Region must be str or list or slice, read doc for more info.")
     if no_fetch:
         # use slicer syntax
-        mat = clr.matrix(balance=balance)[region[0]] if len(region) == 1 else clr.matrix(balance=balance)[region[0], region[1]] # because can't unpack in slicer
+        mat = clr.matrix(balance=balance)[region[0],region[0]] if len(region) == 1 else clr.matrix(balance=balance)[region[0], region[1]] # because can't unpack in slicer
         mat = pd.DataFrame(mat)
         if len(region) == 1:
             index = clr.bins()[region[0]]
@@ -103,9 +103,13 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
             # inter-chromosome region
             index = clr.bins().fetch(region[0]) # first region as index, same as cooler matrix fetch
             columns = clr.bins().fetch(region[1])
-    mat.columns = columns["start"]
+    # mat.columns = columns["start"]
+    # mat.columns.name = "region 2"
+    # mat.index = index["start"]
+    # mat.index.name = "region 1"
+    mat.columns = pd.MultiIndex.from_frame(columns[["chrom","start"]],names=["chrom","start"])
     mat.columns.name = "region 2"
-    mat.index = index["start"]
+    mat.index = pd.MultiIndex.from_frame(index[["chrom","start"]],names=["chrom","start"])
     mat.index.name = "region 1"
     return mat
 # --- cool it --- #
