@@ -46,7 +46,7 @@ def _3dg_to_xr(_3dg_file, sample, genome=None, binsize=20000, flavor="hickit"):
         _3dg
     )
     # add a sample name dimension
-    _3dg_xr = _3dg_xr.expand_dims(sample = [sample])
+    _3dg_xr = _3dg_xr.expand_dims(sample_name = [sample])
     _3dg_xr_dataset = _3dg_xr.to_dataset(name = "3dg")
     return _3dg_xr_dataset
 def _3dg2netcdf(_3dg_file, sample, output, genome="GRCh38", binsize=20000000, flavor="hickit", force=False):
@@ -69,7 +69,7 @@ def _3dg2netcdf(_3dg_file, sample, output, genome="GRCh38", binsize=20000000, fl
     _3dg_xr_dataset.to_netcdf(
         output,
         encoding = {
-            "sample": {"dtype": "str"}
+            "sample_name": {"dtype": "str"}
         }
         )
     return output
