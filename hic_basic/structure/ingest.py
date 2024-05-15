@@ -66,7 +66,12 @@ def _3dg2netcdf(_3dg_file, sample, output, genome="GRCh38", binsize=20000000, fl
     if Path(output).exists() and not force:
         return output
     _3dg_xr_dataset = _3dg_to_xr(_3dg_file, sample, genome=genome, binsize=binsize)
-    _3dg_xr_dataset.to_netcdf(output)
+    _3dg_xr_dataset.to_netcdf(
+        output,
+        encoding = {
+            "sample": {"dtype": "str"}
+        }
+        )
     return output
 def _3dgs2netcdfs(_3dg_files:list,samples:list,outdir:str,
     genome="GRCh38",binsize=20000,flavor="hickit",force=False):
