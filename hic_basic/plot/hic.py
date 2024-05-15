@@ -85,8 +85,12 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap
     mat = orig_mat.copy()
     if isinstance(mat, pd.DataFrame):
         mat = mat.values
-        columns = orig_mat.columns
-        index = orig_mat.index
+        if (len(orig_mat.index.levels) > 1) or (len(orig_mat.columns.levels) > 1):
+            columns = None
+            index = None
+        else:
+            columns = orig_mat.columns
+            index = orig_mat.index
     else:
         columns = None
         index = None
