@@ -1,4 +1,12 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
+import pandas as pd
 import xarray as xr
+from hires_utils.hires_io import parse_3dg
+from tqdm import tqdm
+
+from ..binnify import GenomeIdeograph
 
 def _3dg_to_xr(_3dg_file, sample, genome=None, binsize=20000, flavor="hickit"):
     """
@@ -84,11 +92,12 @@ def _3dgs2netcdfs(_3dg_files:list,samples:list,outdir:str,
     with ThreadPoolExecutor(1) as executor:
         futures = []
         for sample, _3dg_file in zip(samples, _3dg_files):
+            output = outpat.format(sample=sample)
             future = executor.submit(
                 _3dg2netcdf,
                 _3dg_file,
                 sample,
-                outpat,
+                output,
                 genome = genome,
                 binsize = binsize,
                 flavor = flavor,
