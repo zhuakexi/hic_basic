@@ -334,4 +334,8 @@ class Mchr:
             columns = ["chrom2","start2"],
             values = "3dg"
         )
+        if n_jobs is not None:
+            # only slice chromosomes in dask mode, now continue to slice start positions
+            DM_mat = DM_mat.loc[region1.slice]
+            DM_mat = DM_mat.loc[:,region2.slice]
         return DM_mat
