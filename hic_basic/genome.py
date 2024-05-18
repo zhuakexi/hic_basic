@@ -26,6 +26,7 @@ class Region:
         self.r, self.ir = self._parse_region(region_arg, genome)
         self.slice = slice(*self.r)
         self.islice = slice(*self.ir)
+        self.region_chroms = self._get_relevant_chromosomes()
         if binsize is not None:
             self.bins = self._get_bin_index(binsize)
     def _parse_region(self, region_arg, genome):
@@ -51,6 +52,18 @@ class Region:
             return [(chrom1, pos1), (chrom2, pos2)], [(ichrom1, pos1), (ichrom2, pos2)]
         else:
             raise NotImplementedError("Only list of tuples is supported now.")
+    def _get_relevant_chromosomes(self):
+        """
+        Get relevant chromosomes for the region.
+        Input:
+            genome: genome name
+        Output:
+            chrom_df: relevant chromosomes
+                DataFrame
+        """
+        chrom_df = chromosomes(self.genome)
+        chroms = chrom_df.loc[self.r[0][0]:self.r[1][0]].index.tolist()
+        return chroms
     def _get_bin_index(self, binsize):
         """
         Get bin indexes for the region.
