@@ -273,7 +273,25 @@ class Mchr:
                     - ds2.rename({"gpos2":"region2"}).sel(region2 = region2.bins)
                 dis_mat = np.sqrt((diff**2).sum(dim="features",skipna=False))
                 mean_dis_mat = dis_mat.mean(dim="sample_name",skipna=True)
-                DM = mean_dis_mat.to_dataframe()
+                DM_df = mean_dis_mat.to_dataframe()["3dg"] # a 4-level multiindex series
         else:
             raise NotImplementedError("Dask is not implemented yet.")
-        return DM
+        DM_df = DM_df.reset_index()
+        DM_df = DM_df.astype(
+            {
+                "chrom1" : pd.CategoricalDtype(
+                    GenomeIdeograph("GRCh38").chromosomes.index,
+                    ordered=True
+                    ),
+                "chrom2" : pd.CategoricalDtype(
+                    GenomeIdeograph("GRCh38").chromosomes.index,
+                    ordered=True
+                    )
+            }
+        )
+        DM_mat = DM_df.pivot(
+            index = ["chrom1","start1"],
+            columns = ["chrom2","start2"],
+            values = "3dg"
+        )
+        return DM_mat
