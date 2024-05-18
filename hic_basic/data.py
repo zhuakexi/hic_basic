@@ -48,7 +48,8 @@ def chromosomes(genome, order=False):
     Input:
         genome: genome name or chromosome length table; string or pd.DataFrame;
             Now support hg19, hg19_dip, GRCh38, GRCh38_dip, mm10, mm10_dip
-        order: if True, order chromosomes by length, if list order chromosomes by the list; bool or list
+        order: if True, order chromosomes in a natural way (chr1, chr2 ...),
+            if list order chromosomes by the list given;
     Return:
         pandas.DataFrame
     """
