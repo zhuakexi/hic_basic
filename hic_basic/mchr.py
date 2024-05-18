@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+from dask.distributed import LocalCluster, Client
 from hires_utils.hires_io import parse_3dg
 from tqdm import tqdm
 
@@ -275,7 +276,46 @@ class Mchr:
                 mean_dis_mat = dis_mat.mean(dim="sample_name",skipna=True)
                 DM_df = mean_dis_mat.to_dataframe()["3dg"] # a 4-level multiindex series
         else:
-            raise NotImplementedError("Dask is not implemented yet.")
+            with LocalCluster(n_workers=n_jobs, threads_per_worker=1, memory_limit="2GB") as cluster, Client(cluster) as client:
+                print("Computing distance matrix, dashboard available at", client.dashboard_link)
+                with xr.open_dataset(
+                    self._3dg_ds_fp,
+                    chunks={"chrom":1,"start":100}
+                    ) as ds:
+                    region1, region2 = RegionPair(
+                        region_pair,
+                        genome = self.genome,
+                        binsize = self.binsize
+                        ).region_pair
+                    ds = ds.sel(sample_name = samples)
+                    if min_samples is not None:
+                        # filter out low coverage bins
+                        cov = np.isnan(ds).any(
+                            dim = "features"
+                        ).sum(
+                            dim = "sample_name"
+                        )
+                        mask = (cov < min_samples).compute()
+                        ds = ds.where(mask)
+                    # select by chromosome blocks
+                    ds1 = ds.rename(
+                        {
+                            "chrom" : "chrom1",
+                            "start" : "start1"
+                            }
+                    )
+                    ds1 = ds1.sel(chrom1=region1.region_chroms)
+                    ds2 = ds.rename(
+                        {
+                            "chrom" : "chrom2",
+                            "start" : "start2"
+                            }
+                    )
+                    ds2 = ds2.sel(chrom2=region2.region_chroms)
+                    diff = ds1 - ds2
+                    dis_mat = np.sqrt((diff**2).sum(dim="features",skipna=False))
+                    mean_dis_mat = dis_mat.mean(dim="sample_name",skipna=True)
+                    DM_df = mean_dis_mat.to_dataframe()["3dg"]
         DM_df = DM_df.reset_index()
         DM_df = DM_df.astype(
             {
