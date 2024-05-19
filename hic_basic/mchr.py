@@ -210,8 +210,58 @@ class Mchr:
         Input:
             samples: sample names to compute
             region_pair: genome region to compute DM, can include inter-chromosome regions,
-            can cross chromosomes.
+                can cross chromosomes.
                 [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]
+            proximity: if not None, calculate proximity instead of distance
+                count pixels within proximity
+            n_jobs: number of threads for parallel computing
+                if None, use a simple in-memory method
+                else, use dask
+        Output:
+            DM: distance matrix, index and columns are 2-level multiindex
+            (chrom, start)
+        """
+        return self._calc_DM(
+            samples,
+            region_pair,
+            proximity = None,
+            min_samples = min_samples,
+            n_jobs = n_jobs
+        )
+    def PM(self, samples:list, region_pair:list, proximity:int, min_samples=None, n_jobs=None)->pd.DataFrame:
+        """
+        Compute proximity matrix.
+        Input:
+            samples: sample names to compute
+            region_pair: genome region to compute PM, can include inter-chromosome regions,
+                can cross chromosomes.
+                [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]
+            proximity: count pixels within proximity
+            n_jobs: number of threads for parallel computing
+                if None, use a simple in-memory method
+                else, use dask
+        Output:
+            PM: proximity matrix, index and columns are 2-level multiindex
+            (chrom, start)
+        """
+        assert proximity is not None, "Proximity must be specified."
+        return self._calc_DM(
+            samples,
+            region_pair,
+            proximity = proximity,
+            min_samples = min_samples,
+            n_jobs = n_jobs
+        )
+    def _calc_DM(self, samples:list, region_pair:list, proximity=None, min_samples=None, n_jobs=None)->pd.DataFrame:
+        """
+        Compute distance matrix.
+        Input:
+            samples: sample names to compute
+            region_pair: genome region to compute DM, can include inter-chromosome regions,
+                can cross chromosomes.
+                [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]
+            proximity: if not None, calculate proximity instead of distance
+                count pixels within proximity
             n_jobs: number of threads for parallel computing
                 if None, use a simple in-memory method
                 else, use dask
@@ -228,15 +278,6 @@ class Mchr:
         if n_jobs is None:
             with xr.open_dataset(self._3dg_ds_fp) as ds:
                 ds = ds.sel(sample_name = samples)
-                if min_samples is not None:
-                    # filter out low coverage bins
-                    cov = np.isnan(ds).any(
-                        dim = "features"
-                    ).sum(
-                        dim = "sample_name"
-                    )
-                    mask = cov < min_samples
-                    ds = ds.where(mask)
                 # if "chromint" not in ds.xindexes:
                 #     if "chrom" in ds.xindexes:
                 #         ds = ds.reset_index("chrom")
@@ -273,7 +314,28 @@ class Mchr:
                 diff = ds1.rename({"gpos1":"region1"}).sel(region1 = region1.bins) \
                     - ds2.rename({"gpos2":"region2"}).sel(region2 = region2.bins)
                 dis_mat = np.sqrt((diff**2).sum(dim="features",skipna=False))
-                mean_dis_mat = dis_mat.mean(dim="sample_name",skipna=True)
+                if proximity is not None:
+                    mean_dis_mat = (dis_mat < proximity).sum(dim="sample_name",skipna=True)
+                    mean_dis_mat = mean_dis_mat / cov
+                else:
+                    mean_dis_mat = dis_mat.mean(dim="sample_name",skipna=True)
+                if min_samples is not None:
+                    # filter out low coverage bins
+                    cov1 = (~np.isnan(ds1)).all(
+                        dim = "features"
+                    ).sum(
+                        dim = "sample_name"
+                    )
+                    mask1 = (cov1 < min_samples)
+                    cov2 = (~np.isnan(ds2)).all(
+                        dim = "features"
+                    ).sum(
+                        dim = "sample_name"
+                    )
+                    # mask out low coverage bins
+                    # where returns cond == True so we need to invert the mask
+                    mask2 = (cov2 < min_samples)
+                    mean_dis_mat = mean_dis_mat.where(~mask1,other=np.nan).where(~mask2,other=np.nan)
                 DM_df = mean_dis_mat.to_dataframe()["3dg"] # a 4-level multiindex series
         else:
             with LocalCluster(n_workers=n_jobs, threads_per_worker=1, memory_limit="2GB") as cluster, Client(cluster) as client:
@@ -288,15 +350,6 @@ class Mchr:
                         binsize = self.binsize
                         ).region_pair
                     ds = ds.sel(sample_name = samples)
-                    if min_samples is not None:
-                        # filter out low coverage bins
-                        cov = np.isnan(ds).any(
-                            dim = "features"
-                        ).sum(
-                            dim = "sample_name"
-                        )
-                        mask = (cov < min_samples).compute()
-                        ds = ds.where(mask)
                     # select by chromosome blocks
                     ds1 = ds.rename(
                         {
@@ -314,8 +367,30 @@ class Mchr:
                     ds2 = ds2.sel(chrom2=region2.region_chroms)
                     diff = ds1 - ds2
                     dis_mat = np.sqrt((diff**2).sum(dim="features",skipna=False))
-                    mean_dis_mat = dis_mat.mean(dim="sample_name",skipna=True)
+                    if proximity is not None:
+                        mean_dis_mat = (dis_mat < proximity).sum(dim="sample_name",skipna=True)
+                        mean_dis_mat = mean_dis_mat / cov
+                    else:
+                        mean_dis_mat = dis_mat.mean(dim="sample_name",skipna=True)
+                    if min_samples is not None:
+                        # filter out low coverage bins
+                        cov1 = (~np.isnan(ds1)).all(
+                            dim = "features"
+                        ).sum(
+                            dim = "sample_name"
+                        )
+                        mask1 = (cov1 < min_samples)
+                        cov2 = (~np.isnan(ds2)).all(
+                            dim = "features"
+                        ).sum(
+                            dim = "sample_name"
+                        )
+                        mask2 = (cov2 < min_samples)
+                        # mask out low coverage bins
+                        # where returns cond == True so we need to invert the mask
+                        mean_dis_mat = mean_dis_mat.where(~mask1,other=np.nan).where(~mask2,other=np.nan)
                     DM_df = mean_dis_mat.to_dataframe()["3dg"]
+        print("Tidying up distance matrix...")
         DM_df = DM_df.reset_index()
         DM_df = DM_df.astype(
             {
@@ -336,6 +411,6 @@ class Mchr:
         )
         if n_jobs is not None:
             # only slice chromosomes in dask mode, now continue to slice start positions
-            DM_mat = DM_mat.loc[region1.slice]
-            DM_mat = DM_mat.loc[:,region2.slice]
+            DM_mat = DM_mat.loc[region1.bins]
+            DM_mat = DM_mat.loc[:,region2.bins]
         return DM_mat
