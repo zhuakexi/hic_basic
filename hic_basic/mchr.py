@@ -1,3 +1,4 @@
+import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -11,6 +12,8 @@ from tqdm import tqdm
 from .binnify import GenomeIdeograph
 from .data import chromosomes
 from .genome import RegionPair
+
+warnings.filterwarnings('ignore', category=FutureWarning)
 
 def _3dg_to_xr(_3dg_file, sample, genome=None, binsize=20000, flavor="hickit"):
     """
@@ -45,7 +48,7 @@ def _3dg_to_xr(_3dg_file, sample, genome=None, binsize=20000, flavor="hickit"):
             axis=1
             )
     _3dg.columns.name = "features"
-    _3dg = _3dg.stack().sort_index()
+    _3dg = _3dg.stack(dropna=False, sort=True)
     _3dg_xr = xr.DataArray.from_series(
         _3dg
     )
@@ -122,7 +125,7 @@ class Mchr:
     """
     A class to handle multiple .3dg files.
     """
-    def __init__(self, _3dg_files:list, samples:list, ddir:str="tmp", ingest=True, genome="GRCh38", binsize=20000, flavor="hickit", force=True):
+    def __init__(self, _3dg_files:list, samples:list, ddir:str="tmp", ingest=True, genome=None, binsize=20000, flavor="hickit", force=True):
         """
         Initialize a Mchr object.
         Input:
@@ -131,9 +134,11 @@ class Mchr:
             ddir: where to store intermediate files
             ingest: whether to convert .3dg files to netcdf files
             genome: genome name, used to determine bins
+                e.g. "GRCh38"
             binsize: binsize of input .3dg file
             flavor: flavor of bins of .3dg file, see GenomeIdeograph.bins
         """
+        assert genome is not None, "Genome must be specified."
         self._3dg_files = _3dg_files
         self.samples = samples
         self.genome = genome
@@ -143,8 +148,8 @@ class Mchr:
         self._3dg_ds_fp = self.ddir / "3dg.nc"
         self.in_disk = False
         if ingest:
-            self._3dgs2netcdfs(self.ddir / "tmp", force=force)
-    def _3dgs2netcdfs(self, outdir:str, force=False):
+            self._ingest_3dgs(self.ddir / "tmp", force=force)
+    def _ingest_3dgs(self, outdir:str, force=False):
         """
         Convert 3dg files to aligned netcdf files.
         Input:
@@ -163,11 +168,11 @@ class Mchr:
             flavor = self.flavor,
             force = force
         )
-        with xr.open_mfdataset(self._3dg_datasets) as ds:
+        with xr.open_mfdataset(self._3dg_xr_datasets) as ds:
             ds.attrs["genome"] = self.genome
             ds.attrs["binsize"] = self.binsize
             ds.attrs["flavor"] = self.flavor
-            ds.attrs["_3dg_files"] = self._3dg_files
+            ds.attrs["_3dg_files"] = [str(i) for i in self._3dg_files]
             ds.to_netcdf(
                 self._3dg_ds_fp,
                 encoding = {
