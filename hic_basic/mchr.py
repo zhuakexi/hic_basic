@@ -274,7 +274,9 @@ class Mchr:
         if not self.in_disk:
             print("Ingesting .3dg files to disk...")
             self._3dgs2netcdfs(self.ddir / "tmp", force=True)
-        
+        if (proximity is not None) and (min_samples is None):
+            # proximity requires at least 1 sample for coverage division
+            min_samples = 1
         if n_jobs is None:
             with xr.open_dataset(self._3dg_ds_fp) as ds:
                 ds = ds.sel(sample_name = samples)
@@ -316,7 +318,8 @@ class Mchr:
                 dis_mat = np.sqrt((diff**2).sum(dim="features",skipna=False))
                 if proximity is not None:
                     mean_dis_mat = (dis_mat < proximity).sum(dim="sample_name",skipna=True)
-                    mean_dis_mat = mean_dis_mat / cov
+                    # mean_dis_mat = mean_dis_mat / cov
+                    # divide by coverage after filtering out low coverage bins
                 else:
                     mean_dis_mat = dis_mat.mean(dim="sample_name",skipna=True)
                 if min_samples is not None:
@@ -336,6 +339,17 @@ class Mchr:
                     # where returns cond == True so we need to invert the mask
                     mask2 = (cov2 < min_samples)
                     mean_dis_mat = mean_dis_mat.where(~mask1,other=np.nan).where(~mask2,other=np.nan)
+                if proximity is not None:
+                    # calculate pixel-level coverage
+                    cov1 = (~np.isnan(ds1)).all(
+                        dim = "features"
+                    )
+                    cov2 = (~np.isnan(ds2)).all(
+                        dim = "features"
+                    )
+                    # treat NaN as 0
+                    cov = (cov1 & cov2).sum(dim="sample_name",skipna=True)
+                    mean_dis_mat = mean_dis_mat / cov
                 DM_df = mean_dis_mat.to_dataframe()["3dg"] # a 4-level multiindex series
         else:
             with LocalCluster(n_workers=n_jobs, threads_per_worker=1, memory_limit="2GB") as cluster, Client(cluster) as client:
@@ -369,7 +383,7 @@ class Mchr:
                     dis_mat = np.sqrt((diff**2).sum(dim="features",skipna=False))
                     if proximity is not None:
                         mean_dis_mat = (dis_mat < proximity).sum(dim="sample_name",skipna=True)
-                        mean_dis_mat = mean_dis_mat / cov
+                        # divide by coverage after filtering out low coverage bins
                     else:
                         mean_dis_mat = dis_mat.mean(dim="sample_name",skipna=True)
                     if min_samples is not None:
@@ -389,6 +403,17 @@ class Mchr:
                         # mask out low coverage bins
                         # where returns cond == True so we need to invert the mask
                         mean_dis_mat = mean_dis_mat.where(~mask1,other=np.nan).where(~mask2,other=np.nan)
+                    if proximity is not None:
+                        # calculate pixel-level coverage
+                        cov1 = (~np.isnan(ds1)).all(
+                            dim = "features"
+                        )
+                        cov2 = (~np.isnan(ds2)).all(
+                            dim = "features"
+                        )
+                        # treat NaN as 0
+                        cov = (cov1 & cov2).sum(dim="sample_name",skipna=True)
+                        mean_dis_mat = mean_dis_mat / cov
                     DM_df = mean_dis_mat.to_dataframe()["3dg"]
         print("Tidying up distance matrix...")
         DM_df = DM_df.reset_index()
@@ -409,6 +434,7 @@ class Mchr:
             columns = ["chrom2","start2"],
             values = "3dg"
         )
+        # --- filter out non-region bins for dask mode ---
         if n_jobs is not None:
             # only slice chromosomes in dask mode, now continue to slice start positions
             DM_mat = DM_mat.loc[region1.bins]
