@@ -79,3 +79,72 @@ def chrom_cov(pairs: pd.DataFrame)-> pd.DataFrame:
         tot = res["intra"] + res["chrom1_inter"] + res["chrom2_inter"],
     )
     return res[["intra","tot"]]
+def pairs_coverage(pairs_fp, genome:str=None, binsize:int=1000000, flavor:str="hickit", sub:str=None)->pd.DataFrame:
+    """
+    Calculate coverage of pairs in bins.
+    Input:
+        pairs_fp: str, path to pairs file
+        genome: str, genome name
+        binsize: int, size of bins
+        flavor: str, flavor of bins
+        sub: only calculate coverage of a subset of genome
+    Output:
+        coverage: coverage of pairs in each bin
+    """
+    assert genome is not None, "Please specify genome"
+    pairs = parse_pairs(pairs_fp)
+    if sub is not None:
+        pairs = pairs.query(sub)
+    bins = GenomeIdeograph(genome).bins(binsize, bed=False, flavor=flavor)
+    legs = pd.concat(
+        [
+            pairs[["chr1","pos1"]].rename(columns={"chr1":"chrom","pos1":"pos"}),
+            pairs[["chr2","pos2"]].rename(columns={"chr2":"chrom","pos2":"pos"})
+        ],
+        axis=0, ignore_index=True
+    )
+    chunks = []
+    for chrom, chunk in legs.groupby("chrom"):
+        binned = pd.cut(
+            chunk["pos"], bins = bins[chrom]
+            ).value_counts()
+        tidy_binned = pd.concat(
+            [
+                bins[chrom].to_series().rename("bin"),
+                binned.rename("coverage")
+                ],
+            axis=1,
+            join = "outer"
+        ).loc[bins[chrom]].drop("bin", axis=1).fillna(0)
+        tidy_binned.index = pd.MultiIndex.from_product(
+            [[chrom], bins[chrom].left],
+            names=["chrom","bin"]
+        )
+        chunks.append(tidy_binned)
+    coverage = pd.concat(chunks, axis=0)
+    return coverage
+# cov = pairs_coverage(
+#     "/shareb/ychi/repo/sperm_struct/formal_pipeline/pairs_c12/BJ8007.c12.pairs.gz",
+#     genome = "mm10",
+#     binsize = 20000,
+#     )
+def pairs_coverages(pairs_fps, sample_names, n_jobs=8, genome:str=None, binsize:int=1000000, flavor:str="hickit", sub=None)->pd.DataFrame:
+    """
+    Multiple pairs_coverage
+    Input:
+        pairs_fps: list of str, paths to pairs files
+        sample_names: list of str, sample names
+        genome, binsize, flavor: see pairs_coverage
+    Output:
+        n_bins * n_samples DataFrame
+    """
+    with ProcessPoolExecutor(n_jobs) as executor:
+        futures = {
+            executor.submit(pairs_coverage, pairs_fp, genome, binsize, flavor, sub): sample_name
+            for pairs_fp, sample_name in zip(pairs_fps, sample_names)
+        }
+        results = []
+        for future in tqdm(as_completed(futures), total=len(futures)):
+            results.append(future.result())
+        covs = pd.concat(dict(zip(sample_names, results)), axis=1,join="outer")
+    return covs
