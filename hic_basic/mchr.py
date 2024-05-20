@@ -284,7 +284,8 @@ class Mchr:
             min_samples = 1
         if n_jobs is None:
             with xr.open_dataset(self._3dg_ds_fp) as ds:
-                ds = ds.sel(sample_name = samples)
+                if samples is not None:
+                    ds = ds.sel(sample_name = samples)
                 # if "chromint" not in ds.xindexes:
                 #     if "chrom" in ds.xindexes:
                 #         ds = ds.reset_index("chrom")
@@ -368,7 +369,8 @@ class Mchr:
                         genome = self.genome,
                         binsize = self.binsize
                         ).region_pair
-                    ds = ds.sel(sample_name = samples)
+                    if samples is not None:
+                        ds = ds.sel(sample_name = samples)
                     # select by chromosome blocks
                     ds1 = ds.rename(
                         {
