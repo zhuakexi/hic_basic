@@ -76,6 +76,7 @@ fruitpunch = sns.blend_palette(['white', 'red'], as_cmap=True)
 num_colors = 256
 colors = [fruitpunch(i) for i in range(num_colors)]
 fruitpunch = ['rgb({},{},{})'.format(int(c[0]*255), int(c[1]*255), int(c[2]*255)) for c in colors]
+fruitpunch_r = fruitpunch[::-1]
 def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=False, cmap="fall", balancing=False, fillna=False, **args):
     """
     TODO:
@@ -85,7 +86,7 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=False, cma
     mat = orig_mat.copy()
     if isinstance(mat, pd.DataFrame):
         mat = mat.values
-        if (len(orig_mat.index.levels) > 1) or (len(orig_mat.columns.levels) > 1):
+        if isinstance(orig_mat.index, pd.MultiIndex) or isinstance(orig_mat.columns, pd.MultiIndex):
             columns = None
             index = None
         else:
