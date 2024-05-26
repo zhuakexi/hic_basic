@@ -185,6 +185,7 @@ def clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap="magenta green, all, 
         render.gen_cif(_3dg, b_factor, **args)
         render.gen_script(cmap=cmap, clip=clip, slab=slab)
         render.render()
+    return png
 def highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap="magenta green, chain {}, 0.005, 0.02", tmpdir=None, conda="pymol", **args):
     """
     Render surface, color by b factor, highlight only one chain, other chains are transparent.
