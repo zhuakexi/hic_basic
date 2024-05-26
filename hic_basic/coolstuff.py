@@ -67,7 +67,7 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
         pd.DataFrame
     """
     no_fetch = False # whether to use.fetch method, if False, using slicer syntax
-    clr = cooler.Cooler(cool)
+    clr = cooler.Cooler(str(cool))
     if isinstance(region, str): # "chr1" or "chr1:1000000-2000000"
         region = [region]
     elif isinstance(region, list):
