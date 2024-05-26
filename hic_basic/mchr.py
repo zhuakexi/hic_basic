@@ -274,6 +274,8 @@ class Mchr:
             DM: distance matrix, index and columns are 2-level multiindex
             (chrom, start)
         """
+        if samples is None:
+            samples = self.samples
         if min_samples is not None:
             assert len(samples) >= min_samples, "Not enough samples to fulfill min_samples."
         if not self.in_disk:
@@ -284,8 +286,7 @@ class Mchr:
             min_samples = 1
         if n_jobs is None:
             with xr.open_dataset(self._3dg_ds_fp) as ds:
-                if samples is not None:
-                    ds = ds.sel(sample_name = samples)
+                ds = ds.sel(sample_name = samples)
                 # if "chromint" not in ds.xindexes:
                 #     if "chrom" in ds.xindexes:
                 #         ds = ds.reset_index("chrom")
@@ -312,6 +313,7 @@ class Mchr:
                         }
                 )
                 ds1 = ds1.stack(gpos1=["chrom1","start1"])
+                ds1 = ds1.rename({"gpos1":"region1"}).sel(region1 = region1.bins)
                 ds2 = ds.rename(
                     {
                         "chrom" : "chrom2",
@@ -319,8 +321,8 @@ class Mchr:
                         }
                 )
                 ds2 = ds2.stack(gpos2=["chrom2","start2"])
-                diff = ds1.rename({"gpos1":"region1"}).sel(region1 = region1.bins) \
-                    - ds2.rename({"gpos2":"region2"}).sel(region2 = region2.bins)
+                ds2 = ds2.rename({"gpos2":"region2"}).sel(region2 = region2.bins)
+                diff = ds1 - ds2
                 dis_mat = np.sqrt((diff**2).sum(dim="features",skipna=False))
                 if proximity is not None:
                     mean_dis_mat = (dis_mat < proximity).sum(dim="sample_name",skipna=True)
