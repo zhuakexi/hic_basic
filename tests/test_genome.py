@@ -4,7 +4,7 @@ import unittest
 sys.path.insert(0, "/share/home/ychi/dev/hic_basic")
 sys.path.insert(0, "/share/home/ychi/dev/hires_utils")
 
-from hic_basic.genome import Region
+from hic_basic.genome import Region, parse_ucsc_region
 
 class TestRegion(unittest.TestCase):
     def test_list_of_tuples_input(self):
@@ -39,6 +39,31 @@ class TestRegion(unittest.TestCase):
         region = Region(input_region, binsize=100000)
         print(region.bins)
         self.assertTrue(region.bins)
+class TestParseUCSCRegion(unittest.TestCase):
+    def test_valid_regions(self):
+        self.assertEqual(parse_ucsc_region("chr1:1,000-2,000"), ("chr1", 1000, 2000))
+        self.assertEqual(parse_ucsc_region("chrX:2345-6789"), ("chrX", 2345, 6789))
+        self.assertEqual(parse_ucsc_region("chr22"), ("chr22", None, None))
+        self.assertEqual(parse_ucsc_region("chr1:-1000"), ("chr1", None, 1000))
+        self.assertEqual(parse_ucsc_region("chr1:1000-"), ("chr1", 1000, None))
+
+    def test_invalid_regions(self):
+        with self.assertRaises(ValueError):
+            parse_ucsc_region("chr1:1000")
+        with self.assertRaises(ValueError):
+            parse_ucsc_region("chr1-1000")
+        with self.assertRaises(ValueError):
+            parse_ucsc_region("chr1::1000-2000")
+        with self.assertRaises(ValueError):
+            parse_ucsc_region("1,000-2,000")
+    
+    def test_commas(self):
+        self.assertEqual(parse_ucsc_region("chr1:1,234-2,345"), ("chr1", 1234, 2345))
+        self.assertEqual(parse_ucsc_region("chr1:1,000,000-2,000,000"), ("chr1", 1000000, 2000000))
+
+    def test_partial_specification(self):
+        self.assertEqual(parse_ucsc_region("chr1:-2,345"), ("chr1", None, 2345))
+        self.assertEqual(parse_ucsc_region("chr2:1234-"), ("chr2", 1234, None)) 
 # Run the tests
 if __name__ == '__main__':
     unittest.main()
