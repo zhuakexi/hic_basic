@@ -1,5 +1,50 @@
+import re
+
 from .data import chromosomes
 from .binnify import GenomeIdeograph
+def parse_ucsc_region(region_str):
+    """
+    Parses a UCSC-style region string and returns a tuple of (chromosome, start, end).
+    
+    Parameters:
+        region_str (str): A UCSC-style region string like 'chr1:2,345-6,789' or 'chrX:2345-6789'.
+    
+    Returns:
+        tuple: A tuple containing the chromosome (str), start position (int), and end position (int).
+    
+    Raises:
+        ValueError: If the input string is not in a valid UCSC region format.
+    """
+    # Regex to match UCSC style region strings
+    # chr1, chrX, chr1(mat), chr1_mat
+    chrom = r"([\w,\(,\)]+)"
+    # 1, 1,000, 1000
+    pos = r"(\d{1,3}(?:,\d{3})*|\d+)"
+
+    cas_pats = []
+    # chr1:1000-2000, chr1
+    cas_pats.append(f"^{chrom}(?::{pos}-{pos})?$")
+    # chr1:-1000, all chr1 regions before 1000
+    cas_pats.append(f"^{chrom}:()-{pos}$")
+    # chr1:1000-, all chr1 regions after 1000
+    cas_pats.append(f"^{chrom}:{pos}-()$")
+    for pat in cas_pats:
+        match = re.match(pat, region_str)
+        if match is not None:
+            # match earlier pattern
+            break
+    if match is None:
+        raise ValueError("Invalid UCSC region format.")
+    
+    chrom, start, end = match.groups()
+    
+    # Remove commas if present and convert to integers
+    if start is not None:
+        start = int(start.replace(',', '')) if len(start) > 0 else None
+    if end is not None:
+        end = int(end.replace(',', '')) if len(end) > 0 else None
+    
+    return (chrom, start, end)
 class Region:
     """
     A class to represent a genomic region, will store a standard inner representation:
