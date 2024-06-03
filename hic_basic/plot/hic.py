@@ -77,12 +77,26 @@ num_colors = 256
 colors = [fruitpunch(i) for i in range(num_colors)]
 fruitpunch = ['rgb({},{},{})'.format(int(c[0]*255), int(c[1]*255), int(c[2]*255)) for c in colors]
 fruitpunch_r = fruitpunch[::-1]
-def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=False, cmap="fall", balancing=False, fillna=False, **args):
+def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, cmap="fall", range_for_balance=False, fillna=False, **args):
     """
+    Plot matrix heatmap.
+    Input:
+        orig_mat: pd.DataFrame; contact matrix, distance matrix, etc.
+        title: name of the plot.
+        vmax: max z value, use this to do lognorm.
+            If None, use the max value in the matrix.
+            When vmax is set, also set zmax in args to suit the color range.
+        ignore_diags: whether to ignore the diagonal.
+        donorm: whether to use lognorm.
+        cmap: color map.
+        range_for_balance: whether to use a special lognorm range suitable for balanced matrix.
+            Do this only when you are sure the input is a balanced cooler matrix and you want to lognorm it.
+        fillna: whether to fill nan with 0.
     TODO:
-        1.make a real colorscale bar according to LogNorm
-        2. make real zmax
+        1. make a real colorscale bar according to LogNorm
     """
+    if range_for_balance:
+        assert donorm, "you only need to set range_for_balance=True when you do lognorm, see docstring"
     mat = orig_mat.copy()
     if isinstance(mat, pd.DataFrame):
         mat = mat.values
@@ -98,10 +112,19 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=False, cma
     if ignore_diags:
         np.fill_diagonal(mat, 0)
     if donorm:
-        if balancing:
-            mat = LogNorm(vmin=np.nanmin(mat) if np.nanmin(mat) > 0 else 0.0001, vmax=np.nanmax(mat), clip=True)(mat).data # balanced cooler(don't know why mat+=1 failed here)
+        if range_for_balance:
+            if vmax is not None:
+                print("_plot_mat[warning]: vmax is set when input is balanced cooler matrix, try different vmax to avoid color saturation")
+            mat = LogNorm(
+                vmin=np.nanmin(mat) if np.nanmin(mat) > 0 else 0.0001,
+                vmax=np.nanmax(mat) if vmax is None else vmax,
+                clip=True
+                )(mat).data # balanced cooler(don't know why mat+=1 failed here)
         else:
-            mat = LogNorm(vmin=1, vmax=vmax, clip=True)(mat).data
+            mat = LogNorm(
+                vmin=1,
+                vmax=vmax if vmax is not None else np.nanmax(mat),
+                clip=True)(mat).data
     if fillna:
         # fillna with 0
         mat = np.nan_to_num(mat, nan=0)
@@ -125,7 +148,53 @@ def _plot_mat(orig_mat, title="", vmax=500, ignore_diags=True, donorm=False, cma
         title=title
     )
     return fig
-def plot_cool(coolp, title="", region="chr1",vmax=100, balance=False, ignore_diags=True, donorm=True, **args):
+def _get_switches(it, edge = True):
+    result = []
+    for i in range(0,len(it)):
+        if i == 0:
+            if edge:
+                result.append(i)
+            continue
+        if it[i] != it[i-1]:
+            result.append(i)
+    if edge:
+        result.append(len(it))
+    return result
+def plot_CM(cm, grid=True, **kwargs):
+    """
+    Plot contact matrix.
+    Input:
+        cm: pd.DataFrame; contact matrix.
+        grid: whether to add chrom boundaries.
+    """
+    fig = _plot_mat(cm, **kwargs)
+    if grid:
+        assert isinstance(cm.index, pd.MultiIndex), "index must be MultiIndex (level 0: chrom, level 1: pos) to add chrom boundaries"
+        for i in _get_switches(cm.index.get_level_values(0).values):
+            fig.add_shape(
+                type="line",
+                x0=i,
+                x1=i,
+                y0=0,
+                y1=cm.shape[0],
+                line=dict(
+                    color="black",
+                    width=1
+                )
+            )
+            fig.add_shape(
+                type="line",
+                x0=0,
+                x1=cm.shape[0],
+                y0=i,
+                y1=i,
+                line=dict(
+                    color="black",
+                    width=1
+                )
+            )
+    return fig
+def plot_cool(coolp, title="", region="chr1", vmax=100, balance=False, ignore_diags=True, grid=True, donorm=False, **kwargs):
     """"
     Plot heatmap of single cooler file.
     Input:
@@ -140,14 +209,14 @@ def plot_cool(coolp, title="", region="chr1",vmax=100, balance=False, ignore_dia
         norm: whether to use lognorm.
     """
     mat = cool2mat(coolp, region, balance=balance)
-    return _plot_mat(
+    return plot_CM(
         mat,
+        grid = grid,
         title = title,
         vmax = vmax,
         ignore_diags = ignore_diags,
         donorm = donorm,
-        balancing=balance,
-        **args
+        **kwargs
     )
 
 def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
