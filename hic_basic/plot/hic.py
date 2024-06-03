@@ -194,7 +194,7 @@ def plot_CM(cm, grid=True, **kwargs):
                 )
             )
     return fig
-def plot_cool(coolp, title="", region="chr1", vmax=100, balance=False, ignore_diags=True, grid=True, donorm=False, **kwargs):
+def plot_cool(coolp, title="", region="chr1", vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False, **kwargs):
     """"
     Plot heatmap of single cooler file.
     Input:
