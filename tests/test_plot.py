@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 from cooler import Cooler
-from hic_basic.plot.hic import plot_compartment, plot_cool_track, merge_track_data, _plot_mat
+from hic_basic.plot.hic import plot_compartment, plot_cool_track, merge_track_data, _plot_mat, plot_cool
 
 class TestPlot(unittest.TestCase):
     """
@@ -17,7 +17,25 @@ class TestPlot(unittest.TestCase):
     def setUp(self) -> None:
         self.outdir = Path(os.path.dirname(__file__)) / "output" / "plot"
         self.coolp = "/share/Data/ychi/raw/Bonev2017/ES.mcool::resolutions/20000"
+        self.coolp_1M = "/share/Data/ychi/raw/Bonev2017/ES.mcool::resolutions/1000000"
         self.IS = "/shareb/ychi/repo/sperm_struct/notebooks/data/mESC.20k.IS.tsv"
+    def test_plot_cool_large_scale(self):
+        """
+        Test the plot_cool_large_scale function.
+        """
+        out_png = self.outdir / "plot_cool_large_scale.png"
+        fig = plot_cool(
+            str(self.coolp_1M),
+            #region=slice(1,300),
+            region = slice(0,500),
+            title = "ES 1M 1-500 bins",
+            balance = True,
+            donorm = False,
+            zmax = 0.01,
+            zmin = 0
+        )
+        fig.write_image(str(out_png), width=800, height=800)
+        self.assertTrue(out_png.exists())
     def test_plot_cool_track(self):
         """
         Test the plot_cool_track function.
