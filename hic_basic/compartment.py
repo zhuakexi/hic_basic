@@ -189,17 +189,21 @@ def compartments(M, normalize=True, matrixonly=False):
     N /= dist_mat
     #N = N/dist_mat
     # Computation of the correlation matrice:"""
-    N = pd.DataFrame(N).corr().values # use pandas to treat NaNs
-    N[np.isnan(N)] = 0.0
+    N = pd.DataFrame(N).corr() # use pandas to treat NaNs
 
     if matrixonly:
         return N
 
     # Computation of eigen vectors:
+    N = N.dropna(axis=0, how="all")
+    N = N.dropna(axis=1, how="all")
+    N = N.fillna(0)
+    #N[np.isnan(N)] = 0.0
     (eig_val, eig_vec) = eig(N)
-    PC1 = eig_vec[:, 0]
-    PC2 = eig_vec[:, 1]
-    return PC1, PC2
+    orig_shape = pd.Series(list(range(M.shape[0])))
+    eig_vec = pd.DataFrame(eig_vec[:,:2],index=N.index,columns=["PC1","PC2"])
+    eig_vec_e = pd.concat([eig_vec,orig_shape],axis=1,join="outer").loc[orig_shape.index]
+    return eig_vec_e["PC1"], eig_vec_e["PC2"]
 def call_compartment(df:pd.DataFrame,norm:bool=True)->tuple:
     # read in contact map, retur PC1 and PC2
     n0_df = extrude_full_zero(df)
