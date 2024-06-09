@@ -85,7 +85,8 @@ class Region:
                 [(chrom,pos), (chrom,pos)]
         """
         if isinstance(region_arg, str):
-            raise NotImplementedError("Only list of tuples is supported now.")
+            chrom, pos1, pos2 = parse_ucsc_region(region_arg)
+            return [(chrom, pos1), (chrom, pos2)], [(chrom, pos1), (chrom, pos2)]
         elif isinstance(region_arg, list):
             assert len(region_arg) == 2
             chrom_df = chromosomes(genome)
@@ -96,7 +97,7 @@ class Region:
             pos2 = region_arg[1][1] if len(region_arg[1]) > 1 else chrom_df.loc[chrom2, "length"]
             return [(chrom1, pos1), (chrom2, pos2)], [(ichrom1, pos1), (ichrom2, pos2)]
         else:
-            raise NotImplementedError("Only list of tuples is supported now.")
+            raise NotImplementedError("Only list of tuples or UCSC-style region string is supported.")
     def _get_relevant_chromosomes(self):
         """
         Get relevant chromosomes for the region.
