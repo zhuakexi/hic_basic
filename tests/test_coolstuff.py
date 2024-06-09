@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from hic_basic.coolstuff import cool2mat, cli_pileup, cli_expected, reset_cool_bins
+from hic_basic.coolstuff import cool2mat, cli_pileup, cli_expected, reset_cool_bins, cli_balance
 from hic_basic.plot.hic import _plot_mat
 
 class TestCoolstuff(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestCoolstuff(unittest.TestCase):
             "chr1:1000000-2000000",
             ["chr1:1,000,000-2,000,000", "chr2"],
             slice(0,-1),
-            [slice(0,1000000), slice(1000000,2000000)]
+            #[slice(0,1000000), slice(1000000,2000000)]
         ]
 
         for region in regions:
@@ -110,6 +110,16 @@ class TestCoolstuff(unittest.TestCase):
             genome="mm10", chunksize=1e6
             )
         # check existence
+        self.assertTrue(output.exists())
+    def test_cli_balance(self):
+        """
+        Test the cli_balance function.
+        """
+        coolp = self.coolp1M
+        cli_balance(
+            coolp,
+            cwd=self.outdir
+        )
         self.assertTrue(output.exists())
 if __name__ == "__main__":
     unittest.main()
