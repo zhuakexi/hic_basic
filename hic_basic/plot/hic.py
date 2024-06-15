@@ -101,8 +101,9 @@ def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, cm
     if isinstance(mat, pd.DataFrame):
         mat = mat.values
         if isinstance(orig_mat.index, pd.MultiIndex) or isinstance(orig_mat.columns, pd.MultiIndex):
-            columns = None
-            index = None
+            # use layer 1 as index if matrix only has intra-chrom data
+            columns = orig_mat.columns.get_level_values(1) if orig_mat.columns.get_level_values(0).unique().shape[0] == 1 else None
+            index = orig_mat.index.get_level_values(1) if orig_mat.index.get_level_values(0).unique().shape[0] == 1 else None
         else:
             columns = orig_mat.columns
             index = orig_mat.index
