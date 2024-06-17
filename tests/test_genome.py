@@ -39,6 +39,18 @@ class TestRegion(unittest.TestCase):
         region = Region(input_region, binsize=100000)
         print(region.bins)
         self.assertTrue(region.bins)
+
+    def test_region_with_dip_genome(self):
+        input_region = [('chr1(mat)', 1000000), ('chr1(mat)', 2000000)]
+        region = Region(input_region, genome="GRCh38_dip")
+        print(region.r)
+        self.assertEqual(region.r, [('chr1(mat)', 1000000), ('chr1(mat)', 2000000)])
+
+    def test_region_with_dip_genome_ucsc(self):
+        input_region = "chr21(mat):34,600,000-37,100,000"
+        region = Region(input_region, genome="GRCh38_dip")
+        print(region.r)
+        self.assertEqual(region.r, [('chr21(mat)', 34600000), ('chr21(mat)', 37100000)])
 class TestParseUCSCRegion(unittest.TestCase):
     def test_valid_regions(self):
         self.assertEqual(parse_ucsc_region("chr1:1,000-2,000"), ("chr1", 1000, 2000))
