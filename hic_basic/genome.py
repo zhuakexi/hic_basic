@@ -136,6 +136,8 @@ class RegionPair:
             region_pair_arg: all usable region pair representations are supported:
                 [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]]
                     list of two regions, each region is a list of tuples
+                ["chr1:1000000-2000000", "chr2:1000000-2000000"]
+                    list of two ucsc-style region representations
         Output:
             region_pair: standard inner representation
                 [Region1, Region2]
@@ -154,5 +156,5 @@ class RegionPair:
             region_pair: standard inner representation
                 [Region1, Region2]
         """
-        assert len(region_pair_arg) == 2
+        assert len(region_pair_arg) == 2, 'Only "two regions" is supported.'
         return [Region(region_arg, genome=self.genome, binsize=self.binsize) for region_arg in region_pair_arg]
