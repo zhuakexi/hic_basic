@@ -83,18 +83,27 @@ class Region:
         Output:
             region: standard inner representation
                 [(chrom,pos), (chrom,pos)]
+            iregion: inner integer representation of region
+                use this in a int-only context
+                [(ichrom,pos), (ichrom,pos)]
         """
+        chrom_df = chromosomes(genome)
+        chrom_idict = dict(zip(chrom_df.index, range(len(chrom_df))))
         if isinstance(region_arg, str):
             chrom, pos1, pos2 = parse_ucsc_region(region_arg)
-            return [(chrom, pos1), (chrom, pos2)], [(chrom, pos1), (chrom, pos2)]
+            ichrom = chrom_idict[chrom]
+            pos1 = pos1 if pos1 is not None else 0
+            pos2 = pos2 if pos2 is not None else chromosomes(genome).loc[chrom, "length"]
+            # both string and integer representation of chroms
+            return [(chrom, pos1), (chrom, pos2)], [(ichrom, pos1), (ichrom, pos2)]
         elif isinstance(region_arg, list):
-            assert len(region_arg) == 2
-            chrom_df = chromosomes(genome)
-            chrom_idict = dict(zip(chrom_df.index, range(len(chrom_df))))
+            assert len(region_arg) == 2, 'Only "two positions" is supported. See __init__.'
             chrom1, chrom2 = region_arg[0][0], region_arg[1][0]
+            # an inner integer representation of chroms
             ichrom1, ichrom2 = chrom_idict[chrom1], chrom_idict[chrom2]
             pos1 = region_arg[0][1] if len(region_arg[0]) > 1 else 0
             pos2 = region_arg[1][1] if len(region_arg[1]) > 1 else chrom_df.loc[chrom2, "length"]
+            # both string and integer representation of chroms
             return [(chrom1, pos1), (chrom2, pos2)], [(ichrom1, pos1), (ichrom2, pos2)]
         else:
             raise NotImplementedError("Only list of tuples or UCSC-style region string is supported.")
