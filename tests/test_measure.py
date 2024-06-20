@@ -8,8 +8,9 @@ from io import StringIO
 from pathlib import Path
 
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
-from hic_basic.structure.measure import primary_views
+from hic_basic.structure.measure import primary_views, _radius_of_gyration_matrix
 from hires_utils.hires_io import parse_3dg
 def write_lr_view(_3dg_primary_views, outpng):
     pfigs = dict(zip(
@@ -50,6 +51,15 @@ class TestMeasure(unittest.TestCase):
             keep_main=True
             )
         write_lr_view(_3dg_primary_views, outpng)
+        self.assertTrue(Path(outpng).exists())
+    def test_radius_of_gyration_matrix(self):
+        _3dg_file = "/shareb/ychi/repo/sperm27/3dg_c/PD10_XD_B6J016084.clean.20k.1.3dg"
+        outpng = os.path.join(os.path.dirname(__file__), "output", "radius_of_gyration_matrix.png")
+        _3dg = parse_3dg(_3dg_file)
+        sub_3dg = _3dg.sort_index().loc[("chr6", 50_600_000):("chr6", 54_560_000),:]
+        mat = _radius_of_gyration_matrix(sub_3dg.values)
+        fig = px.imshow(mat)
+        fig.write_image(outpng)
         self.assertTrue(Path(outpng).exists())
     def test_primary_views_alot(self):
         ddir = "/share/home/ychi/dev/sperm_struct/ds_pipeline/smk/config/"
