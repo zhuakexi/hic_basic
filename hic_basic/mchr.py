@@ -12,6 +12,7 @@ from tqdm import tqdm
 from .binnify import GenomeIdeograph
 from .data import chromosomes
 from .genome import RegionPair
+from .TAD.IS import _mat_IS
 
 warnings.filterwarnings('ignore', category=FutureWarning)
 
@@ -209,6 +210,62 @@ class Mchr:
         mchr.in_disk = True
         mchr._3dg_ds_fp = _3dg_ds_fp
         return mchr
+    def multiDM(self, samples:list, region_pair:list)->xr.DataArray:
+        """
+        Compute distance matrix for each single sample.
+        NOTE: this method is not recommended for large regions.
+        A better way is to aggregate DM to 1D feature in a split-apply-combine manner.
+        Input:
+            samples: sample names to compute
+            region_pair: genome region to compute DM, can include inter-chromosome regions,
+                can cross chromosomes.
+                [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]
+            n_jobs: number of threads for parallel computing
+                if None, use a simple in-memory method
+                else, use dask
+        Output:
+            xarray DataArray, sample_name as a dimension
+        """
+        return self._calc_DM(
+            samples,
+            region_pair,
+            proximity = None,
+            multi = True,
+            n_jobs = None
+        )
+    def IS(self, samples:list, region_pair:list, w:int)->pd.DataFrame:
+        """
+        Compute insulation score for each sample.
+        NOTE: this method is not recommended for large regions.
+            Will be replaced by a more efficient method.
+        Input:
+            samples: sample names to compute
+            region_pair: genome region to compute IS, can only use intra-chromosome regions here
+            w: window size
+        Output:
+            IS: insulation score, index is 2-level multiindex
+            (chrom, start), columns are sample names
+        """
+        if samples is None:
+            samples = self.samples.to_series().values.tolist()
+        print("Computing distance matrix...")
+        dms = self.multiDM(samples, region_pair)
+        print("Computing insulation score...")
+        IS_list = []
+        for sample in tqdm(samples,desc="samples",total=len(samples)):
+            long_df = dms["3dg"].sel(sample_name = sample).to_dataframe()
+            long_df = long_df["3dg"].reset_index()
+            df = long_df.pivot(
+                index=["chrom1","start1"],
+                columns=["chrom2","start2"],
+                values="3dg"
+                )
+            df = df.sort_index().sort_index(axis=1)
+            # transform distance matrix to 1 / (1 + distance)
+            IS_v, counts = _mat_IS(1 / (1+df.values), w)
+            IS_list.append(pd.Series(IS_v,index=df.index,name=sample))
+        IS_df = pd.concat(IS_list,axis=1)
+        return IS_df 
     def DM(self, samples:list, region_pair:list, min_samples=None, n_jobs=None)->pd.DataFrame:
         """
         Compute distance matrix.
@@ -257,7 +314,7 @@ class Mchr:
             min_samples = min_samples,
             n_jobs = n_jobs
         )
-    def _calc_DM(self, samples:list, region_pair:list, proximity=None, min_samples=None, n_jobs=None)->pd.DataFrame:
+    def _calc_DM(self, samples:list, region_pair:list, proximity=None, min_samples=None, multi=False, n_jobs=None)->pd.DataFrame:
         """
         Compute distance matrix.
         Input:
@@ -267,12 +324,14 @@ class Mchr:
                 [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]
             proximity: if not None, calculate proximity instead of distance
                 count pixels within proximity
+            multi: if True, return distance matrix for each sample as a DataArray
             n_jobs: number of threads for parallel computing
                 if None, use a simple in-memory method
                 else, use dask
         Output:
-            DM: distance matrix, index and columns are 2-level multiindex
-            (chrom, start)
+            DM:
+                if multi is False, return distance matrix, index and columns are 2-level multiindex (chrom, start)
+                else, return distance matrix for each sample as a DataArray
         """
         if samples is None:
             samples = self.samples
@@ -324,6 +383,8 @@ class Mchr:
                 ds2 = ds2.rename({"gpos2":"region2"}).sel(region2 = region2.bins)
                 diff = ds1 - ds2
                 dis_mat = np.sqrt((diff**2).sum(dim="features",skipna=False))
+                if multi:
+                    return dis_mat
                 if proximity is not None:
                     mean_dis_mat = (dis_mat < proximity).sum(dim="sample_name",skipna=True)
                     # mean_dis_mat = mean_dis_mat / cov
