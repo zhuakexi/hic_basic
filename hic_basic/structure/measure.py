@@ -221,6 +221,30 @@ def _3dg_volume(_3dg, method="convex_hull", **args):
     mesh = _3dg2mesh(_3dg, method, watertight=True, **args)
     mesh = _keep_largest_mesh(mesh)
     return mesh.get_volume()
+def _radius_of_gyration(xyz):
+    """
+    Compute radius of gyration of a set of points.
+    Input:
+        xyz: (N, 3) array
+    Output:
+        radius of gyration
+    """
+    xyz = xyz - xyz.mean(axis=0)
+    return np.sqrt((xyz**2).sum(axis=1).mean())
+def _radius_of_gyration_matrix(xyz):
+    """
+    Compute pairwise radius of gyration matrix of a set of points.
+    Input:
+        xyz: (N, 3) array
+    Output:
+        (N, N) array
+    """
+    N = xyz.shape[0]
+    rg = np.zeros((N, N))
+    for i in range(N):
+        for j in range(i, N):
+            rg[i, j] = rg[j, i] = _radius_of_gyration(xyz[i:j+1])
+    return rg
 def _3dg_radius_of_gyration(_3dg):
     """
     Compute radius of gyration of 3dg data structure.
