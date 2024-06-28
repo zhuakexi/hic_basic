@@ -140,6 +140,7 @@ class Mchr:
             flavor: flavor of bins of .3dg file, see GenomeIdeograph.bins
         """
         assert genome is not None, "Genome must be specified."
+        assert binsize is not None, "Binsize must be specified."
         self._3dg_files = _3dg_files
         self.samples = samples
         self.genome = genome
