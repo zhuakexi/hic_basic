@@ -662,7 +662,7 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=
     )
     return figure
 def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=False, balance=False, mask_eig_na=True,
-    give_mat=False, quant=0.005, minmax="min", eq_hist=False, **args):
+    give_mat=False, quant=0.005, minmax="min", cmap="RdBu_r", eq_hist=False, **args):
     """
     Plot distance-normalized Hi-C correlation matrix with compartment track.
     Input:
@@ -697,7 +697,8 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
         matrixonly = True
     )
     pos = clr.bins()[bin_s:bin_e]["start"]
-    region_mat = pd.DataFrame(region_mat, index=pos, columns=pos)
+    #return region_mat, pos
+    region_mat = pd.DataFrame(region_mat.values, index=pos, columns=pos)
     if strip:
         # strip consecutive 0s on left or right side
         for i in range(region_mat.shape[0]):
@@ -720,7 +721,8 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
         row_heights = [10,2],
         column_widths = [2,10]
     )
-    # add eigen value 1
+
+    # --- add eigen value 1 --- #
     dat = pd.merge(
         left = clr.bins()[bin_s:bin_e],
         right = eig,
@@ -741,7 +743,8 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
     )
     for trace in eigs_fig.data:
         figure.add_trace(trace, row=1, col=1)
-    # add eigen value 2
+    eig_dat1 = dat.copy()
+    # --- add eigen value 2 --- #
     dat = pd.merge(
         left = clr.bins()[bin_s:bin_e],
         right = eig,
@@ -783,8 +786,8 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
             :,
             eigen_na_mask
         ] = np.nan
-    # add heatmap
-    mat_fig = _plot_mat(region_mat,cmap="RdBu_r",donorm=False, **args)
+    # --- add heatmap --- #
+    mat_fig = _plot_mat(region_mat,cmap=cmap,donorm=False, **args)
     figure.add_trace(
         mat_fig.data[0],
         row=1,
@@ -797,17 +800,28 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
         dat = dat[~np.isnan(dat)]
         right = np.quantile(dat, 1-quant)
         left = np.quantile(dat, quant)
-        if minmax == "min":
-            bright_extent = min(abs(right), abs(left))
-        elif minmax == "max":
-            bright_extent = max(abs(right), abs(left))
+        if minmax in ["min","max"]:
+            # make sure the bright extent is symmetric around 0
+            if minmax == "min":
+                bright_extent = min(abs(right), abs(left))
+            elif minmax == "max":
+                bright_extent = max(abs(right), abs(left))
+            else:
+                raise ValueError("This should not happen")
+            figure.update_traces(
+                selector=dict(type="heatmap"),
+                zmin = -bright_extent,
+                zmax = bright_extent
+            )
+        elif minmax is None:
+            bright_extent = (left, right)
+            figure.update_traces(
+                selector=dict(type="heatmap"),
+                zmin = left,
+                zmax = right
+            )
         else:
-            raise ValueError("minmax must be min or max")
-        figure.update_traces(
-            selector=dict(type="heatmap"),
-            zmin = -bright_extent,
-            zmax = bright_extent
-        )
+            raise ValueError("minmax must be min, max or None")
     else:
         figure.update_traces(
             selector=dict(type="heatmap"),
@@ -858,7 +872,7 @@ def plot_compartment(coolp, eigs_file, region, title, eigen_col="E1", strip=Fals
         title = title
     )
     if give_mat:
-        return figure, region_mat
+        return figure, region_mat, bright_extent, eig_dat2
     else:
         return figure
 def plot_saddle_mpl(file, title, vmin=10**(-1),vmax=10**1):
