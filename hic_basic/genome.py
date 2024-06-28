@@ -110,6 +110,9 @@ class Region:
     def _get_relevant_chromosomes(self):
         """
         Get relevant chromosomes for the region.
+        NOTE: will give wrong results for diploid genomes, "chr1(mat):chr2(mat) will give 
+            "chr1(mat),chr1(pat),chr2(mat),chr2(pat)" this is not correct.
+        TODO: add dip support
         Input:
             genome: genome name
         Output:
