@@ -541,28 +541,70 @@ def cli_downsample(coolp, output, count=100e6, cis_count=None, fraction=None, th
     except subprocess.CalledProcessError as e:
         print(e.output)
         return None
-def cli_balance(coolp, threads=8, force=False, name="weight", cis_only=False, trans_only=False, conda_env=None, cwd=None):
+def cli_balance(coolp, threads=8, force=False, name="weight", cis_only=False, trans_only=False,
+    min_nnz=None, min_count=None, mad_max=None, conda_env=None, cwd=None):
+    """
+    Balance a cooler matrix.
+    Input:
+        coolp: cooler file path
+        threads: number of threads
+        force: whether to overwrite existing balanced matrix
+        name: name of the balanced matrix
+        cis_only: balance only cis contacts
+        trans_only: balance only trans contacts
+        min_nnz: minimum number of non-zero contacts
+        min_count: minimum number of contacts
+        mad_max: mad_max filter, lower values are more stringent
+            NOTE: this dominates all other filtering options
+        conda_env: conda environment to run in
+        cwd: working directory
+    Output:
+        True if successful, False otherwise
+    """
     assert not (cis_only and trans_only)
+    if not force:
+        clr = cooler.Cooler(str(coolp))
+        if name in clr.bins().columns:
+            print(f"Balanced matrix '{name}' already exists. Skipping execution.")
+            return True
+
     if conda_env is None:
         conda_run = ""
     else:
         conda_run = f"conda run -n {conda_env}"
-    if force:
-        force = "--force"
-    else:
-        force = ""
+    force = "--force" if force else ""
     cis_only = "--cis-only" if cis_only else ""
     trans_only = "--trans-only" if trans_only else ""
-    cmd = f"{conda_run} cooler balance {force} {cis_only} {trans_only} --name {name} --nproc {threads} {coolp}"
+    min_nnz = f"--min-nnz {min_nnz}" if min_nnz is not None else ""
+    min_count = f"--min-count {min_count}" if min_count is not None else ""
+    mad_max = f"--mad-max {mad_max}" if mad_max is not None else ""
+    cmd = f"{conda_run} cooler balance {force} {cis_only} {trans_only} {min_nnz} {min_count} {mad_max} --name {name} --nproc {threads} {coolp}"
+    
     try:
-        subprocess.check_output(
+        # Use Popen to execute the command
+        with subprocess.Popen(
             cmd,
             shell=True,
-            cwd = cwd
-        )
-        return True
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=cwd,
+            preexec_fn=os.setsid  # Allows sending signal to the process group
+        ) as process:
+            try:
+                # Wait for the process to complete
+                stdout, stderr = process.communicate()
+            except KeyboardInterrupt:
+                # Send SIGINT to the process group to ensure all child processes are killed
+                os.killpg(os.getpgid(process.pid), signal.SIGINT)
+                process.kill()
+                print("Process was terminated due to KeyboardInterrupt")
+                raise
+            if process.returncode != 0:
+                print(stderr.decode())
+                raise subprocess.CalledProcessError(process.returncode, cmd, output=stdout, stderr=stderr)
+            return True
     except subprocess.CalledProcessError as e:
-        print(e.output)
+        print(e.stderr.decode())
         return False
 def cli_zoomify(coolp, output, resolutions=[20000,40000,100000,500000,1000000], force=False, threads=8, conda_env=None, cwd=None):
     conda_run = f"conda run -n {conda_env}" if conda_env else ""
