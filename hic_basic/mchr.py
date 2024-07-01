@@ -1,5 +1,6 @@
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import reduce
 from pathlib import Path
 
 import numpy as np
@@ -7,11 +8,13 @@ import pandas as pd
 import xarray as xr
 from dask.distributed import LocalCluster, Client
 from hires_utils.hires_io import parse_3dg
+from scipy.stats import mannwhitneyu
 from tqdm import tqdm
 
 from .binnify import GenomeIdeograph
 from .data import chromosomes
 from .genome import RegionPair
+from .DI import multiple_testing_correction
 from .TAD.IS import _mat_IS
 
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -315,6 +318,112 @@ class Mchr:
             min_samples = min_samples,
             n_jobs = n_jobs
         )
+    def DI(self, groupA_samples, groupB_samples, max_linear_dist=2_000_000, max_3d_dist=5, fdrcut=0.05, n_jobs=None)->pd.DataFrame:
+        """
+        Simplediff method to compute differential interactions.
+        Input:
+            groupA_samples: sample names of group A
+            groupB_samples: sample names of group B
+            max_linear_dist: max linear distance to consider
+            max_3d_dist: max 3D distance to consider, if any of groupA and groupB have mean distance
+                larger than this value in pixel, this pixel will be filtered out
+            fdrcut: FDR cutoff, if None, no multiple testing correction and will give all valid pixels
+                if set, only pixels with FDR < fdrcut will be returned
+            n_jobs: number of threads for parallel computing
+        Output:
+            DI: differential interactions, index and columns are 3-level multiindex
+            (chrom, start1, start2)
+        """
+        binsize = self.binsize
+        with LocalCluster(n_workers=n_jobs, threads_per_worker=1, memory_limit="2GB") as cluster, Client(cluster) as client:
+            print("Computing differential interactions, dashboard available at", client.dashboard_link)
+            with xr.open_dataset(
+                self._3dg_ds_fp,
+                chunks={"chrom":1,"start":100}
+                ) as ds:
+                ds = ds["3dg"]
+                # number of bands
+                bandN = max_linear_dist // binsize
+
+                # --- transform from 1D:start to 2D:start*band --- #
+                index1 = ds.coords["start"] + xr.DataArray(np.zeros(bandN, dtype=int), dims="band")
+                index2 = ds.coords["start"] + xr.DataArray(np.arange(binsize, max_linear_dist+binsize, binsize), dims="band")
+                index2 = xr.where(index2 >= ds.coords["start"].max(), ds.coords["start"].max(), index2)
+                selected1 = ds.sel(start=index1) # start1 chunk ruined here
+                selected2 = ds.sel(start=index2)
+                selected1 = selected1.drop_vars("start").assign_coords(
+                    band=("band", np.arange(bandN)),
+                    start=("start", ds.coords["start"].values)
+                )
+                selected2 = selected2.drop_vars("start").assign_coords(
+                    band=("band", np.arange(bandN)),
+                    start=("start", ds.coords["start"].values)
+                )
+
+                # --- prepare distance for each pixel --- #
+                distance = np.sqrt(((selected1 - selected2)**2).sum(dim="features",skipna=False))
+                # filter out pixels with mean distance (of any group) larger than max_3d_dist
+                keeps = [
+                    distance.sel(sample_name=group_samples).mean(dim="sample_name") < max_3d_dist
+                    for group_samples in [groupA_samples, groupB_samples]
+                ]
+                keep = reduce(lambda x, y: x | y, keeps)
+                distance = distance.where(keep)
+                # mask out some tail pixels that do not have corresponding band pairs
+                for i in range(bandN):
+                    idx = ds.coords["start"].max().values - i*binsize
+                    idy_start = i
+                    distance.loc[dict(start=idx, band=slice(idy_start, None))] = np.nan
+
+                # --- band-wise zscore and Mann-Whitney U test --- #
+                band_zscore = (distance - distance.mean(dim="start", skipna=True)) / distance.std(dim="start", skipna=True)
+                # set pixels that have no data in any group, otherwise Mann-Whitney U test will raise error
+                groupA_fullna_mask = (~band_zscore.sel(sample_name=groupA_samples).isnull()).sum(dim="sample_name") == 0
+                groupB_fullna_mask = (~band_zscore.sel(sample_name=groupB_samples).isnull()).sum(dim="sample_name") == 0
+                group_fullna_mask = groupA_fullna_mask | groupB_fullna_mask
+                band_zscore = band_zscore.where(~group_fullna_mask, 0)
+                # calculate A, B, diff
+                groupA_dist = band_zscore.sel(sample_name=groupA_samples)
+                groupB_dist = band_zscore.sel(sample_name=groupB_samples)
+                A = groupA_dist.mean(dim="sample_name", skipna=True)
+                B = groupB_dist.mean(dim="sample_name", skipna=True)
+                diff = A - B
+                # do Mann-Whitney U test
+                U, p = xr.apply_ufunc(
+                    mannwhitneyu,
+                    groupA_dist.drop_indexes("sample_name"), groupB_dist.drop_indexes("sample_name"),
+                    input_core_dims=[["sample_name"],["sample_name"]],
+                    output_core_dims=[[],[]],
+                    exclude_dims=set(("sample_name",)),
+                    vectorize=True,
+                    dask="parallelized",
+                    output_dtypes=[float, float],
+                    kwargs={"alternative":"two-sided","use_continuity":False,"nan_policy":"omit","axis":-1}
+                    )
+                # mask out pixels that have no data in any group
+                p = p.where(~group_fullna_mask, np.nan)
+                # concat p, A, B, diff
+                p_e = xr.concat([p, A, B, diff], pd.Index(["p", "A", "B", "diff"], name="stat"))
+                # launch computation
+                print("Computing p-values...")
+                p_e_res = p_e.compute()
+
+                # --- tidy up and multiple testing correction in pandas --- #
+                print("Tidying up result...")
+                p_e_df = p_e_res.to_dataframe().reset_index()
+                # ["stat","chrom","start","band","3dg"]
+                p_e_df.columns = ["stat","chrom","start1","band","value"]
+                p_e_df = pd.merge(p_e_df, chromosomes(self.genome), left_on="chrom", right_index=True, how="left")
+                # ["chrom", "start1", "band", "p", "length"]
+                p_e_df["start2"] = p_e_df.eval("start1 + (band + 1)* @binsize")
+                p_e_df = p_e_df.query('start2 < length')
+                p_e_df = p_e_df.pivot_table(index=["chrom","start1","start2"], columns="stat", values="value")
+                if fdrcut is not None:
+                    p_e_df["FDR"] = multiple_testing_correction(p_e_df["p"])
+                    DI = p_e_df.query('FDR < 0.05')
+                else:
+                    DI = p_e_df
+                return DI
     def _calc_DM(self, samples:list, region_pair:list, proximity=None, min_samples=None, multi=False, n_jobs=None)->pd.DataFrame:
         """
         Compute distance matrix.
