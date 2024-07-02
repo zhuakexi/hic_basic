@@ -14,11 +14,48 @@ from tqdm import tqdm
 from .binnify import GenomeIdeograph
 from .data import chromosomes
 from .genome import RegionPair
-from .DI import multiple_testing_correction
 from .TAD.IS import _mat_IS
 
 warnings.filterwarnings('ignore', category=FutureWarning)
 
+def multiple_testing_correction(pvalues, correction_type="FDR"):
+    """
+    Consistent with R - print
+    correct_pvalues_for_multiple_testing([0.0, 0.01, 0.029, 0.03, 0.031, 0.05,
+                                          0.069, 0.07, 0.071, 0.09, 0.1])
+    from https://github.com/CoBiG2/cobig_misc_scripts/blob/master/FDR.py
+    """
+    from numpy import array, empty
+    pvalues = array(pvalues)
+    sample_size = pvalues.shape[0]
+    qvalues = empty(sample_size)
+    if correction_type == "Bonferroni":
+        # Bonferroni correction
+        qvalues = sample_size * pvalues
+    elif correction_type == "Bonferroni-Holm":
+        # Bonferroni-Holm correction
+        values = [(pvalue, i) for i, pvalue in enumerate(pvalues)]
+        values.sort()
+        for rank, vals in enumerate(values):
+            pvalue, i = vals
+            qvalues[i] = (sample_size-rank) * pvalue
+    elif correction_type == "FDR":
+        # Benjamini-Hochberg, AKA - FDR test
+        values = [(pvalue, i) for i, pvalue in enumerate(pvalues)]
+        values.sort()
+        values.reverse()
+        new_values = []
+        for i, vals in enumerate(values):
+            rank = sample_size - i
+            pvalue, index = vals
+            new_values.append((sample_size/rank) * pvalue)
+        for i in range(0, int(sample_size)-1):
+            if new_values[i] < new_values[i+1]:
+                new_values[i+1] = new_values[i]
+        for i, vals in enumerate(values):
+            pvalue, index = vals
+            qvalues[index] = new_values[i]
+    return qvalues
 def _3dg_to_xr(_3dg_file, sample, genome=None, binsize=20000, flavor="hickit"):
     """
     Convert a .3dg file to xarray dataset.
@@ -318,7 +355,7 @@ class Mchr:
             min_samples = min_samples,
             n_jobs = n_jobs
         )
-    def DI(self, groupA_samples, groupB_samples, max_linear_dist=2_000_000, max_3d_dist=5, fdrcut=0.05, n_jobs=None)->pd.DataFrame:
+    def DI(self, groupA_samples, groupB_samples, max_linear_dist=2_000_000, max_3d_dist=5, fdrcut=0.05, n_jobs=None, mem=4)->pd.DataFrame:
         """
         Simplediff method to compute differential interactions.
         Input:
@@ -330,16 +367,17 @@ class Mchr:
             fdrcut: FDR cutoff, if None, no multiple testing correction and will give all valid pixels
                 if set, only pixels with FDR < fdrcut will be returned
             n_jobs: number of threads for parallel computing
+            mem: memory limit for each worker(GB)
         Output:
             DI: differential interactions, index and columns are 3-level multiindex
             (chrom, start1, start2)
         """
         binsize = self.binsize
-        with LocalCluster(n_workers=n_jobs, threads_per_worker=1, memory_limit="2GB") as cluster, Client(cluster) as client:
+        with LocalCluster(n_workers=n_jobs, threads_per_worker=1, memory_limit=f"{mem}GB") as cluster, Client(cluster) as client:
             print("Computing differential interactions, dashboard available at", client.dashboard_link)
             with xr.open_dataset(
                 self._3dg_ds_fp,
-                chunks={"chrom":1,"start":100}
+                chunks={"chrom":1}
                 ) as ds:
                 ds = ds["3dg"]
                 # number of bands
@@ -354,11 +392,11 @@ class Mchr:
                 selected1 = selected1.drop_vars("start").assign_coords(
                     band=("band", np.arange(bandN)),
                     start=("start", ds.coords["start"].values)
-                )
+                ).chunk({"band":1})
                 selected2 = selected2.drop_vars("start").assign_coords(
                     band=("band", np.arange(bandN)),
                     start=("start", ds.coords["start"].values)
-                )
+                ).chunk({"band":1})
 
                 # --- prepare distance for each pixel --- #
                 distance = np.sqrt(((selected1 - selected2)**2).sum(dim="features",skipna=False))
