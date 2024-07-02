@@ -94,13 +94,14 @@ def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dupref=False,dropXY=
             smooth_color_data = {k:v for k,v in smooth_color_data.items()
                                  if k[0] not in ["chrX","chrY","chrX(mat)","chrX(pat)","chrY(mat)","chrY(pat)"]}
     return smooth_color_data
-def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12, dupref=True)->pd.DataFrame:
+def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, rank_norm=False, n_jobs=12, dupref=True)->pd.DataFrame:
     """
     Calculate intermingling metrics for each particle in 3dg file.
     Input:
         _3dg: dataframe, result of hic_basic.hicio parse_3dg
         color_file: reference linear CpG density
         min_dist: int, minimum distance to be considered as neighbor
+        rank_norm: bool, whether to rank normalize output
         n_jobs: int, number of jobs to run in parallel
     Output:
         dataframe with same index, and a scAB column
@@ -204,6 +205,8 @@ def s_color2(_3dg:pd.DataFrame, color_file, min_dist=3, n_jobs=12, dupref=True)-
     del _3dg_e
     # --- calculate meaningful metrics ---
     CpG_count_table["scAB"] = CpG_count_table["CpG_sum"] / CpG_count_table["n_neighbors"]
+    if rank_norm:
+        CpG_count_table["scAB"] = (CpG_count_table["scAB"].rank()-1)/CpG_count_table.shape[0]
     return CpG_count_table
 def stack_dict(ares, sample_name:None, col_thresh=0.9, row_thresh=0.9):
     """
