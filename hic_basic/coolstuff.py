@@ -542,7 +542,7 @@ def cli_downsample(coolp, output, count=100e6, cis_count=None, fraction=None, th
         print(e.output)
         return None
 def cli_balance(coolp, threads=8, force=False, name="weight", cis_only=False, trans_only=False,
-    min_nnz=None, min_count=None, mad_max=None, conda_env=None, cwd=None):
+    min_nnz=None, min_count=None, mad_max=None, ignore_diags=None, conda_env=None, cwd=None):
     """
     Balance a cooler matrix.
     Input:
@@ -578,7 +578,8 @@ def cli_balance(coolp, threads=8, force=False, name="weight", cis_only=False, tr
     min_nnz = f"--min-nnz {min_nnz}" if min_nnz is not None else ""
     min_count = f"--min-count {min_count}" if min_count is not None else ""
     mad_max = f"--mad-max {mad_max}" if mad_max is not None else ""
-    cmd = f"{conda_run} cooler balance {force} {cis_only} {trans_only} {min_nnz} {min_count} {mad_max} --name {name} --nproc {threads} {coolp}"
+    ignore_diags = f"--ignore-diags {ignore_diags}" if ignore_diags is not None else ""
+    cmd = f"{conda_run} cooler balance {force} {cis_only} {trans_only} {min_nnz} {min_count} {mad_max} {ignore_diags} --name {name} --nproc {threads} {coolp}"
     
     try:
         # Use Popen to execute the command
@@ -709,7 +710,7 @@ def cli_pileup(coolp, feature, output, format="BED", view=None, expected=None, f
             cwd = cwd
         )
     return output
-def cli_expected(coolp, output, balanced=False, view=None, conda_env=None, cwd=None, threads=8, force=False):
+def cli_expected(coolp, output, balanced=False, view=None, ignore_diags=1, conda_env=None, cwd=None, threads=8, force=False):
     output_path = Path(output)
 
     if not force and output_path.exists():
@@ -718,8 +719,12 @@ def cli_expected(coolp, output, balanced=False, view=None, conda_env=None, cwd=N
 
     conda_run = f"conda run -n {conda_env}" if conda_env else ""
     view_option = f"--view {view}" if view else ""
+    if ignore_diags is None:
+        ignore_diags = f"--ignore-diags 1" if balanced else ""
+    else:
+        ignore_diags = f"--ignore-diags {ignore_diags}"
     if not balanced:
-        cmd = f'{conda_run} cooltools expected-cis -p {threads} --ignore-diags 1 --clr-weight-name "" -o {output} {view_option} {coolp}'
+        cmd = f'{conda_run} cooltools expected-cis -p {threads} {ignore_diags} --clr-weight-name "" -o {output} {view_option} {coolp}'
     else:
         cmd = f"{conda_run} cooltools expected-cis -p {threads} -o {output} {view_option} {coolp}"
     print(cmd)
