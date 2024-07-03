@@ -355,7 +355,8 @@ class Mchr:
             min_samples = min_samples,
             n_jobs = n_jobs
         )
-    def DI(self, groupA_samples, groupB_samples, max_linear_dist=2_000_000, max_3d_dist=5, fdrcut=0.05, n_jobs=None, mem=4)->pd.DataFrame:
+    def DI(self, groupA_samples, groupB_samples, max_linear_dist=2_000_000, max_3d_dist=5, fdrcut=0.05,
+        chrom_blacklist:list=["chrX","chrY"], n_jobs=None, mem:int=4)->pd.DataFrame:
         """
         Simplediff method to compute differential interactions.
         Input:
@@ -366,6 +367,7 @@ class Mchr:
                 larger than this value in pixel, this pixel will be filtered out
             fdrcut: FDR cutoff, if None, no multiple testing correction and will give all valid pixels
                 if set, only pixels with FDR < fdrcut will be returned
+            chrom_blacklist: chromosomes to exclude
             n_jobs: number of threads for parallel computing
             mem: memory limit for each worker(GB)
         Output:
@@ -373,6 +375,10 @@ class Mchr:
             (chrom, start1, start2)
         """
         binsize = self.binsize
+        if len(chrom_blacklist) > 0:
+            print("Chromosomes to exclude:", chrom_blacklist)
+        chrom_for_DI = chromosomes(self.genome).index.tolist()
+        chrom_for_DI = [chrom for chrom in chrom_for_DI if chrom not in chrom_blacklist]
         with LocalCluster(n_workers=n_jobs, threads_per_worker=1, memory_limit=f"{mem}GB") as cluster, Client(cluster) as client:
             print("Computing differential interactions, dashboard available at", client.dashboard_link)
             with xr.open_dataset(
@@ -397,6 +403,9 @@ class Mchr:
                     band=("band", np.arange(bandN)),
                     start=("start", ds.coords["start"].values)
                 ).chunk({"band":1})
+                # filter out chromosomes
+                selected1 = selected1.sel(chrom=chrom_for_DI)
+                selected2 = selected2.sel(chrom=chrom_for_DI)
 
                 # --- prepare distance for each pixel --- #
                 distance = np.sqrt(((selected1 - selected2)**2).sum(dim="features",skipna=False))
