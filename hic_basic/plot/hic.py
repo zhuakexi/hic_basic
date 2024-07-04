@@ -77,7 +77,7 @@ num_colors = 256
 colors = [fruitpunch(i) for i in range(num_colors)]
 fruitpunch = ['rgb({},{},{})'.format(int(c[0]*255), int(c[1]*255), int(c[2]*255)) for c in colors]
 fruitpunch_r = fruitpunch[::-1]
-def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, cmap="fall", range_for_balance=False, fillna=False, **args):
+def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, range_for_balance=False, fillna=False, **kwargs):
     """
     Plot matrix heatmap.
     Input:
@@ -88,7 +88,6 @@ def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, cm
             When vmax is set, also set zmax in args to suit the color range.
         ignore_diags: whether to ignore the diagonal.
         donorm: whether to use lognorm.
-        cmap: color map.
         range_for_balance: whether to use a special lognorm range suitable for balanced matrix.
             Do this only when you are sure the input is a balanced cooler matrix and you want to lognorm it.
         fillna: whether to fill nan with 0.
@@ -130,19 +129,23 @@ def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, cm
         # fillna with 0
         mat = np.nan_to_num(mat, nan=0)
     fig = go.Figure()
-    # default_args = dict(
-    #     zmax = vmax,
-    # )
-    # default_args.update(args)
+    # default kwargs for go.Heatmap
+    default_kwargs = dict(
+        colorscale = fall, # don't know why log_fall failed here
+        showscale = False,
+    )
+    if "cmap" in kwargs:
+        colorscale = kwargs.pop("cmap")
+        if colorscale == "fall":
+            colorscale = fall
+        kwargs["colorscale"] = colorscale
+    kwargs = {**default_kwargs, **kwargs}
     fig.add_trace(
         go.Heatmap(
             z = mat,
             x = columns,
             y = index,
-            colorscale=fall if cmap=="fall" else cmap, # don't know why log_fall failed here
-            showscale=False,
-            #**default_args
-            **args
+            **kwargs
         )
     )
     fig.update_layout(
