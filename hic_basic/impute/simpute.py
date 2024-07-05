@@ -39,10 +39,10 @@ def boolean_radius_neighbor(df, min_dist=3, n_jobs=4, pixels=True):
         graph = radius_neighbors_graph(
             xyz.values,
             min_dist,
-            mode = "distance",
+            mode = "connectivity",
             metric = "minkowski",
             p = 2,
-            include_self = False,
+            include_self = True,
             n_jobs=n_jobs)
         graph = triu(graph)
         # --- transform to pixels ---
@@ -61,10 +61,10 @@ def boolean_radius_neighbor(df, min_dist=3, n_jobs=4, pixels=True):
         graph = radius_neighbors_graph(
             df.values,
             min_dist,
-            mode = "distance",
+            mode = "connectivity",
             metric = "minkowski",
             p = 2,
-            include_self = False,
+            include_self = True,
             n_jobs=n_jobs)
         return triu(graph)
 # def cis_proximity_graph(_3dg_path, fo, min_dist=3, genome="mm10", binsize=20000, n_jobs=4):
