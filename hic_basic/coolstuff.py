@@ -726,7 +726,7 @@ def cli_expected(coolp, output, balanced=False, view=None, ignore_diags=1, conda
     if not balanced:
         cmd = f'{conda_run} cooltools expected-cis -p {threads} {ignore_diags} --clr-weight-name "" -o {output} {view_option} {coolp}'
     else:
-        cmd = f"{conda_run} cooltools expected-cis -p {threads} -o {output} {view_option} {coolp}"
+        cmd = f"{conda_run} cooltools expected-cis -p {threads} {ignore_diags} -o {output} {view_option} {coolp}"
     print(cmd)
     subprocess.run(cmd, shell=True, cwd=cwd)
     return output
