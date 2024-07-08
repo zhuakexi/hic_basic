@@ -3,6 +3,7 @@ from copy import deepcopy
 import open3d as o3d
 import numpy as np
 import pandas as pd
+from ..data import fetch_cent_chromlen
 from .utils import space_grid
 def parallel_light(plate, direction):
     """
@@ -270,3 +271,115 @@ def _3dg_chrom_radius_of_gyration(_3dg):
             lambda x:_3dg_radius_of_gyration(_3dg.loc[x]),
             chroms)),
         index=chroms)
+def append_centelo_to_index(df, genome="mm10", dis=2e6, p=False, q=True):
+    """
+    Append centromere and telomere information to the index.
+    Input:
+        df: inner _3dg data structure (see parse_3dg in hires_utils)
+        genome: genome name, use this to determine centromere and telomere positions
+        dis: distance to centromere/telomere
+        p: whether to include p arm
+            For acrocentric chromosomes, set p to False
+        q: whether to include q arm
+    Output:
+        dat: data structure with centromere and telomere information
+    """
+    dat = df.assign(centelo="Other")
+    centelo = fetch_cent_chromlen(genome)
+    for chrom in dat.index.get_level_values(0).unique():
+        cent_start, cent_end = centelo.loc[chrom, ["start","end"]]
+        # arm1 paracentric
+        if p:
+            dat.loc[(chrom, cent_start-dis):(chrom, cent_start), "centelo"] = "Cent1"
+        else:
+            pass
+        if q:
+            # arm2 paracentric
+            dat.loc[(chrom, cent_end):(chrom, cent_end+dis), "centelo"] = "Cent2"
+        else:
+            pass
+
+        start, end = 0, centelo.loc[chrom, "chrom_length"]
+        # arm1 near telomere
+        if p:
+            dat.loc[(chrom, start):(chrom, start+dis), "centelo"] = "Telo1"
+        else:
+            pass
+        # arm2 near telomere
+        if q:
+            dat.loc[(chrom, end-dis):(chrom, end), "centelo"] = "Telo2"
+        else:
+            pass
+    dat = dat.set_index("centelo", append=True)
+    return dat
+def C2T_diff(chunk):
+    """
+    Compute the difference between centromere and telomere.
+    Use this to treat various centromere and telomere circumstances.
+    """
+    chrom = chunk.index.get_level_values(0).unique()
+    if len(chrom) > 1:
+        raise ValueError("Chunk contains multiple chromosomes")
+    chrom = chrom[0]
+    centelo = chunk.index.get_level_values(1)
+    diffs = {}
+    if ("Cent1" in centelo) and ("Telo1" in centelo):
+        diffs["C2T_diff1"] = chunk.loc[chrom, "Cent1"] - chunk.loc[(chrom, "Telo1")]
+    if ("Cent2" in centelo) and ("Telo2" in centelo):
+        diffs["C2T_diff2"] = chunk.loc[chrom, "Cent2"] - chunk.loc[(chrom, "Telo2")]
+    if len(diffs) == 0:
+        diffs["C2T_diff"] = pd.Series(pd.NA, index=chunk.columns)
+    res = pd.concat(diffs, axis=1).T
+    res.index = pd.MultiIndex.from_product(
+        [[chrom], res.index]
+    )
+    return res
+def cent2telo_vector(_3dg, genome="mm10", dis=2e6, p=False, q=True, show_chroms=False):
+    """
+    Compute the C2T vector.
+    Input:
+        _3dg: inner _3dg data structure (see parse_3dg in hires_utils)
+        genome: genome name, use this to determine centromere and telomere positions
+        dis: distance to centromere/telomere
+        p: whether to include p arm
+            For acrocentric chromosomes, set p to False
+        q: whether to include q arm
+        show_chroms: whether to return chromosomal C2T vectors
+    Output:
+        if show_chroms:
+            dataframe of chromosomal C2T vectors
+        else:
+            normed_c2t_L: float of normalized C2T vector length
+                normally in the range of 0.00x
+    Usage:
+        _3dg = parse_3dg(
+            _3dg_path
+        )
+        c2t_vec = cent2telo_vector(_3dg, genome="mm10", dis=2e6, p=False, q=True)
+    """
+    c2t_vector = append_centelo_to_index(
+        _3dg,
+        genome,
+        dis=dis,
+        p=p, q=q
+        ).groupby(# chrom, centelo
+            level=[0,2], observed=True
+        ).mean()
+    res = []
+    for group, chunk in c2t_vector.groupby(
+        level = 0, observed=True
+    ):
+        chunk_res = C2T_diff(chunk)
+        if chunk_res.isna().all().all():
+            continue
+        res.append(chunk_res)
+    res = pd.concat(
+        res,
+        axis=0
+    )
+    if show_chroms:
+        return res
+    c2t_vector = res.sum()
+    c2t_L = np.sqrt((c2t_vector**2).sum())
+    normed_c2t_L = c2t_L / _3dg.shape[0]
+    return normed_c2t_L
