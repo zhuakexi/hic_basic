@@ -169,4 +169,6 @@ class RegionPair:
                 [Region1, Region2]
         """
         assert len(region_pair_arg) == 2, 'Only "two regions" is supported.'
+        if all([isinstance(region_arg, Region) for region_arg in region_pair_arg]):
+            return region_pair_arg
         return [Region(region_arg, genome=self.genome, binsize=self.binsize) for region_arg in region_pair_arg]
