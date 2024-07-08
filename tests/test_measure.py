@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from hic_basic.structure.measure import primary_views, _radius_of_gyration_matrix
+from hic_basic.structure.measure import primary_views, _radius_of_gyration_matrix, cent2telo_vector
 from hires_utils.hires_io import parse_3dg
 def write_lr_view(_3dg_primary_views, outpng):
     pfigs = dict(zip(
@@ -32,6 +32,11 @@ def write_lr_view(_3dg_primary_views, outpng):
     )
     fig.write_image(outpng)
 class TestMeasure(unittest.TestCase):
+    def test_cent2telo_vector(self):
+        _3dg_file = "/shareb/ychi/repo/sperm27/3dg_c/PD10_XD_B6J016084.clean.20k.1.3dg"
+        c2t = cent2telo_vector(parse_3dg(_3dg_file), genome="mm10", dis=2e6, p=False, q=True)
+        print("C2T:",c2t)
+        self.assertTrue(True)
     def test_primary_views(self):
         # a structure with wandering Y fragments
         _3dg_file = "/shareb/ychi/repo/sperm27/3dg_c/PD10_XD_B6J016084.clean.20k.1.3dg"
