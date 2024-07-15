@@ -39,9 +39,14 @@ def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dupref=False,dropXY=
     with gzip.open(pairsf,"rt") as f:
         for line in dropwhile(lambda x:x.startswith("#"),f):
             pairs.append(line.strip().split("\t"))
-    if isinstance(color_file,str):
+    if isinstance(color_file,str) or isinstance(color_file,Path):
+        color_file = Path(color_file)
         color_data = {}
-        with open(color_file,"rt") as f:
+        if color_file.suffix == ".gz" or color_file.suffix == ".gzip":
+            open_func = gzip.open
+        else:
+            open_func = open
+        with open_func(color_file,"rt") as f:
             for color_file_line in f:
                 hom_name, ref_locus, color = color_file_line.strip().split("\t")
                 ref_locus = int(ref_locus)
@@ -234,7 +239,7 @@ def fill_color(data, color_file, grt_full=True):
     #    grt_full: guarantee that output dataframe is NA free,
     #        this will drop all col's that can't be filled by ref color_file
     """
-    if isinstance(color_file,str):
+    if isinstance(color_file,str) or isinstance(color_file,Path):
         ref_color = pd.read_table(color_file,names=["chrom","pos","CpG"])
     elif isinstance(color_file, pd.DataFrame):
         ref_color = color_file[["chrom","start","CpG"]]
@@ -249,7 +254,7 @@ def fill_color(data, color_file, grt_full=True):
     if grt_full:
         filled_data = filled_data.dropna(axis=1)
     return filled_data
-def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dropXY=True, dupref=False, col_thresh=0.9, row_thresh=0.9,fill_color=True, threads=24):
+def calc_color2(filesp, file_col, color_file, binsize, rank_norm=True, merge_haplotypes=True, dropXY=True, dupref=False, col_thresh=0.9, row_thresh=0.9,fill_color=True, threads=24):
     """
     Input:
         filesp: dataframe, must have file_col col
@@ -286,6 +291,8 @@ def calc_color2(filesp, file_col, color_file, binsize, merge_haplotypes=True, dr
         color_result = fill_color(color_result, color_file)
     else:
         pass
+    if rank_norm:
+        color_result = (color_result.rank()-1)/color_result.shape[0]
     return color_result
 def do_umap(data,ndims=30):
     # do exactly what Seurat RunUMAP do
@@ -316,8 +323,11 @@ def do_umap(data,ndims=30):
     )
     umap_res = umap.fit_transform(data[:,:ndims])
     return umap_res
-def scAB_embedding(data,ndims=30):
-    rank_normed = (data.rank() - 1)/data.shape[0]
+def scAB_embedding(data,ndims=30, dorank=False):
+    if dorank:
+        rank_normed = (data.rank() - 1)/data.shape[0]
+    else:
+        rank_normed = data
     scaler = preprocessing.StandardScaler(with_mean=True,with_std=False)
     scaled = scaler.fit_transform(rank_normed.values)
     pca = PCA(random_state=42)
