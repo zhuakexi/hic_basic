@@ -139,3 +139,30 @@ def mat_coarsen(mat, coarseness):
     )
     zp_mat_c = np.sum(temp,axis=(1,3))
     return zp_mat_c
+def spread_text(text_list, track_width=5, fold=2):
+    """
+    Spread text list to a several tracks.
+    Input:
+        text_list: list of text to spread
+        track_width: width of each track
+        fold: number of tracks
+    Output:
+        list of position shift for each text
+    TODO:
+        add random shift
+    """
+    shift_dict = dict(zip(
+        list(range(fold)),
+        [i*track_width for i in range(fold)]
+    ))
+    return [shift_dict[i%fold] for i in range(len(text_list))]
+import io
+from PIL import Image
+from scipy.ndimage import rotate
+def plotly_fig2array(fig):
+    #convert a Plotly fig to  a RGB-array
+    #fig_bytes = fig.to_image(format="png", height = 1600, width = 1600, scale=4)
+    fig_bytes = fig.to_image(format="png", height = 2000, width = 2000, scale=4)
+    buf = io.BytesIO(fig_bytes)
+    img = Image.open(buf)
+    return np.asarray(img)
