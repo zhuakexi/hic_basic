@@ -531,9 +531,25 @@ def plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels, subplot_tit
     )
     return fig
 def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=True,
-                            balance=False, cmap="RdBu", donorm=False, Enames=["E1","E1"], **args):
+                            balance=False, cmap="RdBu", donorm=False,
+                            Enames=["E1","E1"], eig_y_kwargs={}, **args):
     """
-    Plot cooler with additional track files
+    Plot 2 coolers in a upper-lower manner with compartment track data.
+    First cooler will be on the lower triangle, second cooler will be on the upper triangle.
+    Will ignore diagonal because their values can't be determined.
+    Input:
+        coolps: list of cooler file paths.
+        eigs_files: list of eigen vector files.
+        region: genome region to plot.
+        title: name of the plot.
+        corr: whether to plot correlation matrix.
+        strip: whether to strip the consecutive 0s in the matrix.
+        balance: whether to load balanced cooler matrix.
+        cmap: color map.
+        donorm: whether to use lognorm.
+        Enames: col names of eigen
+    Output:
+        plotly figure.
     """
     clrs = [Cooler(str(coolp)) for coolp in coolps]
     eigs = [pd.read_table(eigs_file) for eigs_file in eigs_files]
@@ -572,13 +588,15 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=
                 i_e = i
                 break
         region_mat = region_mat.iloc[i_s:i_e,i_s:i_e]
+
+    # --- plot --- #
     figure = make_subplots(
         rows=2,
         cols=2,
         vertical_spacing=0.01,
         horizontal_spacing=0.01,
-        row_heights = [10,2],
-        column_widths = [2,10]
+        row_heights = [10,1],
+        column_widths = [1,10]
     )
     # add heatmap
     mat_fig = _plot_mat(
@@ -600,15 +618,17 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=
         how = "inner",
         on = ("chrom","start","end")
     ).copy()
+    bar_width = dat["start"].diff().mode()[0]
     dat = dat.assign(AB = "A")
     dat.loc[dat[Ename] <0, "AB"] = "B"
     eigs_fig = px.bar(
         dat, y="start", x =Ename, color="AB",
-        color_discrete_map={"A":"red","B":"blue"},
+        color_discrete_map={"B":'rgb(33,102,172)',"A":'rgb(178,24,43)'},
         orientation='h'
     )
     eigs_fig.update_traces(
-        showlegend = False
+        showlegend = False,
+        width = bar_width
     )
     for trace in eigs_fig.data:
         figure.add_trace(trace, row=1, col=1)
@@ -620,19 +640,32 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=
         how = "inner",
         on = ("chrom","start","end")
     ).copy()
+    bar_width = dat["start"].diff().mode()[0]
     dat = dat.assign(AB = "A")
     dat.loc[dat[Ename] <0, "AB"] = "B"
     eigs_fig = px.bar(
         dat, x="start", y =Ename, color="AB",
-        color_discrete_map={"A":"red","B":"blue"},
+        color_discrete_map={"B":'rgb(33,102,172)',"A":'rgb(178,24,43)'},
         #orientation='h'
     )
     eigs_fig.update_traces(
-        showlegend = False
+        showlegend = False,
+        width = bar_width
     )
     for trace in eigs_fig.data:
         figure.add_trace(trace, row=2,col=2)
-    # layout  
+    # tune all eig traces finally
+    figure.update_traces(
+        selector=dict(type="bar"),
+        #width=clr.binsize,
+        marker=dict(
+            line = dict(
+                color = "purple", # looks better than black
+                width = 0 # this actually tries to removes the line, 
+            )
+        )
+    )
+    # --- layout --- #  
     ## heatmap
     figure.update_xaxes(
         visible=False,
@@ -644,17 +677,27 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=
         row = 1,
         col = 2
     )
+    ## eig "y" axes
     # eigen 2 (upper triangle)
+    default_eig_y_kwargs = dict(
+        showline = True,
+        linecolor = "black",
+        tickvals = [-0.5, 0.5],
+        ticks = "",
+        range = [-0.5, 0.5],
+    )
+    eig_y_kwargs = {**default_eig_y_kwargs, **eig_y_kwargs}
     figure.update_xaxes(
-        visible = False,
+        **eig_y_kwargs,
+        side = "top",
         row = 1,
-        col = 1
+        col = 1,
     )
     # eigen 1 (lower triangle)
     figure.update_yaxes(
-        visible = False,
+        **eig_y_kwargs,
         row = 2,
-        col = 2
+        col = 2,
     )
     figure.update_layout(
         paper_bgcolor = "white",
