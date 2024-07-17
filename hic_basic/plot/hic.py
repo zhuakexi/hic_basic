@@ -138,6 +138,12 @@ def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, ra
         colorscale = kwargs.pop("cmap")
         if colorscale == "fall":
             colorscale = fall
+        elif colorscale == "fruitpunch":
+            colorscale = fruitpunch
+        elif colorscale == "fruitpunch_r":
+            colorscale = fruitpunch_r
+        else:
+            pass
         kwargs["colorscale"] = colorscale
     kwargs = {**default_kwargs, **kwargs}
     fig.add_trace(
