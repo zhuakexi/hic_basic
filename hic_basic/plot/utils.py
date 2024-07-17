@@ -96,8 +96,10 @@ def tiling_mat(A_orig, Ref_orig, adjust = True, ignore_diags = True):
     if adjust:
         if As < Rs:
             m = np.tril(Ref) + np.triu(A*(Rs/As)) # value overflow without parentheses in (Rs/As)
-        if As > Rs:
+        elif As > Rs:
             m = np.tril(Ref*(As/Rs)) + np.triu(A)
+        else:
+            m = np.tril(Ref) + np.triu(A)
     else:
         m = np.tril(Ref) + np.triu(A)
     return m
