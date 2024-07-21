@@ -7,7 +7,54 @@ import plotly.express as px
 import plotly.graph_objects as go
 import statsmodels.api as sm
 
-# --- part 1 set plot ---
+
+### --- default template for all --- ###
+
+
+template = go.layout.Template()
+# size
+template.layout.height = 500
+template.layout.width = 500
+# title
+template.layout.title = dict(
+    text="TITLE",
+    xanchor="center",
+    x=0.5
+)
+# background
+template.layout.plot_bgcolor = "white"
+# axis
+template.layout.xaxis = dict(
+    showline=True,
+    linecolor="black",
+    linewidth=1,
+    showgrid=False,
+    zeroline=False,
+    ticks="outside"
+    )
+template.layout.yaxis = dict(
+    showline=True,
+    linecolor="black",
+    linewidth=1,
+    showgrid=False,
+    zeroline=False,
+    ticks="outside"
+    )
+# colorbar
+template.layout.coloraxis = dict(
+    colorbar=dict(
+        len=0.4,
+        yanchor="bottom",
+        y=0.7,
+        xanchor="left",
+        x=0.95
+    )
+)
+
+
+### --- part 1 set plot --- ###
+
+
 def plot_upsetplot(sets, show_counts):
     """
     Upset plot like in R.
@@ -43,7 +90,55 @@ def upset_plot_getter(data, keys):
         count = len(tset)
         #count = np.sum(index)
     return count, tset
+
+
 # --- part 2 histogram ---
+
+
+def _histogram(x:pd.Series, range_x:list=None, **kwargs):
+    """
+    Wrapper of plotly histogram.
+    Will rm data out of range to ensure binning is according to range_x.
+    Do this to control histogram bar width.
+    Input:
+        x: data to plot, pd.Series
+        range_x: [min, max]
+        kwargs: other arguments for px.histogram
+    Output:
+        plotly histogram
+    """
+    if range_x is not None:
+        x = np.array(x)
+        left_removed = np.sum(x<range_x[0])
+        right_removed = np.sum(x>range_x[1])
+        remove_ratio = (left_removed + right_removed) / len(x)
+        print("Info: %.2f%% data removed" % (remove_ratio * 100))
+        x = x[x>range_x[0]]
+        x = x[x<range_x[1]]
+        default_kwargs = {
+            "histnorm": "probability density",
+            "range_x": range_x,
+        }
+    else:
+        default_kwargs = {
+            "histnorm": "probability density",
+        }
+    kwargs = {**default_kwargs, **kwargs}
+    fig = px.histogram(
+        x = x,
+        **kwargs
+    )
+    fig.update_traces(
+        marker_color = px.colors.qualitative.G10[9],
+        marker_line_color="black",
+        marker_line_width = 1
+    )
+    fig.update_layout(
+        template = template,
+        height = template.layout.height,
+        width = template.layout.width
+    )
+    return fig
 def _logbin_histogram(x, nbins=100):
     """
     Log binning histogram.
