@@ -1,5 +1,5 @@
 from functools import partial
-from itertools import product
+from itertools import product, combinations
 
 import numpy as np
 
@@ -59,3 +59,42 @@ def space_grid(bases,extent=(1,1,1),num=8):
     return grid_points.T.reshape(num,num,num,3)
 def grid_cords(grid):
     return grid.reshape(grid.shape[0]**3, 3)
+def vector_fbclose(v1, v2, atol=1e-3):
+    """
+    Check if two vectors are close to each other in same direction or opposite direction
+    """
+    return np.isclose(v1, v2, atol=atol).all() or np.isclose(v1, -v2, atol=atol).all()
+def corners2edges(corners, atol=1e-3, ret_xyz=False):
+    """
+    Generate edges from random order of 8 corners.
+    Input:
+        corners: np.ndarray or pd.DataFrame of shape (8, 3)
+        atol: float, tolerance for checking if two vectors are close
+        ret_xyz: whether return xyz of edges. If false, return index of corners
+    Output:
+        edges: list of tuple of index of corners
+            if ret_xyz is True, return list of tuple of xyz of edges
+    """
+    if isinstance(corners, np.ndarray):
+        pass
+    elif isinstance(corners, pd.DataFrame):
+        corners = corners.values
+    else:
+        raise ValueError("Input should be np.ndarray or pd.DataFrame")
+
+    candidates = {
+        pair : corners[pair[0]] - corners[pair[1]]
+        for pair in combinations(range(8), 2)
+    }
+    candidates_likey = {}
+    for pair, vector in candidates.items():
+        likely = [
+            vector_fbclose(vector, v)
+            for v in candidates.values()
+        ]
+        likely = sum(likely)
+        candidates_likey[pair] = likely
+    edges = [pair for pair, likely in candidates_likey.items() if likely == 4]
+    if ret_xyz:
+        return [(corners[i], corners[j]) for i, j in edges]
+    return edges
