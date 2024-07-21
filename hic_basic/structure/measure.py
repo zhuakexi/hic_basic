@@ -4,7 +4,7 @@ import open3d as o3d
 import numpy as np
 import pandas as pd
 from ..data import fetch_cent_chromlen
-from .utils import space_grid
+from .utils import space_grid, corners2edges
 def parallel_light(plate, direction):
     """
     Adding same direction to all origin points.
@@ -60,6 +60,10 @@ def primary_views(_3dg, ngrid=16, method="ray", keep_main=True):
     # --- generate oriented bounding box --- # 
     mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(points, 2)
     obb = mesh.get_oriented_bounding_box()
+    # get bounding box
+    corners = np.asarray(obb.get_box_points())
+    result["obb_corners"] = corners
+    result["obb_edges"] = corners2edges(corners, ret_xyz=True)
     # get box shape
     result["extent"] = obb.extent
     # get three major vectors and center point vector
