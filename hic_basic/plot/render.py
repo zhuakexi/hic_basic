@@ -7,11 +7,93 @@ from io import StringIO
 from pathlib import Path
 from string import Template
 from tempfile import NamedTemporaryFile
+from xml.etree import ElementTree as ET
 
+import numpy as np
 import pandas as pd
 from hic_basic.data import fetch_cent_chromlen
 from hires_utils.hires_io import parse_3dg
 from hires_utils.mmcif import threedg_to_cif, chrom_rm_suffix
+
+
+### --- chimera render --- ###
+
+
+def search_point(p, points, atol=1e-3):
+    """
+    Iterate over points and check if p is close to any point in points.
+    Input:
+        p: flattened np.ndarray
+        points: dict of flattened np.ndarray
+        atol: float, tolerance for checking if two points are close
+    Output:
+        If close, return True and index of point.
+        If not, return False and None.
+    NOTE: this is not very efficient. Use KDTree for large number of points.
+    """
+    for idx, point in points.items():
+        if np.isclose(p, point, atol=atol).all():
+            return True, idx
+    return False, None
+def dump_chimera_links(links, outfile, rgb:str="255,255,255", radius=0.1, atol=1e-3):
+    """
+    Dump links to Chimera marker file (.cmm file).
+    Input:
+        links: list of tuple of np.ndarray of shape (3,)
+            [(corner1, corner2), ...]
+        outfile: str, output file name
+        rgb: str, color in rgb format
+        radius: float, radius of marker
+        atol: float, tolerance for checking if two points are close
+    Output:
+        None
+    """
+    r,g,b = rgb.split(",")
+    root = ET.Element("marker_set", {"name": "marker set 1"})
+    point_eles, link_eles = {}, []
+    points = {}
+    for link in links:
+        indices = []
+        for corner in link:
+            marked, idx = search_point(corner, points, atol=atol)
+            if not marked:
+                # add new point, and get index
+                idx = max(points.keys()) + 1 if points else 0
+                points[idx] = corner
+                point_eles[idx] = ET.SubElement(
+                        root,
+                        "marker",
+                        {
+                            "id": str(idx),
+                            "x" : str(corner[0]),
+                            "y" : str(corner[1]),
+                            "z" : str(corner[2]),
+                            "r" : r, "g" : g, "b" : b,
+                            "radius" : str(radius)
+                        }
+                    )
+            indices.append(idx)
+        link_eles.append(
+            ET.SubElement(
+                root,
+                "link",
+                {
+                    "id1": str(indices[0]),
+                    "id2": str(indices[1]),
+                    "r" : r, "g" : g, "b" : b,
+                    "radius" : str(radius)
+                }
+            )
+        )
+    tree = ET.ElementTree(root)
+    with open(outfile, "wb") as file:
+        tree.write(file, encoding="utf-8", xml_declaration=True)
+    print(f"Dumped to {outfile}")
+
+
+### --- pymol render --- ###
+
+
 class PyMolRender:
     def __init__(self, template_pml_file, png_file_path, tmpdir=None, conda="pymol"):
         """
