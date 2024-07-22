@@ -158,6 +158,20 @@ def spread_text(text_list, track_width=5, fold=2):
         [i*track_width for i in range(fold)]
     ))
     return [shift_dict[i%fold] for i in range(len(text_list))]
+def hex_to_rgb(hex_color):
+    """
+    将十六进制颜色字符串转换为 RGB 格式。
+    
+    参数:
+        hex_color (str): 十六进制颜色字符串，例如 "#4C78A8"
+    
+    返回:
+        tuple: 三元组 (r, g, b)，其中 r, g, b 分别为红、绿、蓝通道的值 (0-255)
+    """
+    # 移除字符串前的 '#' 然后分解成三个长度为 2 的字符串
+    hex_color = hex_color.lstrip('#')
+    # 每两个字符代表一个颜色通道的十六进制值
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 import io
 from PIL import Image
 from scipy.ndimage import rotate
