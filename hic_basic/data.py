@@ -12,7 +12,44 @@ from hires_utils.mmcif import chrom_rm_suffix, chrom_rm_prefix
 from .hicio import get_ref_dir, load_json
 from .utils import two_sets
 ref_dir = Path(get_ref_dir())
-# --- data manipulates ---
+
+
+### --- download data --- ###
+def download_geo(geo_id, outdir, method="ftp"):
+    """
+    Download GEO data.
+    Input:
+        geo_id: GEO ID; string
+        outdir: output directory; string
+        method: download method; string; "ftp" or "https"
+    """
+    if method == "ftp":
+        import ftplib
+        ftp = ftplib.FTP("ftp.ncbi.nlm.nih.gov")
+        ftp.login()
+        ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}/suppl/")
+        files = ftp.nlst()
+        for file in files:
+            with open(os.path.join(outdir, file), "wb") as f:
+                ftp.retrbinary(f"RETR {file}", f.write)
+        ftp.quit()
+    elif method == "https":
+        import requests
+        import re
+        url = f"https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={geo_id}"
+        r = requests.get(url)
+        links = re.findall(r'href=[\'"]?([^\'" >]+)', r.text)
+        for link in links:
+            if link.endswith(".gz"):
+                r = requests.get(link)
+                with open(os.path.join(outdir, os.path.basename(link)), "wb") as f:
+                    f.write(r.content)
+    else:
+        raise ValueError("method must be 'ftp' or 'https'")
+
+### --- data manipulates --- ###
+
+
 def dupref_annote(bins, ref):
     """
     Annotate diploid genome with haploid ref
@@ -295,6 +332,11 @@ def fetch_TSS(gnames, TSS, name_col="gene_name"):
     #     columns = ["gname","chrom","txStart_id","txStart"]
     # )
     return subdf.reset_index()
+
+
+### --- field-specific data --- ###
+
+
 # ZGA gene module
 def Jichang2022_embryo_gene_module():
     real_path = os.path.join(get_ref_dir(), "Jichang2022_embryo_gene_module.csv.gz" )
