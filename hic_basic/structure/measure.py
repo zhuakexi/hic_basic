@@ -4,7 +4,13 @@ import open3d as o3d
 import numpy as np
 import pandas as pd
 from ..data import fetch_cent_chromlen
+from ..binnify import GenomeIdeograph
 from .utils import space_grid, corners2edges
+
+
+### --- for non-globular structures --- ###
+
+
 def parallel_light(plate, direction):
     """
     Adding same direction to all origin points.
@@ -109,6 +115,11 @@ def primary_views(_3dg, ngrid=16, method="ray", keep_main=True):
         result["primary_figures"] = primary_figures
     return result
     # obb.R * obb.extent.reshape(1,3) * 0.5 # vectors with proper lengths
+
+
+### --- for all cells --- ###
+
+
 def _3dg2mesh(_3dg, method="convex_hull", watertight=False, **args):
     """
     Convert 3dg data structure to mesh.
@@ -275,6 +286,44 @@ def _3dg_chrom_radius_of_gyration(_3dg):
             lambda x:_3dg_radius_of_gyration(_3dg.loc[x]),
             chroms)),
         index=chroms)
+
+
+### --- with extra reference file --- ###
+
+
+def restraint_violations(pairs, _3dg, genome, binsize, flavor="hickit"):
+    """
+    Calculate distances between pairs, this is used to evaluate the extent of how reconstructed structure
+    violates the input contact restraints.
+    Input:
+        pairs: pairs data structure (parsing from hickit output .pairs file)
+        _3dg: inner _3dg data structure (see parse_3dg in hires_utils)
+        genome: genome name
+        binsize: binsize used in the hic data
+        flavor: flavor of the bins, see GenomeIdeograph
+    Output:
+        pairs with new column 'distance'
+    """
+    pairs_e = GenomeIdeograph(genome).append_bins(pairs, binsize, flavor=flavor)
+    # --- calculate distances --- #
+    particles1 = pd.merge(
+        pairs_e[["chr1","start1"]],
+        _3dg,
+        left_on = ["chr1","start1"],
+        right_index = True
+    ).drop(["chr1","start1"],axis=1)
+    particles2 = pd.merge(
+        pairs_e[["chr2","start2"]],
+        _3dg,
+        left_on = ["chr2","start2"],
+        right_index = True
+    ).drop(["chr2","start2"],axis=1)
+    # euclidean distance
+    distances = particles1.sub(particles2).pow(2).sum(axis=1).pow(0.5)
+    pairs = pairs.assign(
+        distance = distances
+    )
+    return pairs
 def append_centelo_to_index(df, genome="mm10", dis=2e6, p=False, q=True):
     """
     Append centromere and telomere information to the index.

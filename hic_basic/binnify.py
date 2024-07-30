@@ -99,6 +99,33 @@ class GenomeIdeograph:
             bins = bins.sort_values(["chrom","start"])
             bins = bins.reset_index(drop=True)
         return bins
+    def append_bins(self, pairs:pd.DataFrame, binsize:int, flavor:str="hickit"):
+        """
+        Append bins to pairs dataframe.
+        Input:
+            pairs: pairs data structure (parsing from hickit output .pairs file)
+            binsize: binsize, see GenomeIdeograph.bins
+            flavor: flavor of the binning, see GenomeIdeograph.bins
+        Output:
+            pairs_e: pairs dataframe with new columns "chrom1","start1","end1","chrom2","start2","end2"
+                as the bins of the pairs
+        """
+        bins = self.bins(binsize, flavor=flavor)
+        chunk_e_list = []
+        for (chrom1, chrom2), chunk in pairs.groupby(["chr1","chr2"]):
+            cut1 = pd.cut(chunk["pos1"], bins[chrom1])
+            cut2 = pd.cut(chunk["pos2"], bins[chrom2])
+            chunk_e = chunk.assign(
+                chrom1 = chrom1,
+                start1 = pd.Index(cut1.astype(pd.IntervalDtype())).left,
+                end1 = pd.Index(cut1.astype(pd.IntervalDtype())).right,
+                chrom2 = chrom2,
+                start2 = pd.Index(cut2.astype(pd.IntervalDtype())).left,
+                end2 = pd.Index(cut2.astype(pd.IntervalDtype())).right,
+            )
+            chunk_e_list.append(chunk_e)
+        pairs_e = pd.concat(chunk_e_list,axis=0)
+        return pairs_e
     def coarsen_grouper(self, binsize1:int, binsize2:int, flavor:str="hickit")->pd.Series:
         """
         Get grouper to map from binsize1 to a bigger binsize2.
