@@ -90,15 +90,16 @@ def tiling_mat(A_orig, Ref_orig, adjust = True, ignore_diags = True):
     if ignore_diags:
         np.fill_diagonal(A,0)
         np.fill_diagonal(Ref,0)
-        As, Rs = A.sum(),Ref.sum()
+        As, Rs = np.nansum(A),np.nansum(Ref)
     else:
-        As, Rs = A.sum(),Ref.sum()
+        As, Rs = np.nansum(A),np.nansum(Ref)
     if adjust:
         if As < Rs:
             m = np.tril(Ref) + np.triu(A*(Rs/As)) # value overflow without parentheses in (Rs/As)
         elif As > Rs:
             m = np.tril(Ref*(As/Rs)) + np.triu(A)
         else:
+            print("Warning: two matrix have same brightness, this seldom happens.")
             m = np.tril(Ref) + np.triu(A)
     else:
         m = np.tril(Ref) + np.triu(A)
