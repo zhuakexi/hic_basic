@@ -143,7 +143,7 @@ def normalize_dense(M, norm="SCN", order=1, iterations=40):
 
     return (s + s.T) / 2
 from scipy.linalg import eig 
-def compartments(M, normalize=True, matrixonly=False):
+def compartments(M, normalize=True, matrixonly=False, nPCs=2):
     """A/B compartment analysis
 
     Perform a PCA-based A/B compartment analysis on a normalized, single
@@ -159,13 +159,14 @@ def compartments(M, normalize=True, matrixonly=False):
         Whether to normalize the matrix beforehand.
     matrixonly : bool
         Whether to return only the matrix used for the PCA (useful in compartment plotting).
+    nPCs : int
+        Number of principal components to compute.
 
     Returns
     -------
-    PC1 : numpy.ndarray
-        A vector representing the first component.
-    PC2 : numpy.ndarray
-        A vector representing the second component.
+    pandas.DataFrame
+        A DataFrame with the first two principal components as columns and
+        the genomic coordinates as index.
     """
 
     n = M.shape[0]
@@ -201,9 +202,9 @@ def compartments(M, normalize=True, matrixonly=False):
     #N[np.isnan(N)] = 0.0
     (eig_val, eig_vec) = eig(N)
     orig_shape = pd.Series(list(range(M.shape[0])))
-    eig_vec = pd.DataFrame(eig_vec[:,:2],index=N.index,columns=["PC1","PC2"])
+    eig_vec = pd.DataFrame(eig_vec[:,:nPCs],index=N.index,columns=[f"PC{i+1}" for i in range(nPCs)])
     eig_vec_e = pd.concat([eig_vec,orig_shape],axis=1,join="outer").loc[orig_shape.index]
-    return eig_vec_e["PC1"], eig_vec_e["PC2"]
+    return eig_vec_e[[f"PC{i+1}" for i in range(nPCs)]]
 def call_compartment(df:pd.DataFrame,norm:bool=True)->tuple:
     # read in contact map, retur PC1 and PC2
     n0_df = extrude_full_zero(df)
