@@ -52,6 +52,60 @@ template.layout.coloraxis = dict(
 )
 
 
+### --- part 0 components --- ###
+
+
+def plot_colorbar(vmin, vmax, colorscale="Viridis", title="TITLE", **colorbar_kwargs):
+    """
+    Plot colorbar.
+    It is achieved by invisible scatter plot with colorbar.
+    Input:
+        vmin: min value
+        vmax: max value
+        colorscale: color scale
+        title: colorbar title
+        colorbar_kwargs: other arguments for coloraxis.colorbar
+    Output:
+        fig
+    """
+    fig = px.scatter(
+        x = [0,0],
+        y = [0,0],
+        color = [vmin,vmax]
+    )
+    fig.update_traces(
+    marker=dict(
+        opacity=0,
+    ),
+    )
+    default_colorbar_kwargs = dict(
+        title = title,
+        x = 0.5,
+        xanchor = "center"
+    )
+    colorbar_kwargs = {**default_colorbar_kwargs, **colorbar_kwargs}
+    fig.update_layout(
+        height = 500,
+        width = 200,
+        plot_bgcolor = "rgba(0,0,0,0)",
+        xaxis = dict(
+            visible = False,
+            range = [-1,1],
+        ),
+        yaxis = dict(
+            visible = False,
+            range = [-1,1],
+        ),
+        coloraxis = dict(
+                cmin = vmin,
+                cmax = vmax,
+                colorscale = colorscale,
+                colorbar = colorbar_kwargs
+        ),
+    )
+    return fig
+
+
 ### --- part 1 set plot --- ###
 
 
