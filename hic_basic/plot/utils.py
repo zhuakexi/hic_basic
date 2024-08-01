@@ -1,7 +1,18 @@
+import io
+import os
+import re
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from scipy.ndimage import rotate
+from PIL import Image
+
+
+### --- plot utils --- ###
+
+
 def filling_l2r_plotly(rows, cols, features):
     """
     Helper to iterate within row-cols.
@@ -173,9 +184,7 @@ def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
     # 每两个字符代表一个颜色通道的十六进制值
     return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-import io
-from PIL import Image
-from scipy.ndimage import rotate
+
 def plotly_fig2array(fig):
     #convert a Plotly fig to  a RGB-array
     #fig_bytes = fig.to_image(format="png", height = 1600, width = 1600, scale=4)
@@ -183,3 +192,37 @@ def plotly_fig2array(fig):
     buf = io.BytesIO(fig_bytes)
     img = Image.open(buf)
     return np.asarray(img)
+
+
+### --- manuscript notebook compile --- ###
+def get_fig_outprefix()->str:
+    """
+    Get the output prefix for the current figure.
+    Change directory name and this will get the right prefix.
+    Fig1a -> output/Fig.1a_
+    Fig1Sb -> output/Extended_Data_Fig.1b_
+    """
+    tstring = os.getcwd()
+    name = re.search(
+        r'[^/]+$',
+        tstring
+    )
+    if name is not None:
+        name = name.group(0)
+        comps = re.search(
+            r"Fig(\d)(S?)([a-zA-Z]*)",
+            name
+        )
+        if comps is not None:
+            fig = comps.group(1)
+            sup = comps.group(2)
+            let = comps.group(3)
+        else:
+            raise ValueError("Cannot parse figure name")
+    else:
+        raise ValueError("No figures found in path")
+    if sup == "S":
+        figpr = f"output/Extended_Data_Fig.{fig}{let}_"
+    else:
+        figpr = f"output/Fig.{fig}{let}_"
+    return figpr
