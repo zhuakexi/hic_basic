@@ -1,5 +1,8 @@
 import re
 
+import pandas as pd
+from hires_utils import chrom_rm_suffix
+
 from .data import chromosomes
 from .binnify import GenomeIdeograph
 def parse_ucsc_region(region_str):
@@ -172,3 +175,51 @@ class RegionPair:
         if all([isinstance(region_arg, Region) for region_arg in region_pair_arg]):
             return region_pair_arg
         return [Region(region_arg, genome=self.genome, binsize=self.binsize) for region_arg in region_pair_arg]
+
+
+### --- functions for genome spreadsheet --- ###
+
+
+def index_merge_hom(df):
+    """
+    Cancel ploidiness in index. You can then merge homologous chromosomes use functions like groupby.
+    This will change index inplace.
+    Input:
+        df: DataFrame with MultiIndex ["chrom", "start"], chom is ploidified, like "chr1(mat)"
+    Output:
+        a dataframe with modified level 0 index value, like "chr1(mat)" -> "chr1"
+    """
+    chrom = chrom_rm_suffix(
+        df.index.get_level_values(0)
+        )
+    start = df.index.get_level_values(1)
+    new_index = pd.MultiIndex.from_arrays(
+        [chrom, start],
+        names = df.index.names
+    )
+    df.index = new_index
+    return df
+def sort_chrom(df, genome):
+    """
+    Sort dataframe by natural chromosome order.
+    TODO:
+        1. ask whether to rm chromint after sorting
+        2. ask whether to reset index
+    Input:
+        df: must have a column named "chrom"
+    Output:
+        df: sorted by natural chromosome order
+    """
+    genome = chromosomes(genome, order=True)
+    genome = genome.reset_index()
+    genome = genome.assign(
+        chromint = genome.index
+    )
+    df = pd.merge(
+        df,
+        genome,
+        on = "chrom",
+        how = "left"
+    )
+    df = df.sort_values("chromint", ascending=True)
+    return df
