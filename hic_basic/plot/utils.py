@@ -184,6 +184,33 @@ def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
     # 每两个字符代表一个颜色通道的十六进制值
     return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+def hex_split(hex_color):
+    """
+    解析十六进制颜色代码，并返回 R、G、B 和 A 分量。
+
+    :param hex_color: 十六进制颜色代码，可以是六位 (#RRGGBB) 或八位 (#RRGGBBAA)
+    :return: 一个元组 (R, G, B, A)，其中 A 是可选的透明度分量
+    """
+    # 去掉颜色代码前面的 '#' 符号
+    hex_color = hex_color.lstrip('#')
+
+    # 判断颜色代码是否有 Alpha 通道
+    if len(hex_color) == 8:
+        # 8 位颜色代码
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        a = int(hex_color[6:8], 16)
+    elif len(hex_color) == 6:
+        # 6 位颜色代码，默认 Alpha 通道为不透明
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        a = 255  # 默认 Alpha 通道为不透明
+    else:
+        raise ValueError("Invalid hex color code. It must be 6 or 8 characters long.")
+
+    return r, g, b, a
 
 def plotly_fig2array(fig):
     #convert a Plotly fig to  a RGB-array
@@ -210,7 +237,7 @@ def get_fig_outprefix()->str:
     if name is not None:
         name = name.group(0)
         comps = re.search(
-            r"Fig(\d)(S?)([a-zA-Z]*)",
+            r"Fig(\d+)(S?)([a-zA-Z]*)",
             name
         )
         if comps is not None:
