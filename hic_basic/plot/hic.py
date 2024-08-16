@@ -16,6 +16,7 @@ from plotly.subplots import make_subplots
 from skimage import exposure
 import cooltools.lib.plotting
 
+from .general import template
 from .utils import filling_l2r_mpl, pcolormesh_45deg, tiling_mat
 from ..compartment import compartments
 from ..coolstuff import cool2mat
@@ -977,8 +978,17 @@ def plot_saddle(file, title, vmin=10**(-1), vmax=10**1, **kwargs):
     # 设置图表的标题和坐标轴标签
     fig.update_layout(
         title=title,
-        xaxis_title="saddle category",
-        yaxis_title="saddle category",
+        template=template,
+        xaxis=dict(
+            title_text='Saddle category',
+            tickvals=[0, 25, 50],
+            mirror = True
+        ),
+        yaxis=dict(
+            title_text='Saddle category',
+            tickvals=[0, 25, 50],
+            mirror = True
+        ),
         height = 500,
         width = 500,
         coloraxis_colorbar=dict(
