@@ -35,7 +35,10 @@ from .utils import binnify
 #     bins = binnify(chromsizes, binsize)
 #     return bins
 
+
 # --- warm it --- #
+
+
 def str2slice(clr, region:str):
     """
     Convert region string to slice object.
@@ -46,6 +49,29 @@ def str2slice(clr, region:str):
         slice object
     """
     return slice(*clr.extent(region))
+def iter_pixels(clr, chunksize=1e6, join=True):
+    chunksize = int(chunksize)
+    tot = clr.pixels().shape[0]
+    for i in range(0, tot, chunksize):
+        yield clr.pixels(join=join)[i:i+chunksize]
+def cool2pixels(coolp:str, balance:bool=True)->pd.DataFrame:
+    """
+    Fetch all pixels from a cooler file.
+    Input:
+        coolp: path to cooler file
+        balance: whether to include balanced values
+    Output:
+        pixels: DataFrame of pixels, [bin1_id, bin2_id, count, balanced]
+    """
+    clr = cooler.Cooler(str(coolp))
+    pixels = clr.pixels()[:]
+    bins = clr.bins()[:]
+    pixels = cooler.annotate(pixels, bins, replace=True)
+    if balance:
+        pixels = pixels.assign(
+            balanced = pixels.eval('weight1 * weight2 * count')
+        )
+    return pixels
 def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:bool=False):
     """
     Fetch matrix from cooler file with proper index and columns.
@@ -112,7 +138,11 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
     mat.index = pd.MultiIndex.from_frame(index[["chrom","start"]],names=["chrom","start"])
     mat.index.name = "region 1"
     return mat
-# --- cool it --- #
+
+
+### --- cool it --- ###
+
+
 def gen_bins(genome, binsize):
     """
     Generate "bins" for cooler api.
@@ -169,6 +199,82 @@ def _easy_pixels(pairs_path, bins, chunksize=15e6, zero_based=False, tril_action
     aggregate = aggregate_records(agg=aggregations, count=True, sort=False)
     pipeline = compose(aggregate, sanitize)
     return map(pipeline, reader)
+def pairs2cool(pairs_path, coolpath, sizef, binsize):
+    """
+    Generate .cool file from 4DN .pairs file
+    """
+    bins = gen_bins(sizef, binsize)
+    cooler.create_cooler(
+        coolpath,
+        bins,
+        _easy_pixels(pairs_path, bins)
+    )
+def pixels2cool(pixels:pd.DataFrame, bins:pd.DataFrame, outfile, columns:list=["count"], dtypes:dict={"count":int}):
+    """
+    Dump pixels to cool file.
+    Input:
+        pixels: pixels dataframe or iterator of pixels dataframes,
+            [chrom1, start1, (end1), chrom2, start2, (end2), vcol1, vcol2, ...]
+        bins: [chrom, start, end]
+        outfile: output cool file path
+        columns: value columns to be stored
+        dtypes: data type for each value column
+    Output:
+        outfile
+    TODO: deal when bin1_id or bin2_id in pixels
+    """
+    if isinstance(pixels, pd.DataFrame):
+        # single dataframe
+        pixels = [pixels]
+    new_bins = bins.assign(
+        bin_id = bins.index
+    )
+    # add bin1_id
+    new_bins1 = new_bins.copy()
+    new_bins1.columns = ["chrom1", "start1", "end1", "bin1_id"]
+    pixel_chunks_id1 = (
+        pd.merge(
+            pixel_chunk,
+            new_bins1[['chrom1', 'start1', 'end1', 'bin1_id']],
+            on=["chrom1", "start1", "end1"] if "end1" in pixel_chunk.columns else ["chrom1", "start1"],
+        )
+        for pixel_chunk in pixels
+    )
+    # add bin2_id
+    new_bins2 = new_bins.copy()
+    new_bins2.columns = ["chrom2", "start2", "end2", "bin2_id"]
+    pixel_chunks_id1_id2 = (
+        pd.merge(
+            pixel_chunk,
+            new_bins2[['chrom2', 'start2', 'end2', 'bin2_id']],
+            on=["chrom2", "start2", "end2"] if "end2" in pixel_chunk.columns else ["chrom2", "start2"],
+        )
+        for pixel_chunk in pixel_chunks_id1
+    )
+    # prepare inputs
+    new_bins = new_bins[["chrom", "start", "end"]]
+    pixel_chunks_tidy = (
+        pixel_chunk[[
+            "bin1_id", "bin2_id", "count"
+        ]].dropna(
+            axis=0,
+            how="any",
+            subset=["bin1_id", "bin2_id"]
+        ) # drop pixels not present in new_bins
+        for pixel_chunk in pixel_chunks_id1_id2
+    )
+    cooler.create_cooler(
+        outfile,
+        new_bins,
+        pixel_chunks_tidy,
+        dtypes = dtypes,
+        ordered = False, # doesn't ensure order
+        symmetric_upper = False, # don't assume symmetric
+        triucheck = False,
+        dupcheck = True,
+        boundscheck = True
+    )
+# schicluster io
 def _schicluster_pixels(filesp, genome, binsize):
     """
     Generate pixels iterator for cooler constructor.
@@ -240,6 +346,101 @@ def schicluster2cool(filesp, fo, genome, binsize,
         **args
     )
     return fo
+# gam io
+def parse_gam(gam_file, pixel=False):
+    """
+    Input:
+        gam_file: path to gam file
+            temporarily, only support .npz file
+        pixel: a cooler's joint pixel format
+    Output:
+        mat: pandas.DataFrame
+            if not pixel, a DataFrame with 2-level-multiindex (chrom, start) index and columns
+    """
+    npz = np.load(gam_file)
+    if not pixel:
+        index = pd.MultiIndex.from_frame(
+            pd.DataFrame(
+                {
+                    "chrom" : pd.Series(npz["windows_0"][:,0], dtype="string"),
+                    "start" : pd.Series(npz["windows_0"][:,1], dtype="int")
+                }
+                )
+        )
+        columns = pd.MultiIndex.from_frame(
+            pd.DataFrame(
+                {
+                    "chrom" : pd.Series(npz["windows_1"][:,0], dtype="string"),
+                    "start" : pd.Series(npz["windows_1"][:,1], dtype="int")
+                }
+                )
+        )
+        mat = pd.DataFrame(
+            npz["scores"],
+            index=index,
+            columns=columns,
+            dtype = "float"
+        )
+    else:
+        values = npz["windows_0"]
+        pos1 = pd.DataFrame(
+            {
+                "chrom1" : pd.Series(values[:,0], dtype="string"),
+                "start1" : pd.Series(values[:,1], dtype="int"),
+                "end1" : pd.Series(values[:,2], dtype="int")
+            }
+        )
+        values = npz["windows_1"]
+        pos2 = pd.DataFrame(
+            {
+                "chrom2" : pd.Series(values[:,0], dtype="string"),
+                "start2" : pd.Series(values[:,1], dtype="int"),
+                "end2" : pd.Series(values[:,2], dtype="int")
+            }
+        )
+        mat = pd.DataFrame(
+            npz["scores"],
+            dtype = "float"
+            ).stack().reset_index()
+        mat.columns = ["sub_id1","sub_id2","count"]
+        mat = pd.merge(
+            mat,
+            pos1,
+            left_on="sub_id1",
+            right_index=True
+        )
+        mat = pd.merge(
+            mat,
+            pos2,
+            left_on="sub_id2",
+            right_index=True
+        )
+        mat = mat[
+            ["chrom1","start1","end1","chrom2","start2","end2","count"]
+            ]
+    return mat
+def gam2cool(gam_filepat, bin_file, outfile, force=False):
+    """
+    Transform gam result to cool format
+    Input:
+        gam_filepat: path pattern to gam file, use * to represent any string,
+            typically chrom names
+        bin_file: path to bin file created by bedtools in the pipeline
+        outfile: path to output cool file
+    Output:
+        outfile
+    """
+    if Path(outfile).exists() and not force:
+        return outfile
+    gam_filepat = Path(gam_filepat)
+    gam_files = gam_filepat.parent.glob(gam_filepat.name)
+    gam_pixels = (parse_gam(gam_file, pixel=True) for gam_file in gam_files)
+    bins = pd.read_table(bin_file, names=["chrom","start","end"])
+    pixels2cool(gam_pixels, bins, outfile, columns=["count"], dtypes={"count":"float"})
+    return outfile
+# gam_filepat = "/sharec/ychi/repo/tillsperm77_gam/matrix/1000000/dprime/QC_passed.*__*.npz"
+# outfile = "/sharec/ychi/repo/tillsperm77_gam/cool/QC_passed.1m.cool"
+# bin_file = "/sharec/ychi/repo/tillsperm77_gam/multicov/GRCh38.1000000.bed"
 def _scool_pixels(pairs_paths:dict, bins, chunksize=15e6, zero_based=False, tril_action="reflect"):
     """
     Generate pixels dict for multi-pairs-file. Using in scool generating.
@@ -249,17 +450,7 @@ def _scool_pixels(pairs_paths:dict, bins, chunksize=15e6, zero_based=False, tril
     n = len(pairs_paths)
     return {pairs_path : _easy_pixels(pairs_paths[pairs_path], bins, chunksize,zero_based, tril_action) 
         for pairs_path in pairs_paths}
-
-def pairs2cool(pairs_path, coolpath, sizef, binsize):
-    """
-    Generate .cool file from 4DN .pairs file
-    """
-    bins = gen_bins(sizef, binsize)
-    cooler.create_cooler(
-        coolpath,
-        bins,
-        _easy_pixels(pairs_path, bins)
-    )
+# scool io
 def pairs2scool(pairs_paths, coolpath, sizef, binsize):
     """
     Generate .scool file from multiple 4DN .pairs file
@@ -279,6 +470,11 @@ def pairs2scool(pairs_paths, coolpath, sizef, binsize):
             bins
         )
     )
+
+
+### --- rearranging your fridge --- ###
+
+
 def cools2scool(cools, scool_path):
     """
     Generate scool from cooler files.
@@ -318,11 +514,6 @@ def hic_pileup(scool, grouping, cache_pattern="{}.pileup.cool",mergebuf=1e6):
             [scool+"::/cells/{}".format(i) for i in samples],
             mergebuf
         )
-def iter_pixels(clr, chunksize=1e6, join=True):
-    chunksize = int(chunksize)
-    tot = clr.pixels().shape[0]
-    for i in range(0, tot, chunksize):
-        yield clr.pixels(join=join)[i:i+chunksize]
 def reset_cool_bins(coolpin, coolpout, genome="GRCh38", chunksize=1e6):
     clr = cooler.Cooler(coolpin)
     binsize = clr.binsize
@@ -376,7 +567,10 @@ def reset_cool_bins(coolpin, coolpout, genome="GRCh38", chunksize=1e6):
         pixel_chunks_tidy
     )
 
-# --- distiller-nf helper functions ---
+
+### --- distiller-nf helper functions --- ###
+
+
 def gen_config(
         sample_table, 
         cfg, 
