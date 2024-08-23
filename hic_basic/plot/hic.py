@@ -20,7 +20,11 @@ from .general import template
 from .utils import filling_l2r_mpl, pcolormesh_45deg, tiling_mat
 from ..compartment import compartments
 from ..coolstuff import cool2mat
-# --- Hi-C heatmap plot ---
+
+
+### --- Hi-C heatmap plot --- ###
+
+
 def _plot_mat_mpl(mat, title="", vmax=500, ignore_diags=True, donorm=True, cmap="fall", balancing=False):
     mat = mat.copy()
     if ignore_diags:
@@ -537,6 +541,11 @@ def plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels, subplot_tit
         width = 700
     )
     return fig
+
+
+ ### --- compartment --- ###
+
+
 def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=True,
                             balance=False, cmap="RdBu", donorm=False,
                             Enames=["E1","E1"], eig_y_kwargs={}, **args):
@@ -1007,7 +1016,10 @@ def plot_saddle(file, title, vmin=10**(-1), vmax=10**1, **kwargs):
 def plot_IS(IS_file):
     pass
 
-# --- mat pileup plots ---
+
+# --- mat pileup plots --- ###
+
+
 def pileup_IS(coolp, IS, genome="hg19", flank=800_000, **args):
     """
     Pileup TAD boundaries from a cool file.
@@ -1085,7 +1097,11 @@ def plot_IS(clr,insulation_table,title,resolution=500e3,window=1.5e6,balance=Tru
     format_ticks(ins_ax, y=False, rotate=False)
     ax.set_xlim(region[1], region[2])
     plt.title(title)
-# --- HIC contact decay profile plot ---
+
+
+### --- HIC contact decay profile plot --- ###
+
+
 # plot cdps heatmap
 def _plot_cdps(cdps:pd.DataFrame):
     """
