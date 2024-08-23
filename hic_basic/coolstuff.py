@@ -232,7 +232,7 @@ def pairs2cool(pairs_path, coolpath, sizef, binsize):
         bins,
         _easy_pixels(pairs_path, bins)
     )
-def pixels2cool(pixels:pd.DataFrame, bins:pd.DataFrame, outfile, columns:list=["count"], dtypes:dict={"count":int}):
+def pixels2cool(pixels:pd.DataFrame, bins:pd.DataFrame, outfile, columns:list=["count"], dtypes:dict={"count":int}, **kwargs):
     """
     Dump pixels to cool file.
     Input:
@@ -242,6 +242,7 @@ def pixels2cool(pixels:pd.DataFrame, bins:pd.DataFrame, outfile, columns:list=["
         outfile: output cool file path
         columns: value columns to be stored
         dtypes: data type for each value column
+        **kwargs: other args for cooler.create_cooler
     Output:
         outfile
     TODO: deal when bin1_id or bin2_id in pixels
@@ -286,16 +287,21 @@ def pixels2cool(pixels:pd.DataFrame, bins:pd.DataFrame, outfile, columns:list=["
         ) # drop pixels not present in new_bins
         for pixel_chunk in pixel_chunks_id1_id2
     )
+    default_kwargs = {
+        "ordered":False, # doesn't ensure order
+        "mergebuf":1e6,
+        "symmetric_upper":False, # don't assume symmetric
+        "triucheck":False,
+        "dupcheck":True,
+        "boundscheck":True
+    }
     cooler.create_cooler(
         outfile,
         new_bins,
         pixel_chunks_tidy,
         dtypes = dtypes,
-        ordered = False, # doesn't ensure order
-        symmetric_upper = False, # don't assume symmetric
-        triucheck = False,
-        dupcheck = True,
-        boundscheck = True
+        columns = columns,
+        **{**default_kwargs, **kwargs}
     )
 # schicluster io
 def _schicluster_pixels(filesp, genome, binsize):
@@ -370,6 +376,24 @@ def schicluster2cool(filesp, fo, genome, binsize,
     )
     return fo
 # gam io
+def peek_gam(gam_file):
+    """
+    Peek into gam file to get some basic info.
+    Input:
+        gam_file: path to gam file
+    Output:
+        dict of basic info
+            chrom1: most common chrom1
+            chrom2: most common chrom2
+    """
+    npz = np.load(gam_file)
+    chrom1 = pd.Series(npz["windows_0"][:,0], dtype="string")
+    chrom2 = pd.Series(npz["windows_1"][:,0], dtype="string")
+    chrom1, chrom2 = [chrom.mode()[0] for chrom in [chrom1, chrom2]]
+    return {
+        "chrom1" : chrom1,
+        "chrom2" : chrom2,
+    }
 def parse_gam(gam_file, pixel=False):
     """
     Input:
@@ -442,14 +466,18 @@ def parse_gam(gam_file, pixel=False):
             ["chrom1","start1","end1","chrom2","start2","end2","count"]
             ]
     return mat
-def gam2cool(gam_filepat, bin_file, outfile, force=False):
+def gam2cool(gam_filepat, bin_file, outfile, force=False, intra_only=True, **kwargs):
     """
-    Transform gam result to cool format
+    Transform gam result to cool format.
+    Use intra_only when binsize is small.
     Input:
         gam_filepat: path pattern to gam file, use * to represent any string,
             typically chrom names
         bin_file: path to bin file created by bedtools in the pipeline
         outfile: path to output cool file
+        force: whether to overwrite existing file
+        intra_only: only keep intra-chrom
+        **kwargs: other args for cooler.create_cooler
     Output:
         outfile
     """
@@ -459,9 +487,16 @@ def gam2cool(gam_filepat, bin_file, outfile, force=False):
     gam_files = list(gam_filepat.parent.glob(gam_filepat.name))
     if len(gam_files) == 0:
         raise ValueError("No gam files found.")
-    gam_pixels = (parse_gam(gam_file, pixel=True) for gam_file in gam_files)
+    if intra_only:
+        # only keep intra-chrom
+        gam_pixels = (
+            parse_gam(gam_file, pixel=True)
+            for gam_file in gam_files if peek_gam(gam_file)["chrom1"] == peek_gam(gam_file)["chrom2"]
+            )
+    else:
+        gam_pixels = (parse_gam(gam_file, pixel=True) for gam_file in gam_files)
     bins = pd.read_table(bin_file, names=["chrom","start","end"])
-    pixels2cool(gam_pixels, bins, outfile, columns=["count"], dtypes={"count":"float"})
+    pixels2cool(gam_pixels, bins, outfile, columns=["count"], dtypes={"count":"float"}, **kwargs)
     return outfile
 # gam_filepat = "/sharec/ychi/repo/tillsperm77_gam/matrix/1000000/dprime/QC_passed.*__*.npz"
 # outfile = "/sharec/ychi/repo/tillsperm77_gam/cool/QC_passed.1m.cool"
