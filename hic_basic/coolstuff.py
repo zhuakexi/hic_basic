@@ -72,7 +72,7 @@ def cool2pixels(coolp:str, balance:bool=True)->pd.DataFrame:
             balanced = pixels.eval('weight1 * weight2 * count')
         )
     return pixels
-def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:bool=False):
+def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:bool=False, min_nz=None,bad_bins=None)->pd.DataFrame:
     """
     Fetch matrix from cooler file with proper index and columns.
     Input:
@@ -89,8 +89,13 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
             [slice(0,1000000), slice(1000000,2000000)]:
                 inter-chrom matrix using slicer syntax
         balance: balance or not, bool
+        min_nz: minimum number of non-zero pixels to keep, bin with less pixels will be set to nan
+            if None, no filtering
+        bad_bins: list of bad bins to be set to nan, a dataframe with columns ["chrom","start"]
     Output:
         pd.DataFrame
+    TODO:
+        min_nz and bad_bins support for separate index(region1) and columns(region2) filtering for inter-chrom matrix
     """
     no_fetch = False # whether to use.fetch method, if False, using slicer syntax
     clr = cooler.Cooler(str(cool))
@@ -133,10 +138,28 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
     # mat.columns.name = "region 2"
     # mat.index = index["start"]
     # mat.index.name = "region 1"
+    if min_nz is not None:
+        index_coverage = (mat > 0).sum(axis=1)
+        columns_coverage = (mat > 0).sum(axis=0)
+        mat.loc[
+            index_coverage[index_coverage < min_nz].index,
+            :
+            ] = np.nan
+        mat.loc[
+            :,
+            columns_coverage[columns_coverage < min_nz].index
+            ] = np.nan
     mat.columns = pd.MultiIndex.from_frame(columns[["chrom","start"]],names=["chrom","start"])
     mat.columns.name = "region 2"
     mat.index = pd.MultiIndex.from_frame(index[["chrom","start"]],names=["chrom","start"])
     mat.index.name = "region 1"
+    if bad_bins is not None:
+        bad_bins_index = pd.MultiIndex.from_frame(
+            bad_bins[["chrom", "start"]]
+        )
+        # what if intersection is empty?
+        mat.loc[bad_bins_index.intersection(mat.index), :] = np.nan
+        mat.loc[:, bad_bins_index.intersection(mat.columns)] = np.nan
     return mat
 
 
@@ -433,7 +456,9 @@ def gam2cool(gam_filepat, bin_file, outfile, force=False):
     if Path(outfile).exists() and not force:
         return outfile
     gam_filepat = Path(gam_filepat)
-    gam_files = gam_filepat.parent.glob(gam_filepat.name)
+    gam_files = list(gam_filepat.parent.glob(gam_filepat.name))
+    if len(gam_files) == 0:
+        raise ValueError("No gam files found.")
     gam_pixels = (parse_gam(gam_file, pixel=True) for gam_file in gam_files)
     bins = pd.read_table(bin_file, names=["chrom","start","end"])
     pixels2cool(gam_pixels, bins, outfile, columns=["count"], dtypes={"count":"float"})
