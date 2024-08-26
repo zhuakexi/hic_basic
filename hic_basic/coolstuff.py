@@ -784,7 +784,7 @@ def cli_downsample(coolp, output, count=100e6, cis_count=None, fraction=None, th
     cis_count = f"--cis-count {cis_count}" if cis_count else ""
     fraction = f"--frac {fraction}" if fraction else ""
     count = f"--count {count}" if count else ""
-    cmd = f"{conda} cooler random-sample {count} {cis_count} {fraction} -p {threads} {coolp} {output}"
+    cmd = f"{conda} cooltools random-sample {count} {cis_count} {fraction} -p {threads} {coolp} {output}"
     try:
         subprocess.check_output(
             cmd,
@@ -892,7 +892,35 @@ def cli_compartment(coolp, phasing_track, outprefix, view=None, conda_env=None, 
     )
     return f"{outprefix}.cis.vecs.tsv", f"{outprefix}.cis.lam.txt"
 
-def cli_saddle(coolp, eigv, expected, outprefix, view, conda_env=None, cwd=None, force=False):
+def cli_saddle(coolp, eigv, expected, outprefix, view, 
+    bin_method="quantile", qrange=[0.02,0.98], vrange=[-1,1], nbins=50, conda_env=None, cwd=None, force=False,
+    debug=False
+    ):
+    """
+    Run cooltools saddle.
+    Input:
+        coolp: cooler file path
+        eigv: eigenvector file path
+        expected: expected file path
+        outprefix: output prefix
+        view: genome view file path
+        bin_method: binning method, either 'quantile' or 'value'.
+            If 'quantile', qrange should be provided.
+            If 'value', vrange should be provided.
+        qrange: quantile range
+        vrange: value range
+        nbins: number of bins
+        conda_env: conda environment to run in
+        cwd: working directory
+        force: whether to overwrite existing files
+    """
+    if bin_method == "quantile":
+        assert qrange is not None
+        bin_method = f"--qrange {qrange[0]} {qrange[1]}"
+    if bin_method == "value":
+        assert vrange is not None
+        bin_method = f"--vrange {vrange[0]} {vrange[1]}"
+    nbins = f"--n-bins {nbins}"
     outprefix_path = Path(outprefix)
 
     if not force and outprefix_path.with_suffix(".saddledump.npz").exists():
@@ -901,8 +929,9 @@ def cli_saddle(coolp, eigv, expected, outprefix, view, conda_env=None, cwd=None,
 
     conda_run = f"conda run -n {conda_env}" if conda_env else ""
     view_option = f"--view {view}" if view else ""
-    cmd = f"{conda_run} cooltools saddle --qrange 0.02 0.98 --fig png -o {outprefix} {view_option} --strength {coolp} {eigv} {expected}"
-
+    cmd = f"{conda_run} cooltools saddle {bin_method} {nbins} --fig png -o {outprefix} {view_option} --strength {coolp} {eigv} {expected}"
+    if debug:
+        print("[cli_saddle] cmd:", cmd)
     subprocess.check_output(
         cmd,
         shell=True,
