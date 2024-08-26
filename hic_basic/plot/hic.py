@@ -82,7 +82,7 @@ num_colors = 256
 colors = [fruitpunch(i) for i in range(num_colors)]
 fruitpunch = ['rgb({},{},{})'.format(int(c[0]*255), int(c[1]*255), int(c[2]*255)) for c in colors]
 fruitpunch_r = fruitpunch[::-1]
-def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, range_for_balance=False, fillna=False, **kwargs):
+def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, range_for_balance=False, fillna=False, give_norm_func=False, **kwargs):
     """
     Plot matrix heatmap.
     Input:
@@ -93,14 +93,19 @@ def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, ra
             When vmax is set, also set zmax in args to suit the color range.
         ignore_diags: whether to ignore the diagonal.
         donorm: whether to use lognorm.
-        range_for_balance: whether to use a special lognorm range suitable for balanced matrix.
-            Do this only when you are sure the input is a balanced cooler matrix and you want to lognorm it.
+        range_for_balance: whether you are using a balanced cooler matrix.
+            Raw matrix starts from 0 (a closed set), so it is easier to determine the lognorm range, for example [1, max].
+            Balanced matrix starts from 0.00001, 0.0002, etc. (an open set), so it is harder to determine the lognorm range.
+            This option serves as a reminder that you are using a balanced matrix and will attempt to adjust the display by trying different vmax values. 
+            If this is set and vmax is not set, will automatically provides a value range that empirically fits a balanced matrix.
         fillna: whether to fill nan with 0.
     TODO:
         1. make a real colorscale bar according to LogNorm
     """
     if range_for_balance:
         assert donorm, "you only need to set range_for_balance=True when you do lognorm, see docstring"
+    if give_norm_func:
+        assert donorm, "you only need to set give_norm_func=True when you do lognorm, see docstring"
     mat = orig_mat.copy()
     if isinstance(mat, pd.DataFrame):
         mat = mat.values
@@ -120,16 +125,18 @@ def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, ra
         if range_for_balance:
             if vmax is not None:
                 print("_plot_mat[warning]: vmax is set when input is balanced cooler matrix, try different vmax to avoid color saturation")
-            mat = LogNorm(
+            normfunc = LogNorm(
                 vmin=np.nanmin(mat) if np.nanmin(mat) > 0 else 0.0001,
                 vmax=np.nanmax(mat) if vmax is None else vmax,
                 clip=True
-                )(mat).data # balanced cooler(don't know why mat+=1 failed here)
+                )
+            mat = normfunc(mat).data # balanced cooler(don't know why mat+=1 failed here)
         else:
-            mat = LogNorm(
+            normfunc = LogNorm(
                 vmin=1,
                 vmax=vmax if vmax is not None else np.nanmax(mat),
-                clip=True)(mat).data
+                clip=True)
+            mat = normfunc(mat).data
     if fillna:
         # fillna with 0
         mat = np.nan_to_num(mat, nan=0)
@@ -162,7 +169,10 @@ def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, ra
     fig.update_layout(
         title=title
     )
-    return fig
+    if give_norm_func:
+        return fig, normfunc
+    else:
+        return fig
 def _get_switches(it, edge = True):
     result = []
     for i in range(0,len(it)):
@@ -546,6 +556,64 @@ def plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels, subplot_tit
  ### --- compartment --- ###
 
 
+def add_eig_track(fig, orig_data, eig_col=None, y_kwargs={}, row=None, col=None):
+    """
+    Add eigen vector track to a plotly figure or subplot.
+    Input:
+        fig: figure to add trace.
+        orig_data: dataframe or series; [chrom, start, eig_col]
+        eig_col: column name of eigen vector.
+        y_kwargs: kwargs for y axis.
+        row: row index of subplot to add trace, set to None if not subplot.
+        col: col index of subplot to add trace, set to None if not subplot.
+    Output:
+        fig: figure with eigen track added.
+    """
+    assert (row is None) == (col is None), "row and col must be both None or not None"
+    data = orig_data.copy()
+    if row is not None:
+        subplot_kwargs = dict(row=row, col=col)
+    else:
+        subplot_kwargs = {}
+    if isinstance(data, pd.Series):
+        data = data.rename("eig").reset_index()
+        eig_col = "eig"
+    else:
+        if eig_col is None:
+            eig_col = "eig"
+    bar_width = data["start"].diff().mode()[0]
+    if "AB" not in data.columns:
+        data = data.assign(
+            AB = "A"
+        )
+        data.loc[data[eig_col] < 0, "AB"] = "B"
+    eig_track_fig = px.bar(
+        data,
+        x = "start",
+        y = eig_col,
+        color = "AB",
+        color_discrete_map={"B":'rgb(33,102,172)',"A":'rgb(178,24,43)'},
+    )
+    eig_track_fig.update_traces(
+        showlegend=False,
+        width = bar_width,
+        marker=dict(line=dict(
+            width=0,
+            color = "purple"
+            ))
+    )
+    for trace in eig_track_fig.data:
+        fig.add_trace(trace, **subplot_kwargs)
+    default_y_kwargs = dict(
+        showline = True,
+        linecolor = "black",
+        tickvals = [-0.5, 0.5],
+        ticks = "",
+        range = [-0.5, 0.5],
+    )
+    y_kwargs = {**default_y_kwargs, **y_kwargs}
+    fig.update_yaxes(**y_kwargs, **subplot_kwargs)
+    return fig
 def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=True,
                             balance=False, cmap="RdBu", donorm=False,
                             Enames=["E1","E1"], eig_y_kwargs={}, **args):
@@ -566,6 +634,7 @@ def plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=
         Enames: col names of eigen
     Output:
         plotly figure.
+    TODO: rewrite with add_eig_track
     """
     clrs = [Cooler(str(coolp)) for coolp in coolps]
     eigs = [pd.read_table(eigs_file) for eigs_file in eigs_files]
@@ -951,10 +1020,22 @@ def plot_saddle_mpl(file, title, vmin=10**(-1),vmax=10**1):
     plt.ylabel("saddle category")
     plt.colorbar(im, label='obs/exp', pad=0.025, shrink=0.7)
     plt.title(title)
-def plot_saddle(file, title, vmin=10**(-1), vmax=10**1, **kwargs):
+def plot_saddle(file, title, vmin=10**(-1), vmax=10**1, strength_square_size=10, **kwargs):
+    """
+    Plot saddle plot.
+    Input:
+        file: path to saddle file, usually ends with .saddledump.npz.
+        title: title of the plot.
+        vmin: min z value.
+        vmax: max z value.
+        strength_square_size: which strength to use, different square size to calculate AA, BB... will give different strength.
+        kwargs: kwargs for px.imshow.
+    Output:
+        plot
+    """
     saddle = np.load(file, allow_pickle=True)
     saddledata = saddle['saddledata']
-    strength = saddle['saddle_strength'][10]
+    strength = saddle['saddle_strength'][strength_square_size]
     # fig = go.Figure(data=go.Heatmap(
     #     z=saddledata,
     #     colorscale='RdBu_r', # 使用红蓝色彩
@@ -1020,6 +1101,67 @@ def plot_IS(IS_file):
 # --- mat pileup plots --- ###
 
 
+def _add_IS_track(fig, track_data, IS_name, orientation="", y_kwargs={}, row=None, col=None, **trace_kwargs):
+    """
+    Add insulation score track to a plotly figure or subplot.
+    Input:
+        fig: figure to add trace.
+        track_data: pd.DataFrame; [chrom, start, IS_name]
+        IS_name: column name of insulation score.
+        orientation: "h" or "v"
+        row: row index of subplot to add trace, set to None if not subplot.
+        col: col index of subplot to add trace, set to None if not subplot.
+        y_kwargs: kwargs for y axis.
+        trace_kwargs: kwargs for trace.
+    Output:
+        fig: figure with insulation score track added.
+    """
+    assert (row is None) == (col is None), "row and col should be both None or both not None."
+    default_trace_kwargs = {
+        "mode" : "lines",
+        "line" : {
+            "color" : "black",
+            "width" : 1
+        }
+    }
+    trace_kwargs = {**default_trace_kwargs, **trace_kwargs}
+    if orientation == "h":
+        # plot horizontal
+        track_trace = go.Scatter(
+            y = track_data["start"],
+            x = track_data[IS_name],
+            **trace_kwargs
+        )
+    else:
+        track_trace = go.Scatter(
+            x = track_data["start"],
+            y = track_data[IS_name],
+            **trace_kwargs
+        )
+    subplot_kwargs = {"row":row, "col":col} if row is not None else {}
+    fig.add_trace(
+        track_trace,
+        **subplot_kwargs
+    )
+    default_y_kwargs = {
+        "showline" : True,
+        "linecolor" : "black",
+        "ticks" : "",
+    }
+    if orientation == "h":
+        default_y_kwargs["side"] = "top"
+    y_kwargs = {**default_y_kwargs, **y_kwargs}
+    if orientation == "h":
+        fig.update_xaxes(
+            **y_kwargs,
+            **subplot_kwargs
+        )
+    else:
+        fig.update_yaxes(
+            **y_kwargs,
+            **subplot_kwargs
+        )
+    return fig
 def pileup_IS(coolp, IS, genome="hg19", flank=800_000, **args):
     """
     Pileup TAD boundaries from a cool file.
