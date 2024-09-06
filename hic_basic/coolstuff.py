@@ -574,15 +574,25 @@ def hic_pileup(scool, grouping, cache_pattern="{}.pileup.cool",mergebuf=1e6):
             [scool+"::/cells/{}".format(i) for i in samples],
             mergebuf
         )
-def reset_cool_bins(coolpin, coolpout, genome="GRCh38", chunksize=1e6):
+def reset_cool_bins(coolpin, coolpout, new_bins=None, genome="GRCh38", chunksize=1e6):
+    """
+    Reset bins of cool file. Can also use this to filter out some bins.
+    Input:
+        coolpin: input cool file path
+        coolpout: output cool file path
+        bins: new bins, if None, generate from genome
+        genome: genome name, default "GRCh38"
+        chunksize: chunksize for reading pixels
+    """
     clr = cooler.Cooler(coolpin)
     binsize = clr.binsize
-    new_bins = GenomeIdeograph(
-        genome).bins(
-            binsize,
-            bed=True,
-            order=True
-        )
+    if new_bins is None:
+        new_bins = GenomeIdeograph(
+            genome).bins(
+                binsize,
+                bed=True,
+                order=True
+            )
     new_bins = new_bins.assign(
         bin_id = new_bins.index
     )
