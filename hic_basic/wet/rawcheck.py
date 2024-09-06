@@ -5,6 +5,15 @@ import shutil
 from pathlib import Path
 
 def calculate_md5_for_file(file_path):
+    """
+    Calculate md5 checksum for a file.
+    This give exactly the same result as md5sum command.
+    Input:
+        file_path: path to the file
+    Output:
+        file_path: path to the file
+        md5: md5 checksum of the file
+    """
     md5 = hashlib.md5()
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -33,6 +42,54 @@ def ls_md5_files(download_dir):
                 else:
                     print(f'WARNING: invalid md5 line in {md5_file}: {line}')
     return md5_lines
+def calc_md5(input_files, file_labels=None, result_file=None, force=False, threads=8):
+    """
+    Calculate md5 checksums of input files.
+    Input:
+        input_files: list of files to calculate md5 checksums
+        file_labels: rename files in md5 checksum results, for example: /dir/file -> file
+        result_file: file to write md5 checksum results
+    Output:
+        True if all md5 checksums are OK, False otherwise
+    """
+    # --- create result file --- #
+    if result_file is not None:
+        result_file = Path(result_file)
+        if result_file.exists() and not force:
+            print(f'{result_file} already exists. Use force=True to overwrite.')
+            return True
+        result_file.parent.mkdir(parents=True, exist_ok=True)
+        if result_file.exists():
+            # remove and create new file
+            result_file.unlink()
+            result_file.touch()
+        else:
+            # create new file
+            result_file.touch()
+        
+    if file_labels is None:
+        # use input_files as file_labels
+        file_labels = input_files
+    # --- verify md5 checksums --- #
+    nfails = 0
+    with concurrent.futures.ProcessPoolExecutor(threads) as executor:
+        future_to_md5_line = {executor.submit(calculate_md5_for_file, input_file): (input_file, file_label)
+                              for input_file, file_label in zip(input_files, file_labels)}
+        for future in concurrent.futures.as_completed(future_to_md5_line):
+            input_file, file_label = future_to_md5_line[future]
+            try:
+                file, md5 = future.result() # file is the same as input_file
+                with open(result_file, 'a') as f:
+                    f.write(f'{md5}\t{file_label}\n')
+            except Exception as exc:
+                print('%r generated an exception: %s' % (input_file, exc))
+                nfails += 1
+    if nfails == 0:
+        print('All md5 checksums are successfully calculated.')
+        return True
+    else:
+        print(f'{nfails} md5 checksums are not successfully calculated.')
+        return False
 def verify_md5(download_dir, result_file, threads=8):
     """
     Verify md5 checksums of downloaded files.
