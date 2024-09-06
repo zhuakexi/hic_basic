@@ -16,7 +16,8 @@ def merge_meta(*dfs):
         print("Cols good.")
     print("Resulting in %d samples." % new_meta.shape[0])
     return new_meta
-def rmsd_filter(meta, reso="20k", rmsd_thres=1, samples=True):
+def rmsd_filter(meta, reso="20k", rmsd_thres=1, samples=True, rmsd=False):
+    assert not (samples and rmsd), "Choose one."
     rmsd_cols = meta.columns[
         meta.columns.str.contains(f"{reso}_\d+_\d+_rmsd", regex=True)
         ]
@@ -28,7 +29,10 @@ def rmsd_filter(meta, reso="20k", rmsd_thres=1, samples=True):
     if samples:
         return meta[working_rmsd < rmsd_thres].index
     else: # give boolean mask
-        return working_rmsd < rmsd_thres
+        if rmsd:
+            return working_rmsd
+        else:
+            return working_rmsd < rmsd_thres
 def last_mouse(df):
     """
     Find last batch number.
