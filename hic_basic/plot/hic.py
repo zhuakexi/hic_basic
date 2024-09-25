@@ -17,7 +17,7 @@ from skimage import exposure
 import cooltools.lib.plotting
 
 from .general import template
-from .utils import filling_l2r_mpl, pcolormesh_45deg, tiling_mat
+from .utils import filling_l2r_mpl, pcolormesh_45deg, tiling_mat, sub_genome_mat
 from ..compartment import compartments
 from ..coolstuff import cool2mat
 
@@ -82,7 +82,8 @@ num_colors = 256
 colors = [fruitpunch(i) for i in range(num_colors)]
 fruitpunch = ['rgb({},{},{})'.format(int(c[0]*255), int(c[1]*255), int(c[2]*255)) for c in colors]
 fruitpunch_r = fruitpunch[::-1]
-def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, range_for_balance=False, fillna=False, give_norm_func=False, **kwargs):
+def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, range_for_balance=False, fillna=False,
+    give_norm_func=False, keep_regions=None, **kwargs):
     """
     Plot matrix heatmap.
     Input:
@@ -99,6 +100,10 @@ def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, ra
             This option serves as a reminder that you are using a balanced matrix and will attempt to adjust the display by trying different vmax values. 
             If this is set and vmax is not set, will automatically provides a value range that empirically fits a balanced matrix.
         fillna: whether to fill nan with 0.
+        give_norm_func: whether to return the norm function.
+        keep_regions: list of regions to keep, use this to close gaps in the matrix.
+            Note: this assumes the matrix index and columns are sorted.
+            if set, x and y axis will be set to categorical.
     TODO:
         1. make a real colorscale bar according to LogNorm
     """
@@ -106,6 +111,8 @@ def _plot_mat(orig_mat, title="", vmax=None, ignore_diags=True, donorm=False, ra
         assert donorm, "you only need to set range_for_balance=True when you do lognorm, see docstring"
     if give_norm_func:
         assert donorm, "you only need to set give_norm_func=True when you do lognorm, see docstring"
+    if keep_regions is not None:
+        assert isinstance(orig_mat, pd.DataFrame), "keep_regions can only be used when input is pd.DataFrame"
     mat = orig_mat.copy()
     if isinstance(mat, pd.DataFrame):
         mat = mat.values
