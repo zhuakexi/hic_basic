@@ -115,6 +115,31 @@ def tiling_mat(A_orig, Ref_orig, adjust = True, ignore_diags = True):
     else:
         m = np.tril(Ref) + np.triu(A)
     return m
+def sub_genome_mat(mat, keep_regions):
+    """
+    Keep only the regions in the keep_regions list.
+    Input:
+        mat: index and columns are [chrom, start]
+        keep_regions: list of regions to keep
+            regions are tuples of (start, end)
+    Output:
+        mat: matrix with only the regions in keep_regions
+    """
+    # drop rows
+    row_dropped_dfs = []
+    for region in keep_regions:
+        row_dropped_dfs.append(
+            mat.loc[region[0]:region[1],:]
+        )
+    row_dropped = pd.concat(row_dropped_dfs,axis=0)
+    # drop columns
+    col_dropped_dfs = []
+    for region in keep_regions:
+        col_dropped_dfs.append(
+            row_dropped.loc[:,region[0]:region[1]]
+        )
+    col_dropped = pd.concat(col_dropped_dfs,axis=1)
+    return col_dropped
 def pcolormesh_45deg(ax, matrix_c, start=0, resolution=1, *args, **kwargs):
     """
     Helper to plot a matrix with 45 degree angle.
