@@ -14,6 +14,18 @@ from subprocess import check_output, CalledProcessError
 import numpy as np
 import pandas as pd
 import pysam
+
+formal_feature_names = {
+    "con_per_reads" : "Contacts per read",
+    "umis_per_reads" : "UMIs per read",
+    "umis" : "UMIs",
+    "20k_rmsd" : "20k RMSD",
+    "pairs_c12_num" : "Contacts after clean1,2",
+    "intra" : "Intra contact percent",
+    "rna_ratio" : "RNA ratio",
+    "raw_reads" : "Total raw reads",
+    "rna_reads" : "RNA reads",
+}
 # add pairs num
 def zcount(filename:str,target:str)->int:
     # count zipped file line number
