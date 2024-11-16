@@ -1,4 +1,6 @@
 from functools import partial
+from time import time
+
 import anndata as ad
 import pandas as pd
 import numpy as np
@@ -8,47 +10,12 @@ import os
 import loompy
 import scvelo as scv
 
-from ..hicio import matr, read_meta, get_chrom_contact_counts
+from ..hicio import matr, read_expr, read_meta, get_chrom_contact_counts
 from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
 from .exp_record import add_cell_type, add_group_hour
 from ..utils import two_sets, gen_fileis
 from ..phasing import get_chrom_hap_score
-
-def _merge_expr(fps, mapper, samplelist=None, outfile=None, qc=None):
-    """
-    Merging umi count matrices.
-    Input:
-        fps: matrix file paths; list
-        mapper: renaming samples(for ID fixing); dict
-        samplelist: samples to keep, None for All; list
-    Output:
-        dataframe
-    """
-    samplelist = pd.Index(samplelist)
-    all_mat = pd.DataFrame()
-    for i in fps:
-        sub_mat = matr(i,"\t")
-        print("sub mats:",sub_mat.shape)
-        # pd concat
-        all_mat = pd.concat([all_mat, sub_mat],axis=1)
-        all_mat.fillna(0, inplace=True)
-    # ---rename sample id in expression matrix---
-    all_mat.rename(columns=mapper,inplace=True)
-    # ---check all_mat---
-    if (~samplelist.isin(all_mat.columns)).sum() > 0:
-        print("Warning: sample has no count data:")
-        for i in samplelist[~samplelist.isin(all_mat.columns)]:
-            print(i)
-    print("raw merged matrix",all_mat.shape)
-    # ---using only samples in samplelist---
-    valid_cells = samplelist[samplelist.isin(all_mat.columns)]
-    all_mat = all_mat.loc[:,valid_cells]
-    # ---remove full 0 lines---
-    all_mat = all_mat.loc[~(all_mat.sum(axis=1)==0),:]
-    print("final merged matrix",all_mat.shape)
-    if outfile is not None:
-        all_mat.to_csv(outfile)
-    return all_mat
+from ..pp import _merge_expr
 def _trim_names(orig, ref, verbose=False):
     """
     Find standard id from ref. 
