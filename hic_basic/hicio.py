@@ -192,6 +192,42 @@ def parse_gff(file, ID=False, Name=False):
         additions.append(Name)
     gff = pd.concat([gff] + additions, axis=1, join="inner")
     return gff
+    
+
+### --- read scRNA-seq file --- ###
+def read_expr(path,sep=None)->pd.DataFrame:
+    """
+    Read expression matrix from file.
+    Input:
+        path: path to matrix file
+        sep: separator, if None will infer from file extension
+    Output:
+        expression matrix
+    """
+    mat = None
+    if path.endswith("parquet"):
+        mat = pd.read_parquet(path)
+    elif path.endswith("pkl") or path.endswith("pkl.gz"):
+        mat = pd.read_pickle(path)
+    else:
+        pass
+    
+    if mat is not None:
+        return mat
+
+    if sep is None:
+        if path.endswith("csv.gz") or path.endswith("csv"):
+            mat = pd.read_csv(path,index_col=0)
+        elif path.endswith("tsv.gz") or path.endswith("tsv"):
+            mat = pd.read_table(path,index_col=0)
+        else:
+            print("Unknown file extension, will assume tab separated")
+            mat = pd.read_table(path,index_col=0)
+    else:
+        mat = pd.read_table(path,sep=sep,index_col=0)
+    mat.columns = mat.columns.astype("string")
+    mat.index = mat.index.astype("string")
+    return mat
 # read cooler file
 def read_h5_ds(group):
     """
@@ -329,14 +365,13 @@ def read_meta(fp):
     df.columns = df.columns.astype("string")
     df.index = df.index.astype("string")
     return df
-def matr(path,sep=","):
+def matr(path, sep=","):
     """
     Read umi_tools long-form output matrix.
+    A wrapper for read_expr.
+    See read_expr for more details.
     """
-    mat = pd.read_csv(path,sep=sep,index_col=0)
-    mat.columns = mat.columns.astype("string")
-    mat.index = mat.index.astype("string")
-    return mat
+    return read_expr(path,sep)
 def matra(file):
     """
     Read umi-tools output to anndata object.
