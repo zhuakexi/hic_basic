@@ -1,5 +1,6 @@
 # --- part 1 Set/Venn ---
 from upsetplot import from_contents, UpSet
+import itertools
 import numpy as np
 import pandas as pd
 
@@ -9,8 +10,23 @@ import statsmodels.api as sm
 
 
 ### --- default template for all --- ###
-
-
+color_discrete_sequence = px.colors.qualitative.G10
+class ColorDiscreteMap:
+    def __init__(self, color_discrete_sequence=color_discrete_sequence):
+        self.colors = color_discrete_sequence
+        self.colors_iter = itertools.cycle(self.colors)
+        self.cmap = {}
+    def get(self, trace_name=None):
+        cur_color = next(self.colors_iter)
+        if trace_name is not None:
+            self.cmap[trace_name] = cur_color
+        return cur_color
+    def extend(self, trace_names):
+        for trace_name in trace_names:
+            self.get(trace_name)
+    # --- dict operations --- #
+    def __getitem__(self, trace_name):
+        return self.cmap[trace_name]
 template = go.layout.Template()
 # size
 template.layout.height = 500
