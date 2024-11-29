@@ -4,20 +4,22 @@ import pandas as pd
 
 from .hicio import read_expr
 #from sklearn import preprocessing
-def _merge_expr(fps, mapper={}, samplelist=[], outfile=None, qc=None, T=False,dtype="int32"):
+def _merge_expr(fps, mapper={}, samplelist=None, outfile=None, qc=None, OV=True,dtype="int32"):
     """
     Merging umi count matrices.
     Input:
-        fps: matrix file paths; list
+        fps: matrix file paths, can also be dataframes; list
         mapper: renaming samples(for ID fixing); dict
             blank for no change
-        samplelist: samples to keep, [] for All; list
-        T: True for transpose
+        samplelist: samples to keep, None for All; list
+        OV: True for observation as rows, False for observation as cols; bool
         dtype: data type for matrix
             Warning: will do it silently
     Output:
         dataframe
     """
+    if not OV:
+        print("Warning: observation as columns is just for compatibility.")
     all_mat = pd.DataFrame()
     T_run_start = time()
     for i, fp in enumerate(fps):
@@ -26,36 +28,41 @@ def _merge_expr(fps, mapper={}, samplelist=[], outfile=None, qc=None, T=False,dt
         sub_mat = sub_mat.astype(dtype)
         print("sub mats (%d/%d):" % (i+1, len(fps)) ,sub_mat.shape)
         # pd concat
-        if T:
-            # genes * samples -> samples * genes
+        if OV:
+            # input dfs are samples * genes
             all_mat = pd.concat([all_mat, sub_mat.T],axis=0,join="outer")
             all_mat.fillna(0, inplace=True)
             # purge all zero columns(genes)
             all_mat = all_mat.loc[:,~(all_mat.sum(axis=0)==0)]
         else:
+            # input dfs are genes * samples
             all_mat = pd.concat([all_mat, sub_mat],axis=1,join="outer")
             all_mat.fillna(0, inplace=True)
             all_mat = all_mat.loc[~(all_mat.sum(axis=1)==0),:]
+            # rotate because all inner dfs are samples * genes
+            all_mat = all_mat.T
         print("all mats:",all_mat.shape)
     # ---rename sample id in expression matrix---
     if len(mapper) > 0: 
-        if T:
+        if OV:
             all_mat.rename(index=mapper,inplace=True)
         else:
             all_mat.rename(columns=mapper,inplace=True)
 
     # --- check and filtering samples ---
+    if samplelist is None:
+        samplelist = []
     if len(samplelist) > 0:
         samplelist = pd.Index(samplelist)
         # check all_mat
-        if (~samplelist.isin(all_mat.columns)).sum() > 0:
+        if (~samplelist.isin(all_mat.index)).sum() > 0:
             print("Warning: sample has no count data:")
-            for i in samplelist[~samplelist.isin(all_mat.columns)]:
+            for i in samplelist[~samplelist.isin(all_mat.index)]:
                 print(i)
         print("raw merged matrix",all_mat.shape)
         # using only samples in samplelist
-        valid_cells = samplelist[samplelist.isin(all_mat.columns)]
-        all_mat = all_mat.loc[:,valid_cells]
+        valid_cells = samplelist[samplelist.isin(all_mat.index)]
+        all_mat = all_mat.loc[valid_cells, :]
         print("final merged matrix",all_mat.shape)
     T_run = (time() - T_run_start) / 60
     print("Took %.2f mins to merge" % T_run)
