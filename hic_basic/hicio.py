@@ -2,14 +2,18 @@ import gzip
 import json
 import os
 import pickle
+import re
+import tarfile
 from collections import namedtuple
 from io import StringIO
+from pathlib import Path
 from itertools import product, dropwhile
 
 import anndata as ad
 import h5py
 import numpy as np
 import pandas as pd
+from scipy.io import mmread
 from scipy.sparse import coo_matrix, csr_matrix
 
 
@@ -205,6 +209,14 @@ def read_expr(path,sep=None)->pd.DataFrame:
         expression matrix
     """
     mat = None
+
+    # in case a dataframe is passed in
+    if isinstance(path, pd.DataFrame):
+        mat = path
+        return mat
+
+    # formats that don't require separator inference
+    # like .parquet, .pkl, .pkl.gz
     if path.endswith("parquet"):
         mat = pd.read_parquet(path)
     elif path.endswith("pkl") or path.endswith("pkl.gz"):
@@ -215,6 +227,7 @@ def read_expr(path,sep=None)->pd.DataFrame:
     if mat is not None:
         return mat
 
+    # format that requires separator inference
     if sep is None:
         if path.endswith("csv.gz") or path.endswith("csv"):
             mat = pd.read_csv(path,index_col=0)
@@ -228,6 +241,106 @@ def read_expr(path,sep=None)->pd.DataFrame:
     mat.columns = mat.columns.astype("string")
     mat.index = mat.index.astype("string")
     return mat
+def match_10x(file_list:list, retind=False)->dict:
+    """
+    Check if input file names contains a 10x result.
+    Input:
+        file_list: list of file path
+        retind: return index of matched file instead of file path
+    Output:
+        {"matrix":matrix_file, "genes":gene_file, "barcodes":barcodes_file}
+    """
+    checker = {
+        "matrix" : ["matrix"],
+        "genes" : ["genes","features"],
+        "barcodes" : ["barcodes"],
+    }
+    scores = {}
+    result = {}
+    file_list = [str(file) for file in file_list] # also accept iterable
+    for filetype, keywords in checker.items():
+        # score for each file
+        scores = [
+            sum([re.search(keyword, str(file).lower()) is not None for keyword in keywords])
+            for file in file_list]
+        # find file with highest score
+        best_score = max(scores)
+        if best_score > 0:
+            if retind: # return index
+                result[filetype] = scores.index(best_score)
+            else: # return file path
+                result[filetype] = file_list[scores.index(best_score)]
+        else:
+            result[filetype] = None
+            print("Warning: No file found for %s" % filetype)
+    return result
+def combine_10x(annoted_file:dict)->pd.DataFrame:
+    """
+    Extract data from files and combine them into a expression matrix.
+    Input:
+        annoted_file: {"matrix":matrix_file, "genes":gene, "barcodes":barcodes}
+    Output:
+        a cell * gene matrix
+    """
+    pass
+def read_10x(fp, gene_column=1, cell_column=0)->pd.DataFrame:
+    """
+    Read 10x-flavor matrix market file.
+    Input:
+        fp: file path
+        gene_column: use this column from gene/feature matrix
+        cell_column: use this column from cell matrix
+    Output:
+        a cell * gene matrix
+    """
+    fp = str(fp) # use end to decide input type
+    if fp.endswith(".tar.gz"):
+        with tarfile.open(fp, "r:gz") as tar:
+            members = tar.getmembers()
+            filenames = [member.name for member in members]
+            annoted_members = {
+                filetype : members[ind]
+                for filetype, ind in match_10x(filenames, retind=True).items()
+            }
+            #print(annoted_members)
+            for filetype, member in annoted_members.items():
+                with tar.extractfile(member) as gf:
+                    with gzip.open(gf,"rt") as f:
+                        if filetype == "matrix":
+                            data = mmread(f)
+                        elif filetype == "genes":
+                            genes = pd.read_table(
+                                f,header=None)[gene_column].rename("var")
+                        elif filetype == "barcodes":
+                            barcodes = pd.read_table(
+                                f,header=None)[cell_column].rename("obs")
+                        else:
+                            raise ValueError("Unknown file type: %s" % filetype)
+        result = pd.DataFrame(data.todense(), index=genes, columns=barcodes)
+    else:
+        # treat as directory
+        print("Treating as directory...")
+        file_list = Path(fp).glob("*")
+        for filetype, filename in match_10x(file_list, retind=False).items():
+            if filename.endswith(".gz"):
+                opener = gzip.open
+            else:
+                opener = open
+            with opener(filename) as f:
+                if filetype == "matrix":
+                    # mmread accept filepath and call gzip in fact
+                    # here just for consistency
+                    data = mmread(f)
+                elif filetype == "genes":
+                    genes = pd.read_table(
+                        f,header=None)[gene_column].rename("var")
+                elif filetype == "barcodes":
+                    barcodes = pd.read_table(
+                        f,header=None)[cell_column].rename("obs")
+                else:
+                    raise ValueError("Unknown file type: %s" % filetype)
+        result = pd.DataFrame(data.todense(), index=genes, columns=barcodes)
+    return result
 # read cooler file
 def read_h5_ds(group):
     """
