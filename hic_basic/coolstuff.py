@@ -54,12 +54,13 @@ def iter_pixels(clr, chunksize=1e6, join=True):
     tot = clr.pixels().shape[0]
     for i in range(0, tot, chunksize):
         yield clr.pixels(join=join)[i:i+chunksize]
-def cool2pixels(coolp:str, balance:bool=True)->pd.DataFrame:
+def cool2pixels(coolp:str, clr_weight_name:bool=None)->pd.DataFrame:
     """
     Fetch all pixels from a cooler file.
     Input:
         coolp: path to cooler file
-        balance: whether to include balanced values
+        clr_weight_name: name of weight column
+            if None, use raw count
     Output:
         pixels: DataFrame of pixels, [bin1_id, bin2_id, count, balanced]
     """
@@ -67,9 +68,9 @@ def cool2pixels(coolp:str, balance:bool=True)->pd.DataFrame:
     pixels = clr.pixels()[:]
     bins = clr.bins()[:]
     pixels = cooler.annotate(pixels, bins, replace=True)
-    if balance:
+    if clr_weight_name is not None:
         pixels = pixels.assign(
-            balanced = pixels.eval('weight1 * weight2 * count')
+            balanced = pixels.eval(f'{clr_weight_name}1 * {clr_weight_name}2 * count')
         )
     return pixels
 def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:bool=False, min_nz=None,bad_bins=None)->pd.DataFrame:
