@@ -28,7 +28,7 @@ def get_full_chrom_arm_view(clr, genome):
     
     arms = arms[arms.chrom.isin(clr.chromnames)].reset_index(drop=True)
     return arms
-def ps_curve(coolp, view_df=None, all_region=False, nproc=4, clr_weight_name="weight"):
+def ps_curve(coolp, view_df=None, all_region=False, nproc=4, clr_weight_name="weight", drop2diags=False, **kwargs):
     """
     Get P(s) curve of a balanced clr.
     cooltools version 0.5.1 or higher is required.
@@ -39,6 +39,7 @@ def ps_curve(coolp, view_df=None, all_region=False, nproc=4, clr_weight_name="we
             else, return aggregated Ps and derivative
         nproc: number of processes to use
         clr_weight_name: weight column name
+        **kwargs: other parameters for cooltools.expected_cis
     Output:
         if all_region:
             cvd_smooth_agg( ps curve ), dataframe
@@ -56,11 +57,13 @@ def ps_curve(coolp, view_df=None, all_region=False, nproc=4, clr_weight_name="we
         aggregate_smoothed = True, # add a new column with the average of regions: balanced.avg.smoothed.agg
         nproc = nproc,
         clr_weight_name = clr_weight_name, # weight column name
+        **kwargs
     )
     # adding real distance in bp
     cvd_smooth_agg['s_bp'] = cvd_smooth_agg['dist'] * clr.binsize
-    # drop first 2 diagonals
-    cvd_smooth_agg['balanced.avg.smoothed.agg'].loc[cvd_smooth_agg['dist'] < 2] = np.nan
+    # drop first 2 diagonals, they are noisy (when binsize is small)
+    if drop2diags:
+        cvd_smooth_agg['balanced.avg.smoothed.agg'].loc[cvd_smooth_agg['dist'] < 2] = np.nan
     if all_region:
         # Ps-curve calculated within each region
         # so per-chromosome Ps-curve ploting is very natural, just use the
