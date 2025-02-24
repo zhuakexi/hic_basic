@@ -497,6 +497,200 @@ def clip_single_centelo_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], gen
             )
         render.render()
         return png
+
+from io import StringIO
+
+import numpy as np
+from hires_utils.hires_io import parse_3dg
+
+from ..structure.measure import primary_views
+from ..structure.pileup import sig_primary_coords
+
+def pymol_primary_views(_3dg_file, view="lr", targets=None):
+    """
+    Rotate a 3dg structure relative to primary axis.
+    Input:
+        _3dg_file: 3dg file of a single-cell structure
+        view: view to look at in pymol, ["lr", "ht", "dv"], means looking towards \
+            left-right, head-tail or dorsal-ventral axis.
+        targets: flip according to this.
+    Return:
+        _3dg: a rotated 3dg structure suitable for pymol rendering
+    """
+    # rotate structure on the fly
+    _3dg_primary_views = primary_views(parse_3dg(_3dg_file))
+    _3dg =  sig_primary_coords(
+            _3dg_primary_views,
+            targets if targets is not None else [1, 1, 1],
+            parse_3dg(_3dg_file)
+            )
+    # now x, y, z = ht, dv, lr
+
+# remove () in chrom names, because pymol does not like it
+    _3dg = _3dg.reset_index()
+    _3dg["chr"] = _3dg["chr"].str.replace("[()]", "_", regex=True)
+    # remove bad particles if any
+    if len(_3dg_primary_views["bad_particles"]) > 0:
+        print("Bad particles found in", _3dg_file)
+        _3dg = _3dg.loc[_3dg.index.difference(_3dg_primary_views["bad_particles"])]
+    _3dg.set_index(["chr", "pos"], drop=True, inplace=True)
+
+    if view == "lr":
+        # pymol sees towards -z/-lr direction by default, do nothing
+        _3dg = _3dg
+    elif view == "dv":
+        # rotate 90 degree around x/ht axis
+        theta = np.radians(90)
+        R = np.array([
+            [1, 0, 0],
+            [0, np.cos(theta), -np.sin(theta)],
+            [0, np.sin(theta), np.cos(theta)]
+        ])
+        _3dg = _3dg.dot(R.T)
+    elif view == "ht":
+        # rotate 90 degree around y/dv axis
+        theta = np.radians(90)
+        R = np.array([
+            [np.cos(theta), 0, np.sin(theta)],
+            [0, 1, 0],
+            [-np.sin(theta), 0, np.cos(theta)]
+        ])
+        _3dg = _3dg.dot(R.T)
+    else:
+        raise ValueError("Unsupported view")
+    return _3dg
+# --- single-cell rendering --- #
+def render_surface_primary_view(_3dg_file, outpng, tmpdir, view="lr", targets=None, **kwargs):
+    """
+    Rendering primary views of a single-cell structure with pymol.
+    Designed for a none-glomerulus nucleus.
+    Input:
+        _3dg_file: 3dg file of a single-cell structure
+        outpng: output png file
+        tmpdir: temporary directory
+        view: view to render, ["lr", "ht", "dv"], means looking towards \
+            left-right, head-tail or dorsal-ventral axis.
+    Output:
+        outpng path; and wrote outpng file
+    """
+    _3dg = pymol_primary_views(_3dg_file, view, targets)
+    surface_territory_pymol(
+        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+        outpng,
+        tmpdir,
+        **kwargs
+    )
+    return str(outpng)
+def render_surface_centelo_primary_view(_3dg_file, outpng, genome, tmpdir, view="lr", targets=None, **kwargs):
+    """
+    Color primary views of a single-cell structure with relative dist to centromeres and telomeres.
+    Designed for a none-glomerulus nucleus.
+    Input:
+        _3dg_file: 3dg file of a single-cell structure
+        outpng: output png file
+        genome: genome name of the structure
+        tmpdir: temporary directory
+        view: view to render, ["lr", "ht", "dv"], means looking towards \
+            left-right, head-tail or dorsal-ventral axis.
+        targets: flip according to this.
+    Output:
+        outpng path; and wrote outpng file
+    """
+    _3dg = pymol_primary_views(_3dg_file, view, targets)
+    surface_centelo_pymol(
+        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+        outpng,
+        genome,
+        tmpdir,
+        **kwargs
+    )
+    return str(outpng)
+# def render_clip_primary_view(_3dg_file, outpng, view="lr", **kwargs):
+#     """
+#     Rendering clip primary views of a single-cell structure with pymol, colored by territory.
+#     Designed for a none-glomerulus nucleus.
+#     Input:
+#         _3dg_file: 3dg file of a single-cell structure
+#         outpng: output png file
+#         view: view to render, ["lr", "ht", "dv"], means looking towards \
+#             left-right, head-tail or dorsal-ventral axis.
+#     Output:
+#         outpng path; and wrote outpng file
+#     """
+#     _3dg = pymol_primary_views(_3dg_file, view)
+#     clip_territory_pymol(
+#         StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+#         outpng,
+#         **kwargs
+#     )
+#     return str(outpng)
+def render_clip_primary_view(_3dg_file, outpng, view="lr", targets=None, **kwargs):
+    """
+    Rendering clip primary views of a single-cell structure with pymol, colored by territory.
+    Designed for a none-glomerulus nucleus.
+    Input:
+        _3dg_file: 3dg file of a single-cell structure
+        outpng: output png file
+        view: view to render, ["lr", "ht", "dv"], means looking towards \
+            left-right, head-tail or dorsal-ventral axis.
+    Output:
+        outpng path; and wrote outpng file
+    """
+    _3dg = pymol_primary_views(_3dg_file, view, targets)
+    clip_territory_pymol(
+        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+        outpng,
+        **kwargs
+    )
+    return str(outpng)
+def render_clip_b_primary_view(_3dg_file, b_factor, outpng, view="lr", targets=None, **kwargs):
+    """
+    Rendering clip primary views of a single-cell structure with pymol, colored by territory.
+    Designed for a none-glomerulus nucleus.
+    Input:
+        _3dg_file: 3dg file of a single-cell structure
+        b_factor: reference b factor
+        outpng: output png file
+        view: view to render, ["lr", "ht", "dv"], means looking towards \
+            left-right, head-tail or dorsal-ventral axis.
+    Output:
+        outpng path; and wrote outpng file
+    """
+    _3dg = pymol_primary_views(_3dg_file, view, targets)
+    clip_b_pymol(
+        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+        b_factor,
+        outpng,
+        **kwargs
+    )
+    return str(outpng)
+def render_clip_centelo_primary_view(_3dg_file, outpng, genome, clip, slab, tmpdir, view="lr", targets=None, **kwargs):
+    """
+    Color primary views of a single-cell structure with relative dist to centromeres and telomeres.
+    Designed for a none-glomerulus nucleus.
+    Input:
+        _3dg_file: 3dg file of a single-cell structure
+        outpng: output png file
+        genome: genome name of the structure
+        tmpdir: temporary directory
+        view: view to render, ["lr", "ht", "dv"], means looking towards \
+            left-right, head-tail or dorsal-ventral axis.
+        targets: flip according to this.
+    Output:
+        outpng path; and wrote outpng file
+    """
+    _3dg = pymol_primary_views(_3dg_file, view, targets)
+    clip_centelo_pymol(
+        StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
+        outpng,
+        genome=genome,
+        clip=clip,
+        slab=slab,
+        tmpdir=tmpdir,
+        **kwargs
+    )
+    return str(outpng)
+
 if __name__ == "__main__":
     from io import StringIO
 
