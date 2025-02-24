@@ -166,3 +166,36 @@ def _mat_IS(dm_v:np.ndarray, w:int) -> np.ndarray:
                 diamond_value / (left_triangle_value + right_triangle_value)
             )
     return np.array(IS), np.array(counts)
+def IS2blocks(borders):
+    # prepare 0-1, 2-3, 4-5, ...
+    chunks = []
+    for i, chunk in borders.groupby(lambda x : x % 2):
+        chunks.append(chunk)
+    chunks[1].index = chunks[1].index - 1
+    tad_blocks0 = pd.concat(
+        [
+            chunks[0][["chrom","start"]],
+            chunks[1][["chrom","start"]]
+            ],
+        axis=1
+    )
+    tad_blocks0.columns = ["chrom1","start1","chrom2","start2"]
+    # prepare 1-2, 3-4, 5-6, ...
+    chunks = []
+    for i, chunk in borders.groupby(lambda x : x % 2):
+        chunks.append(chunk)
+    chunks[0].index = chunks[0].index - 1
+    tad_blocks1 = pd.concat(
+        [
+            chunks[1][["chrom","start"]],
+            chunks[0][["chrom","start"]]
+            ],
+        axis=1
+    )
+    tad_blocks1.columns = ["chrom1","start1","chrom2","start2"]
+    tad_blocks = pd.concat([tad_blocks0, tad_blocks1], axis=0).sort_index()
+    tad_blocks = tad_blocks.dropna(how="any")
+    tad_blocks = tad_blocks.query("chrom1 == chrom2").copy()
+    tad_blocks["start1"] = tad_blocks["start1"].astype(int)
+    tad_blocks["start2"] = tad_blocks["start2"].astype(int)
+    return tad_blocks
