@@ -742,7 +742,7 @@ def stat_cool(names, ddir, genome, show=True):
 # lousy helper functions to work with cooler, cooltools stuff
 # you need a conda env that names `cooler`, with cooler and cooltools installed
 import subprocess
-def cli_pairs2cool(filei,fileo,sizef,binsize):
+def cli_pairs2cool(filei,fileo,sizef,binsize,force=False, conda_frontend=""):
     """
     Generate .cool file from 4DN .pairs file
     Input:
@@ -750,11 +750,18 @@ def cli_pairs2cool(filei,fileo,sizef,binsize):
         fileo: output .cool file
         sizef: chrom size file, 2col(chrom:str, size:int) tsv
         binsize: binsize as you wish
+        conda_frontend: use conda to run cmd in conda env
+            eg. "conda run -n cooler"
     """
+    filei, fileo, sizef = str(filei), str(fileo), str(sizef)
+    if not force and Path(fileo).exists():
+        print(f"File '{fileo}' already exists. Skipping execution.")
+        return fileo
     subprocess.check_output(
-        "conda run -n embryo cooler cload pairs -c1 2 -p1 3 -c2 4 -p2 5 %s:%d %s %s " % (sizef,binsize,filei,fileo),
+        "%s cooler cload pairs -c1 2 -p1 3 -c2 4 -p2 5 %s:%d %s %s " % (conda_frontend,sizef,binsize,filei,fileo),
         shell=True)
-def cli_mergecool(incools, outcool, force=False, conda_env=None, cwd=None):
+    return fileo
+def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True, cwd=None):
     """
     Merge cool files with same indices to get a consensus heatmap.
     Input:
@@ -771,8 +778,19 @@ def cli_mergecool(incools, outcool, force=False, conda_env=None, cwd=None):
     else:
         conda_run = f"conda run -n {conda_env}"
 
+    # check input
+    valid_cools = []
+    for cool in incools:
+        if not Path(cool).exists() or not Cooler(cool).info:
+            if skip_blank:
+                print(f"File '{cool}' does not exist or is empty. Skipping.")
+                continue
+            else:
+                raise FileNotFoundError(f"File '{cool}' does not exist or is empty.")
+        valid_cools.append(cool)
+
     # 将输入文件列表转换为字符串
-    incools_str = " ".join(incools)
+    incools_str = " ".join(valid_cools)
     
     # 构造命令行命令
     cmd = f"{conda_run} cooler merge {outcool} {incools_str}"
