@@ -4,41 +4,82 @@ from pathlib import Path
 import pandas as pd
 
 name = "render"
-description = """Use this command to render multiple structures in parallel and output a png file for each structure.
-This script is used to render clip of primary view (colored by CpG) of a none-glomerulus single-cell structure.
-Also use this to render all kinds of clip-CpG views, for example round GM12878 cells."""
+description = """Use this command to render multiple structures in parallel and output a png file for each structure."""
 
 from ..hicio import read_meta
-from ..plot.render import render_clip_b_primary_view, clip_b_pymol, render_surface_primary_view, surface_territory_pymol
-
+from ..plot.render import (
+    render_clip_b_primary_view,
+    clip_b_pymol,
+    render_surface_primary_view,
+    surface_territory_pymol,
+    render_clip_centelo_primary_view,
+    clip_centelo_pymol
+)
 def render_task(args):
     """
     Render a single structure.
     """
-    sample_name, _3dg_file, b_factor, dupref, cmap, clip, slab, view, target, outdir = args
+    sample_name, _3dg_file, ref, dupref, cmap, clip, slab, view, target, outdir, mode, force = args
     outpng = outdir / f"{sample_name}.{view}c{clip}s{slab}.png"
     tmpdir = outdir
-    if outpng.exists():
+    if outpng.exists() and not force:
         print(f"Skip {sample_name} {clip} {view}")
         return outpng
     print(f"Processing {sample_name} {clip} {view}")
-    #print(b_factor)
     if clip == "surf":
+        # surface
         if view == "rand":
-            res = surface_territory_pymol(
-                _3dg_file, outpng, outdir, conda=None
-            )
+            # random-surface view
+            if mode == "territory":
+                res = surface_territory_pymol(
+                    _3dg_file, outpng, outdir, conda=None
+                )
+            elif mode == "b_factor":
+                raise NotImplementedError("Random-outside view not supported for b_factor mode")
+            elif mode == "centelo":
+                raise NotImplementedError("Random-outside view not supported for centelo mode")
+            else:
+                raise ValueError("Invalid mode")
         else:
-            res = render_surface_primary_view(
-                _3dg_file, outpng, outdir, view=view, targets=target, conda=None)
+            # primary-surface views
+            if mode == "territory":
+                res = render_surface_primary_view(
+                    _3dg_file, outpng, outdir, view=view, targets=target, conda=None)
+            elif mode == "b_factor":
+                raise NotImplementedError("Specific-outside view not supported for b_factor mode")
+            elif mode == "centelo":
+                raise NotImplementedError("Specific-outside view not supported for centelo mode")
+            else:
+                raise ValueError("Invalid mode")
     else:
+        # clip
         if view == "rand":
-            res =  clip_b_pymol(
-            _3dg_file, b_factor, outpng, dupref=dupref, cmap=cmap, clip=clip, slab=slab, tmpdir=tmpdir, conda=None
-            )
+            # random-clip view
+            if mode == "territory":
+                raise NotImplementedError("Random-inside view not supported for territory mode")
+            elif mode == "b_factor":
+                res = clip_b_pymol(
+                _3dg_file, ref, outpng, dupref=dupref, cmap=cmap, clip=clip, slab=slab, tmpdir=tmpdir, conda=None
+                )
+            elif mode == "centelo":
+                res = clip_centelo_pymol(
+                    _3dg_file, outpng, genome=ref, dupref=dupref, clip=clip, slab=slab, tmpdir=tmpdir, conda=None
+                )
+            else:
+                raise ValueError("Invalid mode")
         else:
-            res = render_clip_b_primary_view(
-            _3dg_file, b_factor, outpng, view, target, dupref=dupref, cmap=cmap, clip=clip, slab=slab, tmpdir=tmpdir, conda=None)
+            # primary-clip views
+            if mode == "territory":
+                raise NotImplementedError("Specific-inside view not supported for territory mode")
+            elif mode == "b_factor":
+                res = render_clip_b_primary_view(
+                    _3dg_file, ref, outpng, view, target, dupref=dupref, cmap=cmap, clip=clip, slab=slab, tmpdir=tmpdir, conda=None)
+            elif mode == "centelo":
+                res = render_clip_centelo_primary_view(
+                    _3dg_file, outpng, ref, clip, slab, outdir, view=view, targets=target, conda=None, dupref=dupref
+                )
+            else:
+                raise ValueError("Invalid mode")
     return res
 
 def add_arguments(subparser):
@@ -47,9 +88,6 @@ def add_arguments(subparser):
         type=str,
         required=True,
         help='A .csv sample table, must have `20k_g_struct1` or `gs` column')
-    subparser.add_argument('-b','--b_factor', type=str, help='Reference b factor. If multiple B factors are used, separate them by comma and set --multiB')
-    subparser.add_argument('--multiB', action='store_true', help='Whether to use multiple B factors. See --b_factor')
-    subparser.add_argument('--dupref', action='store_true', help='Whether to duplicate the reference for diploid genome')
     subparser.add_argument('--cmap', type=str, default='', help='Colormap to use. Use -- to separate words. eg: viridis')
     subparser.add_argument(
         '-o','--outdir', 
@@ -57,7 +95,26 @@ def add_arguments(subparser):
         required=True,
         help='Directory to store the output png files')
     subparser.add_argument('--filesp_path', type=str, help='Path of the output filesp file')
+    subparser.add_argument('--force', action='store_true', help='Whether to overwrite existing files')
 
+    # mode_switcher
+    subparser.add_argument(
+        '--mode',
+        choices=['b_factor', 'centelo'],
+        default='b_factor',
+        help='Mode to render:\nb_factor: color according to a reference b factor file. Need to provide --b_factor.\ncentelo: render the structure with centrometer and telomere. Need to provide --genome'
+    )
+
+    # b_factor mode
+    subparser.add_argument('-b','--b_factor', type=str, help='Reference b factor. If multiple B factors are used, separate them by comma and set --multiB')
+    subparser.add_argument('--multiB', action='store_true', help='Whether to use multiple B factors. See --b_factor')
+    subparser.add_argument('--dupref', action='store_true', help="""Whether to duplicate the reference for diploid genome.
+    For haploid sample, never use this argument.
+    For diploid sample, if you use haploid reference(b_factor that does not have chromosome name like chr1(mat)..., or hapliod genome (mm10 rather than mm10_dip) in centelo mode), you should set this argument.
+    """)
+    
+    # centelo mode
+    subparser.add_argument('--genome', type=str, help='Genome name. Use this to decide the centromere and telomere positions')
     # view and clip selection
     subparser.add_argument(
         '--view', 
@@ -94,9 +151,15 @@ def run(args):
         raise ValueError("No gs column found in sample table")
 
     # get the color
-    b_factor = args.b_factor
-    if args.multiB:
-        b_factor = b_factor.split(",")
+    if args.mode == "centelo":
+        genome = args.genome
+    elif args.mode == "b_factor":
+        b_factor = args.b_factor
+        if args.multiB:
+            b_factor = b_factor.split(",")
+    else:
+        raise ValueError("Invalid mode")
+
     dupref = args.dupref
     cmap = args.cmap.replace("--", " ")
 
@@ -123,7 +186,7 @@ def run(args):
     if args.samples:
         samples = args.samples.split(",")
         gs = gs.loc[samples]
-        if args.multiB:
+        if args.multiB and args.mode == "b_factor":
             assert len(b_factor) == gs.shape[0]
     if args.targets:
         targets = args.targets.split(",")
@@ -132,15 +195,23 @@ def run(args):
     else:
         targets = repeat(None)
 
+    # variables for parallel processing
     nproc = args.nproc
+    if args.mode == "centelo":
+        ref_list = repeat(genome)
+    elif args.mode == "b_factor":
+        ref_list = b_factor if args.multiB else repeat(b_factor)
+    else:
+        raise ValueError("Invalid mode")
 
     # 使用ThreadPoolExecutor来并行处理样本
     with ThreadPoolExecutor(max_workers=nproc) as executor:
         outpngs = {
             f"{view}c{clip}s{slab}" : list(executor.map(
                 render_task,
-                zip(gs.index, gs, b_factor if args.multiB else repeat(b_factor),
-                    repeat(dupref), repeat(cmap), repeat(clip), repeat(slab), repeat(view), targets, repeat(outdir))
+                zip(gs.index, gs, ref_list,
+                    repeat(dupref), repeat(cmap), repeat(clip), repeat(slab), repeat(view),
+                    targets, repeat(outdir), repeat(args.mode), repeat(args.force))
             ))
             for view, clips in view_clips.items()
             for clip in clips
