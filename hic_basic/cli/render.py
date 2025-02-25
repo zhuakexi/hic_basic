@@ -88,6 +88,7 @@ def add_arguments(subparser):
         type=str,
         required=True,
         help='A .csv sample table, must have `20k_g_struct1` or `gs` column')
+    subparser.add_argument("--colname", type=str, default='20k_g_struct1', help='Column name of the structure file')
     subparser.add_argument('--cmap', type=str, default='', help='Colormap to use. Use -- to separate words. eg: viridis')
     subparser.add_argument(
         '-o','--outdir', 
@@ -143,12 +144,10 @@ def run(args):
     # --- parse arguments --- #
     # get the sample file list
     sample_table = read_meta(args.sample_table_file)
-    if "20k_g_struct1" in sample_table.columns:
-        gs = sample_table["20k_g_struct1"].dropna()
-    elif "gs" in sample_table.columns:
-        gs = sample_table["gs"].dropna()
+    if args.colname in sample_table.columns:
+        gs = sample_table[args.colname].dropna()
     else:
-        raise ValueError("No gs column found in sample table")
+        raise ValueError("Column name not found in sample table")
 
     # get the color
     if args.mode == "centelo":
