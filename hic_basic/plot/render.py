@@ -211,6 +211,10 @@ class PyMolRender:
         """
         with open(self.template_pml_file, "r") as f:
             template = Template(f.read())
+        default_kwargs = {
+            "turn_cmd" : ""
+        }
+        kwargs = {**default_kwargs, **kwargs}
         script = template.substitute(
             cif = self.cif_file_path,
             png = self.png_file_path,
@@ -317,7 +321,7 @@ def surface_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02",
         render.gen_cif(_3dg, b_factor, **args)
         render.gen_script(cmap=cmap)
         render.render()
-def clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, conda="pymol", **args):
+def clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap="magenta green, all, 0.005, 0.02", turn_cmd="", tmpdir=None, conda="pymol", **args):
     """
     Render clip view, color by b factor.
     Input:
@@ -335,7 +339,7 @@ def clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap="magenta green, all, 
         png, tmpdir, conda
         ) as render:
         render.gen_cif(_3dg, b_factor, **args)
-        render.gen_script(cmap=cmap, clip=clip, slab=slab)
+        render.gen_script(cmap=cmap, clip=clip, slab=slab, turn_cmd=turn_cmd)
         render.render()
     return png
 def highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap="magenta green, chain {}, 0.005, 0.02", tmpdir=None, conda="pymol", **args):
