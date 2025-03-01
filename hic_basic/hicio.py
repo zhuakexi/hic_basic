@@ -473,18 +473,22 @@ def read_meta(fp):
     """
     Read general metadata, take care of sample_name.
     """
-    df = pd.read_csv(fp,index_col=0)
+    df = pd.read_csv(fp,index_col=0,dtype={0:"string"})
     df.index.name = "sample_name"
     df.columns = df.columns.astype("string")
-    df.index = df.index.astype("string")
     return df
-def matr(path, sep=","):
+def matr(path, sep=None):
     """
     Read umi_tools long-form output matrix.
     A wrapper for read_expr.
     See read_expr for more details.
+    Input:
+        path: path to matrix file
+        sep: separator, if None will infer from file extension
+    Output:
+        obs * var matrix
     """
-    return read_expr(path,sep)
+    return read_expr(path,sep).T
 def matra(file):
     """
     Read umi-tools output to anndata object.
