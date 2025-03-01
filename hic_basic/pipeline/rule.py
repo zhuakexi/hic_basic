@@ -175,6 +175,9 @@ def bubble_flow_touched():
                     reso = reso
                 )
             )
+    count_matrix = [
+        "{task_dirp}/count_matrix_{ref}/counts.gene.tsv.gz"
+    ]
     mapper = {
         "DNA" : DNA,
         "RNA" : RNA,
@@ -187,7 +190,8 @@ def bubble_flow_touched():
         "pairs_0" : pairs_0,
         "pairs_c1" : pairs_c1,
         "pairs_c12" : pairs_c12,
-        "dip" : dip
+        "dip" : dip,
+        "count_matrix" : count_matrix
     }
     return mapper
 def symlink_files(sample, task_dirp, target_dir, omit=None, filepats=None):
