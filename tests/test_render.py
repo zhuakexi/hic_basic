@@ -1,20 +1,15 @@
-# unittest
-import sys
-sys.path.insert(0, "/share/home/ychi/dev/hic_basic")
-sys.path.insert(0, "/share/home/ychi/dev/hires_utils")
-sys.path.insert(0, "/share/home/ychi/dev/sperm_struct")
 import os
 import unittest
 from io import StringIO
 from pathlib import Path
 
+import numpy as np
 import plotly.graph_objects as go
-from hic_basic.plot.render import surface_territory_pymol, surface_b_pymol, clip_b_pymol, \
+from hic_basic.plot.render import get_rotation_commands, surface_territory_pymol, surface_b_pymol, clip_b_pymol, \
     surface_centelo_pymol, clip_centelo_pymol, highlight_surface_b_pymol, clip_single_centelo_pymol, \
     centelo_relpos
 from hires_utils.hires_io import parse_3dg
 from hic_basic.structure.measure import primary_views
-from lib.struct import sig_primary_coords
 def please_pymol(_3dg_file):
     _3dg = parse_3dg(_3dg_file).reset_index()
     _3dg["chr"] = _3dg["chr"].str.replace("[()]", "_", regex=True)
@@ -94,6 +89,21 @@ class TestRender(unittest.TestCase):
             )
         self.assertTrue(Path(outpng).exists())
     # --- test useful functions ---
+    def test_get_rotation_commands(self):
+        target_vector = [1, 0, 0]
+        command_list, rot_degrees = get_rotation_commands(target_vector, retvec=True)
+        expected_degrees = [0, -90, 0]
+        np.testing.assert_almost_equal(rot_degrees, expected_degrees)
+
+        target_vector = [-1, 0, -1]
+        command_list, rot_degrees = get_rotation_commands(target_vector, retvec=True)
+        expected_degrees = [0, 45, 0]
+        np.testing.assert_almost_equal(rot_degrees, expected_degrees)
+
+        target_vector = [-1, 0, 0]
+        command_list, rot_degrees = get_rotation_commands(target_vector, retvec=True)
+        expected_degrees = [0, 90, 0]
+        np.testing.assert_almost_equal(rot_degrees, expected_degrees)
     def test_surface_centelo_pymol(self):
         print("Test_surface_centelo_pymol")
         outpng = os.path.join(os.path.dirname(__file__), "output", "surface_centelo_pymol.png")

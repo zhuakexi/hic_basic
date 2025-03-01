@@ -94,6 +94,76 @@ def dump_chimera_links(links, outfile, rgb:str="255,255,255", radius=0.1, atol=1
 ### --- pymol render --- ###
 
 
+import numpy as np
+
+def get_rotation_commands(target_vector, retvec=False):
+    """
+    Calculate PyMOL turn commands to rotate the camera to face a given direction.
+
+    Input:
+        target_vector: A list or numpy array representing the unit vector towards which the camera should be oriented.
+        retvec: If True, return the rotation degrees along x, y, z axis as well.
+    Output:
+        A list of string containing a sequence of 'turn' commands for PyMOL to adjust the camera's orientation accordingly.
+    """
+    # Assume initial camera direction is along the -z axis (towards the positive z-axis of the model space)
+    initial_direction = np.array([0, 0, -1])
+    
+    # Target vector represents the desired viewing direction in model space
+    target_direction = np.array(target_vector) / np.linalg.norm(target_vector)  # Normalize target vector
+    
+    # Compute the rotation matrix that aligns initial_direction with target_direction
+    # Find the rotation axis and angle
+    rotation_axis = np.cross(initial_direction, target_direction)
+    rotation_axis_norm = np.linalg.norm(rotation_axis)
+    if rotation_axis_norm == 0:
+        # If target_direction is already aligned with initial_direction, no rotation is needed
+        x_degrees, y_degrees, z_degrees = 0, 0, 0
+        turn_commands = ["turn x, 0", "turn y, 0", "turn z, 0"]
+        if retvec:
+            return turn_commands, [x_degrees, y_degrees, z_degrees]
+        else:
+            return turn_commands
+    rotation_axis /= rotation_axis_norm
+    cos_angle = np.dot(initial_direction, target_direction)
+    # trimming cos_angle to prevent floating point error
+    angle = np.arccos(np.clip(cos_angle, -1.0, 1.0))
+    
+    # Convert rotation axis and angle into a rotation matrix
+    c = np.cos(angle)
+    s = np.sin(angle)
+    t = 1 - c
+    R = np.array([[t*rotation_axis[0]*rotation_axis[0] + c, t*rotation_axis[0]*rotation_axis[1] - s*rotation_axis[2], t*rotation_axis[0]*rotation_axis[2] + s*rotation_axis[1]],
+                  [t*rotation_axis[0]*rotation_axis[1] + s*rotation_axis[2], t*rotation_axis[1]*rotation_axis[1] + c, t*rotation_axis[1]*rotation_axis[2] - s*rotation_axis[0]],
+                  [t*rotation_axis[0]*rotation_axis[2] - s*rotation_axis[1], t*rotation_axis[1]*rotation_axis[2] + s*rotation_axis[0], t*rotation_axis[2]*rotation_axis[2] + c]])
+    
+    # Extract Euler angles from rotation matrix
+    sy = np.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
+    singular = sy < 1e-6
+    if not singular:
+        x = np.arctan2(R[2,1], R[2,2])
+        y = np.arctan2(-R[2,0], sy)
+        z = np.arctan2(R[1,0], R[0,0])
+    else:  # Gimbal lock
+        x = np.arctan2(-R[1,2], R[1,1])
+        y = np.arctan2(-R[2,0], sy)
+        z = 0
+
+    # Convert radians to degrees
+    x_degrees = np.degrees(x)
+    y_degrees = np.degrees(y)
+    z_degrees = np.degrees(z)
+
+    # Construct the 'turn' command sequence
+    turn_commands = [
+        f"turn x, {x_degrees:.3f}",
+        f"turn y, {y_degrees:.3f}",
+        f"turn z, {z_degrees:.3f}"
+    ]
+    if retvec:
+        return turn_commands, [x_degrees, y_degrees, z_degrees]
+    return turn_commands
+
 class PyMolRender:
     def __init__(self, template_pml_file, png_file_path, tmpdir=None, conda="pymol"):
         """
