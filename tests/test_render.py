@@ -62,6 +62,19 @@ class TestRender(unittest.TestCase):
             conda=None
             )
         self.assertTrue(Path(outpng).exists())
+    def test_clip_b_pymol_turn_camera(self):
+        print("Test_clip_b_pymol_turn_camera")
+        outpng = os.path.join(os.path.dirname(__file__), "output", "clip_cpg_pymol_turn_camera.png")
+        # cpg
+        clip_b_pymol(
+            please_pymol("/shareb/ychi/repo/sperm40_GM/3dg_c/GMO1001.clean.1m.4.3dg"),
+            "/share/home/ychi/software/dip-c/color/hg19.cpg.1m.txt",
+            outpng,
+            tmpdir=os.path.join(os.path.dirname(__file__), "output"),
+            conda=None,
+            turn_cmd="turn x, 0; turn y, 0; turn z, 90"
+            )
+        self.assertTrue(Path(outpng).exists())
     def test_clip_b_pymol_target(self):
         print("Test_clip_b_pymol_target")
         outpng = os.path.join(os.path.dirname(__file__), "output", "clip_cpg_target_pymol_target.png")
