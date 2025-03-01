@@ -14,7 +14,7 @@ from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from plotly.subplots import make_subplots
 from skimage import exposure
-import cooltools.lib.plotting
+#import cooltools.lib.plotting
 
 from .general import template
 from .utils import filling_l2r_mpl, pcolormesh_45deg, tiling_mat, sub_genome_mat
@@ -1252,7 +1252,7 @@ def plot_IS(clr,insulation_table,title,resolution=500e3,window=1.5e6,balance=Tru
 
 
 # plot cdps heatmap
-def _plot_cdps(cdps:pd.DataFrame):
+def _plot_cdps(cdps:pd.DataFrame, **kwargs):
     """
     Input:
         cdps: sample x bin contact decay profile dataframe
@@ -1262,7 +1262,8 @@ def _plot_cdps(cdps:pd.DataFrame):
         go.Heatmap(
             z = cdps,
             y = cdps.index,
-            colorscale="bluyl"
+            colorscale="bluyl",
+            **kwargs
             #yaxis="y"
         )
     )
