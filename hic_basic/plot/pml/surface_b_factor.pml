@@ -20,6 +20,9 @@ set_bond stick_radius, 0.25, all
 bg_color white
 spectrum b, $cmap
 
+# --- rotate camera ---
+$turn_cmd
+
 # --- rendering ---
 ray
 png $png, width=800, height=800

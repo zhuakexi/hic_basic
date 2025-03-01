@@ -51,6 +51,10 @@ for i, chain in enumerate(list(set(chains))):
     print(chain, color)
 python end
 bg_color white
+
+# --- rotate camera ---
+$turn_cmd
+
 # --- rendering ---
 ray
 png $png, width=800, height=800
