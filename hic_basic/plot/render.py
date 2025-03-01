@@ -229,7 +229,7 @@ class PyMolRender:
             code = f"pymol -cq {self.script_file_path}"
         subprocess.run(code, shell=True)
 # --- basic modes --- #
-def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol", dcmap="dip_c"):
+def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol", dcmap="dip_c", turn_cmd=""):
     """
     Render surface, color by each chromosome.
     Input:
@@ -239,6 +239,7 @@ def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol", dcmap="dip_c"
             dip_c: each chromosome has a different rainbow color
         tmpdir: directory to save intermediate files
         conda: conda environment name, None for no conda
+        turn_cmd: PyMOL turn command to adjust camera orientation
     """
     if dcmap == "dip_c":
         with PyMolRender(
@@ -269,7 +270,8 @@ def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol", dcmap="dip_c"
                 )
             vmin, vmax = b_factor["b_factor"].min(), b_factor["b_factor"].max()
             render.gen_script(
-                cmap=f"rainbow, all, {vmin}, {vmax}"
+                cmap=f"rainbow, all, {vmin}, {vmax}",
+                turn_cmd=turn_cmd
                 )
             render.render()
     else:
@@ -278,10 +280,10 @@ def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol", dcmap="dip_c"
             png, tmpdir,conda
             ) as render:
             render.gen_cif(_3dg)
-            render.gen_script()
+            render.gen_script(turn_cmd=turn_cmd)
             render.render()
     return png
-def clip_territory_pymol(_3dg, png, clip=0, slab=2, tmpdir=None, conda="pymol", **args):
+def clip_territory_pymol(_3dg, png, clip=0, slab=2, tmpdir=None, conda="pymol", turn_cmd="", **args):
     """
     Render clip view, color by each chromosome.
     Input:
@@ -290,6 +292,7 @@ def clip_territory_pymol(_3dg, png, clip=0, slab=2, tmpdir=None, conda="pymol", 
         clip: clip position 0 for middle, negative for more back, positive for more front
         tmpdir: directory to save intermediate files
         conda: conda environment name, None for no conda
+        turn_cmd: PyMOL turn command to adjust camera orientation
         **args: transparent to threedg_to_cif
     """
     with PyMolRender(
@@ -299,10 +302,11 @@ def clip_territory_pymol(_3dg, png, clip=0, slab=2, tmpdir=None, conda="pymol", 
         render.gen_cif(_3dg, **args)
         render.gen_script(
             clip=clip,
-            slab=slab
+            slab=slab,
+            turn_cmd=turn_cmd
             )
         render.render()
-def surface_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, conda="pymol", **args):
+def surface_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02", tmpdir=None, conda="pymol", turn_cmd="", **args):
     """
     Render surface, color by b factor.
     Input:
@@ -312,6 +316,7 @@ def surface_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02",
         cmap: pymol color map
         tmpdir: directory to save intermediate files
         conda: conda environment name, None for no conda
+        turn_cmd: PyMOL turn command to adjust camera orientation
         **args: transparent to threedg_to_cif
     """
     with PyMolRender(
@@ -319,7 +324,7 @@ def surface_b_pymol(_3dg, b_factor, png, cmap="magenta green, all, 0.005, 0.02",
         png, tmpdir, conda
         ) as render:
         render.gen_cif(_3dg, b_factor, **args)
-        render.gen_script(cmap=cmap)
+        render.gen_script(cmap=cmap, turn_cmd=turn_cmd)
         render.render()
 def clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap="magenta green, all, 0.005, 0.02", turn_cmd="", tmpdir=None, conda="pymol", **args):
     """
@@ -330,6 +335,7 @@ def clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap="magenta green, all, 
         png: output png file path
         clip: clip position 0 for middle, negative for more back, positive for more front
         cmap: pymol color map
+        turn_cmd: PyMOL turn command to adjust camera orientation
         tmpdir: directory to save intermediate files
         conda: conda environment name, None for no conda
         **args: transparent to threedg_to_cif
@@ -342,7 +348,7 @@ def clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap="magenta green, all, 
         render.gen_script(cmap=cmap, clip=clip, slab=slab, turn_cmd=turn_cmd)
         render.render()
     return png
-def highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap="magenta green, chain {}, 0.005, 0.02", tmpdir=None, conda="pymol", **args):
+def highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap="magenta green, chain {}, 0.005, 0.02", turn_cmd="", tmpdir=None, conda="pymol", **args):
     """
     Render surface, color by b factor, highlight only one chain, other chains are transparent.
     Input:
@@ -351,6 +357,7 @@ def highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap="magenta green, c
         chain: chain to highlight
         png: output png file path
         cmap: pymol color map
+        turn_cmd: PyMOL turn command to adjust camera orientation
         tmpdir: directory to save intermediate files
         conda: conda environment name, None for no conda
         **args: transparent to threedg_to_cif
@@ -362,11 +369,12 @@ def highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap="magenta green, c
         render.gen_cif(_3dg, b_factor, **args)
         render.gen_script(
             chain=chain,
-            cmap=cmap.format(chain)
+            cmap=cmap.format(chain),
+            turn_cmd=turn_cmd
             )
         render.render()
 # --- useful modes --- #
-def clip_single_territory_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], clip=0, slab=2, tmpdir=None, conda=None, **args):
+def clip_single_territory_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], clip=0, slab=2, tmpdir=None, conda=None, turn_cmd="", **args):
     """
     Render clip view, only color target chromosomes.
     Input:
@@ -376,6 +384,7 @@ def clip_single_territory_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], c
         clip: clip position 0 for middle, negative for more back, positive for more front
         tmpdir: directory to save intermediate files
         conda: conda environment name, None for no conda
+        turn_cmd: PyMOL turn command to adjust camera orientation
         **args: transparent to threedg_to_cif
     """
     _3dg = parse_3dg(_3dg_file)
@@ -401,7 +410,8 @@ def clip_single_territory_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], c
         render.gen_script(
             cmap="white_magenta, all, 0, 1",
             clip=clip,
-            slab=slab
+            slab=slab,
+            turn_cmd=turn_cmd
             )
         render.render()
 def centelo_relpos(positions_2col, genome, dupref=False):
@@ -434,7 +444,7 @@ def centelo_relpos(positions_2col, genome, dupref=False):
     )
     return b_factor
 def surface_centelo_pymol(_3dg_file, png, genome="mm10", tmpdir=None, 
-                          cif_name=None, dupref=False, conda="pymol", **args):
+                          cif_name=None, dupref=False, conda="pymol", turn_cmd="", **args):
     """
     Render clip view, color centromere-telomere.
     Input:
@@ -444,6 +454,7 @@ def surface_centelo_pymol(_3dg_file, png, genome="mm10", tmpdir=None,
         tmpdir: directory to save intermediate files
         cif_name: cif file path to dump, if None, a random name will be generated and removed after rendering
         dupref: whether to annote diploid genome with haploid reference
+        turn_cmd: PyMOL turn command to adjust camera orientation
         **args: transparent to threedg_to_cif
     """
     _3dg = parse_3dg(_3dg_file)
@@ -460,12 +471,13 @@ def surface_centelo_pymol(_3dg_file, png, genome="mm10", tmpdir=None,
         if cif_name is not None:
             shutil.copy(tmp_cif, cif_name)
         render.gen_script(
-            cmap="blue_white_red, all, 0, 1"
+            cmap="blue_white_red, all, 0, 1",
+            turn_cmd=turn_cmd
             )
         render.render()
         return png
 def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, slab=2, tmpdir=None, 
-                       cif_name=None, dupref=False, conda="pymol", **args):
+                       cif_name=None, dupref=False, conda="pymol", turn_cmd="", **args):
     """
     Render clip view, color centromere-telomere.
     Input:
@@ -476,6 +488,7 @@ def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, slab=2, tmpdir=Non
         cif_name: cif file path to dump, if None, a random name will be generated and removed after rendering
         dupref: whether to annote diploid genome with haploid reference
         conda: conda environment name, None for no conda
+        turn_cmd: PyMOL turn command to adjust camera orientation
         **args: transparent to threedg_to_cif
     """
     _3dg = parse_3dg(_3dg_file)
@@ -495,7 +508,8 @@ def clip_centelo_pymol(_3dg_file, png, genome="mm10", clip=0, slab=2, tmpdir=Non
         render.gen_script(
             cmap="blue_white_red, all, 0, 1",
             clip=clip,
-            slab=slab
+            slab=slab,
+            turn_cmd=turn_cmd
             )
         render.render()
         return png
@@ -537,7 +551,7 @@ def single_centelo_relpos(positions_2col, genome, target_chroms, dupref=False):
     )
     return b_factor
 def clip_single_centelo_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], genome="mm10",
-                              clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda="pymol", **args):
+                              clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda="pymol", turn_cmd="", **args):
     """
     Render clip view, color centromere-telomere of target chromosomes. Other chromosomes are set to 0.5/white.
     Input:
@@ -549,6 +563,7 @@ def clip_single_centelo_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], gen
         tmpdir: directory to save intermediate files
         cif_name: cif file path to dump, if None, a random name will be generated and removed after rendering
         dupref: whether to annote diploid genome with haploid reference
+        turn_cmd: PyMOL turn command to adjust camera orientation
         **args: transparent to threedg_to_cif
     """
     _3dg = parse_3dg(_3dg_file)
@@ -567,7 +582,8 @@ def clip_single_centelo_pymol(_3dg_file, png, target_chroms=["chrX","chrY"], gen
         render.gen_script(
             cmap="blue_white_red, all, 0, 1",
             clip=clip,
-            slab=slab
+            slab=slab,
+            turn_cmd=turn_cmd
             )
         render.render()
         return png

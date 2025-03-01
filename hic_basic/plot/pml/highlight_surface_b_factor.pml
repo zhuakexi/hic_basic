@@ -25,6 +25,9 @@ set transparency, 0.5, not chain $chain
 
 bg_color white
 
+# --- rotate camera ---
+$turn_cmd
+
 # --- rendering ---
 ray
 png $png, width=800, height=800
