@@ -1,8 +1,11 @@
 import os
+import unittest
+from tempfile import TemporaryDirectory
+
 from numpy.testing import assert_allclose
 from hic_basic.wet.adtools import gen_adata
 from hic_basic.hicio import read_meta
-from hic_basic.wet import basic_filter
+#from hic_basic.wet import basic_filter
 # TODO: remove basic filter from here
 def test_gen_adata(request, tmp_path):
     cache_dir = tmp_path / "test_gen_adata"
@@ -10,6 +13,33 @@ def test_gen_adata(request, tmp_path):
     expr = os.path.join(request.fspath.dirname, "data", "counts.gene.tsv.gz")
     adata = gen_adata(qc, cache_dir, expr = ([[expr], dict(zip(qc.index.values, qc.index.values))],{"samplelist":qc.index.values}))
     assert adata.obs.shape[0] == 3
+class TestGenAdata(unittest.TestCase):
+    def setUp(self):
+        # 创建一个临时目录用于测试
+        self.temp_dir = TemporaryDirectory()
+        self.cache_dir = os.path.join(self.temp_dir.name, "test_gen_adata")
+        os.makedirs(self.cache_dir, exist_ok=True)
+        # 假设当前文件路径下的"data"文件夹中有测试所需的文件
+        self.qc_path = os.path.join(os.path.dirname(__file__), "data", "testqc.csv.gz")
+        self.expr_path = os.path.join(os.path.dirname(__file__), "data", "counts.gene.tsv.gz")
+        self.qc = read_meta(self.qc_path)
+        
+    def tearDown(self):
+        # 测试结束后删除临时目录
+        self.temp_dir.cleanup()
+
+    def test_gen_adata(self):
+        adata = gen_adata(
+            self.qc, 
+            self.cache_dir, 
+            debug=True,
+            expr=(
+                [[self.expr_path], dict(zip(self.qc.index.tolist(), self.qc.index.tolist()))],
+                {"samplelist":self.qc.index.tolist()}
+            )
+        )
+        self.assertEqual(adata.obs.shape[0], 3)
+
 def test_gen_adata_fullinput(request, tmp_path):
     till220515meta = read_meta("/share/Data/ychi/notebook/Project/embryo_integrate/meta/till220515.csv.gz")
     cache_dir = "/shareb/ychi/repo/embryo_integrate/anndatas/till220515_cache/"
@@ -177,3 +207,5 @@ def test_gen_adata_fullinput2(request, tmp_path):
     assert adata.obs.shape[0] == qc.shape[0]
     assert ("collect_hour" in adata.obs.columns) and ("cell_type" in adata.obs.columns)
     #assert len(adata.uns.keys()) == 3
+if __name__ == "__main__":
+    unittest.main()
