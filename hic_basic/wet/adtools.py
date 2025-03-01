@@ -15,6 +15,7 @@ from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
 from .exp_record import add_cell_type, add_group_hour
 from ..utils import two_sets, gen_fileis
 from ..phasing import get_chrom_hap_score
+from ..pipeline.rule import bubble_flow_touched
 from ..pp import _merge_expr
 def _trim_names(orig, ref, verbose=False):
     """
@@ -124,21 +125,26 @@ def expand_df(target_df, ref_df):
 ### Output: ([],{})
 def _infer_expr_inputs(qc, outfile):
     # infer expression matrix file paths and other arguments
-    mattail = "count_matrix/counts.gene.tsv.gz"
+    if "ref" not in qc.columns:
+        print("[_infer_expr_inputs] Warning: ref column not found in qc file, using blank string for ref name")
+        combs = [(i, "") for i in qc["task_dirp"].unique()]
+    else:
+        combs = qc[["task_dirp", "ref"]].value_counts().index.tolist()
+    count_matrix_pat = bubble_flow_touched()["count_matrix"][0] # this function always return a list, so [0] is needed
     if qc.index.str.contains("_").sum() > 0:
         print("Warning: sample ID contains underscore")
-        return [[os.path.join(i, mattail) for i in qc["task_dirp"].unique()]], {
+        return [[count_matrix_pat.format(task_dirp=task_dirp, ref=ref) for task_dirp, ref in combs]], {
             "mapper" :  dict(zip(
                             [i.split("_")[-1] for i in qc.index if "_" in i],
                             [i for i in qc.index if "_" in i]
                             )),
-            "samplelist" : qc.index.values,
+            "samplelist" : qc.index.tolist(),
             "outfile" : outfile
             }
     else:
-        return [[os.path.join(i, mattail) for i in qc["task_dirp"].unique()]], {
-            "mapper" : dict(zip(qc.index.values,qc.index.values)),
-            "samplelist" : qc.index.values,
+        return [[count_matrix_pat.format(task_dirp=task_dirp, ref=ref) for task_dirp, ref in combs]], {
+            "mapper" : dict(zip(qc.index.tolist(),qc.index.tolist())),
+            "samplelist" : qc.index.tolist(),
             "outfile" : outfile
             }
 ## generate and caching
@@ -201,13 +207,13 @@ def _gen_g(fps, qc = None, outfile=None):
                             [i.split("_")[-1] for i in qc.index if "_" in i],
                             [i for i in qc.index if "_" in i]
                             )),
-            samplelist =  qc.index.values,
+            samplelist =  qc.index.tolist(),
             outfile = outfile
             )
     else:
         return _merge_expr(fps,
-            mapper = dict(zip(qc.index.values,qc.index.values)),
-            samplelist = qc.index.values,
+            mapper = dict(zip(qc.index.tolist(),qc.index.tolist())),
+            samplelist = qc.index.tolist(),
             outfile = outfile)
 def _gen_chrom_hap_score(dump_dirs, qc = None, outfile=None):
     print("Gen chrom hap socre...")
@@ -253,7 +259,7 @@ def _add_group_hour(adata=None, qc=None):
 def _add_cell_type(adata=None, qc=None):
     data = add_cell_type(qc)
     return adata.obs.assign(cell_type = data["cell_type"])
-def create_adata_layers(ws, funcs):
+def create_adata_layers(ws, funcs, debug=False):
     """
     Create adata object form the layers
     Input:
@@ -288,13 +294,23 @@ def create_adata_layers(ws, funcs):
     dfs = {i : expand_df(dfs[i][samples], pixels) for i in dfs}
     # --- create new annData object ---
     print("creating new AnnData object")
-    #print(dfs["expr"].loc[genes, samples].T.index)
-    #print(pd.Index(samples, dtype="string"))
+    if debug:
+        X = dfs["expr"].loc[genes, samples].T
+        obs = pd.DataFrame(index=pd.Index(samples, dtype="string"))
+        var = pd.DataFrame(index=pd.Index(genes, dtype="string"))
+        print(X.index)
+        print(obs.index)
+        print("X.index.equals(obs.index):", X.index.equals(obs.index))
+        print("X.columns.equals(var.index):", X.columns.equals(var.index))
+    # new_ad = ad.AnnData(
+    #     X = dfs["expr"].loc[genes, samples].T,
+    #     obs = pd.DataFrame(index=pd.Index(samples, dtype="string")),
+    #     var = pd.DataFrame(index=pd.Index(genes, dtype="string")),
+    #     layers = {i : dfs[i].loc[genes, samples].T for i in dfs if i not in ["expr"]}
+    # )
+    print("Warnings: only for testing")
     new_ad = ad.AnnData(
         X = dfs["expr"].loc[genes, samples].T,
-        obs = pd.DataFrame(index=pd.Index(samples, dtype="string")),
-        var = pd.DataFrame(index=pd.Index(genes, dtype="string")),
-        layers = {i : dfs[i].loc[genes, samples].T for i in dfs if i not in ["expr"]}
     )
     return new_ad
 def add_obsm(adata, data, obsm_key):
@@ -315,7 +331,7 @@ def add_obsm(adata, data, obsm_key):
         join="outer"
         )
     return adata
-def gen_adata(qc, cache_dir, rewrite=[], **args):
+def gen_adata(qc, cache_dir, rewrite=[], debug=False, **args):
     """
     Generate anndata object from the QC data.
     Input:
@@ -343,6 +359,10 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
         collect_hour: collection hour parsed from group name
         cell_type: cell type parsed from group name
     """
+    # --- set up ---
+    qc.index = qc.index.astype("string")
+    qc.columns = qc.columns.astype("string")
+
     ca = lambda x: os.path.join(cache_dir, x)
     funcs = {
         # not essentail
@@ -371,7 +391,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
         # not esential
         "gen" :
             {
-                "expr" : partial(_merge_expr, samplelist = qc.index.values),
+                "expr" : partial(_merge_expr, samplelist = qc.index.tolist()),
                 "velo" : _gen_velo,
                 "g1" : _gen_g,
                 "g2" : _gen_g,
@@ -483,7 +503,7 @@ def gen_adata(qc, cache_dir, rewrite=[], **args):
     uns = {i : ws[i] for i in ws if i in ("cdps", "g1cs", "g2cs")}
     # --- create adata ---:
     print("Creating adata...")
-    adata = create_adata_layers(layers, funcs)
+    adata = create_adata_layers(layers, funcs, debug=debug)
     # --- adding per-cell annotations ---:
     print("Adding per-cell annotations...")
     for i in obs:
