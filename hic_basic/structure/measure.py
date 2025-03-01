@@ -393,14 +393,15 @@ def cent2telo_vector(_3dg, genome="mm10", dis=2e6, p=False, q=True, show_chroms=
     Input:
         _3dg: inner _3dg data structure (see parse_3dg in hires_utils)
         genome: genome name, use this to determine centromere and telomere positions
-        dis: distance to centromere/telomere
+        dis: distance threshold to define regions near centromeres and telomeres
         p: whether to include p arm
             For acrocentric chromosomes, set p to False
         q: whether to include q arm
         show_chroms: whether to return chromosomal C2T vectors
     Output:
         if show_chroms:
-            dataframe of chromosomal C2T vectors
+            res: dataframe of chromosomal C2T vectors
+            c2t_vector: sum of all chromosomal C2T vectors
         else:
             normed_c2t_L: float of normalized C2T vector length
                 normally in the range of 0.00x
@@ -430,9 +431,101 @@ def cent2telo_vector(_3dg, genome="mm10", dis=2e6, p=False, q=True, show_chroms=
         res,
         axis=0
     )
-    if show_chroms:
-        return res
     c2t_vector = res.sum()
+    if show_chroms:
+        return res, c2t_vector
     c2t_L = np.sqrt((c2t_vector**2).sum())
     normed_c2t_L = c2t_L / _3dg.shape[0]
     return normed_c2t_L
+def append_pm_to_index(df):
+    """
+    Append paternal and maternal information to the index.
+    Input:
+        df: inner _3dg data structure (see parse_3dg in hires_utils)
+    Output:
+        dat: data structure with paternal and maternal information
+    TODO: A more general way to determine paternal/maternal rather than name matching
+    """
+    dat = df.assign(pm="Other")
+    dat.loc[dat.index.get_level_values(0).str.contains("pat"), "pm"] = "pat"
+    dat.loc[dat.index.get_level_values(0).str.contains("mat"), "pm"] = "mat"
+    dat = dat.set_index("pm", append=True)
+    return dat
+def pm_vector(_3dg):
+    """
+    Compute the paternal/maternal vector.
+    Assume chromosome names are in the format of "chr1(pat)/chr1(mat)".
+    Input:
+        _3dg: inner _3dg data structure (see parse_3dg in hires_utils)
+    Output:
+        pm_vector: paternal centroid point to maternal centroid point vector (mat - pat)
+    """
+    _3dg_e = append_pm_to_index(_3dg)
+    pm_vector = _3dg_e.groupby(
+        level = 2, observed=True
+    ).mean()
+    pm_vector = pm_vector.loc["mat"] - pm_vector.loc["pat"]
+    return pm_vector
+import numpy as np
+
+def angle_between_vectors(vector_a, vector_b):
+    """
+    Calculate the angle between two 3D vectors.
+
+    Input:
+        vector_a (np.array): First 3D vector.
+        vector_b (np.array): Second 3D vector.
+    Output:
+        angle_degrees (float): The angle between the two vectors in degrees.
+    """
+    # Ensure input vectors are numpy arrays
+    vector_a = np.array(vector_a)
+    vector_b = np.array(vector_b)
+
+    # Calculate dot product of the two vectors
+    dot_product = np.dot(vector_a, vector_b)
+
+    # Calculate the magnitude (norm) of each vector
+    magnitude_a = np.linalg.norm(vector_a)
+    magnitude_b = np.linalg.norm(vector_b)
+
+    # Calculate cosine of the angle using the dot product formula
+    cos_theta = dot_product / (magnitude_a * magnitude_b)
+
+    # Handle floating-point arithmetic issues that may cause cos_theta to be slightly greater than 1 or less than -1
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+
+    # Calculate the angle in radians and then convert it to degrees
+    angle_radians = np.arccos(cos_theta)
+    angle_degrees = np.degrees(angle_radians)
+
+    return angle_degrees
+
+def perpendicular_unit_vector(A, B):
+    """
+    Calculate a unit vector that is perpendicular to both A and B,
+    ensuring the resulting coordinate system (A, B, C) follows the right-hand rule.
+
+    Input:
+        A (np.array): First 3D vector.
+        B (np.array): Second 3D vector.
+
+    Output:
+        C_normalized (np.array): Unit vector perpendicular to both A and B.
+    """
+    # Ensure input vectors are numpy arrays
+    A = np.array(A)
+    B = np.array(B)
+
+    # Compute the cross product of A and B
+    C = np.cross(A, B)
+
+    # Normalize the resulting vector to make it a unit vector
+    C_magnitude = np.linalg.norm(C)
+    
+    if C_magnitude == 0:
+        raise ValueError("Vectors A and B are parallel or one of them is zero.")
+
+    C_normalized = C / C_magnitude
+
+    return C_normalized
