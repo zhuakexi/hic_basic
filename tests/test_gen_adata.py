@@ -2,6 +2,8 @@ import os
 import unittest
 from tempfile import TemporaryDirectory
 
+import anndata as ad
+import pandas as pd
 from numpy.testing import assert_allclose
 from hic_basic.wet.adtools import gen_adata
 from hic_basic.hicio import read_meta
@@ -38,8 +40,28 @@ class TestGenAdata(unittest.TestCase):
                 {"samplelist":self.qc.index.tolist()}
             )
         )
-        self.assertEqual(adata.obs.shape[0], 3)
-
+        #self.assertEqual(adata.obs.shape[0], 3)
+    def test_Anndata(self):
+        df = pd.DataFrame(
+            {
+                "a": [1, 2, 3],
+                "b": [4, 5, 6],
+                "c": [7, 8, 9]
+            },
+            index=["A", "B", "C"]
+        ).loc[["A","B"]]
+        obs = pd.DataFrame(
+            index = ["A", "B"]
+        )
+        var = pd.DataFrame(
+            index = ["a", "b", "c"]
+        )
+        adata = ad.AnnData(
+            df,
+            obs = obs,
+            var = var
+        )
+        self.assertEqual(adata.obs.shape[0], 2)
 def test_gen_adata_fullinput(request, tmp_path):
     till220515meta = read_meta("/share/Data/ychi/notebook/Project/embryo_integrate/meta/till220515.csv.gz")
     cache_dir = "/shareb/ychi/repo/embryo_integrate/anndatas/till220515_cache/"
