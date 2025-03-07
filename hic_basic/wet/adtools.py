@@ -10,7 +10,7 @@ import os
 import loompy
 import scvelo as scv
 
-from ..hicio import matr, read_expr, read_meta, get_chrom_contact_counts
+from ..hicio import read_umi_tools, read_expr, read_meta, get_chrom_contact_counts
 from .paracalc import gen_repli_score, gen_cdps, gen_PM_interactions
 from .exp_record import add_cell_type, add_group_hour
 from ..utils import two_sets, gen_fileis
@@ -267,6 +267,7 @@ def create_adata_layers(ws, funcs, debug=False):
         funcs: functions to access layers
     Output:
         adata object
+    TODO: figure out what cause the "Index of obs must match index of X." error
     """
     print("Creating adata object from layer dataframes...")
     # --- tidy up generated dataframes ---:
@@ -286,31 +287,37 @@ def create_adata_layers(ws, funcs, debug=False):
             else:
                 dfs[i] = ws[i]
     # --- future .X template ---
-    pixels = pd.DataFrame.sparse.from_spmatrix(sparse.csr_matrix((len(genes),len(samples)),dtype=np.int64),index = genes, columns = samples)
+    pixels = pd.DataFrame.sparse.from_spmatrix(sparse.csr_matrix((len(samples),len(genes)),dtype=np.int64),index = samples, columns = genes)
     pixels.index = pixels.index.astype("string")
     pixels.columns = pixels.columns.astype("string")
     # --- expand dfs ---
     print("Expanding dfs...")
-    dfs = {i : expand_df(dfs[i][samples], pixels) for i in dfs}
+    dfs = {layer : expand_df(df.loc[samples], pixels) for layer, df in dfs.items()}
     # --- create new annData object ---
     print("creating new AnnData object")
     if debug:
-        X = dfs["expr"].loc[genes, samples].T
+        X = dfs["expr"].loc[samples, genes]
         obs = pd.DataFrame(index=pd.Index(samples, dtype="string"))
         var = pd.DataFrame(index=pd.Index(genes, dtype="string"))
         print(X.index)
         print(obs.index)
         print("X.index.equals(obs.index):", X.index.equals(obs.index))
         print("X.columns.equals(var.index):", X.columns.equals(var.index))
+        # don't pass obs and var to AnnData, will rise "Index of obs must match index of X."
+        # adata = ad.AnnData(
+        #     X = X,
+        #     obs = obs,
+        #     var = var
+        # )
     # new_ad = ad.AnnData(
     #     X = dfs["expr"].loc[genes, samples].T,
     #     obs = pd.DataFrame(index=pd.Index(samples, dtype="string")),
     #     var = pd.DataFrame(index=pd.Index(genes, dtype="string")),
     #     layers = {i : dfs[i].loc[genes, samples].T for i in dfs if i not in ["expr"]}
     # )
-    print("Warnings: only for testing")
     new_ad = ad.AnnData(
-        X = dfs["expr"].loc[genes, samples].T,
+        X = dfs["expr"].loc[samples, genes],
+        layers = {i : dfs[i].loc[genes, samples].T for i in dfs if i not in ["expr"]}
     )
     return new_ad
 def add_obsm(adata, data, obsm_key):
@@ -411,15 +418,15 @@ def gen_adata(qc, cache_dir, rewrite=[], debug=False, **args):
         # essentail for all
         "read_files" :
             {
-                "expr" : matr,
+                "expr" : read_umi_tools,
                 "velo" : ad.read_loom,
-                "g1" : matr,
-                "g2" : matr,
+                "g1" : read_umi_tools,
+                "g2" : read_umi_tools,
                 "cdps" : read_meta,
                 "rs" : read_meta,
                 "pm" : read_meta,
-                "g1cs" : matr,
-                "g2cs" : matr,
+                "g1cs" : read_umi_tools,
+                "g2cs" : read_umi_tools,
                 "annote" : read_meta,
                 "chrom_hap_score" : read_meta,
                 "chrom_contacts" : partial(pd.read_csv, index_col=[0,1]),
@@ -433,9 +440,9 @@ def gen_adata(qc, cache_dir, rewrite=[], debug=False, **args):
         # [get_sample_names, get_gene_names]
         "gi" :
             {
-                "expr" : [lambda x : x.columns, lambda x : x.index],
-                "g1" : [lambda x : x.columns, lambda x : x.index],
-                "g2" : [lambda x : x.columns, lambda x : x.index],
+                "expr" : [lambda x : x.index, lambda x : x.columns],
+                "g1" : [lambda x : x.index, lambda x : x.columns],
+                "g2" : [lambda x : x.index, lambda x : x.columns],
                 # velo is transposed during tidy
                 "velo" : [lambda x : x.var.index, lambda x : x.obs.index]
             },
