@@ -1,5 +1,6 @@
 #on python & IDE
 __pycache__/
+hic_basic.egg-info/
 .project
 
 #on debug
