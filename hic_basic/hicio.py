@@ -13,6 +13,7 @@ import anndata as ad
 import h5py
 import numpy as np
 import pandas as pd
+from hires_utils.hires_io import parse_3dg
 from scipy.io import mmread
 from scipy.sparse import coo_matrix, csr_matrix
 
@@ -473,7 +474,12 @@ def read_meta(fp):
     """
     Read general metadata, take care of sample_name.
     """
-    df = pd.read_csv(fp,index_col=0,dtype={0:"string"})
+    if fp.endswith(".csv") or fp.endswith(".csv.gz"):
+        df = pd.read_csv(fp,index_col=0,dtype={0:"string"})
+    elif fp.endswith(".tsv") or fp.endswith(".tsv.gz"):
+        df = pd.read_table(fp,index_col=0,dtype={0:"string"})
+    else:
+        raise ValueError("Unknown file extension")
     df.index.name = "sample_name"
     df.columns = df.columns.astype("string")
     return df
