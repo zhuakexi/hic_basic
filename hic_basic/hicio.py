@@ -203,6 +203,7 @@ def parse_gff(file, ID=False, Name=False):
 def read_expr(path,sep=None)->pd.DataFrame:
     """
     Read expression matrix from file.
+    Don't guarantee OV(obs*var) or VO(var*obs) output. It just read in the file.
     Input:
         path: path to matrix file
         sep: separator, if None will infer from file extension
@@ -483,10 +484,11 @@ def read_meta(fp):
     df.index.name = "sample_name"
     df.columns = df.columns.astype("string")
     return df
-def matr(path, sep=None):
+def read_umi_tools(path, sep=None)->pd.DataFrame:
     """
     Read umi_tools long-form output matrix.
     A wrapper for read_expr.
+    By default umi_tools file store matrix in VO format, this function will transpose it to OV.
     See read_expr for more details.
     Input:
         path: path to matrix file
@@ -499,7 +501,7 @@ def matra(file):
     """
     Read umi-tools output to anndata object.
     """
-    expr = matr(file,"\t")
+    expr = read_umi_tools(file,"\t")
     expr.columns = expr.columns.astype("str")
     expr.columns.name = "sample_name"
     expr.index = expr.index.astype("str")
