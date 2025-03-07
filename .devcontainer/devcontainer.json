@@ -1,6 +1,6 @@
 {
     "name" : "hic_basic",
-    "image": "zhuakexi/hic_basic:v0.7",
+    "image": "zhuakexi/hic_basic:v0.9",
     "runArgs": ["--rm", "-it"],
     "mounts": [
         "type=bind,source=/share/Data/ychi,target=/share/Data/ychi",
