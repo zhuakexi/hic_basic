@@ -19,7 +19,8 @@ def render_task(args):
     """
     Render a single structure.
     """
-    sample_name, _3dg_file, ref, dupref, cmap, clip, slab, view, target, outdir, mode, force = args
+    sample_name, _3dg_file, ref, dupref, cmap, clip, slab, view, target, \
+        outdir, mode, force, turn_cmd = args
     outpng = outdir / f"{sample_name}.{view}c{clip}s{slab}.png"
     tmpdir = outdir
     if outpng.exists() and not force:
@@ -28,11 +29,11 @@ def render_task(args):
     print(f"Processing {sample_name} {clip} {view}")
     if clip == "surf":
         # surface
-        if view == "rand":
-            # random-surface view
+        if view in ["rand", "custom"]:
+            # random/custom-surface view
             if mode == "territory":
                 res = surface_territory_pymol(
-                    _3dg_file, outpng, outdir, conda=None
+                    _3dg_file, outpng, outdir, turn_cmd=turn_cmd, conda=None
                 )
             elif mode == "b_factor":
                 raise NotImplementedError("Random-outside view not supported for b_factor mode")
@@ -42,6 +43,7 @@ def render_task(args):
                 raise ValueError("Invalid mode")
         else:
             # primary-surface views
+            # will ignore the turn_cmd
             if mode == "territory":
                 res = render_surface_primary_view(
                     _3dg_file, outpng, outdir, view=view, targets=target, conda=None)
@@ -53,22 +55,25 @@ def render_task(args):
                 raise ValueError("Invalid mode")
     else:
         # clip
-        if view == "rand":
-            # random-clip view
+        if view in ["rand","custom"]:
+            # random/custom-clip view
             if mode == "territory":
                 raise NotImplementedError("Random-inside view not supported for territory mode")
             elif mode == "b_factor":
                 res = clip_b_pymol(
-                _3dg_file, ref, outpng, dupref=dupref, cmap=cmap, clip=clip, slab=slab, tmpdir=tmpdir, conda=None
+                _3dg_file, ref, outpng, dupref=dupref, cmap=cmap, clip=clip,
+                slab=slab, tmpdir=tmpdir, turn_cmd=turn_cmd, conda=None
                 )
             elif mode == "centelo":
                 res = clip_centelo_pymol(
-                    _3dg_file, outpng, genome=ref, dupref=dupref, clip=clip, slab=slab, tmpdir=tmpdir, conda=None
+                    _3dg_file, outpng, genome=ref, dupref=dupref, clip=clip,
+                    slab=slab, tmpdir=tmpdir, turn_cmd=turn_cmd, conda=None
                 )
             else:
                 raise ValueError("Invalid mode")
         else:
             # primary-clip views
+            # will ignore the turn_cmd
             if mode == "territory":
                 raise NotImplementedError("Specific-inside view not supported for territory mode")
             elif mode == "b_factor":
@@ -119,9 +124,10 @@ def add_arguments(subparser):
     # view and clip selection
     subparser.add_argument(
         '--view', 
-        choices=['lr', 'dv', 'ht', 'rand'],
+        type=str,
         default='rand',
-        help='View to render'
+        help="""View to render. lr, dv, ht are for non-spherical samples like sperms. rand will use default pymol view. Otherwise, view will be treated as column name in the sample table.
+        Under this condition, the column should have pymol command strings like `turn x, 90; turn y, 90; zoom 0.5`. If the column is not found, the default pymol view will be used."""
     )
     subparser.add_argument(
         '--target',
@@ -180,8 +186,11 @@ def run(args):
             view_clip.split(":")[0]: [int(i) for i in view_clip.split(":")[1].split(",")]
             for view_clip in args.view_clips.split("--")
         }
-    else:
+    elif view in ["lr", "dv", "ht", "rand"]:
         view_clips = {view: clips}
+    else:
+        # view is not given here, use value in the sample table
+        view_clips = {"custom": clips}
     if args.samples:
         samples = args.samples.split(",")
         gs = gs.loc[samples]
@@ -202,15 +211,24 @@ def run(args):
         ref_list = b_factor if args.multiB else repeat(b_factor)
     else:
         raise ValueError("Invalid mode")
+    if args.view not in ["lr", "dv", "ht", "rand"]:
+        # view is given in the sample table
+        # use the view column name to infer the identity of the view in output png file name
+        view_str_dict = dict.fromkeys(view_clips.keys(), args.view)
+        turn_cmds = sample_table.loc[gs.index, args.view].tolist()
+    else:
+        # echo the view argument in the output png file name
+        view_str_dict = {view: view for view in view_clips.keys()}
+        turn_cmds = repeat("")
 
     # 使用ThreadPoolExecutor来并行处理样本
     with ThreadPoolExecutor(max_workers=nproc) as executor:
         outpngs = {
-            f"{view}c{clip}s{slab}" : list(executor.map(
+            f"{view_str_dict[view]}c{clip}s{slab}" : list(executor.map(
                 render_task,
                 zip(gs.index, gs, ref_list,
                     repeat(dupref), repeat(cmap), repeat(clip), repeat(slab), repeat(view),
-                    targets, repeat(outdir), repeat(args.mode), repeat(args.force))
+                    targets, repeat(outdir), repeat(args.mode), repeat(args.force), turn_cmds)
             ))
             for view, clips in view_clips.items()
             for clip in clips
