@@ -165,7 +165,7 @@ def _gen_velo(velo_files, qc=None, outfile=None):
     return velo
 def _gen_cdps(qc=None, outfile=None):
     print("Gen cdps...")
-    cdps = gen_cdps(qc)
+    cdps = gen_cdps(qc, range_dtype="string")
     cdps.to_csv(outfile)
     return cdps
 def _gen_repliscore(outdir, qc = None, outfile=None):
@@ -365,6 +365,7 @@ def gen_adata(qc, cache_dir, rewrite=[], debug=False, **args):
         rs: repli_score
         collect_hour: collection hour parsed from group name
         cell_type: cell type parsed from group name
+    TODO: for samples without results in some uns, add proper nan values
     """
     # --- set up ---
     qc.index = qc.index.astype("string")
