@@ -30,17 +30,36 @@ class TestGenAdata(unittest.TestCase):
         # 测试结束后删除临时目录
         self.temp_dir.cleanup()
 
-    def test_gen_adata(self):
-        adata = gen_adata(
-            self.qc, 
-            self.cache_dir, 
-            debug=True,
-            expr=(
-                [[self.expr_path], dict(zip(self.qc.index.tolist(), self.qc.index.tolist()))],
-                {"samplelist":self.qc.index.tolist()}
-            )
+    # def test_gen_adata(self):
+    #     adata = gen_adata(
+    #         self.qc, 
+    #         self.cache_dir, 
+    #         debug=True,
+    #         expr=(
+    #             [[self.expr_path], dict(zip(self.qc.index.tolist(), self.qc.index.tolist()))],
+    #             {"samplelist":self.qc.index.tolist()}
+    #         )
+    #     )
+    #     #self.assertEqual(adata.obs.shape[0], 3)
+    def test_gen_adata2(self):
+        """
+        debug uns
+        """
+        meta = read_meta(
+            "/share/home/ychi/dev/sc-embryo/notebooks/A_meta_analysis/meta/till20250224.meta.csv.gz"
         )
-        #self.assertEqual(adata.obs.shape[0], 3)
+        meta = meta.assign(
+            cell_type = "c2",
+            ref = "mm10_B6_CAST"
+        )
+        adata = gen_adata(
+            meta,
+            "/shareb/ychi/repo/sc_embryo/notebooks1/cache",
+            rewrite = ["expr","cdps"],
+            expr = None,
+            annote=["cell_type","batch","collect_hour","replicate","embryo","cell_pair","pair_id","umis"],
+            cdps = None,
+        )
     def test_Anndata(self):
         df = pd.DataFrame(
             {
