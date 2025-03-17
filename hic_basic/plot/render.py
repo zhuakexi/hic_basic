@@ -466,6 +466,7 @@ def surface_centelo_pymol(_3dg_file, png, genome="mm10", tmpdir=None,
         tmp_cif = render.gen_cif(
             StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
             StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
+            dupref=False, # if dupref in relpos, don't do it again in mmcif
             **args
             )
         if cif_name is not None:
