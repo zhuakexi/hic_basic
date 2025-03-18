@@ -229,7 +229,7 @@ class PyMolRender:
             code = f"pymol -cq {self.script_file_path}"
         subprocess.run(code, shell=True)
 # --- basic modes --- #
-def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol", dcmap="dip_c", turn_cmd=""):
+def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol", dcmap="dip_c", turn_cmd="", cif_name=None):
     """
     Render surface, color by each chromosome.
     Input:
@@ -263,11 +263,13 @@ def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol", dcmap="dip_c"
                 keep="first"
             )
             b_factor = b_factor.rename(columns={"new_chr":"chr"})
-            render.gen_cif(
+            tmp_cif = render.gen_cif(
                 StringIO(_3dg.to_csv(sep="\t", index=True, header=False)),
                 StringIO(b_factor.to_csv(sep="\t", index=False, header=False)),
                 dupref = True
                 )
+            if cif_name is not None:
+                shutil.copy(tmp_cif, cif_name)
             vmin, vmax = b_factor["b_factor"].min(), b_factor["b_factor"].max()
             render.gen_script(
                 cmap=f"rainbow, all, {vmin}, {vmax}",
@@ -279,7 +281,9 @@ def surface_territory_pymol(_3dg, png, tmpdir=None, conda="pymol", dcmap="dip_c"
             Path(__file__).parent / "pml" / "surface_territory.pml",
             png, tmpdir,conda
             ) as render:
-            render.gen_cif(_3dg)
+            tmp_cif = render.gen_cif(_3dg)
+            if cif_name is not None:
+                shutil.copy(tmp_cif, cif_name)
             render.gen_script(turn_cmd=turn_cmd)
             render.render()
     return png
