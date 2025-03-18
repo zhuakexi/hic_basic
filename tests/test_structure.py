@@ -10,7 +10,7 @@ class TestStructureMeasure(unittest.TestCase):
     def setUp(self):
         self.output_dir = "output"
         os.makedirs(self.output_dir, exist_ok=True)
-        self._3dg_file = self.get_data_file_path("data/sample.mm10_dip.3dg.gz")
+        self._3dg_file = self.get_data_file_path("data/sample.mm10_dip.pair_no1.3dg.gz")
         self.genome = "mm10_dip"
         self.p, self.q = False, True
         self._3dg = parse_3dg(self._3dg_file)
