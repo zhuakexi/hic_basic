@@ -475,6 +475,7 @@ def read_meta(fp):
     """
     Read general metadata, take care of sample_name.
     """
+    fp = str(fp)
     if fp.endswith(".csv") or fp.endswith(".csv.gz"):
         df = pd.read_csv(fp,index_col=0,dtype={0:"string"})
     elif fp.endswith(".tsv") or fp.endswith(".tsv.gz"):
