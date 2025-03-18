@@ -163,6 +163,62 @@ def get_rotation_commands(target_vector, retvec=False):
     if retvec:
         return turn_commands, [x_degrees, y_degrees, z_degrees]
     return turn_commands
+def apply_rotation_commands(df, commands_str):
+    def parse_commands(commands_str):
+        commands = []
+        for cmd in commands_str.split(';'):
+            cmd = cmd.strip()
+            if not cmd:
+                continue
+            parts = cmd.split(',', 1)
+            if len(parts) != 2:
+                raise ValueError("Invalid command format")
+            axis_part = parts[0].split()
+            if len(axis_part) != 2 or axis_part[0].lower() != 'turn':
+                raise ValueError("Command must start with 'turn'")
+            axis = axis_part[1].strip().lower()
+            if axis not in ['x', 'y', 'z']:
+                raise ValueError("Axis must be x, y, or z")
+            try:
+                angle = float(parts[1].strip())
+            except ValueError:
+                raise ValueError("Angle must be a number")
+            commands.append((axis, angle))
+        return commands
+
+    def get_rotation_matrix(axis, theta):
+        c = np.cos(theta)
+        s = np.sin(theta)
+        if axis == 'x':
+            return np.array([[1, 0, 0],
+                            [0, c, -s],
+                            [0, s, c]])
+        elif axis == 'y':
+            return np.array([[c, 0, s],
+                            [0, 1, 0],
+                            [-s, 0, c]])
+        elif axis == 'z':
+            return np.array([[c, -s, 0],
+                            [s, c, 0],
+                            [0, 0, 1]])
+        else:
+            raise ValueError("Invalid axis")
+
+    def apply_rotation(df, R):
+        index, columns = df.index, df.columns
+        points = df[['x', 'y', 'z']].values.T  # Convert to 3xN array
+        rotated = R @ points  # Apply rotation matrix
+        new_df = pd.DataFrame(
+            rotated.T, columns=columns, index=index)
+        return new_df
+
+    rotations = parse_commands(commands_str)
+    current_df = df.copy()
+    for axis, angle in rotations:
+        theta = np.radians(angle)
+        R = get_rotation_matrix(axis, theta)
+        current_df = apply_rotation(current_df, R)
+    return current_df
 
 class PyMolRender:
     def __init__(self, template_pml_file, png_file_path, tmpdir=None, conda="pymol"):
