@@ -8,6 +8,8 @@ from pathlib import Path
 import pandas as pd
 from hic_basic.binnify import GenomeIdeograph
 from hic_basic.sequence import count_CpG
+from hic_basic.sequence import compare_fastq_pairs
+
 class TestSequence(unittest.TestCase):
     def setUp(self):
         self.outdir = Path(os.path.dirname(__file__)) / "output" / "sequence"
@@ -40,5 +42,18 @@ class TestSequence(unittest.TestCase):
                 ["chr1",3040000,0.00675],
                 ["chr1",3060000,0.00825]
         ])
+    def test_compare_fastq_pairs(self):
+        fq1_path = "tests/data/R1.fq.gz"
+        fq2_path = "tests/data/R2.fq.gz"
+        stats = compare_fastq_pairs(fq1_path, fq2_path, showstats=True)
+        self.assertIsInstance(stats, dict)
+        self.assertIn('total_fq1', stats)
+        self.assertIn('total_fq2', stats)
+        self.assertIn('valid_pairs', stats)
+        self.assertIn('invalid_pairs', stats)
+        self.assertIn('missing_in_fq1', stats)
+        self.assertIn('missing_in_fq2', stats)
+        # Add specific assertions based on expected values if known
+
 if __name__ == "__main__":
     unittest.main()
