@@ -102,3 +102,7 @@ def align_structures(df1: pd.DataFrame, df2: pd.DataFrame, agg_chrom=True, ret3d
             return transformed_df
     else:
         return M
+
+"""rot_s2 = align_structures(s1, s2, ret3d=True, agg_chrom=False)
+s1.to_csv("test_align/11h3a4b1.3dg",header=False,sep="\t")
+rot_s2.to_csv("test_align/11h3a4b2.rot.3dg",header=False,sep="\t")"""
