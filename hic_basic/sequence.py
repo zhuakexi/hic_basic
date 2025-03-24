@@ -1,5 +1,11 @@
 import pysam
 import pandas as pd
+import gzip
+from collections import Counter
+import plotly.graph_objects as go
+
+from hires_utils.gcount import count_fastq
+from tqdm import tqdm
 def parse_fastq_id(line):
     """Parse a FASTQ ID line into (prefix, end) tuple or None if invalid.
     
@@ -23,18 +29,19 @@ def parse_fastq_id(line):
     return (prefix, end_info)
 
 def read_fastq_ids(file_path):
-    """Read FASTQ file and return a dictionary of {prefix: end}.
+    """Read FASTQ file (supports gzipped) and return a dictionary of {prefix: end}.
     
     This function correctly identifies ID lines by tracking the 4-line FASTQ structure.
     
     Args:
-        file_path (str): Path to the FASTQ file
+        file_path (str): Path to the FASTQ file (can be gzipped)
         
     Returns:
         dict: {prefix: end} mapping for all valid ID lines
     """
     ids = {}
-    with open(file_path, 'r') as f:
+    open_func = gzip.open if file_path.endswith('.gz') else open
+    with open_func(file_path, 'rt') as f:
         line_counter = 0  # Track line position in the 4-line FASTQ record
         for line in f:
             line = line.strip()
@@ -136,3 +143,110 @@ def count_CpG(bed_df:pd.DataFrame, fasta:str)-> pd.DataFrame:
     res = bed_df.drop('sequence', axis=1)
     res = res[res['CpG'] >= 0]
     return res
+
+
+### --- functions to decode library structure --- ###
+
+
+def search_primers(fq_fp, primers):
+    """
+    Search primers in fastq file and return distribution of primer start positions.
+    Will search forward, reverse, complement and reverse complement.
+    Input:
+        fq_fp: str, fastq file path
+        primers: list of str, primers to search
+            If list, search all primers as one.
+    Output:
+        res: dict, primer distribution of each form
+            key: form type, value: list of start positions
+    """
+    # Convert primers to uppercase and process all forms
+    fq_fp = str(fq_fp)
+    if isinstance(primers, str):
+        primers = [primers]
+    primers = [p.upper() for p in primers]
+    all_primer_forms = []
+    for primer in primers:
+        forward = primer
+        reverse = primer[::-1]
+        complement = primer.translate(str.maketrans('ATCG', 'TAGC'))
+        rev_comp = complement[::-1]
+        all_primer_forms.extend([
+            (forward, 'forward'),
+            (reverse, 'reverse'),
+            (complement, 'complement'),
+            (rev_comp, 'reverse_complement')
+        ])
+
+    # Initialize counters and result structure
+    res = {
+        "forward": [],
+        "reverse": [],
+        "complement": [],
+        "reverse_complement": []
+    }
+    # length_counts = Counter()
+
+    # Determine file opener based on compression
+    if fq_fp.endswith(".gz"):
+        open_func = gzip.open
+    else:
+        open_func = open
+
+    total_reads = count_fastq(fq_fp, form="s")
+    print(f"Total reads: {total_reads}")
+
+    with open_func(fq_fp, "rt") as fh:
+        for lines in tqdm(zip(*[fh]*4), total=total_reads):
+            name, seq, _, qual = lines
+            seq = seq.strip().upper()
+
+            # Search for all primer forms in the current sequence
+            for form, form_type in all_primer_forms:
+                start = 0
+                pos = seq.find(form, start)
+                if pos != -1:
+                    res[form_type].append(pos)
+    # transform to frequency
+    for key in res:
+        res[key] = pd.Series(
+            Counter(res[key]))
+    res = pd.concat(res, axis=1)
+    return res
+
+def visualize_primer_search(result, output_file=None):
+    """
+    Visualize the primer search result using bar plots with 4 subplots.
+    
+    Args:
+        result (pd.DataFrame): Primer search result with columns for each form.
+        output_file (str, optional): Path to save the plot as an HTML file. If None, the plot is shown.
+    """
+    fig = go.Figure()
+
+    for i, form in enumerate(["forward", "reverse", "complement", "reverse_complement"], start=1):
+        if form in result.columns:
+            fig.add_trace(
+                go.Bar(
+                    x=result.index,
+                    y=result[form],
+                    name=form,
+                    marker_color=f"rgba({i*50}, {i*50}, 255, 0.7)"
+                )
+            )
+
+    fig.update_layout(
+        title="Primer Search Results",
+        xaxis_title="Position",
+        yaxis_title="Frequency",
+        barmode="group",
+        template="plotly_white",
+        height=600,
+        width=800
+    )
+
+    if output_file:
+        # output png
+        fig.write_image(output_file)
+    else:
+        return fig
