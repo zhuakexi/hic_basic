@@ -1,7 +1,9 @@
+import gzip
+import random
+from collections import Counter
+
 import pysam
 import pandas as pd
-import gzip
-from collections import Counter
 import plotly.graph_objects as go
 
 from hires_utils.gcount import count_fastq
@@ -148,14 +150,19 @@ def count_CpG(bed_df:pd.DataFrame, fasta:str)-> pd.DataFrame:
 ### --- functions to decode library structure --- ###
 
 
-def search_primers(fq_fp, primers):
+def search_primers(fq_fp, primers, sample_n=None, sample_r=None, seed=None):
     """
     Search primers in fastq file and return distribution of primer start positions.
     Will search forward, reverse, complement and reverse complement.
+    
     Input:
         fq_fp: str, fastq file path
         primers: list of str, primers to search
             If list, search all primers as one.
+        sample_n: int, optional, number of reads to sample
+        sample_r: float, optional, fraction of reads to sample (0 < sample_r <= 1)
+        seed: int, optional, random seed for reproducibility
+    
     Output:
         res: dict, primer distribution of each form
             key: form type, value: list of start positions
@@ -185,7 +192,6 @@ def search_primers(fq_fp, primers):
         "complement": [],
         "reverse_complement": []
     }
-    # length_counts = Counter()
 
     # Determine file opener based on compression
     if fq_fp.endswith(".gz"):
@@ -196,8 +202,30 @@ def search_primers(fq_fp, primers):
     total_reads = count_fastq(fq_fp, form="s")
     print(f"Total reads: {total_reads}")
 
+    # Determine sampling
+    sampled_indices = None
+    if sample_n or sample_r:
+        if seed is not None:
+            random.seed(seed)
+        if sample_r:
+            sample_n = int(total_reads * sample_r)
+        sampled_indices = sorted(random.sample(range(total_reads), sample_n))
+        print(f"Sampling {len(sampled_indices)} reads.")
+
     with open_func(fq_fp, "rt") as fh:
-        for lines in tqdm(zip(*[fh]*4), total=total_reads):
+        if sampled_indices:
+            sampled_iter = iter(sampled_indices)
+            next_sample = next(sampled_iter, None)
+        else:
+            next_sample = None
+
+        for idx, lines in enumerate(tqdm(zip(*[fh]*4), total=total_reads)):
+            if next_sample is not None:
+                if idx < next_sample:
+                    continue  # Skip to the next sampled row
+                elif idx == next_sample:
+                    next_sample = next(sampled_iter, None)  # Move to the next sampled index
+
             name, seq, _, qual = lines
             seq = seq.strip().upper()
 
@@ -207,14 +235,17 @@ def search_primers(fq_fp, primers):
                 pos = seq.find(form, start)
                 if pos != -1:
                     res[form_type].append(pos)
-    # transform to frequency
+
+    # Transform to frequency
     for key in res:
-        res[key] = pd.Series(
-            Counter(res[key]))
+        res[key] = pd.Series(Counter(res[key]))
     res = pd.concat(res, axis=1)
+
+    if seed is not None:
+        random.seed(None)  # Reset random seed
     return res
 
-def visualize_primer_search(result, output_file=None):
+def plot_search_primers(result, output_file=None):
     """
     Visualize the primer search result using bar plots with 4 subplots.
     
@@ -222,17 +253,23 @@ def visualize_primer_search(result, output_file=None):
         result (pd.DataFrame): Primer search result with columns for each form.
         output_file (str, optional): Path to save the plot as an HTML file. If None, the plot is shown.
     """
-    fig = go.Figure()
+    fig = make_subplots(
+        rows=4, cols=1,
+        subplot_titles=["forward", "reverse", "complement", "reverse_complement"],
+        shared_yaxes=True
+    )
 
-    for i, form in enumerate(["forward", "reverse", "complement", "reverse_complement"], start=1):
+    for row, col, i, form in filling_l2r_plotly(4, 1, ["forward", "reverse", "complement", "reverse_complement"]):
         if form in result.columns:
             fig.add_trace(
                 go.Bar(
                     x=result.index,
                     y=result[form],
                     name=form,
-                    marker_color=f"rgba({i*50}, {i*50}, 255, 0.7)"
-                )
+                    marker_color=f"rgba({i*50}, {i*50}, 255, 0.7)",
+                ),
+                row=row,
+                col=col
             )
 
     fig.update_layout(

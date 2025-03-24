@@ -60,7 +60,7 @@ class TestSequence(unittest.TestCase):
     def test_search_primers(self):
         fq_fp = "tests/data/R1.fq.gz"
         primers = ["ACGT", "TGCA"]
-        result = search_primers(fq_fp, primers)
+        result = search_primers(fq_fp, primers, sample_n=2, seed=0)
         self.assertIsInstance(result, pd.DataFrame)
         self.assertIn("forward", result.columns)
         self.assertIn("reverse", result.columns)
