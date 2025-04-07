@@ -11,6 +11,8 @@ from hires_utils.mmcif import chrom_rm_suffix, chrom_rm_prefix
 
 from .hicio import get_ref_dir, load_json
 from .utils import two_sets
+from tqdm import tqdm
+
 ref_dir = Path(get_ref_dir())
 
 
@@ -19,7 +21,7 @@ import time
 
 def download_geo(geo_id, outdir, method="ftp", timeout=30):
     """
-    Download GEO data with enhanced messages, diagnostics, and timeout.
+    Download GEO data with enhanced messages, diagnostics, timeout, progress bar, and download velocity.
     
     Input:
         geo_id: GEO ID; string
@@ -38,13 +40,25 @@ def download_geo(geo_id, outdir, method="ftp", timeout=30):
             ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}/suppl/")
             files = ftp.nlst()
             print(f"Found {len(files)} files to download.")
+
             for file in files:
-                print(f"Downloading {file}...")
-                start_time = time.time()
-                with open(os.path.join(outdir, file), "wb") as f:
-                    ftp.retrbinary(f"RETR {file}", f.write)
-                elapsed_time = time.time() - start_time
-                print(f"Downloaded {file} in {elapsed_time:.2f} seconds.")
+                ftp.voidcmd("TYPE I")  # Switch to binary mode
+                try:
+                    file_size = ftp.size(file)
+                except ftplib.error_perm:
+                    print(f"Could not retrieve size for {file}. Skipping size display.")
+                    file_size = None
+
+                file_path = os.path.join(outdir, file)
+                with open(file_path, "wb") as f:
+                    with tqdm(total=file_size, unit="B", unit_scale=True, unit_divisor=1024, desc=file) as pbar:
+                        def callback(data):
+                            f.write(data)
+                            pbar.update(len(data))
+                            if file_size:
+                                velocity = (pbar.n / (time.time() - pbar.start_t + 1e-5)) / (1024 * 1024)  # MB per second
+                                pbar.set_postfix(velocity=f"{velocity:.2f} MB/s")
+                        ftp.retrbinary(f"RETR {file}", callback)
             ftp.quit()
         except ftplib.all_errors as e:
             print(f"FTP error: {e}")
@@ -60,14 +74,15 @@ def download_geo(geo_id, outdir, method="ftp", timeout=30):
             gz_links = [link for link in links if link.endswith(".gz")]
             print(f"Found {len(gz_links)} files to download.")
             for link in gz_links:
-                print(f"Downloading {link}...")
-                start_time = time.time()
-                r = requests.get(link, timeout=timeout)
+                r = requests.get(link, timeout=timeout, stream=True)
                 r.raise_for_status()
-                with open(os.path.join(outdir, os.path.basename(link)), "wb") as f:
-                    f.write(r.content)
-                elapsed_time = time.time() - start_time
-                print(f"Downloaded {os.path.basename(link)} in {elapsed_time:.2f} seconds.")
+                file_size = int(r.headers.get('content-length', 0))
+                file_path = os.path.join(outdir, os.path.basename(link))
+                with open(file_path, "wb") as f:
+                    with tqdm(total=file_size, unit='B', unit_scale=True, unit_divisor=1024, desc=os.path.basename(link)) as pbar:
+                        for chunk in r.iter_content(chunk_size=1024):
+                            f.write(chunk)
+                            pbar.update(len(chunk))
         except requests.RequestException as e:
             print(f"HTTP error: {e}")
     else:
