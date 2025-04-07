@@ -1,15 +1,19 @@
 import argparse
-# To register a new command, create a new module in the same directory and import it here (1/2).
+# To register a new command, create a new module in the same directory and import it here (1/3).
 from . import (
     version,
     render,
+    download
 )
 
-# To register a new command, append the module to the list below (2/2).
+# To register a new command, append the module to the list below (2/3).
 modules = [
     version,
     render,
+    download
 ]
+
+# To register a new command, define add_arguments and run functions in the module (3/3).
 def register_commands(subparsers, modules):
     """
     Register subcommands.
