@@ -15,37 +15,65 @@ ref_dir = Path(get_ref_dir())
 
 
 ### --- download data --- ###
-def download_geo(geo_id, outdir, method="ftp"):
+import time
+
+def download_geo(geo_id, outdir, method="ftp", timeout=30):
     """
-    Download GEO data.
+    Download GEO data with enhanced messages, diagnostics, and timeout.
+    
     Input:
         geo_id: GEO ID; string
         outdir: output directory; string
         method: download method; string; "ftp" or "https"
+        timeout: timeout for downloads in seconds; int
     """
+    print(f"Starting download for GEO ID: {geo_id} using method: {method}")
+    os.makedirs(outdir, exist_ok=True)
+
     if method == "ftp":
         import ftplib
-        ftp = ftplib.FTP("ftp.ncbi.nlm.nih.gov")
-        ftp.login()
-        ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}/suppl/")
-        files = ftp.nlst()
-        for file in files:
-            with open(os.path.join(outdir, file), "wb") as f:
-                ftp.retrbinary(f"RETR {file}", f.write)
-        ftp.quit()
+        try:
+            ftp = ftplib.FTP("ftp.ncbi.nlm.nih.gov", timeout=timeout)
+            ftp.login()
+            ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}/suppl/")
+            files = ftp.nlst()
+            print(f"Found {len(files)} files to download.")
+            for file in files:
+                print(f"Downloading {file}...")
+                start_time = time.time()
+                with open(os.path.join(outdir, file), "wb") as f:
+                    ftp.retrbinary(f"RETR {file}", f.write)
+                elapsed_time = time.time() - start_time
+                print(f"Downloaded {file} in {elapsed_time:.2f} seconds.")
+            ftp.quit()
+        except ftplib.all_errors as e:
+            print(f"FTP error: {e}")
     elif method == "https":
         import requests
         import re
-        url = f"https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={geo_id}"
-        r = requests.get(url)
-        links = re.findall(r'href=[\'"]?([^\'" >]+)', r.text)
-        for link in links:
-            if link.endswith(".gz"):
-                r = requests.get(link)
+        try:
+            url = f"https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={geo_id}"
+            print(f"Fetching download links from {url}...")
+            r = requests.get(url, timeout=timeout)
+            r.raise_for_status()
+            links = re.findall(r'href=[\'"]?([^\'" >]+)', r.text)
+            gz_links = [link for link in links if link.endswith(".gz")]
+            print(f"Found {len(gz_links)} files to download.")
+            for link in gz_links:
+                print(f"Downloading {link}...")
+                start_time = time.time()
+                r = requests.get(link, timeout=timeout)
+                r.raise_for_status()
                 with open(os.path.join(outdir, os.path.basename(link)), "wb") as f:
                     f.write(r.content)
+                elapsed_time = time.time() - start_time
+                print(f"Downloaded {os.path.basename(link)} in {elapsed_time:.2f} seconds.")
+        except requests.RequestException as e:
+            print(f"HTTP error: {e}")
     else:
-        raise ValueError("method must be 'ftp' or 'https'")
+        raise ValueError("Method must be 'ftp' or 'https'")
+
+    print(f"Download completed for GEO ID: {geo_id}. Files saved to {outdir}.")
 
 ### --- data manipulates --- ###
 
