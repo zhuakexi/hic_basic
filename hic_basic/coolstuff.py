@@ -765,42 +765,47 @@ def cli_pairs2cool(filei,fileo,sizef,binsize,force=False, conda_frontend=""):
         shell=True)
     return fileo
 def pairs2cool_worker(sample, sample_table, outdir, pairs_col, suffix, kwargs):
-    from contextlib import redirect_stdout, redirect_stderr
-    with DevNull() as devnull, redirect_stdout(devnull), redirect_stderr(devnull):
-        filei = sample_table.loc[sample, pairs_col]
-        fileo = Path(outdir) / f"{sample}{suffix}"
-        res = cli_pairs2cool(filei, fileo, **kwargs)
-        outdir.mkdir(parents=True, exist_ok=True)
+    """
+    This function is used to run pairs2cool in parallel.
+    TODO: hide output
+    """
+    filei = sample_table.loc[sample, pairs_col]
+    fileo = Path(outdir) / f"{sample}{suffix}"
+    try:
+        # with open(os.devnull, 'w') as devnull:
+        #     from contextlib import redirect_stdout, redirect_stderr
+        #     with redirect_stdout(devnull), redirect_stderr(devnull):
+        #         return cli_pairs2cool(filei, fileo, **kwargs)
+        return cli_pairs2cool(filei, fileo, **kwargs)
+    except Exception as e:
+        print(f"Worker error: {e}", file=sys.stderr)
+        return None
+def mt_pairs2cool(sample_table, outdir, pairs_col="pairs_c123", suffix=".cool", nproc=16, **kwargs):
+    """
+    TODO: Will still print first stdout and stderr message now. Fix this.
+    """
+    Path(outdir).mkdir(parents=True, exist_ok=True)
     samples = sample_table.loc[~sample_table[pairs_col].isna()].index.tolist()
     results = {}
-    orig_stdout = sys.stdout
-    orig_stderr = sys.stderr
+
     with ThreadPoolExecutor(max_workers=nproc) as executor:
-        futures = {executor.submit(pairs2cool_worker, sample, sample_table, outdir, pairs_col, suffix, kwargs): sample for sample in samples}
-        
-        for future in tqdm(as_completed(futures), total=len(futures), desc="Processing"):
-            try:
-                results[futures[future]] = future.result()  # 检查是否有异常抛出
-    orig_stdout = sys.stdout
-    orig_stderr = sys.stderr
-    with open(os.devnull, 'w') as devnull:
-        sys.stdout = devnull
-        sys.stderr = devnull
-        try:
-            with ThreadPoolExecutor(max_workers=nproc) as executor:
-                futures = {executor.submit(pairs2cool_worker, sample, sample_table, outdir, pairs_col, suffix, kwargs): sample for sample in samples}
-                
-                for future in tqdm(as_completed(futures), total=len(futures), desc="Processing"):
-                    try:
-                        results[futures[future]] = future.result()
-                    except Exception as e:
-                        print(f"An error occurred processing {futures[future]}: {e}")
-            results = pd.Series(results)
-        finally:
-            sys.stdout = orig_stdout
-            sys.stderr = orig_stderr
-    return results
-def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True, cwd=None, batch_size=100):
+        futures = {
+            executor.submit(pairs2cool_worker, sample, sample_table, outdir, pairs_col, suffix, kwargs): sample
+            for sample in samples
+        }
+
+        with tqdm(total=len(futures), desc="Processing", file=sys.stdout) as pbar:
+            for future in as_completed(futures):
+                sample = futures[future]
+                try:
+                    results[sample] = future.result()
+                except Exception as e:
+                    print(f"Error processing {sample}: {e}", file=sys.stderr)
+                    results[sample] = None
+                pbar.update(1)
+
+    return pd.Series(results)
+def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True, cwd=None, batch_size=1000):
     """
     Merge cool files with same indices to get a consensus heatmap.
     Handles large numbers of input files by batching them.
