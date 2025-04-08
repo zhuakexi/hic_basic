@@ -1,8 +1,10 @@
 # cooler api functions
 import os
 import os.path as op
+import sys
 import tempfile
 import yaml
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List, Union
 
@@ -12,10 +14,11 @@ import pandas as pd
 from cooler import Cooler
 from cooler.create import sanitize_records, aggregate_records
 from cytoolz import compose # fail in HPC
+from tqdm import tqdm
 
 from .binnify import GenomeIdeograph
 from .data import chromosomes
-from .hicio import schicluster2mat
+from .hicio import schicluster2mat, DevNull
 from .utils import binnify
 
 # from .utils import read_chromsizes
@@ -761,24 +764,66 @@ def cli_pairs2cool(filei,fileo,sizef,binsize,force=False, conda_frontend=""):
         "%s cooler cload pairs -c1 2 -p1 3 -c2 4 -p2 5 %s:%d %s %s " % (conda_frontend,sizef,binsize,filei,fileo),
         shell=True)
     return fileo
-def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True, cwd=None):
+def pairs2cool_worker(sample, sample_table, outdir, pairs_col, suffix, kwargs):
+    from contextlib import redirect_stdout, redirect_stderr
+    with DevNull() as devnull, redirect_stdout(devnull), redirect_stderr(devnull):
+        filei = sample_table.loc[sample, pairs_col]
+        fileo = Path(outdir) / f"{sample}{suffix}"
+        res = cli_pairs2cool(filei, fileo, **kwargs)
+        outdir.mkdir(parents=True, exist_ok=True)
+    samples = sample_table.loc[~sample_table[pairs_col].isna()].index.tolist()
+    results = {}
+    orig_stdout = sys.stdout
+    orig_stderr = sys.stderr
+    with ThreadPoolExecutor(max_workers=nproc) as executor:
+        futures = {executor.submit(pairs2cool_worker, sample, sample_table, outdir, pairs_col, suffix, kwargs): sample for sample in samples}
+        
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Processing"):
+            try:
+                results[futures[future]] = future.result()  # 检查是否有异常抛出
+    orig_stdout = sys.stdout
+    orig_stderr = sys.stderr
+    with open(os.devnull, 'w') as devnull:
+        sys.stdout = devnull
+        sys.stderr = devnull
+        try:
+            with ThreadPoolExecutor(max_workers=nproc) as executor:
+                futures = {executor.submit(pairs2cool_worker, sample, sample_table, outdir, pairs_col, suffix, kwargs): sample for sample in samples}
+                
+                for future in tqdm(as_completed(futures), total=len(futures), desc="Processing"):
+                    try:
+                        results[futures[future]] = future.result()
+                    except Exception as e:
+                        print(f"An error occurred processing {futures[future]}: {e}")
+            results = pd.Series(results)
+        finally:
+            sys.stdout = orig_stdout
+            sys.stderr = orig_stderr
+    return results
+def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True, cwd=None, batch_size=100):
     """
     Merge cool files with same indices to get a consensus heatmap.
+    Handles large numbers of input files by batching them.
+    
     Input:
-        incools: list of .cool file path
+        incools: list of .cool file paths
         outcool: output .cool file path
         conda_env: (optional) conda environment to run in
         cwd: (optional) working directory
+        batch_size: number of files to merge in each batch
     """
+    from tempfile import NamedTemporaryFile
+
     if not force and Path(outcool).exists():
         print(f"File '{outcool}' already exists. Skipping execution.")
         return outcool
+
     if conda_env is None:
         conda_run = ""
     else:
         conda_run = f"conda run -n {conda_env}"
 
-    # check input
+    # Filter valid input files
     valid_cools = []
     for cool in incools:
         if not Path(cool).exists() or not Cooler(cool).info:
@@ -789,22 +834,26 @@ def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True
                 raise FileNotFoundError(f"File '{cool}' does not exist or is empty.")
         valid_cools.append(cool)
 
-    # 将输入文件列表转换为字符串
-    incools_str = " ".join(valid_cools)
-    
-    # 构造命令行命令
-    cmd = f"{conda_run} cooler merge {outcool} {incools_str}"
+    # Merge in batches
+    temp_files = []
+    for i in range(0, len(valid_cools), batch_size):
+        batch = valid_cools[i:i + batch_size]
+        temp_out = NamedTemporaryFile(delete=False, suffix=".cool")
+        temp_files.append(temp_out.name)
+        batch_str = " ".join(batch)
+        cmd = f"{conda_run} cooler merge {temp_out.name} {batch_str}"
+        subprocess.check_output(cmd, shell=True, cwd=cwd)
 
-    try:
-        subprocess.check_output(
-            cmd,
-            shell=True,
-            cwd=cwd
-        )
-        return True
-    except subprocess.CalledProcessError as e:
-        print(e.output.decode())
-        return False
+    # Merge temporary files into the final output
+    temp_files_str = " ".join(temp_files)
+    cmd = f"{conda_run} cooler merge {outcool} {temp_files_str}"
+    subprocess.check_output(cmd, shell=True, cwd=cwd)
+
+    # Clean up temporary files
+    for temp_file in temp_files:
+        Path(temp_file).unlink()
+
+    return outcool
 def cli_downsample(coolp, output, count=100e6, cis_count=None, fraction=None, threads=8, force=False, conda_env=None, cwd=None):
     if not force and Path(output).exists():
         print(f"File '{output}' already exists. Skipping execution.")
