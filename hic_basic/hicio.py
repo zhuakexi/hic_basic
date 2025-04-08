@@ -19,11 +19,16 @@ from scipy.sparse import coo_matrix, csr_matrix
 
 
 class DevNull:
-    """A class to suppress standard output and error."""
-    def write(self, message):
+    def write(self, _):
         pass
 
     def flush(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
         pass
 
 def divide_name(filename):
