@@ -81,7 +81,13 @@ def download_geo(geo_id, outdir, method="ftp", timeout=30, retries=3, block_size
                                     if file_size:
                                         velocity = (pbar.n / (time.time() - pbar.start_t + 1e-5)) / (1024 * 1024)  # MB per second
                                         pbar.set_postfix(velocity=f"{velocity:.2f} MB/s")
-                                ftp.retrbinary(f"RETR {file}", callback, blocksize=block_size, rest=local_size)
+                                try:
+                                    ftp.retrbinary(f"RETR {file}", callback, blocksize=block_size, rest=local_size)
+                                except ftplib.error_perm as e:
+                                    if "REST" in str(e):
+                                        print(f"Server does not support REST for {file}. Restarting download.")
+                                        f.truncate(0)  # Clear the file and restart download
+                                        ftp.retrbinary(f"RETR {file}", callback, blocksize=block_size)
                         break  # Exit retry loop if successful
                     except ftplib.all_errors as e:
                         print(f"Attempt {attempt + 1} failed for {file}: {e}")
