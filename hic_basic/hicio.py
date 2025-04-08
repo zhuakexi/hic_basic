@@ -18,7 +18,13 @@ from scipy.io import mmread
 from scipy.sparse import coo_matrix, csr_matrix
 
 
+class DevNull:
+    """A class to suppress standard output and error."""
+    def write(self, message):
+        pass
 
+    def flush(self):
+        pass
 
 def divide_name(filename):
     #home-made os.path.splitext, for it can't handle "name.a.b.c" properly
