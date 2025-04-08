@@ -2,6 +2,7 @@ import csv
 import gzip
 import json
 import os
+import time
 from collections import namedtuple
 from pathlib import Path
 
@@ -19,15 +20,17 @@ ref_dir = Path(get_ref_dir())
 ### --- download data --- ###
 import time
 
-def download_geo(geo_id, outdir, method="ftp", timeout=30):
+def download_geo(geo_id, outdir, method="ftp", timeout=30, retries=3, block_size=8192):
     """
-    Download GEO data with enhanced messages, diagnostics, timeout, progress bar, and download velocity.
+    Download GEO data with enhanced error handling, retries, larger block size, passive mode for FTP, and download resumption.
     
     Input:
         geo_id: GEO ID; string
         outdir: output directory; string
         method: download method; string; "ftp" or "https"
         timeout: timeout for downloads in seconds; int
+        retries: number of retries for failed downloads; int
+        block_size: initial block size for downloading large files; int
     """
     print(f"Starting download for GEO ID: {geo_id} using method: {method}")
     os.makedirs(outdir, exist_ok=True)
@@ -36,12 +39,19 @@ def download_geo(geo_id, outdir, method="ftp", timeout=30):
         import ftplib
         try:
             ftp = ftplib.FTP("ftp.ncbi.nlm.nih.gov", timeout=timeout)
+            ftp.set_pasv(True)  # Enable passive mode
             ftp.login()
             ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}/suppl/")
             files = ftp.nlst()
             print(f"Found {len(files)} files to download.")
 
             for file in files:
+                file_path = os.path.join(outdir, file)
+                if os.path.exists(file_path):
+                    local_size = os.path.getsize(file_path)
+                else:
+                    local_size = 0
+
                 ftp.voidcmd("TYPE I")  # Switch to binary mode
                 try:
                     file_size = ftp.size(file)
@@ -49,16 +59,38 @@ def download_geo(geo_id, outdir, method="ftp", timeout=30):
                     print(f"Could not retrieve size for {file}. Skipping size display.")
                     file_size = None
 
-                file_path = os.path.join(outdir, file)
-                with open(file_path, "wb") as f:
-                    with tqdm(total=file_size, unit="B", unit_scale=True, unit_divisor=1024, desc=file) as pbar:
-                        def callback(data):
-                            f.write(data)
-                            pbar.update(len(data))
-                            if file_size:
-                                velocity = (pbar.n / (time.time() - pbar.start_t + 1e-5)) / (1024 * 1024)  # MB per second
-                                pbar.set_postfix(velocity=f"{velocity:.2f} MB/s")
-                        ftp.retrbinary(f"RETR {file}", callback)
+                # Adjust block size and timeout based on file size
+                if file_size:
+                    if file_size > 100 * 1024 * 1024:  # > 100 MB
+                        block_size = 64 * 1024  # 64 KB
+                        timeout = 60
+                    elif file_size > 10 * 1024 * 1024:  # > 10 MB
+                        block_size = 32 * 1024  # 32 KB
+                        timeout = 45
+                    else:
+                        block_size = 8 * 1024  # 8 KB
+                        timeout = 30
+
+                for attempt in range(retries):
+                    try:
+                        with open(file_path, "ab") as f:  # Append mode for resumption
+                            with tqdm(total=file_size, initial=local_size, unit="B", unit_scale=True, unit_divisor=1024, desc=file) as pbar:
+                                def callback(data):
+                                    f.write(data)
+                                    pbar.update(len(data))
+                                    if file_size:
+                                        velocity = (pbar.n / (time.time() - pbar.start_t + 1e-5)) / (1024 * 1024)  # MB per second
+                                        pbar.set_postfix(velocity=f"{velocity:.2f} MB/s")
+                                ftp.retrbinary(f"RETR {file}", callback, blocksize=block_size, rest=local_size)
+                        break  # Exit retry loop if successful
+                    except ftplib.all_errors as e:
+                        print(f"Attempt {attempt + 1} failed for {file}: {e}")
+                        sleep_time = 2 ** attempt  # Exponential backoff
+                        print(f"Retrying in {sleep_time} seconds...")
+                        time.sleep(sleep_time)
+                        if attempt + 1 == retries:
+                            print(f"Failed to download {file} after {retries} attempts.")
+                            continue
             ftp.quit()
         except ftplib.all_errors as e:
             print(f"FTP error: {e}")
@@ -74,15 +106,28 @@ def download_geo(geo_id, outdir, method="ftp", timeout=30):
             gz_links = [link for link in links if link.endswith(".gz")]
             print(f"Found {len(gz_links)} files to download.")
             for link in gz_links:
-                r = requests.get(link, timeout=timeout, stream=True)
-                r.raise_for_status()
-                file_size = int(r.headers.get('content-length', 0))
                 file_path = os.path.join(outdir, os.path.basename(link))
-                with open(file_path, "wb") as f:
-                    with tqdm(total=file_size, unit='B', unit_scale=True, unit_divisor=1024, desc=os.path.basename(link)) as pbar:
-                        for chunk in r.iter_content(chunk_size=1024):
-                            f.write(chunk)
-                            pbar.update(len(chunk))
+                if os.path.exists(file_path):
+                    local_size = os.path.getsize(file_path)
+                else:
+                    local_size = 0
+
+                for attempt in range(retries):
+                    try:
+                        headers = {"Range": f"bytes={local_size}-"} if local_size > 0 else {}
+                        r = requests.get(link, timeout=timeout, stream=True, headers=headers)
+                        r.raise_for_status()
+                        file_size = int(r.headers.get('content-length', 0)) + local_size
+                        with open(file_path, "ab") as f:  # Append mode for resumption
+                            with tqdm(total=file_size, initial=local_size, unit='B', unit_scale=True, unit_divisor=1024, desc=os.path.basename(link)) as pbar:
+                                for chunk in r.iter_content(chunk_size=block_size):
+                                    f.write(chunk)
+                                    pbar.update(len(chunk))
+                        break  # Exit retry loop if successful
+                    except requests.RequestException as e:
+                        print(f"Attempt {attempt + 1} failed for {os.path.basename(link)}: {e}")
+                        if attempt + 1 == retries:
+                            print(f"Failed to download {os.path.basename(link)} after {retries} attempts.")
         except requests.RequestException as e:
             print(f"HTTP error: {e}")
     else:
