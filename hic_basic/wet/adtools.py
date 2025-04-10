@@ -95,13 +95,16 @@ def gen_cs(fileis):
     cs.columns = fileis.index
     return cs.T
 # --- create anndata object from scratch ---
-def expand_df(target_df, ref_df):
+def expand_df(target_df, ref_df, count_matrix=False, fill_na_value=0):
     """
     expand target_df to shape(with same index, columns) of ref_df, fill with 0
     Input:
         target_df: df to be transformed; sparse df
         ref_df: axis reference, must contain all rows and cols of target_df; sparse df
+        count_matrix: if True, use sparse matrix, else use dense matrix
     """
+    if count_matrix:
+        print("expand_df: `count_matrix` is True, use sparse matrix. Don't do this if your data is not integer")
     assert target_df.index.isin(ref_df.index).all() and target_df.columns.isin(ref_df.columns).all(),\
         "expand_df: target_df axis aren't both subset of ref_df"
     cofactor = ref_df.loc[
@@ -113,8 +116,9 @@ def expand_df(target_df, ref_df):
         [target_df, cofactor],
         join = "outer"
     )
-    target_df.fillna(0, inplace=True)
-    target_df = target_df.astype(pd.SparseDtype(int, fill_value=0))
+    target_df.fillna(fill_na_value, inplace=True)
+    if count_matrix:
+        target_df = target_df.astype(pd.SparseDtype(int, fill_value=0))
     target_df.index = target_df.index.astype("string")
     target_df.columns = target_df.columns.astype("string")
     return target_df
