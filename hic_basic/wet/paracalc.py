@@ -42,7 +42,7 @@ def gen_cool(qc, cached, threads=16, sizef = "/share/home/ychi/data/genome/GRCm3
         json.dump(dict(zip(valid_samples, caching_files)), f)
     return dict(zip(valid_samples, caching_files))
 # --- generate contact decay profiles ---
-def gen_cdps(filesp, threads = 32):
+def gen_cdps(filesp, threads = 32, range_dtype='string'):
     # --- check pairs file ---
     valid_samples, valid_files = check_input(filesp, "pairs_c123")
     # --- calculate --- 
@@ -54,7 +54,7 @@ def gen_cdps(filesp, threads = 32):
     # --- collect data ---
     ares = list(res)
     cdps = pd.DataFrame(ares,index=valid_samples)
-    cdps.columns = cdps.columns.astype("int")
+    cdps.columns = cdps.columns.astype(int).astype(range_dtype)
     return cdps
 
 # --- count Maternal-Paternal interaction ---
