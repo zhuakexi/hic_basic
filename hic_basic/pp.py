@@ -30,7 +30,7 @@ def _merge_expr(fps, mapper={}, samplelist=None, outfile=None, qc=None, OV=True,
         # pd concat
         if OV:
             # input dfs are samples * genes
-            all_mat = pd.concat([all_mat, sub_mat.T],axis=0,join="outer")
+            all_mat = pd.concat([all_mat, sub_mat],axis=0,join="outer")
             all_mat.fillna(0, inplace=True)
             # purge all zero columns(genes)
             all_mat = all_mat.loc[:,~(all_mat.sum(axis=0)==0)]
@@ -38,10 +38,12 @@ def _merge_expr(fps, mapper={}, samplelist=None, outfile=None, qc=None, OV=True,
             # input dfs are genes * samples
             all_mat = pd.concat([all_mat, sub_mat],axis=1,join="outer")
             all_mat.fillna(0, inplace=True)
+            # purge all zero columns(genes)
             all_mat = all_mat.loc[~(all_mat.sum(axis=1)==0),:]
-            # rotate because all inner dfs are samples * genes
-            all_mat = all_mat.T
         print("all mats:",all_mat.shape)
+    if not OV:
+        # transpose to OV, because samples * genes (design matrix) is the proper df in hic_basic 
+        all_mat = all_mat.T
     # ---rename sample id in expression matrix---
     if len(mapper) > 0: 
         if OV:
