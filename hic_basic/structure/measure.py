@@ -1,10 +1,16 @@
+import json
 from itertools import repeat
 from copy import deepcopy
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+from tqdm import tqdm
+
 import open3d as o3d
 import numpy as np
 import pandas as pd
 from ..data import fetch_cent_chromlen
 from ..binnify import GenomeIdeograph
+from ..hicio import parse_pairs, parse_3dg
 from .utils import space_grid, corners2edges
 
 
@@ -324,6 +330,76 @@ def restraint_violations(pairs, _3dg, genome, binsize, flavor="hickit"):
         distance = distances
     )
     return pairs
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
+def fetch_strong_violates(_3dg_f, pairs_f, genome, binsize, d_thres=4):
+    """
+    Fetch strong constraint violations from pairs and _3dg data.
+    Input:
+        _3dg_f: path to _3dg file
+        pairs_f: path to pairs file
+        genome: genome assembly identifier (e.g., 'mm10')
+        binsize: Chromosome bin size in base pairs.
+        d_thres: Distance threshold for defining strong violations.
+    Output:
+        strong_violates: DataFrame containing strong constraint violations.
+    """
+    if pd.isna(_3dg_f) or pd.isna(pairs_f):
+        return None
+    if not Path(_3dg_f).exists() or not Path(pairs_f).exists():
+        return None
+    pairs = parse_pairs(pairs_f)
+    _3dg = parse_3dg(_3dg_f)
+    violates = restraint_violations(
+        pairs, _3dg, genome, binsize
+    )
+    strong_violates = violates.query(
+        'distance > @d_thres'
+    )
+    return strong_violates.shape[0] / violates.shape[0]
+def mt_strong_violation_ratio(sample_table, outfile, pairs_col="pairs_c12", _3dg_col="20k_g_struct1", genome=None, binsize=20e3, d_thres=4, n_jobs=16):
+    """
+    Process multiple samples in parallel to calculate strong constraint violations.
+    TODO: make explicit cache
+    
+    Input:
+        sample_table (pd.DataFrame): DataFrame containing sample metadata with columns 
+                                   '20k_g_struct1' and 'pairs_c12' for file paths.
+        genome (str): Genome assembly identifier (e.g., 'mm10').
+        binsize (int): Chromosome bin size in base pairs.
+        d_thres (int): Distance threshold for defining strong violations.
+        n_jobs (int): Number of parallel processes to use.
+        outfile (str): Path to output JSON file storing results.
+    
+    Output:
+        None. Results are saved directly to the specified outfile.
+    """
+    if genome is None:
+        raise ValueError("Genome must be specified.")
+
+    # Skip processing if output file already exists
+    if not Path(outfile).exists():
+        results = {}
+        with ProcessPoolExecutor(n_jobs) as pool:
+            futures = []
+            # Submit all sample processing tasks
+            for sample, row in sample_table.iterrows():
+                _3dg_f = row[_3dg_col]
+                pairs_f = row[pairs_col]
+                future = pool.submit(
+                    fetch_strong_violates,
+                    _3dg_f, pairs_f, genome, binsize, d_thres
+                )
+                futures.append((sample, future))
+            
+            # Collect results with progress tracking
+            for sample, future in tqdm(futures, total=len(futures), desc="Processing samples"):
+                results[sample] = future.result()
+        
+        # Save results to JSON file
+        with open(outfile, "wt") as f:
+            json.dump(results, f)
+    return results
 def append_centelo_to_index(df, genome="mm10", dis=2e6, p=False, q=True):
     """
     Append centromere and telomere information to the index.
