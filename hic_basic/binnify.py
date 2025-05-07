@@ -112,7 +112,7 @@ class GenomeIdeograph:
         """
         bins = self.bins(binsize, flavor=flavor)
         chunk_e_list = []
-        for (chrom1, chrom2), chunk in pairs.groupby(["chr1","chr2"]):
+        for (chrom1, chrom2), chunk in pairs.groupby(["chr1","chr2"],observed=True):
             cut1 = pd.cut(chunk["pos1"], bins[chrom1])
             cut2 = pd.cut(chunk["pos2"], bins[chrom2])
             chunk_e = chunk.assign(
