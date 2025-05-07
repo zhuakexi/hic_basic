@@ -47,7 +47,6 @@ def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_or
         annote.loc[annote[group_col]=="Pre-M","group_color"] = "goldenrod"
         annote.loc[annote[group_col]=="early/mid-S","group_color"] = "green"
         annote.loc[annote[group_col]=="mid-S/G2","group_color"] = "lightgreen"
-        annote = annote.sort_values(order_col)
     elif isinstance(color_map,dict):
         # using custom color map
         annote = orig_annote.assign(
@@ -62,7 +61,9 @@ def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_or
             ] = color_map[key]
     else:
         raise ValueError("cdps_plot: Must provide color_map when set color_map to None.")
+    annote = annote.sort_values(order_col)
     order = list(annote[sample_col].values)
+    group_list = list(annote[group_col].values)
     fig = make_subplots(rows=2,cols=1,row_heights=[0.05,1],vertical_spacing=0.05)
     fig.add_trace(
         go.Bar(
@@ -70,7 +71,7 @@ def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_or
         y = [1 for i in range(0,annote.shape[0])],
         marker_color = annote["group_color"],
         hovertemplate='%{text}',
-        text = order
+        text = [sample+" ("+group+")" for sample, group in zip(annote[sample_col], group_list)],
         ),
         row=1,
         col=1
