@@ -254,7 +254,7 @@ def fill_color(data, color_file, grt_full=True):
     if grt_full:
         filled_data = filled_data.dropna(axis=1)
     return filled_data
-def calc_color2(filesp, file_col, color_file, binsize, rank_norm=True, merge_haplotypes=True, dropXY=True, dupref=False, col_thresh=0.9, row_thresh=0.9,fill_color=True, threads=24):
+def calc_color2(filesp, file_col, color_file, binsize, rank_norm=True, merge_haplotypes=True, dropXY=True, dupref=False, col_thresh=0.9, row_thresh=0.9,color_fill=True, threads=24):
     """
     Input:
         filesp: dataframe, must have file_col col
@@ -271,6 +271,7 @@ def calc_color2(filesp, file_col, color_file, binsize, rank_norm=True, merge_hap
         threads: number of cores using
     Note:
         when binsize is small, valid col and row thresh drop dramatically, it's better to use color3 at that time
+    TODO: use 2-layer column
     """
     print("Calculating color...")
     with futures.ProcessPoolExecutor(threads) as pool:
@@ -286,7 +287,7 @@ def calc_color2(filesp, file_col, color_file, binsize, rank_norm=True, merge_hap
     ares = list(res)
     print("Stacking color...")
     color_result = stack_dict(ares, filesp.index, col_thresh, row_thresh)
-    if fill_color:
+    if color_fill:
         print("Filling color...")
         color_result = fill_color(color_result, color_file)
     else:
