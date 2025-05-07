@@ -18,8 +18,13 @@ def c_u_filter(meta, ccol, ucol, c_threshold, u_threshold):
     print("Filter out %d samples with bad contacts or umis." % (~metric_filter).sum())
     print("Keep %d samples from %d samples" % (qc.shape[0], meta.shape[0]))
     return qc
-def plot_qc(meta, ccol="contacts", ucol="umis", c_threshold=[150_000, 1_000_000], u_threshold=[10_000, 600_000]):
-    fig = px.scatter(meta,x=ccol,y=ucol)
+def plot_qc(meta, ccol="contacts", ucol="umis", c_threshold=[150_000, 1_000_000], u_threshold=[10_000, 600_000],**kwargs):
+    fig = px.scatter(
+        meta,
+        x=ccol,
+        y=ucol,
+        **kwargs
+        )
     fig.update_layout(
         height = 700,
         width = 700
