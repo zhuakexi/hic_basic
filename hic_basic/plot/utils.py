@@ -1,3 +1,4 @@
+import colorsys
 import io
 import os
 import re
@@ -195,6 +196,11 @@ def spread_text(text_list, track_width=5, fold=2):
         [i*track_width for i in range(fold)]
     ))
     return [shift_dict[i%fold] for i in range(len(text_list))]
+
+
+### --- colors --- ###
+
+
 def hex_to_rgb(hex_color):
     """
     将十六进制颜色字符串转换为 RGB 格式。
@@ -237,6 +243,70 @@ def hex_split(hex_color):
 
     return r, g, b, a
 
+def compute_hue_diff(h1_deg, h2_deg):
+    """
+    计算两个色相之间的最短差值（考虑环形特性）
+    """
+    diff = h2_deg - h1_deg
+    if diff > 180:
+        diff -= 360
+    elif diff < -180:
+        diff += 360
+    return diff
+
+def expand_colors(colors, n_interpolate=1):
+    """
+    在相邻颜色之间插入 n_interpolate 个新颜色，使颜色过渡自然。
+    
+    参数:
+        colors (List[tuple]): 输入颜色序列，每个颜色是 (r, g, b) 的 RGB 元组，范围 0~1。
+        n_interpolate (int): 每对颜色之间插入的新颜色数量。
+    
+    返回:
+        List[tuple]: 扩展后的颜色序列。
+    """
+    if not colors:
+        return []
+    
+    expanded = [colors[0]]  # 保留第一个颜色
+
+    for i in range(len(colors) - 1):
+        c1 = colors[i]
+        c2 = colors[i + 1]
+
+        # 转换为 HSV 颜色空间
+        h1, s1, v1 = colorsys.rgb_to_hsv(*c1)
+        h2, s2, v2 = colorsys.rgb_to_hsv(*c2)
+
+        h1_deg = h1 * 360
+        h2_deg = h2 * 360
+        dh = compute_hue_diff(h1_deg, h2_deg)
+
+        for j in range(n_interpolate):
+            t = (j + 1) / (n_interpolate + 1)  # 插值系数，从 0 到 1
+
+            # 插值色相
+            h_deg = h1_deg + t * dh
+            h = h_deg / 360  # 回到 [0,1] 范围
+
+            # 插值饱和度和明度
+            s = s1 * (1 - t) + s2 * t
+            v = v1 * (1 - t) + v2 * t
+
+            # 降低中间点的饱和度，使过渡更柔和
+            s *= (1 - t * (1 - t))
+
+            # 转换回 RGB
+            r, g, b = colorsys.hsv_to_rgb(h, s, v)
+            # transform to int
+            r, g, b = int(r), int(g), int(b)
+            expanded.append((r, g, b))
+
+        # 添加当前对的第二个颜色
+        expanded.append(c2)
+
+    return expanded
+
 def plotly_fig2array(fig):
     #convert a Plotly fig to  a RGB-array
     #fig_bytes = fig.to_image(format="png", height = 1600, width = 1600, scale=4)
@@ -244,6 +314,41 @@ def plotly_fig2array(fig):
     buf = io.BytesIO(fig_bytes)
     img = Image.open(buf)
     return np.asarray(img)
+
+def plot_color_sequence(colors, output_file=None):
+    """
+    Plot a color sequence as a 1-row heatmap.
+    
+    Args:
+        colors (List[str] or List[tuple]): List of colors in hex or RGB format.
+        output_file (str, optional): Path to save the plot as an image. If None, the plot is shown.
+    """
+    # Convert hex colors to RGB if necessary
+    if isinstance(colors[0], str):
+        colors = [hex_to_rgb(color) for color in colors]
+    
+    # Create a 1-row heatmap
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=[[i for i in range(len(colors))]],  # Dummy data
+            colorscale=[(i / (len(colors) - 1), f"rgb({r}, {g}, {b})")
+                        for i, (r, g, b) in enumerate(colors)],
+            showscale=False
+        )
+    )
+    fig.update_layout(
+        height=100,
+        width=800,
+        margin=dict(l=10, r=10, t=10, b=10),
+        xaxis=dict(showticklabels=False),
+        yaxis=dict(showticklabels=False)
+    )
+    
+    if output_file:
+        fig.write_image(output_file)
+        return output_file
+    else:
+        return fig
 
 
 ### --- manuscript notebook compile --- ###
