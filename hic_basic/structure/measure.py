@@ -357,7 +357,7 @@ def fetch_strong_violates(_3dg_f, pairs_f, genome, binsize, d_thres=4):
         'distance > @d_thres'
     )
     return strong_violates.shape[0] / violates.shape[0]
-def mt_strong_violation_ratio(sample_table, outfile, pairs_col="pairs_c12", _3dg_col="20k_g_struct1", genome=None, binsize=20e3, d_thres=4, n_jobs=16):
+def mt_strong_violation_ratio(sample_table, outfile, force=False, pairs_col="pairs_c12", _3dg_col="20k_g_struct1", genome=None, binsize=20e3, d_thres=4, n_jobs=16):
     """
     Process multiple samples in parallel to calculate strong constraint violations.
     TODO: make explicit cache
@@ -378,7 +378,12 @@ def mt_strong_violation_ratio(sample_table, outfile, pairs_col="pairs_c12", _3dg
         raise ValueError("Genome must be specified.")
 
     # Skip processing if output file already exists
-    if not Path(outfile).exists():
+    if Path(outfile).exists() and not force:
+        results = json.load(open(outfile, "rt"))
+    else:
+        # Create output directory if it doesn't exist
+        Path(outfile).parent.mkdir(parents=True, exist_ok=True)
+        # Process samples in parallel
         results = {}
         with ProcessPoolExecutor(n_jobs) as pool:
             futures = []
