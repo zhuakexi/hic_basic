@@ -3,7 +3,7 @@ from time import time
 import pandas as pd
 
 from .hicio import read_expr
-#from sklearn import preprocessing
+from sklearn import preprocessing
 def _merge_expr(fps, mapper={}, samplelist=None, outfile=None, qc=None, OV=True,dtype="int32"):
     """
     Merging umi count matrices.
