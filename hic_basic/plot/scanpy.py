@@ -27,7 +27,7 @@ def plot_elbow(adata):
         title = "PCA elbow plot"
     )
     return fig
-def plot_umap(adata, color, key="X_umap"):
+def plot_umap(adata, color, key="X_umap", **kwargs):
     """
     Plot scanpy umap using plotly.
     """
@@ -37,7 +37,9 @@ def plot_umap(adata, color, key="X_umap"):
     # adding annotations
     umap_res = pd.concat([umap_res, adata.obs], axis=1)
     # plot
-    fig = px.scatter(umap_res, x = "U1", y = "U2", color = color, hover_name = umap_res.index)
+    if umap_res[color].dtype == "category":
+        umap_res = umap_res.sort_values(color)
+    fig = px.scatter(umap_res, x = "U1", y = "U2", color = color, hover_name = umap_res.index, **kwargs)
     fig.update_layout(
         height = 500,
         width = 600
