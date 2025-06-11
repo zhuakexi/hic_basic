@@ -199,6 +199,40 @@ def spread_text(text_list, track_width=5, fold=2):
 
 
 ### --- colors --- ###
+def plot_color_sequence(colors, output_file=None):
+    """
+    Plot a color sequence as a 1-row heatmap.
+    
+    Args:
+        colors (List[str] or List[tuple]): List of colors in hex or RGB format.
+        output_file (str, optional): Path to save the plot as an image. If None, the plot is shown.
+    """
+    # Convert hex colors to RGB if necessary
+    if isinstance(colors[0], str):
+        colors = [hex_to_rgb(color) for color in colors]
+    
+    # Create a 1-row heatmap
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=[[i for i in range(len(colors))]],  # Dummy data
+            colorscale=[(i / (len(colors) - 1), f"rgb({r}, {g}, {b})")
+                        for i, (r, g, b) in enumerate(colors)],
+            showscale=False
+        )
+    )
+    fig.update_layout(
+        height=100,
+        width=800,
+        margin=dict(l=10, r=10, t=10, b=10),
+        xaxis=dict(showticklabels=False),
+        yaxis=dict(showticklabels=False)
+    )
+    
+    if output_file:
+        fig.write_image(output_file)
+        return output_file
+    else:
+        return fig
 
 
 def hex_to_rgb(hex_color):
@@ -215,6 +249,26 @@ def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip('#')
     # 每两个字符代表一个颜色通道的十六进制值
     return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+def rgb_to_hex(rgb_color):
+    """
+    将 RGB 格式转换为十六进制颜色字符串。
+    
+    参数:
+        r (int): 红色通道的值 (0-255)
+        g (int): 绿色通道的值 (0-255)
+        b (int): 蓝色通道的值 (0-255)
+    
+    返回:
+        str: 十六进制颜色字符串，例如 "#4C78A8"
+    """
+    r, g, b = rgb_color
+    # 确保每个通道的值在 0-255 之间，并转换为整数
+    r = max(0, min(255, int(r)))
+    g = max(0, min(255, int(g)))
+    b = max(0, min(255, int(b)))
+    
+    # 使用大写字母格式化为两位十六进制字符串
+    return "#{:02X}{:02X}{:02X}".format(r, g, b)
 def hex_split(hex_color):
     """
     解析十六进制颜色代码，并返回 R、G、B 和 A 分量。
@@ -254,6 +308,68 @@ def compute_hue_diff(h1_deg, h2_deg):
         diff += 360
     return diff
 
+def interpolate_color_rgb_linear(orig, target, n, cap=1):
+    """
+    Interpolate between two colors in RGB space.
+    Input:
+        orig: original color (r, g, b)
+        target: target color (r, g, b)
+        n: number of colors to generate
+        cap: 0<cap<1, ensure the last interpolated color is not too close to the target color
+            near 0, almost same as orig
+            near 1, interpolated color cover the whole range from orig to target
+    Output:
+        list of n interpolated colors
+    """
+    assert isinstance(orig, tuple) and len(orig) == 3, "orig must be a tuple of (r, g, b)"
+    assert isinstance(target, tuple) and len(target) == 3, "target must be a tuple of (r, g, b)"
+    assert isinstance(n, int) and n >= 0, "n must be a non negative integer"
+    assert 0 < cap < 1, "cap must be between 0 and 1"
+    if n == 0:
+        return []
+    # determine the step size for each color channel according to cap
+    step = [(channel_value - orig[channel]) * cap / n for channel, channel_value in enumerate(target)]
+    # generate the interpolated colors
+    colors = []
+    for i in range(n):
+        # calculate the new color value
+        new_color = tuple(
+            max(0, min(255, round(orig[channel] + step[channel] * (i + 1))))
+            for channel in range(3)
+        )
+        colors.append(new_color)
+    return colors
+def expand_color_sequence(colors, n, cap=0.75):
+    """
+    Expand color sequence by create n interpolated colors for each original color.
+    The created colors are "whiter" version of the original colors.
+    Group the original colors (orig_colors) in pairs, and within each pair,
+    arrange the interpolated colors in opposite directions.
+    For example: blue → light blue → light red → red.
+    Input:
+        colors: list of original colors
+        n: number of interpolated colors for each original color
+    Output:
+        list of expanded colors
+    """
+    white = (255, 255, 255)
+    interpolated_colors = [
+        interpolate_color_rgb_linear(colors[i], white, n, cap=cap)
+        for i in range(len(colors))
+    ]
+    expanded_color_sequence = []
+    for i in range(len(colors)):
+        if i % 2 == 0:
+            # even index, add original color and interpolated colors
+            expanded_color_sequence.append(colors[i])
+            expanded_color_sequence.extend(interpolated_colors[i])
+        else:
+            # odd index, add reversed interpolated colors and original color
+            expanded_color_sequence.extend(interpolated_colors[i][::-1])
+            expanded_color_sequence.append(colors[i])
+    # remove duplicates
+    expanded_color_sequence = list(dict.fromkeys(expanded_color_sequence))
+    return expanded_color_sequence
 def expand_colors(colors, n_interpolate=1):
     """
     在相邻颜色之间插入 n_interpolate 个新颜色，使颜色过渡自然。
@@ -263,7 +379,7 @@ def expand_colors(colors, n_interpolate=1):
         n_interpolate (int): 每对颜色之间插入的新颜色数量。
     
     返回:
-        List[tuple]: 扩展后的颜色序列。
+        List[tuple]: 扩展后的颜色序列，每个颜色为 (r, g, b) 的整数元组，范围 0~255。
     """
     if not colors:
         return []
@@ -286,8 +402,8 @@ def expand_colors(colors, n_interpolate=1):
             t = (j + 1) / (n_interpolate + 1)  # 插值系数，从 0 到 1
 
             # 插值色相
-            h_deg = h1_deg + t * dh
-            h = h_deg / 360  # 回到 [0,1] 范围
+            h_deg = (h1_deg + t * dh) % 360  # 保证色相在 0~360 度之间
+            h = h_deg / 360  # 归一化到 [0, 1]
 
             # 插值饱和度和明度
             s = s1 * (1 - t) + s2 * t
@@ -296,17 +412,34 @@ def expand_colors(colors, n_interpolate=1):
             # 降低中间点的饱和度，使过渡更柔和
             s *= (1 - t * (1 - t))
 
+            # 限制 s 和 v 在 [0, 1] 范围内
+            s = max(0.0, min(1.0, s))
+            v = max(0.0, min(1.0, v))
+
             # 转换回 RGB
             r, g, b = colorsys.hsv_to_rgb(h, s, v)
-            # transform to int
-            r, g, b = int(r), int(g), int(b)
-            expanded.append((r, g, b))
+
+            # 限制 RGB 分量在 [0, 1] 之间
+            r = max(0.0, min(1.0, r))
+            g = max(0.0, min(1.0, g))
+            b = max(0.0, min(1.0, b))
+
+            # 转换为 [0, 255] 的整数
+            r_int = int(r * 255)
+            g_int = int(g * 255)
+            b_int = int(b * 255)
+
+            # 确保最终值在 [0, 255] 之间
+            r_int = max(0, min(255, r_int))
+            g_int = max(0, min(255, g_int))
+            b_int = max(0, min(255, b_int))
+
+            expanded.append((r_int, g_int, b_int))
 
         # 添加当前对的第二个颜色
-        expanded.append(c2)
+        expanded.append(tuple(int(c * 255) for c in c2))
 
     return expanded
-
 def plotly_fig2array(fig):
     #convert a Plotly fig to  a RGB-array
     #fig_bytes = fig.to_image(format="png", height = 1600, width = 1600, scale=4)
@@ -314,41 +447,6 @@ def plotly_fig2array(fig):
     buf = io.BytesIO(fig_bytes)
     img = Image.open(buf)
     return np.asarray(img)
-
-def plot_color_sequence(colors, output_file=None):
-    """
-    Plot a color sequence as a 1-row heatmap.
-    
-    Args:
-        colors (List[str] or List[tuple]): List of colors in hex or RGB format.
-        output_file (str, optional): Path to save the plot as an image. If None, the plot is shown.
-    """
-    # Convert hex colors to RGB if necessary
-    if isinstance(colors[0], str):
-        colors = [hex_to_rgb(color) for color in colors]
-    
-    # Create a 1-row heatmap
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=[[i for i in range(len(colors))]],  # Dummy data
-            colorscale=[(i / (len(colors) - 1), f"rgb({r}, {g}, {b})")
-                        for i, (r, g, b) in enumerate(colors)],
-            showscale=False
-        )
-    )
-    fig.update_layout(
-        height=100,
-        width=800,
-        margin=dict(l=10, r=10, t=10, b=10),
-        xaxis=dict(showticklabels=False),
-        yaxis=dict(showticklabels=False)
-    )
-    
-    if output_file:
-        fig.write_image(output_file)
-        return output_file
-    else:
-        return fig
 
 
 ### --- manuscript notebook compile --- ###
