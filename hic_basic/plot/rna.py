@@ -132,11 +132,7 @@ def plot_gene_trends(data, additional, genes, order_col, ncols):
                     col = j
                 )
     return fig
-
-import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from pp import standard_scaler
+from ..pp import standard_scaler
 def _plot_gene_heatmap(df, scale=True,**args):
     if scale == True:
         df = standard_scaler(df, axis=1, with_std = True)
