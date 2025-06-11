@@ -367,6 +367,8 @@ def gen_adata(qc, cache_dir, rewrite=[], debug=False, **args):
         g2_UMIs: phase 1 UMIs
         pm: phase 0 1 interaction(contacts)
         rs: repli_score
+            Input:
+                outdir: directory to store the repli_score intermediate files
         collect_hour: collection hour parsed from group name
         cell_type: cell type parsed from group name
     TODO: for samples without results in some uns, add proper nan values
@@ -403,7 +405,7 @@ def gen_adata(qc, cache_dir, rewrite=[], debug=False, **args):
         # not esential
         "gen" :
             {
-                "expr" : partial(_merge_expr, samplelist = qc.index.tolist()),
+                "expr" : partial(_merge_expr, samplelist = qc.index.tolist(), OV=False),
                 "velo" : _gen_velo,
                 "g1" : _gen_g,
                 "g2" : _gen_g,
