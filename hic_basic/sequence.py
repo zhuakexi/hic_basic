@@ -5,8 +5,8 @@ from collections import Counter
 import pysam
 import pandas as pd
 import plotly.graph_objects as go
-
 from hires_utils.gcount import count_fastq
+from plotly.subplots import make_subplots
 from tqdm import tqdm
 def parse_fastq_id(line):
     """Parse a FASTQ ID line into (prefix, end) tuple or None if invalid.
