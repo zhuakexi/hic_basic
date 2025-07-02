@@ -119,49 +119,49 @@ def bubble_flow_touched():
     all the files that are touched by the bubble_flow pipeline.
     """
     DNA = [
-        "{task_dirp}/DNA/{sample}_R1.fq.gz",
-        "{task_dirp}/DNA/{sample}_R2.fq.gz"
+        "{task_dirp}/DNA/{sample_name}_R1.fq.gz",
+        "{task_dirp}/DNA/{sample_name}_R2.fq.gz"
     ]
     RNA = [
-        "{task_dirp}/RNA/{sample}_R1.fq.gz",
-        "{task_dirp}/RNA/{sample}_R2.fq.gz"
+        "{task_dirp}/RNA/{sample_name}_R1.fq.gz",
+        "{task_dirp}/RNA/{sample_name}_R2.fq.gz"
 
     ]
     hic_mapped = [
-        "{task_dirp}/hic_mapped/{sample}.sorted.bam",
-        "{task_dirp}/hic_mapped/{sample}.sorted.bam.bai"
+        "{task_dirp}/hic_mapped/{sample_name}.sorted.bam",
+        "{task_dirp}/hic_mapped/{sample_name}.sorted.bam.bai"
     ]
     seg = [
-        "{task_dirp}/seg/{sample}.seg.gz"
+        "{task_dirp}/seg/{sample_name}.seg.gz"
     ]
     pre_seg = [
-        "{task_dirp}/seg/{sample}.seg.gz"
+        "{task_dirp}/seg/{sample_name}.seg.gz"
     ]
     pairs_0 = [
-        "{task_dirp}/pairs_0/{sample}.pairs.gz",
-        "{task_dirp}/pairs_0/{sample}.raw_pairs.gz"
+        "{task_dirp}/pairs_0/{sample_name}.pairs.gz",
+        "{task_dirp}/pairs_0/{sample_name}.raw_pairs.gz"
     ]
     pairs_c1 = [
-        "{task_dirp}/pairs_c1/{sample}.c1.pairs.gz",
+        "{task_dirp}/pairs_c1/{sample_name}.c1.pairs.gz",
     ]
     pairs_c12 = [
-        "{task_dirp}/pairs_c12/{sample}.c12.pairs.gz",
+        "{task_dirp}/pairs_c12/{sample_name}.c12.pairs.gz",
     ]
     dip = [
-        "{task_dirp}/dip/{sample}.dip.pairs.gz",
+        "{task_dirp}/dip/{sample_name}.dip.pairs.gz",
     ]
     info = [
-        "{task_dirp}/info/{sample}.basic.info",
-        "{task_dirp}/info/{sample}.reads.info",
-        "{task_dirp}/info/{sample}.rna_reads.info",
-        "{task_dirp}/info/{sample}.dna_reads.info",
-        "{task_dirp}/info/{sample}.seg_stat.info",
+        "{task_dirp}/info/{sample_name}.basic.info",
+        "{task_dirp}/info/{sample_name}.reads.info",
+        "{task_dirp}/info/{sample_name}.rna_reads.info",
+        "{task_dirp}/info/{sample_name}.dna_reads.info",
+        "{task_dirp}/info/{sample_name}.seg_stat.info",
         ]
     _3dg = []
     for seed in [1,2,3,4,5]:
         for reso in ["4m","1m","200k","50k","20k"]:
             _3dg.append(
-                "{{task_dirp}}/3dg/{{sample}}.{reso}.{seed}.3dg".format(
+                "{{task_dirp}}/3dg/{{sample_name}}.{reso}.{seed}.3dg".format(
                     seed = seed,
                     reso = reso
                 )
@@ -170,7 +170,7 @@ def bubble_flow_touched():
     for seed in [1,2,3,4,5]:
         for reso in ["4m","1m","200k","50k","20k"]:
             _3dg_c.append(
-                "{{task_dirp}}/3dg_c/{{sample}}.clean.{reso}.{seed}.3dg".format(
+                "{{task_dirp}}/3dg_c/{{sample_name}}.clean.{reso}.{seed}.3dg".format(
                     seed = seed,
                     reso = reso
                 )
@@ -206,7 +206,7 @@ def symlink_files(sample, task_dirp, target_dir, omit=None, filepats=None):
         filepats: key-value pairs of file patterns created by the pipeline,
             if None, use the file patterns created by the bubble_flow
             key: the pipeline step name
-            value: the file pattern, must contain {sample} and {task_dirp} as placeholders
+            value: the file pattern, must contain {sample_name} and {task_dirp} as placeholders
     Return:
         None
     """
