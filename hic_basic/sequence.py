@@ -150,7 +150,7 @@ def count_CpG(bed_df:pd.DataFrame, fasta:str)-> pd.DataFrame:
 ### --- functions to decode library structure --- ###
 
 
-def search_primers(fq_fp, primers, sample_n=None, sample_r=None, seed=None):
+def search_primers(fq_fp, primers, sample_n=None, sample_r=None, seed=None, keep_hits=0):
     """
     Search primers in fastq file and return distribution of primer start positions.
     Will search forward, reverse, complement and reverse complement.
@@ -162,17 +162,22 @@ def search_primers(fq_fp, primers, sample_n=None, sample_r=None, seed=None):
         sample_n: int, optional, number of reads to sample
         sample_r: float, optional, fraction of reads to sample (0 < sample_r <= 1)
         seed: int, optional, random seed for reproducibility
+        keep_hits: keep number of hits for further analysis, default 0
     
     Output:
-        res: dict, primer distribution of each form
-            key: form type, value: list of start positions
+        if keep_hits == 0:
+            result (pd.DataFrame): Primer search result with columns for each form.
+        if keep_hits > 0:
+            result,
+            hits (dict of list): sampled hits for each primer form.
     """
+    assert(keep_hits >= 0), "keep_hits must be >= 0"
     # Convert primers to uppercase and process all forms
     fq_fp = str(fq_fp)
     if isinstance(primers, str):
         primers = [primers]
     primers = [p.upper() for p in primers]
-    all_primer_forms = []
+    all_primer_forms = [] # list(primers) of list(4):[(forward, 'forward'), ...] of tuples(2)
     for primer in primers:
         forward = primer
         reverse = primer[::-1]
@@ -187,6 +192,12 @@ def search_primers(fq_fp, primers, sample_n=None, sample_r=None, seed=None):
 
     # Initialize counters and result structure
     res = {
+        "forward": [],
+        "reverse": [],
+        "complement": [],
+        "reverse_complement": []
+    }
+    hits = {
         "forward": [],
         "reverse": [],
         "complement": [],
@@ -235,6 +246,8 @@ def search_primers(fq_fp, primers, sample_n=None, sample_r=None, seed=None):
                 pos = seq.find(form, start)
                 if pos != -1:
                     res[form_type].append(pos)
+                    if len(hits[form_type]) < keep_hits:
+                        hits[form_type].append((name.strip(), pos, seq, qual.strip()))
 
     # Transform to frequency
     for key in res:
@@ -243,7 +256,10 @@ def search_primers(fq_fp, primers, sample_n=None, sample_r=None, seed=None):
 
     if seed is not None:
         random.seed(None)  # Reset random seed
-    return res
+    if keep_hits > 0:
+        return res, hits
+    else:
+        return res
 
 def plot_search_primers(result, output_file=None):
     """
