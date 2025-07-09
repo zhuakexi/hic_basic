@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from hires_utils.mmcif import chrom_rm_suffix, chrom_rm_prefix
 
-from .hicio import get_ref_dir, load_json
+from .hicio import get_ref_dir, load_json, parse_gtf
 from .utils import two_sets
 from tqdm import tqdm
 
@@ -392,9 +392,39 @@ def name2id(genelist, genome, pickid=False):
             if g in dup_genes:
                 ids[i] = np.nan
         return ids
+def get_tss_region_from_gtf(gtf_path, cache_file=None):
+    """
+    Get TSS region from GTF file.
+    Input:
+        gtf_path: path to the GTF file; string
+        cache_file: path to the cache file; string or None
+    Output:
+        TSS table; pd.DataFrame with columns:
+            gene_id, gene_name, transcript_id, seqname, txStart, source
+        Same gene will have multiple rows if it has multiple transcripts.
+    """
+    print("Parsing GTF file for TSS regions...")
+    gtf = parse_gtf(gtf_path)
+    print("Extracting TSS regions...")
+    gtf = gtf.query('feature == "exon"')
+    gtf = gtf.assign(exon_number = gtf["attributes"].str.extract('exon_number (\d+)')[0])
+    gtf = gtf.query('exon_number == "1"')
+    tss = [row["start"] if row["score"]=="+" else row["end"] for _, row in gtf.iterrows()]
+    gtf = gtf.assign(txStart = tss)
+    gtf = gtf.assign(transcript_id = gtf["attributes"].str.extract("transcript_id \"(\w+).")[0])
+    TSS = gtf[["gene_id","gene_name","transcript_id","seqname","txStart","source"]]
+    TSS = TSS.copy()
+    TSS["gene_id"] = TSS["gene_id"].str.extract('(\w+).')[0]
+    TSS.reset_index(drop=True,inplace=True)
+    if cache_file is not None:
+        # cache TSS table
+        print(f"Caching TSS table to {cache_file}...")
+        TSS.to_csv(cache_file, index=False)
+    print("TSS regions extracted.")
+    return TSS
 def fetch_TSS(gnames, TSS, name_col="gene_name"):
     """
-    Get the all TSS starts sites.
+    Fetch TSS regions for given gene names.
     Input:
         gnames: genename list
         TSS: genome name or TSS reference table; string or pd.DataFrame
@@ -407,10 +437,12 @@ def fetch_TSS(gnames, TSS, name_col="gene_name"):
     }
     if isinstance(TSS, str):
         # using shipped TSS table if genome name is given
+        assert TSS in TSS_files, "TSS table not found for shipped genome %s." % TSS
         TSS = pd.read_csv(
             TSS_files[TSS], 
             index_col=name_col
             )
+    # check if gnames are in TSS index
     missing, _ = two_sets(gnames, TSS.index)
     if missing:
         print("Warning %s not in ref TSS table." % " ".join(list(missing)) )
