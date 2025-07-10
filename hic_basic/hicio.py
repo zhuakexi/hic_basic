@@ -39,6 +39,76 @@ def divide_name(filename):
         return parts[0], ""
     else:
         return parts[0], "."+".".join(parts[1:])
+def parse_bed(
+    bed_path: str, 
+    required_cols: list = None, 
+    optional_cols: list = None
+) -> pd.DataFrame:
+    """
+    Load and parse BED format files with required and optional columns.
+
+    Inputs:
+        bed_path (str): Path to the BED file.
+        required_cols (list): List of required columns to extract. 
+                              Must include 'chrom', 'start', 'end' (default).
+        optional_cols (list): List of optional columns to extract if present.
+                              Supported: 'name', 'score', 'strand', 'thickStart',
+                              'thickEnd', 'itemRgb', 'blockCount', 'blockSizes',
+                              'blockStarts' (default includes first 3 optional columns).
+
+    Returns:
+        pd.DataFrame: Parsed BED data with columns:
+            - chrom (str): Chromosome name.
+            - start (int): Start coordinate (0-based).
+            - end (int): End coordinate (exclusive).
+            - name (str, optional): Feature name.
+            - score (float, optional): Score value (0-1000).
+            - strand (str, optional): Strand ('+' or '-').
+            - thickStart (int, optional): Thick start coordinate.
+            - thickEnd (int, optional): Thick end coordinate.
+            - itemRgb (str, optional): RGB color (e.g., '255,0,0').
+            - blockCount (int, optional): Number of blocks.
+            - blockSizes (str, optional): Comma-separated block sizes.
+            - blockStarts (str, optional): Comma-separated block start positions.
+
+    Notes:
+        - BED format supports 3-12 columns. This function handles standard BED12.
+        - Columns not present in the file will be filled with NaN.
+        - Coordinates are 0-based and end-exclusive by BED convention.
+    """
+    if required_cols is None:
+        required_cols = ['chrom', 'start', 'end']
+    if optional_cols is None:
+        optional_cols = []
+
+    # 定义所有可能的 BED12 列
+    bed12_cols = [
+        'chrom', 'start', 'end', 'name', 'score', 'strand', 
+        'thickStart', 'thickEnd', 'itemRgb', 'blockCount', 
+        'blockSizes', 'blockStarts'
+    ]
+    
+    # 筛选用户请求的列
+    requested_cols = required_cols + [col for col in optional_cols 
+                                      if col in bed12_cols]
+    
+    # 读取 BED 文件
+    df = pd.read_csv(
+        bed_path, 
+        sep='\t', 
+        header=None, 
+        usecols=range(len(requested_cols)),
+        names=requested_cols
+    )
+    
+    # 转换数值列类型
+    numeric_cols = ['start', 'end', 'score', 'thickStart', 'thickEnd', 
+                    'blockCount']
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    return df
 def parse_seg(filename:str)->pd.DataFrame:
     """
     Read from dip-c's seg format.
