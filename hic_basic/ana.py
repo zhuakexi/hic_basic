@@ -47,6 +47,8 @@ class Ana:
         # initialize the object
         if not obj is None:
             for key, value in obj.items():
+                if not isinstance(value, list):
+                    raise TypeError(f"Value for key '{key}' in obj must be a list.")
                 self.update(value, key=key)
     @staticmethod
     def create_empty_json_file(path):
