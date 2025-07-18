@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import skimage
+from cooler import Cooler
 from tqdm import tqdm
 
 from .plot.hic import cool2mat
@@ -126,7 +127,10 @@ def asymmetric_pileup(coolp, refs, expand, expected=None, binsize=None, power=0.
         raise ValueError("Input refs should have columns: chrom1, start1, end1, chrom2, start2, end2")
     chroms = refs["chrom1"].unique()
     all_snips = []
+    snips_added = 0
     skipped = 0
+    coolbinsize = Cooler(coolp).binsize
+
     for chrom, ref_chunk in tqdm(refs.groupby("chrom1"), desc="chrom", total=len(chroms)):
         if expected is not None:
             chrom_mat = cool2mat_OE(str(coolp), chrom, expected, balance=balance)
@@ -139,11 +143,10 @@ def asymmetric_pileup(coolp, refs, expand, expected=None, binsize=None, power=0.
             ~chrom_mat.index.duplicated(keep="first"),
             ~chrom_mat.columns.duplicated(keep="first")
         ]
-        chrom_snips = []
         for i, row in ref_chunk.iterrows():
             start1, end1, start2, end2 = row[["start1","end1","start2","end2"]]
             left1, left2 = start1 - expand, start2 - expand
-            right1, right2 = end1 + expand, end2 + expand
+            right1, right2 = end1 + expand - coolbinsize, end2 + expand - coolbinsize # loc will give the right-most bin
             if any([
                 left1 < 0,
                 left2 < 0,
@@ -153,19 +156,26 @@ def asymmetric_pileup(coolp, refs, expand, expected=None, binsize=None, power=0.
                 skipped += 1
                 continue
             snip = chrom_mat.loc[left1:right1, left2:right2]
-            chrom_snips.append(snip)
-        all_snips.extend(chrom_snips)
-    all_snip_values = [i.values for i in all_snips]
+            if give_snips:
+                # store the snip
+                all_snips.append(snip.values)
+            if snips_added == 0:
+                # initialize the matrix with the first snip
+                mat_sum = snip.values
+            else:
+                # accumulate for stream mean
+                mat_sum += snip.values
+            snips_added += 1
     print(f"Skipped {skipped} regions")
-    mat = np.nanmean(np.array(all_snip_values), axis=0)
-    mat = pd.DataFrame(mat)
+    mat_mean = mat_sum / snips_added
+    mat_mean = pd.DataFrame(mat_mean)
     if binsize is not None:
-        mat.index = np.arange(-expand, expand+binsize+1, binsize)
-        mat.columns = np.arange(-expand, expand+binsize+1, binsize)
+        mat_mean.index = np.arange(-expand, expand+binsize, binsize)
+        mat_mean.columns = np.arange(-expand, expand+binsize, binsize)
     if give_snips:
-        return mat, all_snips
+        return mat_mean, all_snips
     else:
-        return mat
+        return mat_mean
 
 # --- strength for different features --- #
 
