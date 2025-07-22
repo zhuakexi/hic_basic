@@ -10,7 +10,7 @@ class Ana:
     Store json data with tags.
     The Ana class has no inner data object, all data states are stored in files.
     """
-    def __init__(self, home, tag=None, data=None, obj=None, clear=False):
+    def __init__(self, home, tag=None, data=None, obj=None, clear=False, verbose=False):
         """
         Initialize the Ana class.
         Input:
@@ -50,6 +50,8 @@ class Ana:
                 if not isinstance(value, list):
                     raise TypeError(f"Value for key '{key}' in obj must be a list.")
                 self.update(value, key=key)
+        # verbose output
+        self.verbose = verbose
     @staticmethod
     def create_empty_json_file(path):
         """
@@ -108,12 +110,14 @@ class Ana:
             obj = self.obj
             obj[key] = new_data
             dump_json(obj, self.obj_path)
-            print("Data updated.")
+            if self.verbose:
+                print("Data updated.")
             return 
         else:
             raise TypeError(f"Unsupported data type: {type(new_data)}")
         res = pd.concat([self.data, new_data_df], axis=0, join="outer")    
         res = res.groupby(level=0).last()
         res.to_csv(self.data_path, compression='gzip')
-        print("Data updated.")
+        if self.verbose:
+            print("Data updated.")
         return
