@@ -119,5 +119,22 @@ class TestAna(unittest.TestCase):
             ana.update([1, 2])  # Missing key
         with self.assertRaises(AssertionError):
             ana.update({"a": 1})  # Missing key
+
+    def test_commit(self):
+        """
+        Test commit method creates commit files and updates metadata.
+        """
+        ana = Ana(self.home, tag=self.tag, clear=True)
+        df = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
+        ana.update(df)
+        
+        commit_id = ana.commit()
+        self.assertTrue((self.home / f"{commit_id}.data.csv.gz").exists())
+        self.assertTrue((self.home / f"{commit_id}.obj.json").exists())
+        
+        meta = load_json(ana.commit_meta_path)
+        self.assertIn(commit_id, [c["id"] for c in meta["commits"]])
+        ana.list_commits()
+        self.assertEqual(meta["commits"][-1]["id"], commit_id)
 if __name__ == "__main__":
     unittest.main()
