@@ -1,5 +1,6 @@
 # This module is designed for bioinformatic project management
 from pathlib import Path
+import re
 import shutil
 import pandas as pd
 from .hicio import load_json, dump_json
@@ -85,21 +86,30 @@ class Ana:
         except FileNotFoundError:
             return {}
     
-    def commit(self, commit_id=None):
+    def commit(self, description=None):
         """Create a new commit of the current state"""
+        assert isinstance(description, (str, type(None))), "Description must be a string or None"
         # Load current metadata
         meta = load_json(self.commit_meta_path)
         
-        # Determine commit ID
-        if commit_id is None:
-            commit_id = str(meta["last_commit_count"] + 1)
-            meta["last_commit_count"] += 1
-        elif any(c["id"] == commit_id for c in meta["commits"]):
-            raise ValueError(f"Commit ID '{commit_id}' already exists")
+        # Determine commit description
+        commit_id = meta["last_commit_count"] + 1
+        if description is None:
+            description = str(commit_id)
+        elif any(c["description"] == description for c in meta["commits"]):
+            raise ValueError(f"Commit description '{description}' already exists")
+        else:
+            # check if description is ambiguous (e.g., purely numeric)
+            # if can be converted to int, raise error
+            stripped_description = description.strip()
+            if re.fullmatch(r'-?\d+', stripped_description):
+                raise ValueError("Commit description cannot be purely numeric")
+        meta["last_commit_count"] += 1
         
         # Create commit entry
         commit_entry = {
             "id": commit_id,
+            "description": description,
             "timestamp": datetime.now().isoformat(),
             "tag": self.tag
         }
@@ -126,7 +136,7 @@ class Ana:
         
         return commit_id
     
-    def update(self, new_data, key=None, commit_id=None):
+    def update(self, new_data, key=None, description=None):
         """
         Update the data in db and automatically commit changes.
         """
@@ -158,16 +168,25 @@ class Ana:
         res.to_csv(self.data_path, compression='gzip')
         if self.verbose:
             print("Data updated.")
-        self.commit(commit_id=commit_id)
+        self.commit(description=description)
         if self.verbose:
             print("Data updated and committed.")
     
-    def revert(self, commit_id):
-        """Revert to a previous commit version"""
+    def revert(self, commit_repr):
+        """
+        Revert to a previous commit version.
+        Input:
+            commit_repr: str, commit ID or description
+        """
         # Validate commit exists
         meta = load_json(self.commit_meta_path)
-        if not any(c["id"] == commit_id for c in meta["commits"]):
-            raise ValueError(f"Commit '{commit_id}' not found")
+        # check commid id by id or description
+        for commit in meta["commits"]:
+            if commit["id"] == commit_repr or commit["description"] == commit_repr:
+                commit_id = commit["id"]
+                break
+        else:
+            raise ValueError(f"Commit '{commit_repr}' not found in metadata")
         
         # Restore files from commit
         commit_data_path = self.home / f"{commit_id}.data.csv.gz"
@@ -187,4 +206,9 @@ class Ana:
     def list_commits(self):
         """List all available commits"""
         meta = load_json(self.commit_meta_path)
-        return [c["id"] for c in meta["commits"]]
+        # sort by commit ID
+        meta["commits"].sort(key=lambda c: c["id"])
+        if self.verbose:
+            print(f"Listing {len(meta['commits'])} commits:")
+        for commit in meta["commits"]:
+            print(f"{commit['id']}: {commit['description']} at {commit['timestamp']}")
