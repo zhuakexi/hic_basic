@@ -104,7 +104,7 @@ def block_pileup(coolp, refs, expected=None, power=0.25, give_snips=False, balan
         return mat, resize_snips, all_snips
     else:
         return mat
-def asymmetric_pileup(coolp, refs, expand, expected=None, binsize=None, power=0.25, give_snips=False, balance=False):
+def asymmetric_pileup(coolp, refs, expand, expected=None, binsize=None, power=0.25, give_snips=False, balance=False, show_progress=True):
     """
     Fetch any regions from cooler, iterate chrom by chrom.
     TODO: support inter-chrom regions
@@ -131,7 +131,7 @@ def asymmetric_pileup(coolp, refs, expand, expected=None, binsize=None, power=0.
     skipped = 0
     coolbinsize = Cooler(coolp).binsize
 
-    for chrom, ref_chunk in tqdm(refs.groupby("chrom1"), desc="chrom", total=len(chroms)):
+    for chrom, ref_chunk in tqdm(refs.groupby("chrom1"), desc="chrom", total=len(chroms), disable=not show_progress):
         if expected is not None:
             chrom_mat = cool2mat_OE(str(coolp), chrom, expected, balance=balance)
             if power is not None:
@@ -199,3 +199,36 @@ def TAD_pileup_strength(mat, strip=3)->float:
     strength = tad.sum() / (0.5 * (inter_tad_1.sum() + inter_tad_2.sum()))
     #print(tad.sum(), inter_tad_1.sum(), inter_tad_2.sum())
     return strength
+def kernel_strength(kernel, matrix, retmat=False):
+    """
+    Calculate the signal strength of matrix according to the kernel.
+
+    The function computes the signal strength by averaging the values of the kernel
+    where the mask is True, and dividing by the mean of the values of the False mask positions.
+
+    Input:
+        kernel (np.ndarray): A 2D numpy array representing the kernel. 0 for signal positions, 1 for background positions.
+        Size of kernel must be smaller than the matrix size. Only the region defined by the mask is considered.
+        matrix (np.ndarray): A 2D numpy array representing the matrix from which the signal strength is calculated.
+    retmat (bool): If True, returns the matrix values corresponding to the kernel mask region.
+
+    Returns:
+    float: The signal strength.
+    """
+    assert kernel.shape[0] <= matrix.shape[0] and kernel.shape[1] <= matrix.shape[1], "Kernel size must be smaller than the matrix size."
+    # kernel and matrix size must be odd
+    assert kernel.shape[0] % 2 == 1 and kernel.shape[1] % 2 == 1, "Kernel size must be odd."
+    signal_mask = kernel == 0
+    background_mask = kernel == 1
+    # pad the kernel to the size of the matrix
+    pad_height, pad_width = (matrix.shape[0] - kernel.shape[0]) // 2, (matrix.shape[1] - kernel.shape[1]) // 2
+    padded_signal_mask = np.pad(signal_mask, ((pad_height, pad_height), (pad_width, pad_width)), mode='constant', constant_values=False)
+    padded_background_mask = np.pad(background_mask, ((pad_height, pad_height), (pad_width, pad_width)), mode='constant', constant_values=False)
+    # calculate the signal strength
+    signal_strength = np.nanmean(matrix[padded_signal_mask]) / np.nanmean(matrix[padded_background_mask])
+    # print(padded_signal_mask.shape)
+    # print(matrix[padded_signal_mask].shape)
+    if retmat:
+        mat = matrix[padded_signal_mask | padded_background_mask].reshape(kernel.shape[0], kernel.shape[1])
+        return signal_strength, mat
+    return signal_strength
