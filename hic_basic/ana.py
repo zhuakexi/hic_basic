@@ -145,7 +145,7 @@ class Ana:
         elif isinstance(new_data, pd.Series):
             if not key is None:
                 new_data = new_data.copy().rename(key)
-            new_data_df = new_data.to_frame().T
+            new_data_df = new_data.to_frame()
         elif isinstance(new_data, dict):
             assert key is not None, "Key must be provided for dict input."
             new_data_df = pd.DataFrame(
