@@ -39,25 +39,17 @@ def divide_name(filename):
         return parts[0], ""
     else:
         return parts[0], "."+".".join(parts[1:])
-def parse_bed(
-    bed_path: str, 
-    required_cols: list = None, 
-    optional_cols: list = None
-) -> pd.DataFrame:
-    """
-    Load and parse BED format files with required and optional columns.
+import pandas as pd
 
+def parse_bed(bed_path: str) -> pd.DataFrame:
+    """
+    Load and parse BED format files, automatically assigning BED12 column names.
+    
     Inputs:
         bed_path (str): Path to the BED file.
-        required_cols (list): List of required columns to extract. 
-                              Must include 'chrom', 'start', 'end' (default).
-        optional_cols (list): List of optional columns to extract if present.
-                              Supported: 'name', 'score', 'strand', 'thickStart',
-                              'thickEnd', 'itemRgb', 'blockCount', 'blockSizes',
-                              'blockStarts' (default includes first 3 optional columns).
-
+        
     Returns:
-        pd.DataFrame: Parsed BED data with columns:
+        pd.DataFrame: Parsed BED data with columns named according to BED12 specification:
             - chrom (str): Chromosome name.
             - start (int): Start coordinate (0-based).
             - end (int): End coordinate (exclusive).
@@ -70,43 +62,61 @@ def parse_bed(
             - blockCount (int, optional): Number of blocks.
             - blockSizes (str, optional): Comma-separated block sizes.
             - blockStarts (str, optional): Comma-separated block start positions.
-
+            
     Notes:
-        - BED format supports 3-12 columns. This function handles standard BED12.
-        - Columns not present in the file will be filled with NaN.
-        - Coordinates are 0-based and end-exclusive by BED convention.
+        - Automatically detects the number of columns in the BED file
+        - Assigns BED12 column names in order: chrom, start, end, name, score, 
+          strand, thickStart, thickEnd, itemRgb, blockCount, blockSizes, blockStarts
+        - If the file has fewer than 12 columns, only the first N columns are named
+        - If the file has more than 12 columns, only the first 12 are read
+        - Performs automatic type conversion for numeric columns
+        - Coordinates are 0-based and end-exclusive by BED convention
     """
-    if required_cols is None:
-        required_cols = ['chrom', 'start', 'end']
-    if optional_cols is None:
-        optional_cols = []
-
-    # 定义所有可能的 BED12 列
+    # Define all BED12 column names in standard order
     bed12_cols = [
-        'chrom', 'start', 'end', 'name', 'score', 'strand', 
-        'thickStart', 'thickEnd', 'itemRgb', 'blockCount', 
+        'chrom', 'start', 'end', 'name', 'score', 'strand',
+        'thickStart', 'thickEnd', 'itemRgb', 'blockCount',
         'blockSizes', 'blockStarts'
     ]
     
-    # 筛选用户请求的列
-    requested_cols = required_cols + [col for col in optional_cols 
-                                      if col in bed12_cols]
+    # First, determine the number of columns in the BED file
+    with open(bed_path, 'r') as f:
+        first_line = f.readline().strip()
+        if not first_line:  # Empty file
+            n_cols = 0
+        else:
+            n_cols = len(first_line.split('\t'))
     
-    # 读取 BED 文件
+    # Read only up to 12 columns
+    n_read = min(n_cols, 12)
+    
+    # Read the BED file with appropriate column names
+    if n_read == 0:
+        return pd.DataFrame(columns=bed12_cols)
+    
+    # Create column names for the actual number of columns
+    col_names = bed12_cols[:n_read]
+    
+    # Read the file
     df = pd.read_csv(
         bed_path, 
         sep='\t', 
-        header=None, 
-        usecols=range(len(requested_cols)),
-        names=requested_cols
+        header=None,
+        comment='#',  # Skip comment lines
+        usecols=range(n_read),  # Read only available columns
+        names=col_names
     )
     
-    # 转换数值列类型
-    numeric_cols = ['start', 'end', 'score', 'thickStart', 'thickEnd', 
-                    'blockCount']
+    # Define numeric columns and convert them
+    numeric_cols = ['start', 'end', 'score', 'thickStart', 'thickEnd', 'blockCount']
+    
     for col in numeric_cols:
         if col in df.columns:
+            # Convert to numeric, coerce errors to NaN
             df[col] = pd.to_numeric(df[col], errors='coerce')
+            # Convert to integer if possible (except score which can be float)
+            if col != 'score':
+                df[col] = df[col].astype(pd.Int64Dtype())  # Use nullable integer type
     
     return df
 def parse_seg(filename:str)->pd.DataFrame:
