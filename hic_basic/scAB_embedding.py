@@ -19,7 +19,7 @@ from umap import UMAP
 
 def get_bin_locus(pos,size):
     return int( round( float(pos) / size) ) * size
-def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dupref=False,dropXY=True):
+def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dupref=False,dropXY=True,custom_color_file=False):
     """
     Calculate 3D CpG density of each chromosome bin
     Input:
@@ -47,13 +47,23 @@ def color2(pairsf,color_file,bin_size,merge_haplotypes=True,dupref=False,dropXY=
         else:
             open_func = open
         with open_func(color_file,"rt") as f:
-            for color_file_line in f:
-                hom_name, ref_locus, color = color_file_line.strip().split("\t")
-                ref_locus = int(ref_locus)
-                color = float(color)
-                color_data[(hom_name, ref_locus)] = color
+            if custom_color_file: # custom color file format: chrom, pos, color
+                for color_file_line in f:
+                    hom_name, ref_locus, color = color_file_line.strip().split("\t")
+                    ref_locus = int(ref_locus)
+                    color = float(color)
+                    color_data[(hom_name, ref_locus)] = color
+            else: # strictly a bed file
+                for color_file_line in f:
+                    chrom, start, end, name, score = color_file_line.strip().split("\t")
+                    start = int(start)
+                    score = float(score)
+                    color_data[(chrom, start)] = score
     elif isinstance(color_file, pd.DataFrame):
-        color_data = color_file.set_index(["chrom","start"])["CpG"]
+        if "CpG" in color_file.columns:
+            color_data = color_file.set_index(["chrom","start"])["CpG"]
+        elif "score" in color_file.columns: # strictly a bed file
+            color_data = color_file.set_index(["chrom","start"])["score"]
     else:
         raise ValueError("color_file must be str or pd.DataFrame")
     # smoothing
