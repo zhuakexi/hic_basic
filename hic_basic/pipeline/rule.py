@@ -93,7 +93,7 @@ def check_key(file_pat, key_to_check, **kwargs):
 #TODO: add a function to generate the file pattern for the intermediate files from smk rules
 
 
-def check_exsit(path):
+def check_exist(path):
     """
     Check if a file exists.
     Tolerate the pd.NA, None, math.nan, np.nan
@@ -135,7 +135,7 @@ def bubble_flow_touched():
         "{task_dirp}/seg/{sample_name}.seg.gz"
     ]
     pre_seg = [
-        "{task_dirp}/seg/{sample_name}.seg.gz"
+        "{task_dirp}/pre_seg/{sample_name}.seg.gz"
     ]
     pairs_0 = [
         "{task_dirp}/pairs_0/{sample_name}.pairs.gz",
@@ -146,6 +146,9 @@ def bubble_flow_touched():
     ]
     pairs_c12 = [
         "{task_dirp}/pairs_c12/{sample_name}.c12.pairs.gz",
+    ]
+    pairs_c123 = [
+        "{task_dirp}/pairs_c123/{sample_name}.c123.pairs.gz",
     ]
     dip = [
         "{task_dirp}/dip/{sample_name}.dip.pairs.gz",
@@ -190,11 +193,12 @@ def bubble_flow_touched():
         "pairs_0" : pairs_0,
         "pairs_c1" : pairs_c1,
         "pairs_c12" : pairs_c12,
+        "pairs_c123" : pairs_c123,
         "dip" : dip,
         "count_matrix" : count_matrix
     }
     return mapper
-def symlink_files(sample, task_dirp, target_dir, omit=None, filepats=None):
+def symlink_files(sample, task_dirp, target_dir, ref, omit=None, filepats=None):
     """
     Create symbolic links from a old task directory to a new task directory.
     Use this to partially run the pipeline.
@@ -202,7 +206,11 @@ def symlink_files(sample, task_dirp, target_dir, omit=None, filepats=None):
         sample: the sample name
         task_dirp: the old task directory
         target_dir: the new task directory
-        omit: the pipeline steps to omit
+        ref: the reference genome, used to create the count matrix file pattern
+        omit: the pipeline steps to omit, choose from
+            ["DNA", "RNA", "hic_mapped", "seg", "pairs_0", "pairs_c1",
+             "pairs_c12", "pairs_c123", "dip", "_3dg", "_3dg_c", "count_matrix"]
+            if None, use all steps
         filepats: key-value pairs of file patterns created by the pipeline,
             if None, use the file patterns created by the bubble_flow
             key: the pipeline step name
@@ -221,10 +229,10 @@ def symlink_files(sample, task_dirp, target_dir, omit=None, filepats=None):
     #print(subset)
     for key in subset:
         for pat in mapper[key]:
-            from_ = pat.format(sample=sample, task_dirp=task_dirp)
-            to_ = pat.format(sample=sample, task_dirp=target_dir)
+            from_ = pat.format(sample_name=sample, task_dirp=task_dirp, ref=ref)
+            to_ = pat.format(sample_name=sample, task_dirp=target_dir, ref=ref)
             # only create the link when the original file exists
-            if check_exsit(from_):
+            if check_exist(from_):
                 # create the parent directory if not exists
                 Path(to_).parent.mkdir(parents=True, exist_ok=True)
                 if Path(to_).is_symlink():
@@ -245,13 +253,13 @@ def symlink_files(sample, task_dirp, target_dir, omit=None, filepats=None):
                     Path(to_).symlink_to(from_)
             else:
                 pass
-def unlink_files(sample, target_dir, subset=None):
+def unlink_files(sample, target_dir, ref, subset=None):
     mapper = bubble_flow_touched()
     if subset is None:
         subset = mapper.keys()
     for key in subset:
         for pat in mapper[key]:
-            to_ = Path(pat.format(sample=sample, task_dirp=target_dir))
+            to_ = Path(pat.format(sample_name=sample, task_dirp=target_dir, ref=ref))
             if to_.is_symlink():
                 to_.unlink()
             else:
