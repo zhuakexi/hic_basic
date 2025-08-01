@@ -14,6 +14,9 @@ from subprocess import check_output, CalledProcessError
 import numpy as np
 import pandas as pd
 import pysam
+from tqdm import tqdm
+
+from ..pipeline.rule import bubble_flow_touched
 
 formal_feature_names = {
     "con_per_reads" : "Contacts per read",
@@ -70,6 +73,8 @@ def add_pairs_num(annote,threads,pairs_types=["pairs_c1","pairs_c12","pairs_c123
     return filesp.assign(**ares)
 # count mapping rate
 def mapping_rate(bam,threads=4):
+    if bam is None:
+        return {"primary mapped":0, "mapped":0}
     bamstat = json.loads(pysam.flagstat(bam, "-O","json","-@",str(threads)))
     #print(bamstat)
     return {"primary mapped":bamstat["QC-passed reads"]["primary mapped"]/bamstat["QC-passed reads"]["total"],
@@ -231,29 +236,58 @@ def add_extra(annote):
             annote.loc[valid_rna_ratio_row,"rna_reads"]/annote.loc[valid_rna_ratio_row,"raw_reads"]
             ).astype(float)
     return new_annote
-def add_mapping(annote, old=False, threads=16):
+
+def add_mapping(annote, threads=16):
     """
     Adding mapping and primary mapping rate of DNA library.
     Input:
         old: sam version compatible to old pipeline. task_dirp/sam/xxx.aln.sam.gz
     """
     sthreads = 4
-    if old:
-        with futures.ProcessPoolExecutor(int(threads/sthreads)) as pool:
-            res = pool.map(
-                mapping_rate,
-                annote["task_dirp"] + "/sam/" + annote.index + ".aln.sam.gz",
-                repeat(sthreads, annote.shape[0])
-            )
-    else:
-        with futures.ProcessPoolExecutor(int(threads/sthreads)) as pool:
-            res = pool.map(
-                mapping_rate,
-                annote["task_dirp"] + "/hic_mapped/" + annote.index + ".sorted.bam",
-                repeat(sthreads, annote.shape[0])
-            )
-    ares = pd.DataFrame(list(res), index = annote.index)
-    return pd.concat([annote, ares],axis=1,join="outer")
+    file_paths = []
+
+    # 根据 old 参数生成对应的文件路径
+    # for i in range(annote.shape[0]):
+    #     if old:
+    #         path = annote.iloc[i]["task_dirp"] + "/sam/" + str(annote.index[i]) + ".aln.sam.gz"
+    #     else:
+    #         path = annote.iloc[i]["task_dirp"] + "/hic_mapped/" + str(annote.index[i]) + ".sorted.bam"
+    #     file_paths.append(path)
+    for sample_name, row in annote.iterrows():
+        file_path = bubble_flow_touched()["hic_mapped"][0].format(
+            task_dirp=row["task_dirp"],
+            sample_name=sample_name
+        )
+        if os.path.isfile(file_path):
+            file_paths.append(file_path)
+        else:
+            print(f"Warning: File {file_path} does not exist. Skipping this sample.")
+            file_paths.append(None)
+
+    # 使用 ProcessPoolExecutor 提交任务
+    with futures.ProcessPoolExecutor(max_workers=int(threads / sthreads)) as pool:
+        future_to_index = {}
+        for i, file_path in enumerate(file_paths):
+            future = pool.submit(mapping_rate, file_path, sthreads)
+            future_to_index[future] = i
+
+        # 使用 tqdm 显示进度条
+        with tqdm(total=len(future_to_index), desc="Processing Mapping") as pbar:
+            results = [None] * len(future_to_index)
+            for future in futures.as_completed(future_to_index):
+                idx = future_to_index[future]
+                try:
+                    result = future.result()
+                    results[idx] = result
+                except Exception as e:
+                    print(f"Error in task {idx}: {e}")
+                    results[idx] = None  # 或根据需求处理异常
+                finally:
+                    pbar.update(1)
+
+    # 构造结果 DataFrame 并合并
+    ares = pd.DataFrame(results, index=annote.index)
+    return pd.concat([annote, ares], axis=1, join="outer")
 def check_RNA(task_dirp):
     res = {}
     res.update(star_stat(os.path.join(task_dirp,"star_mapped","Log.final.out")))
