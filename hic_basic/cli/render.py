@@ -15,7 +15,8 @@ from ..plot.render import (
     surface_b_pymol,
     surface_centelo_pymol,
     render_clip_centelo_primary_view,
-    clip_centelo_pymol
+    clip_centelo_pymol,
+    clip_single_territory_pymol
 )
 def render_task(args):
     """
@@ -75,6 +76,11 @@ def render_task(args):
                     _3dg_file, outpng, genome=ref, dupref=dupref, clip=clip,
                     slab=slab, tmpdir=tmpdir, turn_cmd=turn_cmd, conda=None
                 )
+            elif mode == "target_chrom":
+                res = clip_single_territory_pymol(
+                    _3dg_file, outpng, clip=clip, slab=slab,
+                    tmpdir=tmpdir, turn_cmd=turn_cmd, conda=None
+                )
             else:
                 raise ValueError("Invalid mode")
         else:
@@ -112,7 +118,7 @@ def add_arguments(subparser):
     # mode_switcher
     subparser.add_argument(
         '--mode',
-        choices=['b_factor', 'centelo', 'territory'],
+        choices=['b_factor', 'centelo', 'territory', "target_chrom"],
         default='b_factor',
         help='Mode to render:\nb_factor: color according to a reference b factor file. Need to provide --b_factor.\ncentelo: render the structure with centrometer and telomere. Need to provide --genome'
     )
@@ -170,6 +176,8 @@ def run(args):
             b_factor = b_factor.split(",")
     elif args.mode == "territory":
         pass
+    elif args.mode == "target_chrom":
+        pass
     else:
         raise ValueError("Invalid mode")
 
@@ -218,6 +226,8 @@ def run(args):
     elif args.mode == "b_factor":
         ref_list = b_factor if args.multiB else repeat(b_factor)
     elif args.mode == "territory":
+        ref_list = repeat(None)
+    elif args.mode == "target_chrom":
         ref_list = repeat(None)
     else:
         raise ValueError("Invalid mode")
