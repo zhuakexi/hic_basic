@@ -1,6 +1,7 @@
 from itertools import cycle
 
 from .general import template
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -57,6 +58,8 @@ def plot_bar(df, val_col="value", group_by="group", color_map=None, x_sep=" "):
             group,
             val_col
             ]
+        strip_data = pd.Series(strip_data) # otherwise when single group member, downcast to float
+        # print(strip_data)
         strip_fig = px.strip(
             x = [group_name] * len(strip_data),
             y = strip_data,
