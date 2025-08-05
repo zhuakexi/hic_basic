@@ -3,6 +3,8 @@ Sample sex and phasing.
 """
 import os
 import pandas as pd
+
+from .calculate import mt
 def hap_score_gb(df):
     df = df.droplevel(0)
     return abs(df.loc["0"] - df.loc["1"])/abs(df.loc["0"]+df.loc["1"])
@@ -22,3 +24,19 @@ def get_chrom_hap_score(dump_dir):
         dfs[index] = hap_score_gb(df)
     chrom_hap_score = pd.DataFrame(dfs).mean(axis=1)
     return chrom_hap_score
+
+def count_chrom_phased(filename:str)->pd.Series:
+    """
+    Count number of phased (with separable SNP) segments per chromosome from a .seg.gz file.
+    Input:
+        filename: Path to the .seg.gz file.
+    Output:
+        A pandas Series with multi-index (chromosome, phasing) and counts.
+    """
+    comments, legs = parse_seg(filename)
+    df = pd.DataFrame(
+        (leg.split("!") for leg in legs),
+        columns=["chrom","genome_start","genome_end","strand","phasing","a","b"]
+    )
+    cp_count = df.value_counts(["chrom","phasing"])
+    return cp_count
