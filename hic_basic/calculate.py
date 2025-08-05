@@ -1,10 +1,19 @@
 import os
 import concurrent.futures
+import importlib
+
 from functools import wraps
 from tqdm import tqdm
 import pandas as pd
 
+def task_wrapper(module_name, func_name, *args, **kwargs):
+    module = importlib.import_module(module_name)
+    func = getattr(module, func_name)
+    #print(f"Executing {func_name} with args: {args}")
+    return func(*args, **kwargs)
+
 def mt(
+    module_name: str,
     force: bool = False,
     nproc: int = None,
     outcol: str = None,
@@ -35,8 +44,8 @@ def mt(
                 assert concat, "If no output_pattern and outcol are provided, concat must be True"
 
             # Store output paths and results
-            output_paths = []
-            results = []
+            output_paths = {}
+            results = {}
 
             # Generate tasks with row indices
             tasks = []
@@ -54,16 +63,38 @@ def mt(
 
             # Execute tasks in parallel
             with concurrent.futures.ProcessPoolExecutor(max_workers=nproc) as executor:
-                futures = []
+                futures = {}
                 for idx, input_path, output_path in tasks:
-                    futures.append(executor.submit(func, input_path, output_path, *args, **kwargs))
+                    if output_path is None:
+                        futures[
+                                executor.submit(
+                                task_wrapper,
+                                module_name,
+                                func.__name__[3:],  # Remove 'mt_' prefix
+                                input_path,
+                                *args,
+                                **kwargs
+                                )
+                                ] = idx
+                    else:
+                        futures[
+                                executor.submit(
+                                task_wrapper,
+                                module_name,
+                                func.__name__[3:],  # Remove 'mt_' prefix
+                                input_path,
+                                output_path,
+                                *args,
+                                **kwargs
+                                )
+                                ] = idx
 
                 # Track progress and collect results
                 with tqdm(total=len(futures), desc="Processing") as pbar:
                     for future in concurrent.futures.as_completed(futures):
                         try:
                             result = future.result()
-                            results.append(result)
+                            results[futures[future]] = result
                         except Exception as e:
                             print(f"[ERROR] Task failed: {e}")
                         finally:
@@ -71,38 +102,27 @@ def mt(
 
             # Map results/output paths back to the original DataFrame
             for idx, input_path, output_path in tasks:
-                output_paths.append((idx, output_path))
-
-            # Sort by index to maintain order
-            output_paths.sort(key=lambda x: x[0])
-            output_paths_only = [path for _, path in output_paths]
-            results_only = [res for res in results]
+                output_paths[idx] = output_path
 
             # Update input DataFrame with output paths
             if outcol:
                 input_data[outcol] = pd.NA
-                for idx, output_path in output_paths:
+                for idx, output_path in output_paths.items():
                     input_data.at[idx, outcol] = output_path
 
             # Concatenate results if required
-            if concat and results_only:
-                if all(isinstance(r, pd.Series) for r in results_only):
-                    results_df = pd.concat(results_only, axis=1).T
+            if concat and results:
+                if all(isinstance(r, pd.Series) for r in results.values()):
+                    results_df = pd.concat(results, axis=1) # idx as columns
                     return results_df
                 else:
                     raise ValueError("All results must be pandas Series when concat=True")
 
-            return results_only
+            return results
 
         return wrapper
     return decorator
 
-# import importlib
-
-# def task_wrapper(module_name, func_name, *args):
-#     module = importlib.import_module(module_name)
-#     func = getattr(module, func_name)
-#     return func(*args)
 
 # # In your decorator:
 # futures.append(executor.submit(task_wrapper, 
