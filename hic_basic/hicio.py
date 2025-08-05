@@ -1,3 +1,4 @@
+# TODO: unify parse_seg with hires_utils.hires_io
 import gzip
 import json
 import os
@@ -13,7 +14,7 @@ import anndata as ad
 import h5py
 import numpy as np
 import pandas as pd
-from hires_utils.hires_io import parse_3dg
+from hires_utils.hires_io import parse_3dg, parse_seg
 from scipy.io import mmread
 from scipy.sparse import coo_matrix, csr_matrix
 
@@ -119,29 +120,29 @@ def parse_bed(bed_path: str) -> pd.DataFrame:
                 df[col] = df[col].astype(pd.Int64Dtype())  # Use nullable integer type
     
     return df
-def parse_seg(filename:str)->pd.DataFrame:
-    """
-    Read from dip-c's seg format.
-    Input:
-        filename: path to .seg file
-    Output:
-        pd.DataFrame
-    """
-    # compatible for zipped file
-    if filename.endswith(".gz"):
-        opener = gzip.open
-    else:
-        opener = open
-    segs = []
-    Seg = namedtuple("Seg", "chrom start end strand X1 Q X2".split())
-    dtypes = [str, int, int, str, str, int, int]
-    with opener(filename, "rt") as f:
-        lines = dropwhile(lambda x:x.startswith("#"), f)
-        seg_str_rows = (line.strip().split()[1:] for line in lines)
-        seg_strs = (seg_str.split("!") for row in seg_str_rows for seg_str in row)
-        segs = [Seg(*[dtype(x) for dtype, x in zip(dtypes, seg)]) for seg in seg_strs]
-    res = pd.DataFrame(segs)
-    return res
+# def parse_seg(filename:str)->pd.DataFrame:
+#     """
+#     Read from dip-c's seg format.
+#     Input:
+#         filename: path to .seg file
+#     Output:
+#         pd.DataFrame
+#     """
+#     # compatible for zipped file
+#     if filename.endswith(".gz"):
+#         opener = gzip.open
+#     else:
+#         opener = open
+#     segs = []
+#     Seg = namedtuple("Seg", "chrom start end strand X1 Q X2".split())
+#     dtypes = [str, int, int, str, str, int, int]
+#     with opener(filename, "rt") as f:
+#         lines = dropwhile(lambda x:x.startswith("#"), f)
+#         seg_str_rows = (line.strip().split()[1:] for line in lines)
+#         seg_strs = (seg_str.split("!") for row in seg_str_rows for seg_str in row)
+#         segs = [Seg(*[dtype(x) for dtype, x in zip(dtypes, seg)]) for seg in seg_strs]
+#     res = pd.DataFrame(segs)
+#     return res
 def parse_pairs(filename:str)->pd.DataFrame:
     '''
     read from 4DN's standard .pairs format
