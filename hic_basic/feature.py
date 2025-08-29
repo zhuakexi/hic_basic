@@ -11,6 +11,7 @@ class Feature(ABC):
     """
     Feature object to hold genome features.
     Attributes:
+    TODO:1.Add different fn, like feature.fn, feature.bgr, ...
     """
     SUFFIX = {
         "bed" : "bed"
