@@ -5,6 +5,8 @@ import os
 import pandas as pd
 from .calculate import mt
 from .hicio import parse_seg
+from .binnify import GenomeIdeograph
+
 def hap_score_gb(df):
     df = df.droplevel(0)
     return abs(df.loc["0"] - df.loc["1"])/abs(df.loc["0"]+df.loc["1"])
@@ -34,13 +36,8 @@ def count_chrom_phased(filename:str, *args)->pd.Series:
         A pandas Series with multi-index (chromosome, phasing) and counts.
     """
     #print(f"Processing file: {filename}")
-    comments, legs = parse_seg(filename)
-    #print(f"Parsed {len(legs)} segments from {filename}")
-    df = pd.DataFrame(
-        (leg.split("!") for leg in legs),
-        columns=["chrom","genome_start","genome_end","strand","phasing","a","b"]
-    )
-    cp_count = df.value_counts(["chrom","phasing"])
+    df = parse_seg(filename)
+    cp_count = df.value_counts(["chrom","phase"])
     return cp_count
 @mt(
     "hic_basic.phasing",
@@ -51,3 +48,45 @@ def count_chrom_phased(filename:str, *args)->pd.Series:
 )
 def mt_count_chrom_phased(filename:str)->pd.Series:
     pass
+
+def count_phased_seg_perbin(filename, genome="mm10",binsize=1e6):
+    """
+    Count the number of phased segments per bin of a given genome.
+    Input:
+        filename: str, path to the .seg file
+        genome: str, genome name (default: "mm10")
+        binsize: int, size of the bins (default: 1e6)
+    Output:
+        pandas DataFrame with columns: "chrom", "start", "phase", "count"
+    """
+    genome = GenomeIdeograph(genome)
+    # --- read in the .seg file --- #
+    df = parse_seg(filename)
+
+    # --- transform to pairs format to fit append_bins method --- #
+    fake_pairs = pd.DataFrame(
+        {
+            "chr1" : df["chrom"],
+            "pos1" : df["start"],
+            "chr2" : df["chrom"],
+            "pos2" : df["end"],
+            "phase0" : df["phase"],
+            "phase1" : df["phase"],
+        }
+    ).assign(
+        readID = ".",
+        strand1 = "+",
+        strand2 = "+"
+    )
+
+    fake_pairs = genome.append_bins(
+        fake_pairs,
+        binsize=binsize,
+    )
+
+    phase_bin_counts = fake_pairs.groupby(
+        ["chrom1", "start1", "phase0"]
+    ).size().reset_index(name="count")
+    phase_bin_counts.columns = ["chrom", "start", "phase", "count"]
+    phase_bin_counts = phase_bin_counts.set_index(["chrom", "start", "phase"])["count"]
+    return phase_bin_counts
