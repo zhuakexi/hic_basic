@@ -1,6 +1,7 @@
 import os
 import concurrent.futures
 import importlib
+import traceback
 
 from functools import wraps
 from tqdm import tqdm
@@ -32,15 +33,40 @@ def mt(
     def decorator(func):
         @wraps(func)
         def wrapper(input_data: pd.DataFrame, *args, **kwargs):
-            nproc = 16
-            nproc = nproc or 16  # Default to 16 processes if not specified
-            # Extract dynamic input/output patterns from **kwargs
-            input_pattern = kwargs.pop("input_pattern", None)
-            output_pattern = kwargs.pop("output_pattern", None)
+            njobs = nproc or 4
+
+            # Extract main input/output patterns
+            input_patterns = []
+            output_patterns = []
+
+            # Extract input_pattern, input_pattern1, input_pattern2...
+            idx_num = 0
+            while True:
+                key = "input_pattern" if idx_num == 0 else f"input_pattern{idx_num}"
+                if key in kwargs:
+                    input_patterns.append(kwargs.pop(key))
+                    idx_num += 1
+                else:
+                    break
+
+            # Extract output_pattern, output_pattern1, output_pattern2...
+            idx_num = 0
+            while True:
+                key = "output_pattern" if idx_num == 0 else f"output_pattern{idx_num}"
+                # print(key, key in kwargs)
+                if key in kwargs:
+                    output_patterns.append(kwargs.pop(key))
+                    idx_num += 1
+                else:
+                    break
+            # print(kwargs)
+            # input_col check — only one allowed
             input_col = kwargs.pop("input_col", "input_path")
+            if isinstance(input_col, (list, tuple)):
+                raise ValueError("Only one input_col is allowed.")
 
             # check output
-            if output_pattern is None and outcol is None:
+            if not output_patterns and outcol is None:
                 assert concat, "If no output_pattern and outcol are provided, concat must be True"
 
             # Store output paths and results
@@ -51,43 +77,46 @@ def mt(
             tasks = []
             for idx, row in input_data.iterrows():
                 sample_name = idx  # Assuming the index is the sample identifier
-                input_path = input_pattern.format(sample_name=sample_name) if input_pattern else row[input_col]
-                output_path = output_pattern.format(sample_name=sample_name) if not output_pattern is None else None
 
-                # Skip existing files if not forced
-                if output_path is not None:
-                    if not force and os.path.exists(output_path):
+                # Resolve all input paths
+                resolved_inputs = []
+                if input_patterns:
+                    for pat in input_patterns:
+                        resolved_inputs.append(str(pat).format(sample_name=sample_name))
+                else:
+                    resolved_inputs.append(row[input_col])
+
+                # Resolve all output paths
+                resolved_outputs = []
+                if output_patterns:
+                    for pat in output_patterns:
+                        resolved_outputs.append(str(pat).format(sample_name=sample_name))
+                else:
+                    # resolved_outputs.append(None)
+                    pass
+
+                # Skip check — if *any* output exists and force=False, skip
+                if any(resolved_outputs) and not force:
+                    if all(op is None or os.path.exists(op) for op in resolved_outputs):
                         continue
 
-                tasks.append((idx, input_path, output_path))
+                tasks.append((idx, resolved_inputs, resolved_outputs))
 
             # Execute tasks in parallel
-            with concurrent.futures.ProcessPoolExecutor(max_workers=nproc) as executor:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=njobs) as executor:
                 futures = {}
-                for idx, input_path, output_path in tasks:
-                    if output_path is None:
-                        futures[
-                                executor.submit(
-                                task_wrapper,
-                                module_name,
-                                func.__name__[3:],  # Remove 'mt_' prefix
-                                input_path,
-                                *args,
-                                **kwargs
-                                )
-                                ] = idx
-                    else:
-                        futures[
-                                executor.submit(
-                                task_wrapper,
-                                module_name,
-                                func.__name__[3:],  # Remove 'mt_' prefix
-                                input_path,
-                                output_path,
-                                *args,
-                                **kwargs
-                                )
-                                ] = idx
+                for idx, resolved_inputs, resolved_outputs in tasks:
+                    # Arguments order: inputs..., outputs..., *args, **kwargs
+                    task_args = resolved_inputs + resolved_outputs + list(args)
+                    futures[
+                        executor.submit(
+                            task_wrapper,
+                            module_name,
+                            func.__name__[3:],  # Remove 'mt_' prefix
+                            *task_args,
+                            **kwargs
+                        )
+                    ] = idx
 
                 # Track progress and collect results
                 with tqdm(total=len(futures), desc="Processing") as pbar:
@@ -96,24 +125,21 @@ def mt(
                             result = future.result()
                             results[futures[future]] = result
                         except Exception as e:
-                            print(f"[ERROR] Task failed: {e}")
+                            error_message = f"[ERROR] Task failed: {e}\n{traceback.format_exc()}"
+                            print(error_message)
                         finally:
                             pbar.update(1)
 
-            # Map results/output paths back to the original DataFrame
-            for idx, input_path, output_path in tasks:
-                output_paths[idx] = output_path
-
-            # Update input DataFrame with output paths
+            # Map first output path back to DataFrame (outcol mechanism unchanged)
             if outcol:
                 input_data[outcol] = pd.NA
-                for idx, output_path in output_paths.items():
-                    input_data.at[idx, outcol] = output_path
+                for idx, _, resolved_outputs in tasks:
+                    input_data.at[idx, outcol] = resolved_outputs[0] if resolved_outputs else None
 
             # Concatenate results if required
             if concat and results:
                 if all(isinstance(r, pd.Series) for r in results.values()):
-                    results_df = pd.concat(results, axis=1) # idx as columns
+                    results_df = pd.concat(results, axis=1).T
                     return results_df
                 else:
                     raise ValueError("All results must be pandas Series when concat=True")
