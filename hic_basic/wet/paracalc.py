@@ -70,13 +70,18 @@ def count_MP(filename:str)->int:
                 continue
             ALL += 1
             if attrs[1] != attrs[3]:
-                inter += 1
+                inter += 1 # all inter, include chr1(mat)-chr1(pat), chr1(mat)-chr2(mat), chr1(mat)-chr2(pat)
                 if attrs[1].split("(")[1] == attrs[3].split("(")[1]:
-                    MMPP +=1
+                    MMPP +=1 # chr1(mat)-chr2(mat)
                 else:
-                    MP +=1
+                    MP +=1 # all mat-pat (chr1(mat)-chr1(pat), chr1(mat)-chr2(pat))
     return ALL, inter, MP, MMPP
 def gen_PM_interactions(filesp, threads=32):
+    """
+    MP: Maternal-Paternal interaction, e.g. chr1(mat)-chr1(pat), chr1(mat)-chr2(pat)
+    MMPP: Maternal-Maternal/Paternal-Paternal interaction, e.g. chr1(mat)-chr2(mat)
+    All_inter_contacts: MP + MMPP is all inter-chromosomal contacts.
+    """
     # ---check input---
     valid_samples, valid_files = check_input(filesp, "dip")
     # ---calculate---
