@@ -1,23 +1,24 @@
-# TODO: unify parse_seg with hires_utils.hires_io
 import gzip
 import json
 import os
 import pickle
 import re
 import tarfile
-from collections import namedtuple
+
 from io import StringIO
 from pathlib import Path
-from itertools import product, dropwhile
+from itertools import product
 
 import anndata as ad
 import h5py
 import numpy as np
 import pandas as pd
+import pysam
 from hires_utils.hires_io import parse_3dg, parse_seg
 from scipy.io import mmread
 from scipy.sparse import coo_matrix, csr_matrix
 
+from .genome import Region
 
 class DevNull:
     def write(self, _):
@@ -120,29 +121,6 @@ def parse_bed(bed_path: str) -> pd.DataFrame:
                 df[col] = df[col].astype(pd.Int64Dtype())  # Use nullable integer type
     
     return df
-# def parse_seg(filename:str)->pd.DataFrame:
-#     """
-#     Read from dip-c's seg format.
-#     Input:
-#         filename: path to .seg file
-#     Output:
-#         pd.DataFrame
-#     """
-#     # compatible for zipped file
-#     if filename.endswith(".gz"):
-#         opener = gzip.open
-#     else:
-#         opener = open
-#     segs = []
-#     Seg = namedtuple("Seg", "chrom start end strand X1 Q X2".split())
-#     dtypes = [str, int, int, str, str, int, int]
-#     with opener(filename, "rt") as f:
-#         lines = dropwhile(lambda x:x.startswith("#"), f)
-#         seg_str_rows = (line.strip().split()[1:] for line in lines)
-#         seg_strs = (seg_str.split("!") for row in seg_str_rows for seg_str in row)
-#         segs = [Seg(*[dtype(x) for dtype, x in zip(dtypes, seg)]) for seg in seg_strs]
-#     res = pd.DataFrame(segs)
-#     return res
 def parse_pairs(filename:str)->pd.DataFrame:
     '''
     read from 4DN's standard .pairs format
@@ -289,7 +267,72 @@ def parse_gff(file, ID=False, Name=False):
         additions.append(Name)
     gff = pd.concat([gff] + additions, axis=1, join="inner")
     return gff
-    
+
+def parse_vcf(vcf_path, region, return_alleles=False):
+    """
+    Extracts genotype data for all samples within a specified genomic region from a VCF file.
+    Optionally returns genotypes in allele form (e.g., 'GA/GA' instead of '1/1').
+
+    Parameters:
+        vcf_path (str): Path to the VCF file.
+        chromosome (str): Target chromosome (e.g., '1', 'chr1').
+        start (int): Start position (1-based).
+        end (int): End position (1-based).
+        return_alleles (bool): If True, returns genotype in allele form. Default is False.
+
+    Returns:
+        pd.DataFrame: A DataFrame where each row represents a variant and each column represents a sample.
+                      Genotypes are returned either as indices (e.g., '1/1') or as allele strings (e.g., 'GA/GA').
+    """
+    ((chrom, start), (_, end)) = Region(region).r
+    # # --- check query chrom --- #
+    # for i in range(10):
+    #     chromnames = []
+    #     try:
+    #         chromnames.append(vcf.get_reference_name(i))
+    #     except ValueError:
+    #         continue
+    # if len(chromnames) == 0:
+    #     raise ValueError("No valid chromosome names found in VCF header.")
+    # else:
+    #     flavor = check_chromname_flavor(chromnames)
+    with pysam.VariantFile(vcf_path) as vcf_file:
+
+        samples = list(vcf_file.header.samples)
+        genotype_data = []
+
+        for record in vcf_file.fetch(chrom, start, end):
+
+            variant_info = {
+                'CHROM': record.chrom,
+                'POS': record.pos,
+                'ID': record.id or '.',
+                'REF': record.ref,
+                'ALT': ','.join(record.alts) if record.alts else '.',
+                'QUAL': record.qual if record.qual is not None else '.',
+                'FILTER': ';'.join(record.filter) if record.filter else 'PASS'
+            }
+
+            for sample in samples:
+                if return_alleles:
+                    alleles = record.samples.get(sample).alleles
+                    alleles = tuple(i if i is not None else "N" for i in alleles)
+                    genotype_str = '/'.join(alleles)
+                else:
+                    genotype = record.samples[sample].get('GT', './.')
+                    if isinstance(genotype, tuple):
+                        genotype_str = '/'.join(map(str, genotype))
+                    else:
+                        genotype_str = str(genotype)
+                variant_info[sample] = genotype_str
+
+            genotype_data.append(variant_info)
+
+        df = pd.DataFrame(genotype_data)
+        standard_cols = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER']
+        df = df[standard_cols + samples]
+
+    return df
 
 ### --- read scRNA-seq file --- ###
 def read_expr(path,sep=None)->pd.DataFrame:
