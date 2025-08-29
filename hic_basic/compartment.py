@@ -237,3 +237,89 @@ def AB_block_ends(orig_data:pd.DataFrame, min_winSize=3, binsize=1000000):
     ends = ends.rename(columns = {"c_start":"start","c_end":"end"})
     ends = ends.dropna(subset=["AB"])[["chrom","start","end","AB","mean_E1"]]
     return ends
+
+
+### --- single-cell compartment strength --- ###
+import sys
+
+import numpy
+import pandas as pd
+from cooler import Cooler
+from cooltools.api import expected
+from cooltools.api.saddle import digitize
+from cooltools.api.saddle import saddle
+from cooltools.api.saddle import saddle_strength
+
+from .hicio import parse_bed
+
+def sc_compartment_strength(cool_f,outfile=None,eigen_track=None):
+    """
+    Calculate compartment strength from a single-cell eigenvector track.
+    Input:
+        cool_f: cooler file path
+        eigen_track: eigenvector track file path, e.g. CpG/GC count track.
+        outfile: output file path, if None, return a list of compartment strength values.
+    """
+    assert eigen_track is not None, "Eigenvector track file path must be provided."
+    # --- check eigen-track format --- #
+    test_df = pd.read_table(eigen_track,header=None,nrows=1000)
+    if test_df.shape[1] <= 4: # not standard bed format
+        eigenvector_track = pd.read_table(
+            eigen_track,names=["chrom","start","end","E1"]
+            )
+    else: # assume standard bed format
+        eigenvector_track = parse_bed(eigen_track)[["chrom","start","end","score"]]
+        eigenvector_track.columns = ['chrom','start','end','E1']
+    try:
+        clr = Cooler(cool_f)
+    except (FileNotFoundError, KeyError) as e:
+        return None
+    # --- align eigen-track with cooler --- #
+    eigenvector_track = pd.merge(
+        clr.bins()[:][["chrom","start","end"]],
+        eigenvector_track,
+        how='left',
+        on=['chrom','start','end']
+    )
+    # calculate all intra-region
+    view_df = pd.DataFrame({
+        "chrom":[index for index in clr.chromsizes.index if index not in ("chrX","chrY")],
+        "start":0,
+        "end":[clr.chromsizes[index] for index in clr.chromsizes.index if index not in ("chrX","chrY")],
+        "name":[index for index in clr.chromsizes.index if index not in ("chrX","chrY")]
+    })
+    Q_LO = 0.025 # ignore 2.5% of genomic bins with the lowest E1 values
+    Q_HI = 0.975 # ignore 2.5% of genomic bins with the highest E1 values
+    N_GROUPS = 38 # divide remaining 95% of the genome into 38 equisized groups, 2.5% each
+    digitized, hist = digitize(
+                    eigenvector_track,
+                    N_GROUPS,
+                    qrange=(Q_LO,Q_HI))
+    # calculate expected
+    cvd = expected.diagsum_symm(
+            clr=clr,
+            view_df=view_df,
+            clr_weight_name=None, ignore_diags=2)
+    cvd['count.avg'] = cvd['count.sum'].values/cvd['n_valid'].values
+    # fix cooltools bug
+    # new_cvd = cvd.iloc[:,1:]
+    # new_cvd.columns = ["region"] + list(cvd.columns[2:])
+    # do saddle_count
+    interaction_sum, interaction_count =  saddle(
+        clr,
+        #new_cvd,
+        cvd,
+        digitized,
+        'cis',
+        n_bins=None,
+        view_df=view_df,
+        clr_weight_name=None,
+        expected_value_col="count.avg"
+        )
+    # calculate strength
+    res = saddle_strength(interaction_sum, interaction_count)
+    res = list(res)
+    #return res#,{"track":eigenvector_track,"saddledata":interaction_sum/interaction_count,"n_bins":N_GROUPS,"qrange":(Q_LO,Q_HI)}
+    if not outfile is None:
+        numpy.savetxt(outfile,res)
+    return res
