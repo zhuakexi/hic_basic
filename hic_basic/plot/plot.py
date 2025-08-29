@@ -26,7 +26,8 @@ def cdp_scatter(dat:pd.DataFrame)->go.Figure:
     return fig
 
 # cdps heatmap with cycle-phasing marker
-def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_order",group_col="group",color_map=None,hline=False):
+def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_order",
+    group_col="group",color_map=None,hline=False,**kwargs):
     """
     # plot cdps heatmap with group marker in different color
     # Input:
@@ -80,7 +81,8 @@ def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_or
         go.Heatmap(
             z = cdps.loc[order].T.values,
             hovertemplate = '%{text} '+'%{z}',
-            text = [order for i in range(annote.shape[0])]
+            text = [order for i in range(annote.shape[0])],
+            **kwargs
         ),
         row=2,
         col=1
@@ -112,11 +114,11 @@ def plot_cdps_mark(cdps,orig_annote,sample_col="sample_name",order_col="index_or
             col= 1
         )
         # mark short% 
-        fig.add_hline(
-            y = 38,
-            row = 2,
-            col= 1
-        )
+        # fig.add_hline(
+        #     y = 38,
+        #     row = 2,
+        #     col= 1
+        # )
     return fig
 
 def add_cdps(fig, row, col, adata, sorted_obs):
