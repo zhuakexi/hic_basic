@@ -3,8 +3,6 @@ import re
 import pandas as pd
 from hires_utils import chrom_rm_suffix
 
-from .data import chromosomes
-from .binnify import GenomeIdeograph
 def parse_ucsc_region(region_str):
     """
     Parses a UCSC-style region string and returns a tuple of (chromosome, start, end).
@@ -54,88 +52,96 @@ class Region:
         [(chrom,pos), (chrom,pos)]
     Relief burden on region-related argument parsing.
     """
-    def __init__(self, region_arg, genome="GRCh38", binsize=None):
+    def __init__(self, region_arg, genome=None, binsize=None):
         """
         Initialize a Region object.
         Input:
             region_arg: all usable region representations are supported:
                 "chr1", "chr1:1000000-2000000" or "chr1:1000000-":
-                    ucsc-style region representation
+                    ucsc-style region representation (requires genome if positions incomplete)
                 [(chrom,pos), (chrom,pos)]:
                     list of tuples, each tuple is a pair of chrom and pos
-                ...
-                TODO: add more region representations
-            genome: genome name, used to determine start and end of region
-            binsize: if not None, will generate bins indexes for the region
-                [(chrom, pos), ...]
+            genome: genome name (default None). If None, genome-dependent features are disabled.
+            binsize: if not None, will generate bins indexes for the region (requires genome)
         """
         self.region_arg = region_arg
         self.genome = genome
+        self.binsize = binsize
+        
+        # Parse region (handles genome=None case)
         self.r, self.ir = self._parse_region(region_arg, genome)
-        self.slice = slice(*self.r)
-        self.islice = slice(*self.ir)
-        self.region_chroms = self._get_relevant_chromosomes()
-        if binsize is not None:
+        
+        # Set slice representations (None if genome unavailable)
+        self.slice = slice(*self.r) if genome is not None else None
+        self.islice = slice(*self.ir) if self.ir is not None else None
+        
+        # Set relevant chromosomes (None if genome unavailable)
+        self.region_chroms = self._get_relevant_chromosomes() if genome is not None else None
+        
+        # Generate bins if requested (skipped if genome unavailable)
+        self.bins = None
+        if binsize is not None and genome is not None:
             self.bins = self._get_bin_index(binsize)
+
     def _parse_region(self, region_arg, genome):
         """
-        Parse region argument to standard inner representation.
-        Input:
-            region_arg: see __init__
-            genome: see __init__
-        Output:
-            region: standard inner representation
-                [(chrom,pos), (chrom,pos)]
-            iregion: inner integer representation of region
-                use this in a int-only context
-                [(ichrom,pos), (ichrom,pos)]
+        Parse region argument to standard representations.
+        Returns:
+            r: [(chrom_str, start), (chrom_str, end)]
+            ir: [(chrom_idx, start), (chrom_idx, end)] or None if genome unavailable
         """
-        chrom_df = chromosomes(genome)
-        chrom_idict = dict(zip(chrom_df.index, range(len(chrom_df))))
-        if isinstance(region_arg, str):
-            chrom, pos1, pos2 = parse_ucsc_region(region_arg)
-            ichrom = chrom_idict[chrom]
-            pos1 = pos1 if pos1 is not None else 0
-            pos2 = pos2 if pos2 is not None else chromosomes(genome).loc[chrom, "length"]
-            # both string and integer representation of chroms
-            return [(chrom, pos1), (chrom, pos2)], [(ichrom, pos1), (ichrom, pos2)]
-        elif isinstance(region_arg, list):
-            assert len(region_arg) == 2, 'Only "two positions" is supported. See __init__.'
-            chrom1, chrom2 = region_arg[0][0], region_arg[1][0]
-            # an inner integer representation of chroms
-            ichrom1, ichrom2 = chrom_idict[chrom1], chrom_idict[chrom2]
-            pos1 = region_arg[0][1] if len(region_arg[0]) > 1 else 0
-            pos2 = region_arg[1][1] if len(region_arg[1]) > 1 else chrom_df.loc[chrom2, "length"]
-            # both string and integer representation of chroms
-            return [(chrom1, pos1), (chrom2, pos2)], [(ichrom1, pos1), (ichrom2, pos2)]
+        if genome is not None:
+            from .data import chromosomes
+            # Genome available - use chromosome info
+            chrom_df = chromosomes(genome)
+            chrom_idict = dict(zip(chrom_df.index, range(len(chrom_df))))
+            
+            if isinstance(region_arg, str):
+                chrom, pos1, pos2 = parse_ucsc_region(region_arg)
+                ichrom = chrom_idict[chrom]
+                # Fill missing positions using chromosome info
+                pos1 = pos1 if pos1 is not None else 0
+                pos2 = pos2 if pos2 is not None else chrom_df.loc[chrom, "length"]
+                return [(chrom, pos1), (chrom, pos2)], [(ichrom, pos1), (ichrom, pos2)]
+                
+            elif isinstance(region_arg, list):
+                assert len(region_arg) == 2, 'Only "two positions" is supported.'
+                chrom1, chrom2 = region_arg[0][0], region_arg[1][0]
+                ichrom1, ichrom2 = chrom_idict[chrom1], chrom_idict[chrom2]
+                # Fill missing positions using chromosome info
+                pos1 = region_arg[0][1] if len(region_arg[0]) > 1 else 0
+                pos2 = region_arg[1][1] if len(region_arg[1]) > 1 else chrom_df.loc[chrom2, "length"]
+                return [(chrom1, pos1), (chrom2, pos2)], [(ichrom1, pos1), (ichrom2, pos2)]
+                
         else:
-            raise NotImplementedError("Only list of tuples or UCSC-style region string is supported.")
+            # Genome unavailable - require complete specification
+            if isinstance(region_arg, str):
+                chrom, pos1, pos2 = parse_ucsc_region(region_arg)
+                if None in (pos1, pos2):
+                    raise ValueError("Incomplete region specification requires genome")
+                return [(chrom, pos1), (chrom, pos2)], None
+                
+            elif isinstance(region_arg, list):
+                assert len(region_arg) == 2, 'Only "two positions" is supported.'
+                # Require explicit positions in all tuples
+                if any(len(tup) < 2 for tup in region_arg):
+                    raise ValueError("Incomplete region specification requires genome")
+                chrom1, pos1 = region_arg[0][0], region_arg[0][1]
+                chrom2, pos2 = region_arg[1][0], region_arg[1][1]
+                return [(chrom1, pos1), (chrom2, pos2)], None
+                
+        raise NotImplementedError("Only list of tuples or UCSC-style region string is supported.")
+
     def _get_relevant_chromosomes(self):
-        """
-        Get relevant chromosomes for the region.
-        NOTE: will give wrong results for diploid genomes, "chr1(mat):chr2(mat) will give 
-            "chr1(mat),chr1(pat),chr2(mat),chr2(pat)" this is not correct.
-        TODO: add dip support
-        Input:
-            genome: genome name
-        Output:
-            chrom_df: relevant chromosomes
-                DataFrame
-        """
+        """Get relevant chromosomes (requires genome)"""
+        from .data import chromosomes
         chrom_df = chromosomes(self.genome)
-        chroms = chrom_df.loc[self.r[0][0]:self.r[1][0]].index.tolist()
-        return chroms
+        return chrom_df.loc[self.r[0][0]:self.r[1][0]].index.tolist()
+
     def _get_bin_index(self, binsize):
-        """
-        Get bin indexes for the region.
-        Input:
-            binsize: binsize
-        Output:
-            bins: bin indexes for the region
-                [(chrom, pos), ...]
-        """
-        all_bins = GenomeIdeograph(self.genome).bins(
-            binsize,bed=True,order=True)
+        """Get bin indexes (requires genome)"""
+        from .binnify import GenomeIdeograph
+        all_bins = GenomeIdeograph(self.genome).bins(binsize, bed=True, order=True)
         all_bins = all_bins.set_index(["chrom", "start"]).sort_index()
         return all_bins.loc[self.r[0]:self.r[1]].index.tolist()
 class RegionPair:
@@ -144,7 +150,7 @@ class RegionPair:
         [Region1, Region2]
     Relief burden on region-related argument parsing.
     """
-    def __init__(self, region_pair_arg, genome="GRCh38", binsize=None):
+    def __init__(self, region_pair_arg, genome=None, binsize=None):
         """
         Initialize a RegionPair object.
         Input:
