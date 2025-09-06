@@ -14,11 +14,7 @@ def task_wrapper(module_name, func_name, *args, **kwargs):
     return func(*args, **kwargs)
 
 def mt(
-    module_name: str,
-    force: bool = False,
-    nproc: int = None,
-    outcol: str = None,
-    concat: bool = False
+    module_name: str
 ):
     """
     A decorator to parallelize functions with file skipping, path templating,
@@ -32,7 +28,7 @@ def mt(
     """
     def decorator(func):
         @wraps(func)
-        def wrapper(input_data: pd.DataFrame, *args, **kwargs):
+        def wrapper(input_data: pd.DataFrame, force=False, nproc=None, outcol=None, concat=False, *args, **kwargs):
             njobs = nproc or 4
 
             # Extract main input/output patterns
@@ -101,6 +97,11 @@ def mt(
                         continue
 
                 tasks.append((idx, resolved_inputs, resolved_outputs))
+            # create directories for all output paths
+            for _, _, resolved_outputs in tasks:
+                for op in resolved_outputs:
+                    if op:
+                        os.makedirs(os.path.dirname(op), exist_ok=True)
 
             # Execute tasks in parallel
             with concurrent.futures.ProcessPoolExecutor(max_workers=njobs) as executor:
