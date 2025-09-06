@@ -1,4 +1,5 @@
 import gzip
+import os
 import random
 from collections import Counter
 
@@ -10,7 +11,7 @@ from plotly.subplots import make_subplots
 from tqdm import tqdm
 def parse_fastq_id(line):
     """Parse a FASTQ ID line into (prefix, end) tuple or None if invalid.
-    
+
     Args:
         line (str): The FASTQ ID line (e.g., '@M06168:... 1:N:0:1')
         
@@ -18,6 +19,73 @@ def parse_fastq_id(line):
         tuple or None: (prefix, end) if valid, else None.
             prefix: The read identifier prefix (e.g., '@M06168:...').
             end: The read end identifier (e.g., '1').
+
+    Notes
+    -----
+    Example of Read ID: `@M06168:86:000000000-LMWTD:1:1101:14802:1380 1:N:0:1`
+
+    The Read ID is structured as follows:
+    `@<instrument>:<run_id>:<flowcell_id>:<lane>:<tile>:<x_pos>:<y_pos> <read>:<is_filtered>:<control_number>:<index_seq>`
+
+    **Detailed Field Explanation:**
+
+    1.  **Instrument (`M06168`)**
+        The unique identifier of the sequencing instrument.
+        Example: `M06168` (Likely a MiSeq instrument).
+
+    2.  **Run ID (`86`)**
+        The number assigned to the specific sequencing run by the operator.
+
+    3.  **Flowcell ID (`000000000-LMWTD`)**
+        The unique barcode of the flowcell used.
+        Example: `000000000-LMWTD`.
+
+    4.  **Lane (`1`)**
+        The lane number on the flowcell where the cluster was located.
+        Example: `1`.
+
+    5.  **Tile (`1101`)**
+        The specific tile within the lane where the cluster was imaged.
+
+    6.  **X-coordinate (`14802`)**
+        The X-position of the cluster within the tile (in pixels).
+
+    7.  **Y-coordinate (`1380`)**
+        The Y-position of the cluster within the tile (in pixels).
+
+    8.  **Read Number (`1`)**
+        Member of a pair. `1` for the first read in a pair (R1), `2` for the second (R2).
+
+    9.  **Filter Flag (`N`)**
+        Indicates if the read passed quality filtering.
+        - `Y`: Read failed quality filter (should be discarded).
+        - `N`: Read passed quality filter (is reliable).
+
+    10. **Control Number (`0`)**
+        Reserved field. `0` indicates a regular sample read. Non-zero values indicate control reads.
+
+    11. **Index Sequence Number (`1`)**
+        Identifies which barcode read this is in a multiplexed sequencing run.
+        - `1`: This read contains the index sequence (e.g., i7 index).
+        - `2`: This read contains the second index (e.g., i5 index in a dual-index experiment).
+
+    **Example Interpretation:**
+
+    For the Read ID
+    `@M06168:86:000000000-LMWTD:1:1101:14802:1380 1:N:0:1`:
+
+    - **Instrument:** M06168
+    - **Run ID:** 86
+    - **Flowcell ID:** 000000000-LMWTD
+    - **Lane:** 1
+    - **Tile:** 1101
+    - **Cluster Coordinates (X, Y):** (14802, 1380)
+    - **Read Number:** 1 (This is the first read, R1)
+    - **Filter Flag:** N (This is a high-quality pass)
+    - **Control Number:** 0 (This is a regular sample read)
+    - **Index Sequence Number:** 1 (This read's sequence is the i7 index barcode)
+
+    This read is an index read (i7) from a paired-end run that passed quality control.
     """
     line = line.strip()
     if len(line) < 2:
@@ -303,3 +371,117 @@ def plot_search_primers(result, output_file=None):
         fig.write_image(output_file)
     else:
         return fig
+
+
+
+### --- helper functions for fastq --- ###
+
+
+
+def add_suffix_to_fastq(input_file: str, output_file: str) -> None:
+    """
+    Process a FASTQ file by appending "/1" or "/2" (MGI/DNBSEQ flavor) to read IDs if not already present (illumina_flavor).
+
+    For Illumina reads, the prefix of the read ID is determined according to the comment part (e.g. `/1` for `1:N:0:1`).
+
+    Parameters:
+    input_file (str): Path to the input FASTQ file (can be gzip-compressed if ending with .gz).
+    output_file (str): Path to the output FASTQ file (will be gzip-compressed if input is compressed).
+
+    Returns:
+    None
+    """
+    # Determine if the input file is compressed based on its extension
+    input_compressed = input_file.endswith('.gz')
+    output_compressed = output_file.endswith('.gz')
+    
+    # Ensure output compression matches input compression
+    if input_compressed != output_compressed:
+        raise ValueError("Input and output compression formats must match.")
+    
+    # Open input file with pysam, which handles both compressed and uncompressed files
+    with pysam.FastxFile(input_file) as f_in:
+        # Open output file with gzip if compressed, else regular text file
+        if input_compressed:
+            f_out = gzip.open(output_file, 'wt')
+        else:
+            f_out = open(output_file, 'w')
+        
+        with f_out:
+            for read in f_in:
+                # Check if read name ends with /1 or /2
+                if not (read.name.endswith('/1') or read.name.endswith('/2')):
+                    if read.comment:
+                        # Determine suffix from comment (e.g., '1:N:0:1' -> '/1')
+                        end_info = read.comment.split(':', 1)[0]
+                        if end_info == '1':
+                            read.name += '/1'
+                        elif end_info == '2':
+                            read.name += '/2'
+                        else:
+                            # If end_info is not '1' or '2', default to '/1'
+                            read.name += '/1'
+                    else:
+                        # If no comment, default to '/1'
+                        read.name += '/1'
+                
+                # Write the modified read to the output file in FASTQ format
+                # Format: @name comment\nsequence\n+\nquality_scores
+                comment_line = f" {read.comment}" if read.comment else ""
+                f_out.write(f"@{read.name}{comment_line}\n{read.sequence}\n+\n{read.quality}\n")
+
+def extract_first_n_reads(input_file: str, output_file: str, n: int) -> None:
+    """
+    Extract the first N reads from a FASTQ file.
+
+    Reads from the input FASTQ file and writes the first N reads to the output file.
+    The compression format of the output matches the input (compressed if input ends with .gz).
+
+    Parameters:
+    input_file (str): Path to the input FASTQ file (can be gzip-compressed if ending with .gz).
+    output_file (str): Path to the output FASTQ file.
+    n (int): Number of reads to extract.
+
+    Returns:
+    None
+    """
+    # Determine if the input file is compressed based on its extension
+    input_compressed = input_file.endswith('.gz')
+    output_compressed = output_file.endswith('.gz')
+    
+    # Ensure output compression matches input compression
+    if input_compressed != output_compressed:
+        raise ValueError("Input and output compression formats must match.")
+    
+    # Open input file with appropriate handler
+    if input_compressed:
+        f_in = gzip.open(input_file, 'rt')
+    else:
+        f_in = open(input_file, 'r')
+    
+    # Open output file with appropriate handler
+    if output_compressed:
+        f_out = gzip.open(output_file, 'wt')
+    else:
+        f_out = open(output_file, 'w')
+    
+    # Counter for number of reads processed
+    read_count = 0
+    
+    with f_in, f_out:
+        while read_count < n:
+            # Read four lines for one complete FASTQ record
+            header = f_in.readline().strip()
+            if not header:  # End of file
+                break
+                
+            sequence = f_in.readline().strip()
+            plus_line = f_in.readline().strip()
+            quality = f_in.readline().strip()
+            
+            # Write the record to output
+            f_out.write(f"{header}\n{sequence}\n{plus_line}\n{quality}\n")
+            
+            read_count += 1
+    
+    print(f"Extracted {read_count} reads to {output_file}")
