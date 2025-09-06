@@ -42,7 +42,7 @@ def mt(
     """
     def decorator(func):
         @wraps(func)
-        def wrapper(input_data: pd.DataFrame, force=False, nproc=None, concat=False, *args, **kwargs):
+        def wrapper(input_data: pd.DataFrame, force=False, nproc=None, concat=False, new_cols=None, *args, **kwargs):
             """
             Parallelized function wrapper with input/output pattern support.
             
@@ -59,6 +59,7 @@ def mt(
                 force (bool): Whether to overwrite existing output files (default: False)
                 nproc (int): Number of parallel processes (default: all CPUs)
                 concat (bool): If True, concatenate Series results into a DataFrame
+                new_cols (list): Column names for pattern-based output files (non-concat mode only)
                 *args: Additional positional arguments passed to the decorated function
                 **kwargs: Additional keyword arguments including input/output patterns
                 
@@ -72,7 +73,7 @@ def mt(
                 
             Returns:
                 If concat=True and results are pandas Series: DataFrame with concatenated results
-                Otherwise: Dictionary of results keyed by DataFrame index
+                Otherwise: DataFrame with pattern-based output paths and execution status
             """
             njobs = nproc or 4
 
@@ -99,19 +100,25 @@ def mt(
                     break
             
             # Extract output_cols next
+            output_cols_list = []
             if "output_cols" in kwargs:
                 output_cols = kwargs.pop("output_cols")
                 if isinstance(output_cols, str):
-                    output_sources.append(("col", [output_cols]))
+                    output_cols_list = [output_cols]
+                    output_sources.append(("col", output_cols_list))
                 else:
-                    output_sources.append(("col", output_cols))
+                    output_cols_list = output_cols
+                    output_sources.append(("col", output_cols_list))
             
             # Extract output_pattern, output_pattern1, output_pattern2...
+            output_patterns = []
             idx_num = 0
             while True:
                 key = "output_pattern" if idx_num == 0 else f"output_pattern{idx_num}"
                 if key in kwargs:
-                    output_sources.append(("pattern", kwargs.pop(key)))
+                    pattern = kwargs.pop(key)
+                    output_patterns.append(pattern)
+                    output_sources.append(("pattern", pattern))
                     idx_num += 1
                 else:
                     break
@@ -119,9 +126,18 @@ def mt(
             # Check if we have any output sources
             if not output_sources and not concat:
                 raise ValueError("Either output patterns/columns must be provided or concat must be True")
+            
+            # For non-concat mode, validate new_cols parameter
+            if not concat and output_patterns:
+                assert isinstance(new_cols, (list, type(None))), "new_cols must be a list or None"
+                if new_cols is None:
+                    raise ValueError("new_cols must be provided when using output patterns in non-concat mode")
+                if len(new_cols) != len(output_patterns):
+                    raise ValueError(f"new_cols length ({len(new_cols)}) must match number of output patterns ({len(output_patterns)})")
 
-            # Store results
-            results = {}
+            # Store task information and results
+            tasks_info = {}  # Will store task info by index
+            execution_results = {}  # Will store execution results by index
 
             # Generate tasks with row indices
             tasks = []
@@ -139,19 +155,32 @@ def mt(
 
                 # Resolve all output paths in order
                 resolved_outputs = []
+                pattern_outputs = []  # Store only pattern-based outputs
                 for source_type, source_value in output_sources:
                     if source_type == "col":
                         for col in source_value:
                             resolved_outputs.append(row[col])
                     else:  # pattern
-                        resolved_outputs.append(str(source_value).format(sample_name=sample_name))
+                        output_path = str(source_value).format(sample_name=sample_name)
+                        resolved_outputs.append(output_path)
+                        pattern_outputs.append(output_path)
 
                 # Skip check - if any output exists and force=False, skip
+                skip_task = False
                 if resolved_outputs and not force:
                     if all(os.path.exists(op) for op in resolved_outputs):
-                        continue
+                        skip_task = True
 
-                tasks.append((idx, resolved_inputs, resolved_outputs))
+                # Store task information
+                tasks_info[idx] = {
+                    'resolved_inputs': resolved_inputs,
+                    'resolved_outputs': resolved_outputs,
+                    'pattern_outputs': pattern_outputs,
+                    'skip_task': skip_task
+                }
+                
+                if not skip_task:
+                    tasks.append((idx, resolved_inputs, resolved_outputs))
             
             # Create directories for all output paths
             for _, _, resolved_outputs in tasks:
@@ -178,29 +207,81 @@ def mt(
                 # Track progress and collect results
                 with tqdm(total=len(futures), desc="Processing") as pbar:
                     for future in concurrent.futures.as_completed(futures):
+                        idx = futures[future]
                         try:
                             result = future.result()
-                            results[futures[future]] = result
+                            execution_results[idx] = {
+                                'success': True,
+                                'result': result,
+                                'error': None
+                            }
                         except Exception as e:
                             error_message = f"[ERROR] Task failed: {e}\n{traceback.format_exc()}"
                             print(error_message)
+                            execution_results[idx] = {
+                                'success': False,
+                                'result': None,
+                                'error': str(e)
+                            }
                         finally:
                             pbar.update(1)
 
+            # For skipped tasks, mark as success but don't store result
+            for idx, info in tasks_info.items():
+                if info['skip_task'] and idx not in execution_results:
+                    execution_results[idx] = {
+                        'success': True,
+                        'result': None,
+                        'error': None
+                    }
+
             # Concatenate results if required
-            if concat and results:
-                if all(isinstance(r, pd.Series) for r in results.values()):
-                    results_df = pd.concat(results, axis=1).T
+            if concat and execution_results:
+                if all(isinstance(execution_results[idx]['result'], pd.Series) for idx in execution_results):
+                    results_df = pd.concat([execution_results[idx]['result'] for idx in execution_results], axis=1).T
+                    results_df.index = list(execution_results.keys())
                     return results_df
                 else:
                     raise ValueError("All results must be pandas Series when concat=True")
+            
+            # For non-concat mode, create a DataFrame with pattern-based outputs
+            if not concat:
+                # Create result DataFrame with the same index as input_data
+                result_df = pd.DataFrame(index=input_data.index)
+                
+                # Add pattern-based output columns
+                if new_cols and output_patterns:
+                    for col_name in new_cols:
+                        result_df[col_name] = pd.NA
+                
+                # Check output files and populate result DataFrame
+                for idx, info in tasks_info.items():
+                    exec_result = execution_results.get(idx, {'success': False, 'result': None, 'error': 'Not executed'})
+                    
+                    # Check if all pattern outputs were created
+                    outputs_created = True
+                    if exec_result['success']:
+                        for output_path in info['pattern_outputs']:
+                            if not os.path.exists(output_path):
+                                outputs_created = False
+                                break
+                    
+                    # Populate result DataFrame
+                    if outputs_created and exec_result['success']:
+                        for i, col_name in enumerate(new_cols):
+                            if i < len(info['pattern_outputs']):
+                                result_df.at[idx, col_name] = info['pattern_outputs'][i]
+                    else:
+                        # Mark all outputs as NA if any check fails
+                        for col_name in new_cols:
+                            result_df.at[idx, col_name] = pd.NA
+                
+                return result_df
 
-            return results
+            return execution_results
 
         return wrapper
     return decorator
-
-
 # # In your decorator:
 # futures.append(executor.submit(task_wrapper, 
 #                                "my_functions", 
