@@ -42,14 +42,15 @@ def mt(
     """
     def decorator(func):
         @wraps(func)
-        def wrapper(input_data: pd.DataFrame, force=False, nproc=None, outcol=None, concat=False, *args, **kwargs):
+        def wrapper(input_data: pd.DataFrame, force=False, nproc=None, concat=False, *args, **kwargs):
             """
             Parallelized function wrapper with input/output pattern support.
             
             The function uses a pattern-based system for input and output file handling:
-            - Input patterns: input_pattern, input_pattern1, input_pattern2, etc.
-            - Output patterns: output_pattern, output_pattern1, output_pattern2, etc.
+            - Input sources: input_cols, input_pattern, input_pattern1, input_pattern2, etc.
+            - Output sources: output_cols, output_pattern, output_pattern1, output_pattern2, etc.
             
+            Parameters are processed in order: input_cols first, then input_patterns.
             Patterns are formatted using {sample_name} placeholder which is replaced with
             the DataFrame index value for each row.
             
@@ -57,17 +58,17 @@ def mt(
                 input_data (pd.DataFrame): Input DataFrame containing data to process
                 force (bool): Whether to overwrite existing output files (default: False)
                 nproc (int): Number of parallel processes (default: all CPUs)
-                outcol (str): Column name to store output file paths in the input DataFrame
                 concat (bool): If True, concatenate Series results into a DataFrame
                 *args: Additional positional arguments passed to the decorated function
                 **kwargs: Additional keyword arguments including input/output patterns
                 
             Pattern Parameters (passed as kwargs):
+                input_cols: Column name(s) containing input paths (single or list)
+                output_cols: Column name(s) containing output paths (single or list)
                 input_pattern: Template for input file paths
                 input_pattern1, input_pattern2, ...: Additional input patterns
                 output_pattern: Template for output file paths  
                 output_pattern1, output_pattern2, ...: Additional output patterns
-                input_col: Column name containing input paths (default: "input_path")
                 
             Returns:
                 If concat=True and results are pandas Series: DataFrame with concatenated results
@@ -75,42 +76,51 @@ def mt(
             """
             njobs = nproc or 4
 
-            # Extract main input/output patterns
-            input_patterns = []
-            output_patterns = []
-
+            # Extract input and output parameters in order
+            input_sources = []
+            output_sources = []
+            
+            # Extract input_cols first
+            if "input_cols" in kwargs:
+                input_cols = kwargs.pop("input_cols")
+                if isinstance(input_cols, str):
+                    input_sources.append(("col", [input_cols]))
+                else:
+                    input_sources.append(("col", input_cols))
+            
             # Extract input_pattern, input_pattern1, input_pattern2...
             idx_num = 0
             while True:
                 key = "input_pattern" if idx_num == 0 else f"input_pattern{idx_num}"
                 if key in kwargs:
-                    input_patterns.append(kwargs.pop(key))
+                    input_sources.append(("pattern", kwargs.pop(key)))
                     idx_num += 1
                 else:
                     break
-
+            
+            # Extract output_cols next
+            if "output_cols" in kwargs:
+                output_cols = kwargs.pop("output_cols")
+                if isinstance(output_cols, str):
+                    output_sources.append(("col", [output_cols]))
+                else:
+                    output_sources.append(("col", output_cols))
+            
             # Extract output_pattern, output_pattern1, output_pattern2...
             idx_num = 0
             while True:
                 key = "output_pattern" if idx_num == 0 else f"output_pattern{idx_num}"
-                # print(key, key in kwargs)
                 if key in kwargs:
-                    output_patterns.append(kwargs.pop(key))
+                    output_sources.append(("pattern", kwargs.pop(key)))
                     idx_num += 1
                 else:
                     break
-            # print(kwargs)
-            # input_col check — only one allowed
-            input_col = kwargs.pop("input_col", "input_path")
-            if isinstance(input_col, (list, tuple)):
-                raise ValueError("Only one input_col is allowed.")
 
-            # check output
-            if not output_patterns and outcol is None:
-                assert concat, "If no output_pattern and outcol are provided, concat must be True"
+            # Check if we have any output sources
+            if not output_sources and not concat:
+                raise ValueError("Either output patterns/columns must be provided or concat must be True")
 
-            # Store output paths and results
-            output_paths = {}
+            # Store results
             results = {}
 
             # Generate tasks with row indices
@@ -118,30 +128,32 @@ def mt(
             for idx, row in input_data.iterrows():
                 sample_name = idx  # Assuming the index is the sample identifier
 
-                # Resolve all input paths
+                # Resolve all input paths in order
                 resolved_inputs = []
-                if input_patterns:
-                    for pat in input_patterns:
-                        resolved_inputs.append(str(pat).format(sample_name=sample_name))
-                else:
-                    resolved_inputs.append(row[input_col])
+                for source_type, source_value in input_sources:
+                    if source_type == "col":
+                        for col in source_value:
+                            resolved_inputs.append(row[col])
+                    else:  # pattern
+                        resolved_inputs.append(str(source_value).format(sample_name=sample_name))
 
-                # Resolve all output paths
+                # Resolve all output paths in order
                 resolved_outputs = []
-                if output_patterns:
-                    for pat in output_patterns:
-                        resolved_outputs.append(str(pat).format(sample_name=sample_name))
-                else:
-                    # resolved_outputs.append(None)
-                    pass
+                for source_type, source_value in output_sources:
+                    if source_type == "col":
+                        for col in source_value:
+                            resolved_outputs.append(row[col])
+                    else:  # pattern
+                        resolved_outputs.append(str(source_value).format(sample_name=sample_name))
 
-                # Skip check — if *any* output exists and force=False, skip
-                if any(resolved_outputs) and not force:
-                    if all(op is None or os.path.exists(op) for op in resolved_outputs):
+                # Skip check - if any output exists and force=False, skip
+                if resolved_outputs and not force:
+                    if all(os.path.exists(op) for op in resolved_outputs):
                         continue
 
                 tasks.append((idx, resolved_inputs, resolved_outputs))
-            # create directories for all output paths
+            
+            # Create directories for all output paths
             for _, _, resolved_outputs in tasks:
                 for op in resolved_outputs:
                     if op:
@@ -174,12 +186,6 @@ def mt(
                             print(error_message)
                         finally:
                             pbar.update(1)
-
-            # Map first output path back to DataFrame (outcol mechanism unchanged)
-            if outcol:
-                input_data[outcol] = pd.NA
-                for idx, _, resolved_outputs in tasks:
-                    input_data.at[idx, outcol] = resolved_outputs[0] if resolved_outputs else None
 
             # Concatenate results if required
             if concat and results:
