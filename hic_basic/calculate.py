@@ -276,7 +276,9 @@ def mt(
                         for col_name in new_cols:
                             result_df.at[idx, col_name] = pd.NA
                 
-                return result_df
+                # Append result_df to input_data
+                input_data_with_results = pd.concat([input_data, result_df], axis=1, join='outer')
+                return input_data_with_results
 
             return execution_results
 

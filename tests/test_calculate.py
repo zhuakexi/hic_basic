@@ -462,7 +462,7 @@ class TestMtDecorator(unittest.TestCase):
         self.assertIsInstance(result, pd.DataFrame)
         self.assertEqual(len(result), len(self.test_data))
         self.assertIn("pattern_output", result.columns)
-        self.assertEqual(len(result.columns), 1)  # Only pattern outputs, not column outputs
+        self.assertEqual(len(result.columns), self.test_data.shape[1] + 1)  # Only pattern outputs, not column outputs
         
         # Check that pattern-based output column contains correct paths
         for sample_name in self.test_data.index:
