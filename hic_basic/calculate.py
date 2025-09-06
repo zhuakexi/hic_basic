@@ -8,6 +8,18 @@ from tqdm import tqdm
 import pandas as pd
 
 def task_wrapper(module_name, func_name, *args, **kwargs):
+    """
+    Wrapper function to import and execute a function from a module.
+    
+    Parameters:
+        module_name (str): Name of the module to import from
+        func_name (str): Name of the function to execute
+        *args: Positional arguments to pass to the function
+        **kwargs: Keyword arguments to pass to the function
+        
+    Returns:
+        Result of the executed function
+    """
     module = importlib.import_module(module_name)
     func = getattr(module, func_name)
     #print(f"Executing {func_name} with args: {args}")
@@ -17,18 +29,50 @@ def mt(
     module_name: str
 ):
     """
-    A decorator to parallelize functions with file skipping, path templating,
-    progress bars, and result handling.
+    A decorator factory to create parallelized function decorators.
 
-    Parameters:
-        force (bool): Whether to overwrite existing output files.
-        nproc (int): Number of parallel processes (default: all CPUs).
-        outcol (str): Column name to store output file paths in the input DataFrame.
-        concat (bool): If True, concatenate Series results into a DataFrame.
+    This factory returns a decorator that parallelizes the function it decorates,
+    providing features like file skipping, path templating, progress bars, and result handling.
+
+    Args:
+        module_name (str): The name of the module where the function to be decorated is located.
+
+    Returns:
+        A decorator function that can be applied to a function.
     """
     def decorator(func):
         @wraps(func)
         def wrapper(input_data: pd.DataFrame, force=False, nproc=None, outcol=None, concat=False, *args, **kwargs):
+            """
+            Parallelized function wrapper with input/output pattern support.
+            
+            The function uses a pattern-based system for input and output file handling:
+            - Input patterns: input_pattern, input_pattern1, input_pattern2, etc.
+            - Output patterns: output_pattern, output_pattern1, output_pattern2, etc.
+            
+            Patterns are formatted using {sample_name} placeholder which is replaced with
+            the DataFrame index value for each row.
+            
+            Parameters:
+                input_data (pd.DataFrame): Input DataFrame containing data to process
+                force (bool): Whether to overwrite existing output files (default: False)
+                nproc (int): Number of parallel processes (default: all CPUs)
+                outcol (str): Column name to store output file paths in the input DataFrame
+                concat (bool): If True, concatenate Series results into a DataFrame
+                *args: Additional positional arguments passed to the decorated function
+                **kwargs: Additional keyword arguments including input/output patterns
+                
+            Pattern Parameters (passed as kwargs):
+                input_pattern: Template for input file paths
+                input_pattern1, input_pattern2, ...: Additional input patterns
+                output_pattern: Template for output file paths  
+                output_pattern1, output_pattern2, ...: Additional output patterns
+                input_col: Column name containing input paths (default: "input_path")
+                
+            Returns:
+                If concat=True and results are pandas Series: DataFrame with concatenated results
+                Otherwise: Dictionary of results keyed by DataFrame index
+            """
             njobs = nproc or 4
 
             # Extract main input/output patterns
