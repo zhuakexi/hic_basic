@@ -1,3 +1,4 @@
+from itertools import product
 from math import ceil
 
 import bioframe
@@ -17,7 +18,7 @@ from skimage import exposure
 #import cooltools.lib.plotting
 
 from .general import template
-from .utils import filling_l2r_mpl, pcolormesh_45deg, tiling_mat, sub_genome_mat
+from .utils import filling_l2r_mpl, filling_l2r_plotly, pcolormesh_45deg, tiling_mat, sub_genome_mat
 from ..compartment import compartments
 from ..coolstuff import cool2mat
 
@@ -251,39 +252,89 @@ def plot_cool(coolp, title="", region="chr1", vmax=100, balance=False, ignore_di
         **kwargs
     )
 
-def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
+# def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
+#     """
+#     Plot heatmap of multiple cooler files.
+#     Input:
+#         cools: list of cooler file paths.
+#         region: genome region to plot.
+#         titles: title of each subplot(each sample).
+#         ncols: subplot cols.
+#         vmax: max z value.
+#     """
+#     norm = LogNorm(vmin=1, vmax=vmax)
+#     nrows = ceil(len(cools)/ncols)
+#     f, axs = plt.subplots(
+#         figsize=(height, width),
+#         nrows = nrows,
+#         ncols = ncols,
+#         sharex = True, sharey = True
+#     )
+#     for i, j, k, cool in filling_l2r_mpl(nrows, ncols, cools):
+#         if cool is not None:
+#             ax = axs[i,j]
+#             ax.set_title(
+#                 titles[k])
+#             im = ax.matshow(
+#                 cooler.Cooler(cool).matrix(balance=False).fetch(region),
+#                 norm=norm,
+#                 cmap = "fall"
+#             )
+#         else:
+#             ax = axs[i, j]
+#             ax.set_visible(False)
+#     plt.tight_layout()
+#     return plt
+def plot_cools(cools, regions, ncols=3, subplot_titles=None, sub_height=100, sub_width=100, margin=None, **kwargs):
     """
-    Plot heatmap of multiple cooler files.
+    Plot multiple regions in multiple cooler files.
+    Iterate over regions first, then coolers. Will skip if either is None.
     Input:
         cools: list of cooler file paths.
-        region: genome region to plot.
-        titles: title of each subplot(each sample).
+        regions: list of genome regions to plot.
         ncols: subplot cols.
-        vmax: max z value.
+        sub_height: height of each subplot.
+        sub_width: width of each subplot.
+        margin: dict; margin of the whole figure, keys: l, r, t, b.
+            If None, use default value.
+        kwargs: kwargs for _plot_mat.
     """
-    norm = LogNorm(vmin=1, vmax=vmax)
-    nrows = ceil(len(cools)/ncols)
-    f, axs = plt.subplots(
-        figsize=(height, width),
-        nrows = nrows,
-        ncols = ncols,
-        sharex = True, sharey = True
+    if margin is None:
+        margin = dict(l=10, r=10, t=30, b=10)
+    nrows = ceil(len(cools) * len(regions) / ncols)
+    fig = make_subplots(
+        rows=nrows,
+        cols=ncols,
+        horizontal_spacing=0.01,
+        vertical_spacing=0.01,
+        subplot_titles = subplot_titles
     )
-    for i, j, k, cool in filling_l2r_mpl(nrows, ncols, cools):
-        if cool is not None:
-            ax = axs[i,j]
-            ax.set_title(
-                titles[k])
-            im = ax.matshow(
-                cooler.Cooler(cool).matrix(balance=False).fetch(region),
-                norm=norm,
-                cmap = "fall"
-            )
+    for row, col, i, feature in filling_l2r_plotly(nrows, ncols, product(regions, cools)):
+        if feature is not None:
+            region, cool = feature
         else:
-            ax = axs[i, j]
-            ax.set_visible(False)
-    plt.tight_layout()
-    return plt
+            continue
+        if (region is not None) and (cool is not None):
+            sub_fig = plot_cool(
+                cool,
+                region = region,
+                **kwargs
+            )
+            for trace in sub_fig.data:
+                fig.add_trace(
+                    trace,
+                    row = row,
+                    col = col
+                )
+        else:
+            continue
+    fig.update_layout(
+        margin = margin,
+        height = sub_height * nrows + margin["t"] + margin["b"],
+        width = sub_width * ncols + margin["l"] + margin["r"],
+    )
+    return fig
+
 def merge_track_data(clr, track_file, region):
     """
     Pick out the track data that is in the region.
