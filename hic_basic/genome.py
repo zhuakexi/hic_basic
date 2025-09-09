@@ -3,6 +3,10 @@ import re
 import pandas as pd
 from hires_utils import chrom_rm_suffix
 
+
+### --- functions about 1D genome --- ###
+
+
 def parse_ucsc_region(region_str):
     """
     Parses a UCSC-style region string and returns a tuple of (chromosome, start, end).
@@ -49,7 +53,7 @@ def parse_ucsc_region(region_str):
 class Region:
     """
     A class to represent a genomic region, will store a standard inner representation:
-        [(chrom,pos), (chrom,pos)]
+        [(chrom1,pos1), (chrom2,pos2)] no matter whether chrom1 == chrom2
     Relief burden on region-related argument parsing.
     """
     def __init__(self, region_arg, genome=None, binsize=None):
@@ -144,6 +148,12 @@ class Region:
         all_bins = GenomeIdeograph(self.genome).bins(binsize, bed=True, order=True)
         all_bins = all_bins.set_index(["chrom", "start"]).sort_index()
         return all_bins.loc[self.r[0]:self.r[1]].index.tolist()
+
+
+### --- functions about 2D genome --- ###
+
+
+
 class RegionPair:
     """
     A class to represent a pair of genomic regions, will store a standard inner representation:
@@ -167,6 +177,7 @@ class RegionPair:
         self.genome = genome
         self.binsize = binsize
         self.region_pair = self._parse_region_pair(region_pair_arg)
+        self.r = [r.r for r in self.region_pair]
     def _parse_region_pair(self, region_pair_arg):
         """
         Parse region pair argument to standard inner representation.
