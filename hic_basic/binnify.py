@@ -24,82 +24,181 @@ class GenomeIdeograph:
             self.chromosomes = chromosomes
         else:
             raise ValueError("chromosomes must be a Chromosomes instance, a file path, or a DataFrame with 'length' column")
-    def breaks(self, binsize:int, flavor="hickit"):
+    
+    def breaks(self, binsize: int, flavor="hickit", within_chromosome=True):
         """
         Get binned reference(int version)
         Input:
             binsize: int
-            flavor: str, "hickit", "bedtools" or "cooler_compat"
+            flavor: str, "hickit", "bedtools", "cooler_compat", "default", or "nearest_boundary"
+            within_chromosome: bool, if True, each bin is confined within a chromosome;
+                if False, bins can span multiple chromosomes with boundary handling specified by flavor
         Return:
-           breaks of bins(dict of list)
+            If within_chromosome=True: breaks of bins(dict of list)
+            If within_chromosome=False: list of regions, each as [(start_chrom, start_pos), (end_chrom, end_pos)]
         Note:
             For hickit-flavored binning, the size of the last bin 
             >= 0.5 * binsize and < 1.5 * binsize. For bedtools-flavored binning, 
             the size of the last bin > 0 and <= binsize.
             For cooler_compat-flavored binning, the size of the last bin
             > binsize is trimmed to binsize.
+            When within_chromosome is False, flavor can be:
+                - "default": no boundary attachment
+                - "nearest_boundary": snap to nearest chromosome boundary
         """
-        assert flavor in ["hickit","bedtools","cooler_compat"], "flavor should be hickit or bedtools"
+        valid_flavors = ["hickit", "bedtools", "cooler_compat", "default", "nearest_boundary"]
+        assert flavor in valid_flavors, f"flavor should be one of {valid_flavors}"
+        
+        if not within_chromosome and flavor not in ["default", "nearest_boundary"]:
+            raise ValueError("When within_chromosome=False, flavor must be 'default' or 'nearest_boundary'")
+        
         binsize = int(binsize)
-        data = self.chromosomes.iloc[:,0].to_dict()
-        all_breaks = {}
-        for chrom in data:
-            length = data[chrom]
-            breaks = list(range(0, length, binsize))
-            if flavor in ["hickit","cooler_compat"]:
-                if length - breaks[-1] < 0.5 * binsize:
-                    breaks.pop()
-                if len(breaks) == 0: # in case length < 0.5 * binsize
-                    breaks = [0]
-            if flavor != "cooler_compat":
-                breaks.append(length) # don't forget the rightmost point
-            else:
-                if length - breaks[-1] > binsize:
-                    breaks.append(breaks[-1] + binsize)
+        data = self.chromosomes.iloc[:, 0].to_dict()
+        
+        if within_chromosome:
+            # Original within-chromosome binning logic
+            all_breaks = {}
+            for chrom in data:
+                length = data[chrom]
+                breaks = list(range(0, length, binsize))
+                
+                if flavor in ["hickit", "cooler_compat"]:
+                    if breaks and length - breaks[-1] < 0.5 * binsize:
+                        breaks.pop()
+                    if len(breaks) == 0:  # in case length < 0.5 * binsize
+                        breaks = [0]
+                
+                if flavor != "cooler_compat":
+                    breaks.append(length)  # don't forget the rightmost point
                 else:
-                    breaks.append(length)
-            all_breaks[chrom] = breaks
-        return all_breaks
-    def bins(self, binsize:int, bed=False, order=False, flavor="hickit"):
+                    if breaks and length - breaks[-1] > binsize:
+                        breaks.append(breaks[-1] + binsize)
+                    else:
+                        breaks.append(length)
+                
+                all_breaks[chrom] = breaks
+            return all_breaks
+        else:
+            # Cross-chromosome binning logic
+            # First create global bins across all chromosomes
+            total_length = sum(data.values())
+            global_breaks = list(range(0, total_length, binsize))
+            global_breaks.append(total_length)  # Ensure we cover the entire genome
+            
+            # Calculate chromosome offsets
+            chrom_offsets = {}
+            current_offset = 0
+            for chrom in data:
+                chrom_offsets[chrom] = current_offset
+                current_offset += data[chrom]
+            
+            # Create a mapping from offset to chromosome
+            offset_to_chrom = {}
+            for chrom, offset in chrom_offsets.items():
+                offset_to_chrom[offset] = chrom
+            
+            # Convert global breaks to chromosome coordinates
+            regions = []
+            for i in range(len(global_breaks) - 1):
+                start_global = global_breaks[i]
+                end_global = global_breaks[i + 1]
+                
+                # Find start chromosome and position
+                start_chrom = None
+                start_pos = None
+                for chrom, offset in sorted(chrom_offsets.items(), key=lambda x: x[1]):
+                    if offset <= start_global < offset + data[chrom]:
+                        start_chrom = chrom
+                        start_pos = start_global - offset
+                        break
+                
+                # Find end chromosome and position
+                end_chrom = None
+                end_pos = None
+                for chrom, offset in sorted(chrom_offsets.items(), key=lambda x: x[1]):
+                    if offset <= end_global < offset + data[chrom]:
+                        end_chrom = chrom
+                        end_pos = end_global - offset
+                        break
+                
+                # If end_global is exactly at the end of a chromosome
+                if end_chrom is None:
+                    for chrom, offset in sorted(chrom_offsets.items(), key=lambda x: x[1]):
+                        if end_global == offset + data[chrom]:
+                            end_chrom = chrom
+                            end_pos = data[chrom]
+                            break
+                
+                # Handle boundary snapping if requested
+                if flavor == "nearest_boundary":
+                    # For start position, check if it's close to a boundary
+                    if start_pos > 0 and start_pos < binsize / 2:
+                        start_pos = 0
+                    
+                    # For end position, check if it's close to a boundary
+                    if end_pos < data[end_chrom] and (data[end_chrom] - end_pos) < binsize / 2:
+                        end_pos = data[end_chrom]
+                
+                regions.append([(start_chrom, start_pos), (end_chrom, end_pos)])
+            
+            return regions
+    
+    def bins(self, binsize: int, bed=False, order=False, flavor="hickit", within_chromosome=True):
         """
-        Get binned reference(IntervalIdex version)
+        Get binned reference(IntervalIndex version)
         Input:
             binsize: int
             bed: bool, if True, return bed format
+            order: bool, if True, sort by chromosome and start position
+            flavor: str, binning flavor
+            within_chromosome: bool, if True, bins are confined within chromosomes;
+                if False, bins can span multiple chromosomes
         Output:
-           intervals of each bin(
-                dict of IntervalIndex)        
+            If within_chromosome=True: intervals of each bin(dict of IntervalIndex)
+            If within_chromosome=False: list of regions, each as [(start_chrom, start_pos), (end_chrom, end_pos)]
         """
         if order:
             assert bed, "order only works with bed"
+        
         binsize = int(binsize)
-        breaks = self.breaks(binsize, flavor=flavor)
-        bins = {chrom : pd.IntervalIndex.from_breaks(
-                breaks[chrom], closed="left",
-                name=chrom,dtype='interval[int64]')
-                for chrom in breaks}
-        if bed:
-            bins = [
-                pd.DataFrame(
-                    {
-                        "chrom" : chrom,
-                        "start" : bins[chrom].left,
-                        "end" : bins[chrom].right
-                    }
+        breaks = self.breaks(binsize, flavor=flavor, within_chromosome=within_chromosome)
+        
+        if within_chromosome:
+            bins = {
+                chrom: pd.IntervalIndex.from_breaks(
+                    breaks[chrom], closed="left",
+                    name=chrom, dtype='interval[int64]'
                 )
-                for chrom in bins
-            ]
-            bins = pd.concat(bins)
-            bins = bins.reset_index(drop=True)
-        if order:
-            bins["chrom"] = pd.Categorical(
-                bins["chrom"],
-                categories=self.chromosomes_order.index,
-                ordered=True
-            )
-            bins = bins.sort_values(["chrom","start"])
-            bins = bins.reset_index(drop=True)
-        return bins
+                for chrom in breaks
+            }
+            
+            if bed:
+                bins_list = [
+                    pd.DataFrame({
+                        "chrom": chrom,
+                        "start": bins[chrom].left,
+                        "end": bins[chrom].right
+                    })
+                    for chrom in bins
+                ]
+                bins_df = pd.concat(bins_list)
+                bins_df = bins_df.reset_index(drop=True)
+                
+                if order:
+                    bins_df["chrom"] = pd.Categorical(
+                        bins_df["chrom"],
+                        categories=self.chromosomes.index,
+                        ordered=True
+                    )
+                    bins_df = bins_df.sort_values(["chrom", "start"])
+                    bins_df = bins_df.reset_index(drop=True)
+                
+                return bins_df
+            
+            return bins
+        else:
+            # For cross-chromosome bins, return the list of regions directly
+            return breaks
     def append_bins(self, pairs:pd.DataFrame, binsize:int, flavor:str="hickit"):
         """
         Append bins to pairs dataframe.
