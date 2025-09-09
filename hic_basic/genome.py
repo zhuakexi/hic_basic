@@ -149,6 +149,42 @@ class Region:
         all_bins = all_bins.set_index(["chrom", "start"]).sort_index()
         return all_bins.loc[self.r[0]:self.r[1]].index.tolist()
 
+    def __eq__(self, other):
+        """Check if two regions have the same genomic coordinates."""
+        if not isinstance(other, Region):
+            return NotImplemented
+        return self.r == other.r
+
+    def __contains__(self, other):
+        """Check if a point or region is contained within this region."""
+        if isinstance(other, tuple) and len(other) == 2:
+            # Point containment: (chrom, pos)
+            chrom, pos = other
+            # Single chromosome region
+            if self.r[0][0] == self.r[1][0]:
+                return chrom == self.r[0][0] and self.r[0][1] <= pos <= self.r[1][1]
+            # Multi-chromosome region
+            if self.genome is None:
+                raise ValueError("Multi-chromosome containment requires genome reference")
+            from .data import chromosomes
+            chrom_df = chromosomes(self.genome)
+            chrom_order = chrom_df.index.tolist()
+            start_idx = chrom_order.index(self.r[0][0])
+            end_idx = chrom_order.index(self.r[1][0])
+            target_idx = chrom_order.index(chrom)
+            if not (start_idx <= target_idx <= end_idx):
+                return False
+            if target_idx == start_idx:
+                return pos >= self.r[0][1]
+            if target_idx == end_idx:
+                return pos <= self.r[1][1]
+            return True
+        elif isinstance(other, Region):
+            # Region containment
+            # Check if both endpoints of 'other' are contained in self
+            return other.r[0] in self and other.r[1] in self
+        return NotImplemented
+
 
 ### --- functions about 2D genome --- ###
 
