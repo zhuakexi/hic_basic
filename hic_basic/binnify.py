@@ -5,26 +5,25 @@ import pandas as pd, numpy as np
 #import datashader.transfer_functions as tf
 #import pickle as pkl
 #import xarray as xr
-from .data import chromosomes
+from .feature import Chromosomes
 
 class GenomeIdeograph:
-    def __init__(self, ref):
+    def __init__(self, chromosomes):
         """
         ref: reference_abbrevations(file stored in module) 
             or lengths file_path(csv format:: chrom, lengths)
         """
-        self.chromosomes = chromosomes(ref)
-        self.chromosomes_order = chromosomes(ref, order=True)
-        # transform to ordered categorical
-        # not easy to use in normal tasks, but useful in binned data
-        chroms = self.chromosomes.index.to_list()
-        self.chromosomes.reset_index(inplace=True)
-        self.chromosomes["chrom"] = pd.Categorical(
-            self.chromosomes["chrom"],
-            categories=chroms,
-            ordered=True
-        )
-        self.chromosomes.set_index("chrom", inplace=True)
+        if isinstance(chromosomes, Chromosomes):
+            self.chromosomes = chromosomes.data
+        elif isinstance(chromosomes, str) or isinstance(chromosomes, Path):
+            # File path provided, use Chromosomes class to load
+            self.chromosomes = Chromosomes().load(chromosomes)
+        elif isinstance(chromosomes, pd.DataFrame):
+            assert "length" in chromosomes.columns, "DataFrame must contain 'length' column"
+            assert isinstance(chromosomes.index, pd.CategoricalIndex), "DataFrame index must be a CategoricalIndex"
+            self.chromosomes = chromosomes
+        else:
+            raise ValueError("chromosomes must be a Chromosomes instance, a file path, or a DataFrame with 'length' column")
     def breaks(self, binsize:int, flavor="hickit"):
         """
         Get binned reference(int version)
@@ -50,6 +49,8 @@ class GenomeIdeograph:
             if flavor in ["hickit","cooler_compat"]:
                 if length - breaks[-1] < 0.5 * binsize:
                     breaks.pop()
+                if len(breaks) == 0: # in case length < 0.5 * binsize
+                    breaks = [0]
             if flavor != "cooler_compat":
                 breaks.append(length) # don't forget the rightmost point
             else:
