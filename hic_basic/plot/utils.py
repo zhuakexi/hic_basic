@@ -66,10 +66,10 @@ def clip_axis_range(
             y_vals_lower.append(min(_trace["y"]))
             y_vals_upper.append(max(_trace["y"]))
 
-    x_vals_lower = min(x_vals_lower)
-    x_vals_upper = max(x_vals_upper)
-    y_vals_lower = min(y_vals_lower)
-    y_vals_upper = max(y_vals_upper)
+    x_vals_lower = min(x_vals_lower) if len(x_vals_lower) > 0 else None
+    x_vals_upper = max(x_vals_upper) if len(x_vals_upper) > 0 else None
+    y_vals_lower = min(y_vals_lower) if len(y_vals_lower) > 0 else None
+    y_vals_upper = max(y_vals_upper) if len(y_vals_upper) > 0 else None
 
     if main_fig is None:
         fig = fig.update_xaxes(
