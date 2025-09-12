@@ -2,7 +2,7 @@ import os
 import unittest
 from pathlib import Path
 
-from hic_basic.feature import TSS, CpG
+from hic_basic.feature import TSS, CpG, Chromosomes
 class TestGenomeFeatures(unittest.TestCase):
     """
     Test the genome feature functions.
@@ -72,5 +72,25 @@ class TestSequenceFeatures(unittest.TestCase):
         )
         cpg.load()
         print(cpg.fn)
+class TestChromosomes(unittest.TestCase):
+    """
+    Test the Chromosomes class.
+    """
+    def setUp(self):
+        self.genome = "GRCh38"
+        self.chrom_sizes_path = "/share/Data/ychi/genome/GRCh38/GRCh38.chr.len"
+        self.out_dir = Path(__file__).parent / "output" / "data"
+        if not self.out_dir.exists():
+            self.out_dir.mkdir(parents=True)
+    def test_Chromosomes_compile(self):
+        chroms = Chromosomes(
+            self.genome,
+            db_dir=self.out_dir
+        )
+        chroms.compile(
+            self.chrom_sizes_path
+        )
+        chroms.load()
+        print(chroms.fn)
 if __name__ == "__main__":
     unittest.main()
