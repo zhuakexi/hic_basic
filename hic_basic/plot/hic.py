@@ -18,7 +18,7 @@ from skimage import exposure
 #import cooltools.lib.plotting
 
 from .general import template
-from .utils import filling_l2r_mpl, filling_l2r_plotly, pcolormesh_45deg, tiling_mat, sub_genome_mat
+from .utils import filling_l2r_mpl, filling_l2r_plotly, pcolormesh_45deg, tiling_mat, sub_genome_mat, clip_axis_range
 from ..compartment import compartments
 from ..coolstuff import cool2mat
 
@@ -203,29 +203,34 @@ def plot_CM(cm, grid=True, **kwargs):
     fig = _plot_mat(cm, **kwargs)
     if grid:
         assert isinstance(cm.index, pd.MultiIndex), "index must be MultiIndex (level 0: chrom, level 1: pos) to add chrom boundaries"
-        for i in _get_switches(cm.index.get_level_values(0).values):
-            fig.add_shape(
-                type="line",
-                x0=i,
-                x1=i,
-                y0=0,
-                y1=cm.shape[0],
-                line=dict(
-                    color="black",
-                    width=1
-                )
-            )
-            fig.add_shape(
-                type="line",
-                x0=0,
-                x1=cm.shape[0],
-                y0=i,
-                y1=i,
-                line=dict(
-                    color="black",
-                    width=1
-                )
-            )
+        switches = _get_switches(cm.index.get_level_values(0).values)
+        
+        # Add vertical lines
+        for i in switches:
+            fig.add_trace(go.Scatter(
+                x=[i, i],
+                y=[0, cm.shape[0]],
+                mode='lines',
+                line=dict(color='black', width=1),
+                showlegend=False,
+                hoverinfo='skip'
+            ))
+        
+        # Add horizontal lines
+        for i in switches:
+            fig.add_trace(go.Scatter(
+                x=[0, cm.shape[0]],
+                y=[i, i],
+                mode='lines',
+                line=dict(color='black', width=1),
+                showlegend=False,
+                hoverinfo='skip'
+            ))
+    fig = clip_axis_range(
+        fig,
+        x_lower=True, x_upper=True,
+        y_lower=True, y_upper=True
+        )
     return fig
 def plot_cool(coolp, title="", region="chr1", vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False, **kwargs):
     """"
@@ -326,6 +331,22 @@ def plot_cools(cools, regions, ncols=3, subplot_titles=None, sub_height=100, sub
                     row = row,
                     col = col
                 )
+                # copy axis settings to the subplot
+            for axis in sub_fig.layout:
+                if axis.startswith("xaxis"):
+                    axis_dict = sub_fig.layout[axis].to_plotly_json()
+                    fig.update_xaxes(
+                        axis_dict,
+                        row = row,
+                        col = col
+                    )
+                elif axis.startswith("yaxis"):
+                    axis_dict = sub_fig.layout[axis].to_plotly_json()
+                    fig.update_yaxes(
+                        axis_dict,
+                        row = row,
+                        col = col
+                    )
         else:
             continue
     fig.update_layout(
