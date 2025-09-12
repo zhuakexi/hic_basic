@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 
-def sc_pca(adata, color):
+def sc_pca(adata, color,**kwargs):
     # extract pca result
     pca_res = pd.DataFrame(adata.obsm["X_pca"][:,:2])
     pca_res.index = adata.obs_names
@@ -12,7 +12,7 @@ def sc_pca(adata, color):
     # adding annotations
     pca_res = pd.concat([pca_res,adata.obs],axis=1)
     # plot
-    fig = px.scatter(pca_res, x = "PC1", y= "PC2", color = color,hover_name=pca_res.index)
+    fig = px.scatter(pca_res, x = "PC1", y= "PC2", color = color,hover_name=pca_res.index, **kwargs)
     fig.update_layout(
         height = 500,
         width = 600
