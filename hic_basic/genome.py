@@ -65,27 +65,49 @@ class Region:
                     ucsc-style region representation (requires genome if positions incomplete)
                 [(chrom,pos), (chrom,pos)]:
                     list of tuples, each tuple is a pair of chrom and pos
+                Region: another Region instance (will copy its properties)
             genome: genome name (default None). If None, genome-dependent features are disabled.
             binsize: if not None, will generate bins indexes for the region (requires genome)
         """
-        self.region_arg = region_arg
-        self.genome = genome
-        self.binsize = binsize
-        
-        # Parse region (handles genome=None case)
-        self.r, self.ir = self._parse_region(region_arg, genome)
+        # Handle Region instance input
+        if isinstance(region_arg, Region):
+            # Copy properties from the existing Region instance
+            self.region_arg = region_arg.region_arg
+            self.genome = genome if genome is not None else region_arg.genome
+            self.binsize = binsize if binsize is not None else region_arg.binsize
+            self.r = region_arg.r
+            self.ir = region_arg.ir
+            
+            # Recalculate genome-dependent properties if genome changed
+            if genome is not None and genome != region_arg.genome:
+                from .data import chromosomes
+                chrom_df = chromosomes(genome)
+                chrom_idict = dict(zip(chrom_df.index, range(len(chrom_df))))
+                
+                # Update index representation with new genome
+                ichrom1 = chrom_idict[self.r[0][0]]
+                ichrom2 = chrom_idict[self.r[1][0]]
+                self.ir = [(ichrom1, self.r[0][1]), (ichrom2, self.r[1][1])]
+        else:
+            # Original initialization for non-Region inputs
+            self.region_arg = region_arg
+            self.genome = genome
+            self.binsize = binsize
+            
+            # Parse region (handles genome=None case)
+            self.r, self.ir = self._parse_region(region_arg, genome)
         
         # Set slice representations (None if genome unavailable)
-        self.slice = slice(*self.r) if genome is not None else None
+        self.slice = slice(*self.r) if self.genome is not None else None
         self.islice = slice(*self.ir) if self.ir is not None else None
         
         # Set relevant chromosomes (None if genome unavailable)
-        self.region_chroms = self._get_relevant_chromosomes() if genome is not None else None
+        self.region_chroms = self._get_relevant_chromosomes() if self.genome is not None else None
         
         # Generate bins if requested (skipped if genome unavailable)
         self.bins = None
-        if binsize is not None and genome is not None:
-            self.bins = self._get_bin_index(binsize)
+        if self.binsize is not None and self.genome is not None:
+            self.bins = self._get_bin_index(self.binsize)
 
     def _parse_region(self, region_arg, genome):
         """
