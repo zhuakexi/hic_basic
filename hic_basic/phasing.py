@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from .calculate import mt
 from .hicio import parse_seg
-from .binnify import GenomeIdeograph
+from .genome import GenomeIdeograph
 
 def hap_score_gb(df):
     df = df.droplevel(0)
