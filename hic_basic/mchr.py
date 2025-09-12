@@ -11,7 +11,7 @@ from hires_utils.hires_io import parse_3dg
 from scipy.stats import mannwhitneyu
 from tqdm import tqdm
 
-from .binnify import GenomeIdeograph
+from .genome import GenomeIdeograph
 from .data import chromosomes
 from .genome import RegionPair
 from .TAD.IS import _mat_IS
