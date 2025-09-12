@@ -9,6 +9,14 @@ import plotly.graph_objects as go
 from hires_utils.gcount import count_fastq
 from plotly.subplots import make_subplots
 from tqdm import tqdm
+
+def count_fastq_worker(file_path, form="s"):
+    res = count_fastq(file_path, form=form)
+    return pd.Series(
+        [res],
+        name="n_reads"
+    )
+
 def parse_fastq_id(line):
     """Parse a FASTQ ID line into (prefix, end) tuple or None if invalid.
 
@@ -378,7 +386,8 @@ def plot_search_primers(result, output_file=None):
 
 
 
-def add_suffix_to_fastq(input_file: str, output_file: str) -> None:
+
+def add_suffix_to_fastq(input_file: str, output_file: str, skip_incomplete=True) -> None:
     """
     Process a FASTQ file by appending "/1" or "/2" (MGI/DNBSEQ flavor) to read IDs if not already present (illumina_flavor).
 
@@ -399,36 +408,67 @@ def add_suffix_to_fastq(input_file: str, output_file: str) -> None:
     if input_compressed != output_compressed:
         raise ValueError("Input and output compression formats must match.")
     
-    # Open input file with pysam, which handles both compressed and uncompressed files
-    with pysam.FastxFile(input_file) as f_in:
-        # Open output file with gzip if compressed, else regular text file
-        if input_compressed:
-            f_out = gzip.open(output_file, 'wt')
-        else:
-            f_out = open(output_file, 'w')
-        
-        with f_out:
-            for read in f_in:
-                # Check if read name ends with /1 or /2
-                if not (read.name.endswith('/1') or read.name.endswith('/2')):
-                    if read.comment:
-                        # Determine suffix from comment (e.g., '1:N:0:1' -> '/1')
-                        end_info = read.comment.split(':', 1)[0]
-                        if end_info == '1':
-                            read.name += '/1'
-                        elif end_info == '2':
-                            read.name += '/2'
-                        else:
-                            # If end_info is not '1' or '2', default to '/1'
-                            read.name += '/1'
+    # Open input file with appropriate handler
+    if input_compressed:
+        in_fh = gzip.open(input_file, 'rt')
+    else:
+        in_fh = open(input_file, 'r')
+    
+    # Open output file with appropriate handler
+    if output_compressed:
+        out_fh = gzip.open(output_file, 'wt')
+    else:
+        out_fh = open(output_file, 'w')
+    
+    with in_fh, out_fh:
+        while True:
+            # Read four lines per record
+            header = in_fh.readline().rstrip()
+            if not header:  # End of file
+                break
+            sequence = in_fh.readline().rstrip()
+            plus_line = in_fh.readline().rstrip()
+            quality = in_fh.readline().rstrip()
+            
+            # Check if we have a complete record
+            if not (header and sequence and plus_line and quality):
+                if skip_incomplete:
+                    print("Warning: Incomplete FASTQ record found and skipped.")
+                    continue
+                else:
+                    raise ValueError("Incomplete FASTQ record")
+            
+            # Parse header line: @name comment
+            if header.startswith('@'):
+                name_comment = header[1:].split(' ', 1)
+                name = name_comment[0]
+                comment = name_comment[1] if len(name_comment) > 1 else None
+            else:
+                raise ValueError("Invalid FASTQ header line: " + header)
+            
+            # Check if read name ends with /1 or /2
+            if not (name.endswith('/1') or name.endswith('/2')):
+                if comment:
+                    # Determine suffix from comment (e.g., '1:N:0:1' -> '/1')
+                    end_info = comment.split(':', 1)[0]
+                    if end_info == '1':
+                        name += '/1'
+                    elif end_info == '2':
+                        name += '/2'
                     else:
-                        # If no comment, default to '/1'
-                        read.name += '/1'
-                
-                # Write the modified read to the output file in FASTQ format
-                # Format: @name comment\nsequence\n+\nquality_scores
-                comment_line = f" {read.comment}" if read.comment else ""
-                f_out.write(f"@{read.name}{comment_line}\n{read.sequence}\n+\n{read.quality}\n")
+                        # If end_info is not '1' or '2', default to '/1'
+                        name += '/1'
+                else:
+                    # If no comment, default to '/1'
+                    name += '/1'
+            
+            # Reconstruct the header line
+            new_header = f"@{name}"
+            if comment:
+                new_header += f" {comment}"
+            
+            # Write the modified record to output
+            out_fh.write(f"{new_header}\n{sequence}\n{plus_line}\n{quality}\n")
 
 def extract_first_n_reads(input_file: str, output_file: str, n: int) -> None:
     """
