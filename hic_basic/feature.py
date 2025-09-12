@@ -2,8 +2,9 @@ import re
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+import pandas as pd
 from .hicio import parse_bed, parse_gtf
-from .binnify import GenomeIdeograph
+# from .genome import GenomeIdeograph
 from .data import ref_dir
 from .sequence import count_CpG
 
@@ -14,9 +15,10 @@ class Feature(ABC):
     TODO:1.Add different fn, like feature.fn, feature.bgr, ...
     """
     SUFFIX = {
-        "bed" : "bed"
+        "bed" : "bed",
+        "chrom.sizes" : "chrom.sizes",
     }
-    def __init__(self, genome_name, feature_name, file_type="bed", db_dir=None, **kwargs):
+    def __init__(self, genome_name=None, feature_name=None, file_type="bed", db_dir=None, **kwargs):
         """
         Initialize Feature object with genome name and database directory.
         Input:
@@ -28,8 +30,12 @@ class Feature(ABC):
         self.genome_name = genome_name
         self._data = None
         self._is_compiled = False
+        self._is_temp = False
+        # Set database directory
         if db_dir is None:
-            self.db_dir = ref_dir / "cache"
+            # Shut down storage mode and use class as a well-defined parser
+            self.db_dir = None
+            self._is_temp = True
         else:
             self.db_dir = Path(db_dir)
         self.feature_name = feature_name
@@ -52,21 +58,26 @@ class Feature(ABC):
         if param_values:
             param_str = ".".join(param_values)
             base_name += f".{param_str}"
-        self.fn = self.db_dir / (f"{base_name}.{file_suffix}")
-        # set to compiled state if file exists
-        if self.fn.exists():
-            self._is_compiled = True
-            print(f"Feature {self.feature_name} for genome {self.genome_name} already compiled in {self.fn}.")
+        if not self._is_temp:
+            self.fn = self.db_dir / (f"{base_name}.{file_suffix}")
+            # set to compiled state if file exists
+            if self.fn.exists():
+                self._is_compiled = True
+                print(f"Feature {self.feature_name} for genome {self.genome_name} already compiled in {self.fn}.")
+            else:
+                self._is_compiled = False
+                print(f"Feature {self.feature_name} for genome {self.genome_name} not compiled yet. Will compile to {self.fn}.")
         else:
-            self._is_compiled = False
-            print(f"Feature {self.feature_name} for genome {self.genome_name} not compiled yet. Will compile to {self.fn}.")
+            self.fn = None
+            self._is_compiled = True
+
     @property
-    def data(self):
+    def data(self, fn=None):
         """
         Lazy-loaded data property.
         """
         if self._data is None:
-            self.load()
+            self.load(fn=fn)
         return self._data
     @abstractmethod
     def compile(self, **kwargs):
@@ -84,14 +95,64 @@ class Feature(ABC):
         """
         pass
     @abstractmethod
-    def load(self):
+    def load(self, fn=None):
         """
         Load the feature data to inner data structure from the compiled file.
         
         Sets the `self.data` attribute to the loaded data.
         """
         pass
-
+class Chromosomes(Feature):
+    """
+    Chromosome feature object to hold chromosome sizes and natural order.
+    Attributes:
+        genome_name: name of the genome; string
+        db_dir: directory of the database; string
+        feature_name: name of the feature; string
+        file_type: type of the file; string
+        fn: path to the file; Path
+    """
+    def __init__(self, genome_name=None, db_dir=None):
+        """
+        Initialize Chromosome feature object.
+        Input:
+            genome_name: name of the genome; string
+            db_dir: directory of the database; string or None
+        """
+        super().__init__(genome_name, "chromosomes", "chrom.sizes", db_dir)
+    def compile(self, size_file=None, force=False):
+        chromosomes = pd.read_table(
+            size_file,
+            names = ["chrom", "size"],
+        )
+        chromosomes.to_csv(self.fn, sep="\t", index=False, header=False)
+        self._is_compiled = True
+        return
+    def load(self, fn=None):
+        """
+        Load chromosome sizes from compiled file.
+        """
+        if self._is_temp:
+            assert fn is not None, "For temporary Chromosome object, fn must be provided."
+        else:
+            if not self._is_compiled:
+                raise RuntimeError("Chromosome sizes not compiled yet. Please call compile() first.")
+            else:
+                fn = self.fn
+        print(f"Loading chromosome sizes from {fn}...")
+        data = pd.read_table(
+            fn,
+            names = ["chrom", "length"],
+        )
+        data["chrom"] = data["chrom"].astype(
+            pd.CategoricalDtype(
+                data["chrom"],
+                ordered=True
+            )
+        )
+        data = data.set_index("chrom").sort_index()
+        self._data = data
+        return self._data
 class TSS(Feature):
     """
     TSS feature object to hold TSS regions.
@@ -102,7 +163,7 @@ class TSS(Feature):
         file_type: type of the file; string
         fn: path to the file; Path
     """
-    def __init__(self, genome_name, db_dir=None):
+    def __init__(self, genome_name=None, db_dir=None):
         super().__init__(genome_name, "TSS", "bed", db_dir)
     @staticmethod
     def get_tss_region_from_gtf(gtf_path, cache_file=None):
@@ -173,7 +234,7 @@ class CpG(Feature):
     """
     GpG ratio of each genomic bin.
     """
-    def __init__(self, genome_name, db_dir=None, binsize=1e6, flavor="hickit"):
+    def __init__(self, genome_name=None, db_dir=None, binsize=1e6, flavor="hickit"):
         """
         Initialize CpG feature object.
         Input:
@@ -192,6 +253,7 @@ class CpG(Feature):
             return
         else:
             print(f"Compiling {self.feature_name} from {fasta}...")
+        from .genome import GenomeIdeograph
         genome = GenomeIdeograph(self.genome_name)
         # TODO: integrate GenomeIdeograph to Feature frames
         bins = genome.bins(
