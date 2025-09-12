@@ -6,6 +6,8 @@ from statsmodels.nonparametric.smoothers_lowess import lowess
 from scipy.stats import norm
 from .utils import hex_to_rgb
 
+### --- line plot with error band --- ###
+
 def smooth_with_ci(df, x, y, frac=0.3, ci=0.95):
     """
     Apply LOESS smoothing to time-series data and estimate confidence intervals.
