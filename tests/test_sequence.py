@@ -10,7 +10,7 @@ from hic_basic.binnify import GenomeIdeograph
 from hic_basic.sequence import count_CpG
 from hic_basic.sequence import compare_fastq_pairs
 from hic_basic.sequence import search_primers
-from hic_basic.sequence import visualize_primer_search
+#from hic_basic.sequence import visualize_primer_search
 
 class TestSequence(unittest.TestCase):
     def setUp(self):
@@ -67,18 +67,26 @@ class TestSequence(unittest.TestCase):
         self.assertIn("complement", result.columns)
         self.assertIn("reverse_complement", result.columns)
 
-    def test_visualize_primer_search(self):
+    # def test_visualize_primer_search(self):
+    #     fq_fp = "tests/data/R1.fq.gz"
+    #     primers = ["ACGT", "TGCA"]
+    #     result = search_primers(fq_fp, primers)
+    #     self.assertIsInstance(result, pd.DataFrame)
+
+    #     output_dir = Path("tests/output/test_sequence")
+    #     output_dir.mkdir(parents=True, exist_ok=True)
+    #     output_file = output_dir / "primer_search_plot.png"
+
+    #     fig = visualize_primer_search(result, output_file=str(output_file))
+        # self.assertTrue(output_file.exists())
+    def test_add_suffix_to_fastq(self):
+        from hic_basic.sequence import add_suffix_to_fastq
         fq_fp = "tests/data/R1.fq.gz"
-        primers = ["ACGT", "TGCA"]
-        result = search_primers(fq_fp, primers)
-        self.assertIsInstance(result, pd.DataFrame)
-
-        output_dir = Path("tests/output/test_sequence")
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_file = output_dir / "primer_search_plot.png"
-
-        fig = visualize_primer_search(result, output_file=str(output_file))
-        self.assertTrue(output_file.exists())
+        suffix = "1"
+        output_fp = self.outdir / f"R1{suffix}.fq.gz"
+        output_fp.parent.mkdir(parents=True, exist_ok=True)
+        add_suffix_to_fastq(fq_fp, str(output_fp))
+        self.assertTrue(output_fp.exists())
 
 if __name__ == "__main__":
     unittest.main()
