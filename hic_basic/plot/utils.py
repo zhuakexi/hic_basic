@@ -11,6 +11,103 @@ from scipy.ndimage import rotate
 from PIL import Image
 
 
+### --- axes --- ###
+def clip_axis_range(
+    fig,
+    x_lower=True,
+    x_upper=True,
+    y_lower=False,
+    y_upper=False,
+    main_fig=None,
+    row=None,
+    col=None
+    ):
+    """
+    Clip plotly axis range to exactly match data.
+
+    x- and y-axis, lower and upper bound are both free to choose.
+    Iterates through data traces contained in figure, extracts min and max, and sets the respective axes range bounds to these.
+
+    Parameters
+    ----------
+    fig: plotly.graph_objs._figure.Figure
+        The figure to update.
+    x_lower: bool
+        Clip x axis lower range. Defautls to True.
+    x_upper: bool
+        Clip x axis upper range. Defautls to True.
+    y_lower: bool
+        Clip y axis lower range. Defautls to False.
+    y_upper: bool
+        Clip y axis upper range. Defautls to False.
+    main_fig:
+        If not None, change main_fig axes according to fig traces.
+        Use this when you are make subplots.
+    row:
+        If main_fig is not None, specify the row of the subplot where you want to change axes.
+    col:
+        If main_fig is not None, specify the column of the subplot where you want to change axes.
+
+    Returns
+    -------
+    plotly.graph_objs._figure.Figure
+        Plotly graph with updated axis ranges.
+
+    FROM: https://community.plotly.com/t/set-axis-range-to-match-data/93168/3
+    """
+    x_vals_lower, x_vals_upper, y_vals_lower, y_vals_upper = [], [], [], []
+    
+    for _trace in fig["data"]:
+        if _trace["x"] is not None:  # Trace has not empty "x" data
+            x_vals_lower.append(min(_trace["x"]))
+            x_vals_upper.append(max(_trace["x"]))
+
+        if _trace["y"] is not None:  # Trace has not empty "y" data
+            y_vals_lower.append(min(_trace["y"]))
+            y_vals_upper.append(max(_trace["y"]))
+
+    x_vals_lower = min(x_vals_lower)
+    x_vals_upper = max(x_vals_upper)
+    y_vals_lower = min(y_vals_lower)
+    y_vals_upper = max(y_vals_upper)
+
+    if main_fig is None:
+        fig = fig.update_xaxes(
+            autorangeoptions={
+                "minallowed":[None, x_vals_lower][x_lower],
+                "maxallowed":[None, x_vals_upper][x_upper]
+            }
+        )
+        
+        fig = fig.update_yaxes(
+            autorangeoptions={
+                "minallowed":[None, y_vals_lower][y_lower],
+                "maxallowed":[None, y_vals_upper][y_upper]
+            }       
+        )
+        return fig
+    else:
+        main_fig = main_fig.update_xaxes(
+            autorangeoptions={
+                "minallowed":[None, x_vals_lower][x_lower],
+                "maxallowed":[None, x_vals_upper][x_upper]
+            },
+            row=row,
+            col=col
+        )
+        
+        main_fig = main_fig.update_yaxes(
+            autorangeoptions={
+                "minallowed":[None, y_vals_lower][y_lower],
+                "maxallowed":[None, y_vals_upper][y_upper]
+            },
+            row=row,
+            col=col
+        )
+        return main_fig
+
+
+
 ### --- plot utils --- ###
 
 
