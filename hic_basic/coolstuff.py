@@ -16,8 +16,9 @@ from cooler.create import sanitize_records, aggregate_records
 from cytoolz import compose # fail in HPC
 from tqdm import tqdm
 
-from .binnify import GenomeIdeograph
+from .genome import GenomeIdeograph
 from .data import chromosomes
+from .genome import Region
 from .hicio import schicluster2mat, DevNull
 from .utils import binnify
 
@@ -40,8 +41,59 @@ from .utils import binnify
 
 
 # --- warm it --- #
+def pos2id(clr, chrom, pos):
+    """
+    Transform a genomic position to a bin ID in the cooler matrix.
+    
+    Parameters
+    ----------
+    clr : cooler.Cooler or str
+        A cooler object or path to cooler file.
+    chrom : str
+        Chromosome name.
+    pos : int
+        Genomic position.
+    
+    Returns
+    -------
+    int
+        The bin ID corresponding to the right boundary of the genomic position.
+    """
+    if isinstance(clr, (str, Path)):
+        clr = Cooler(str(clr))
+    return clr.extent(f"{chrom}:0-{pos}")[1]
 
-
+def region2slice(clr, region):
+    """
+    Transform a genomic region to a slice of a cooler matrix.
+    Region can cross chromosomes.
+    
+    Parameters
+    ----------
+    clr : cooler.Cooler or str
+        A cooler object.
+    region : see hic_basic.genome.Region
+    
+    Returns
+    -------
+    slice
+        A slice object that can be used to index the cooler matrix.
+    
+    Examples
+    --------
+    >>> import cooler
+    >>> clr = cooler.Cooler("example.mcool::/resolutions/10000")
+    >>> region = "chr1:0-1000000" # [('chr1', 0), ('chr1', 100000000)], or [('chr1', 200000000), ('chr2', 50749379)]
+    >>> islice = region2slice(clr, region)
+    """
+    region = Region(region)
+    # TODO: consider precision loss when bin size is large
+    ipos_list = [
+        pos2id(clr, chrom, pos)
+        for chrom, pos in region.r  # each region has two boundaries
+    ]
+    islice = slice(ipos_list[0], ipos_list[1])
+    return islice
 def str2slice(clr, region:str):
     """
     Convert region string to slice object.
@@ -91,7 +143,9 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
                 Note: can only cross chrom boundaries when using slicer syntax
                 For example slice(0,-1) for whole genome.
             [slice(0,1000000), slice(1000000,2000000)]:
-                inter-chrom matrix using slicer syntax
+                inter-chrom matrix using slicer syntax, can get cross-chrom matrix
+            [[(r1_chrom1,start1),(r1_chrom2,end1)], [(r2_chrom1,start2),(r2_chrom2,end2)]]:
+                list of 2 standard region to get cross-chrom matrix in human readable format
         balance: balance or not, bool
         min_nz: minimum number of non-zero pixels to keep, bin with less pixels will be set to nan
             if None, no filtering
@@ -103,41 +157,54 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
     """
     no_fetch = False # whether to use.fetch method, if False, using slicer syntax
     clr = cooler.Cooler(str(cool))
+    # --- process region to normalized form --- #
+    # norm_region: list of slice for no-fetch, list of string for fetch
     if isinstance(region, str): # "chr1" or "chr1:1000000-2000000"
-        region = [region]
+        norm_region = [region]
+    elif isinstance(region, Region):
+        norm_region = [region2slice(clr, region)]
     elif isinstance(region, list):
         assert len(region) == 2, "Only support 2 regions for inter-chrom matrix"
-        if isinstance(region[0], slice) and isinstance(region[1], slice): # [slice(0,1000000), slice(1000000,2000000)]
-            no_fetch = True
-        else: # ["chr1:1,000,000-2,000,000", "chr2"], ["chr1", slice(0,1000000)]
-            region = [region if isinstance(region, slice) else str2slice(clr, region) for region in region]
-            no_fetch = True
+        # ["chr1:1,000,000-2,000,000", "chr2"], ["chr1", slice(0,1000000)]
+        norm_region = []
+        for region_part in region:
+            if isinstance(region_part, slice):
+                norm_region.append(region_part)
+            elif isinstance(region_part, str):
+                norm_region.append(str2slice(clr, region_part))
+            else:
+                try:
+                    norm_region.append(region2slice(clr, region_part))
+                except:
+                    raise ValueError("[Error in cool2mat]: Region must be str or slice, read doc for more info.")
+        no_fetch = True
     elif isinstance(region, slice): # slice(0,-1)
-        region = [region]
+        norm_region = [region]
         no_fetch = True
     else:
         raise ValueError("[Error in cool2mat]: Region must be str or list or slice, read doc for more info.")
     if no_fetch:
         # use slicer syntax
-        mat = clr.matrix(balance=balance)[region[0],region[0]] if len(region) == 1 else clr.matrix(balance=balance)[region[0], region[1]] # because can't unpack in slicer
+        # print(region)
+        mat = clr.matrix(balance=balance)[norm_region[0],norm_region[0]] if len(norm_region) == 1 else clr.matrix(balance=balance)[norm_region[0], norm_region[1]] # because can't unpack in slicer
         mat = pd.DataFrame(mat)
-        if len(region) == 1:
-            index = clr.bins()[region[0]]
-            columns = clr.bins()[region[0]]
+        if len(norm_region) == 1:
+            index = clr.bins()[norm_region[0]]
+            columns = clr.bins()[norm_region[0]]
         else:
             # inter-chromosome region
-            index = clr.bins()[region[0]] # first region as index, same as cooler matrix fetch
-            columns = clr.bins()[region[1]]
+            index = clr.bins()[norm_region[0]] # first region as index, same as cooler matrix fetch
+            columns = clr.bins()[norm_region[1]]
     else:
-        mat = clr.matrix(balance=balance).fetch(*region)
+        mat = clr.matrix(balance=balance).fetch(*norm_region)
         mat = pd.DataFrame(mat)
-        if len(region) == 1:
-            index = clr.bins().fetch(region[0])
-            columns = clr.bins().fetch(region[0])
+        if len(norm_region) == 1:
+            index = clr.bins().fetch(norm_region[0])
+            columns = clr.bins().fetch(norm_region[0])
         else:
             # inter-chromosome region
-            index = clr.bins().fetch(region[0]) # first region as index, same as cooler matrix fetch
-            columns = clr.bins().fetch(region[1])
+            index = clr.bins().fetch(norm_region[0]) # first region as index, same as cooler matrix fetch
+            columns = clr.bins().fetch(norm_region[1])
     # mat.columns = columns["start"]
     # mat.columns.name = "region 2"
     # mat.index = index["start"]
