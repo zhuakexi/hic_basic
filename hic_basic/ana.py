@@ -136,7 +136,7 @@ class Ana:
         
         return commit_id
     
-    def update(self, new_data, key=None, description=None):
+    def update(self, new_data, key=None, description=None, force=False):
         """
         Update the data in db and automatically commit changes.
 
@@ -166,6 +166,10 @@ class Ana:
         description : str, optional
             Custom description for the automatic commit. If not provided, uses
             an auto-generated commit identifier.
+            
+        force : bool, optional, default=False
+            If True, overwrite existing data for the given key.
+            If False, check if data already exists for the key and skip update if found.
 
         Notes
         -----
@@ -179,6 +183,22 @@ class Ana:
         - The entire list replaces any previous value for the given key
         - Does not trigger data file updates, only updates object store
         """
+        # Check if data already exists for the key and handle accordingly
+        if not force and key is not None:
+            if isinstance(new_data, list):
+                # For list data, check if key exists in obj
+                if key in self.obj:
+                    if self.verbose:
+                        print(f"Key '{key}' already exists in obj. Use force=True to overwrite.")
+                    return
+            elif isinstance(new_data, (pd.Series, dict)):
+                # For Series/dict data, check if column exists in data
+                col_name = key if key is not None else (new_data.name if hasattr(new_data, 'name') else None)
+                if col_name and col_name in self.data.columns:
+                    if self.verbose:
+                        print(f"Column '{col_name}' already exists in data. Use force=True to overwrite.")
+                    return
+        
         if isinstance(new_data, pd.DataFrame):
             new_data_df = new_data.copy()
         elif isinstance(new_data, pd.Series):
