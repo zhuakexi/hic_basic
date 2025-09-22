@@ -153,6 +153,19 @@ def add_pairs(annote,task_dirp):
     )
 # add info
 def update_values(base:dict, record:str)->dict:
+    """
+    Update a base dictionary with values from a JSON record file.
+    
+    For each key in the record, if the key exists in base, update the nested dictionary.
+    If the key doesn't exist, add the entire record to base.
+    
+    Args:
+        base: Base dictionary to be updated
+        record: Path to JSON file containing key-value pairs to merge
+    
+    Returns:
+        Updated base dictionary
+    """
     with open(record, 'r') as f:
         kv = json.load(f)
     for k in kv:
@@ -161,14 +174,37 @@ def update_values(base:dict, record:str)->dict:
         except KeyError:
             base.update(kv)
     return base
+
 def listdir_bytime(folder):
+    """
+    List all files in a directory sorted by modification time (oldest first).
+    
+    Args:
+        folder: Path to directory to scan
+        
+    Returns:
+        List of full file paths sorted by modification time
+    """
     # list files in directory by time, old to new
     # assume zero layer in input folder(all files no folder)
     # return full path(include folder/ prefix)
     files = [os.path.join(folder, file) for file in os.listdir(folder)]
     files.sort(key= lambda fn: os.path.getmtime(fn))
     return files
+
 def get_info(log_d):
+    """
+    Extract and combine information from all JSON files in a directory.
+    
+    Processes JSON files in chronological order, merging their contents.
+    Each JSON file should contain sample information as key-value pairs.
+    
+    Args:
+        log_d: Directory containing JSON files with sample information
+        
+    Returns:
+        DataFrame where columns are sample IDs and rows are attributes
+    """
     base = {}
     for fname in listdir_bytime(log_d):
         #print(fname)
@@ -178,7 +214,18 @@ def get_info(log_d):
     #print(base)
     info = pd.DataFrame(base)
     return info
-def add_info(annote,rd):
+
+def add_info(annote, rd):
+    """
+    Add sample information from JSON files to an existing annotation DataFrame.
+    
+    Args:
+        annote: Existing annotation DataFrame
+        rd: Directory containing JSON files with additional sample information
+        
+    Returns:
+        Combined DataFrame with original annotations and new sample information
+    """
     info = get_info(rd)
     return pd.concat([annote,info.T],axis=1)
 # add RNA-seq
