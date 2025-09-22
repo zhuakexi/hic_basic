@@ -139,6 +139,45 @@ class Ana:
     def update(self, new_data, key=None, description=None):
         """
         Update the data in db and automatically commit changes.
+
+        Parameters
+        ----------
+        new_data : pandas.DataFrame, pandas.Series, dict, or list
+            New data to add to the database. Behavior varies by type:
+            
+            - pandas.DataFrame: Entire DataFrame will be merged with existing data.
+                Index will be used for alignment. The `key` parameter is ignored.
+                
+            - pandas.Series: Series will be converted to DataFrame and merged.
+                If `key` is provided, the Series will be renamed to this column name.
+                Otherwise, the Series name will be used.
+                
+            - dict: Dictionary will be converted to DataFrame using keys as index.
+                Requires `key` parameter to specify column name for the values.
+                
+            - list: Data will be stored in the object store (JSON) rather than the
+                main data table. Requires `key` parameter to specify the object key.
+                Note: The entire list will replace any existing value for that key.
+
+        key : str, optional
+            Specifies the column name (for dict/Series) or object key (for list).
+            Required for dict, list, and unnamed Series inputs.
+
+        description : str, optional
+            Custom description for the automatic commit. If not provided, uses
+            an auto-generated commit identifier.
+
+        Notes
+        -----
+        For DataFrame/Series/dict inputs:
+        - Data is merged with existing data using concat+groupby.last()
+        - New values overwrite existing values on matching indices
+        - The result is automatically committed to version history
+
+        For list inputs:
+        - Data is stored in the separate object store (JSON format)
+        - The entire list replaces any previous value for the given key
+        - Does not trigger data file updates, only updates object store
         """
         if isinstance(new_data, pd.DataFrame):
             new_data_df = new_data.copy()
