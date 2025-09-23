@@ -21,90 +21,42 @@ def parse_fastq_id(line):
     """Parse a FASTQ ID line into (prefix, end) tuple or None if invalid.
 
     Args:
-        line (str): The FASTQ ID line (e.g., '@M06168:... 1:N:0:1')
+        line (str): The FASTQ ID line (e.g., '@M06168:... 1:N:0:1' or '@E250109998L1C001R00300005452/1')
         
     Returns:
         tuple or None: (prefix, end) if valid, else None.
-            prefix: The read identifier prefix (e.g., '@M06168:...').
-            end: The read end identifier (e.g., '1').
+            prefix: The read identifier prefix (e.g., '@M06168:...' or '@E250109998L1C001R00300005452').
+            end: The read end identifier (e.g., '1' or '2').
 
     Notes
     -----
-    Example of Read ID: `@M06168:86:000000000-LMWTD:1:1101:14802:1380 1:N:0:1`
+    Supports two formats:
+    1. Illumina format:
+        `@<instrument>:<run_id>:<flowcell_id>:<lane>:<tile>:<x_pos>:<y_pos> <read>:<is_filtered>:<control_number>:<index_seq>`
+        Example: `@M06168:86:000000000-LMWTD:1:1101:14802:1380 1:N:0:1`
 
-    The Read ID is structured as follows:
-    `@<instrument>:<run_id>:<flowcell_id>:<lane>:<tile>:<x_pos>:<y_pos> <read>:<is_filtered>:<control_number>:<index_seq>`
-
-    **Detailed Field Explanation:**
-
-    1.  **Instrument (`M06168`)**
-        The unique identifier of the sequencing instrument.
-        Example: `M06168` (Likely a MiSeq instrument).
-
-    2.  **Run ID (`86`)**
-        The number assigned to the specific sequencing run by the operator.
-
-    3.  **Flowcell ID (`000000000-LMWTD`)**
-        The unique barcode of the flowcell used.
-        Example: `000000000-LMWTD`.
-
-    4.  **Lane (`1`)**
-        The lane number on the flowcell where the cluster was located.
-        Example: `1`.
-
-    5.  **Tile (`1101`)**
-        The specific tile within the lane where the cluster was imaged.
-
-    6.  **X-coordinate (`14802`)**
-        The X-position of the cluster within the tile (in pixels).
-
-    7.  **Y-coordinate (`1380`)**
-        The Y-position of the cluster within the tile (in pixels).
-
-    8.  **Read Number (`1`)**
-        Member of a pair. `1` for the first read in a pair (R1), `2` for the second (R2).
-
-    9.  **Filter Flag (`N`)**
-        Indicates if the read passed quality filtering.
-        - `Y`: Read failed quality filter (should be discarded).
-        - `N`: Read passed quality filter (is reliable).
-
-    10. **Control Number (`0`)**
-        Reserved field. `0` indicates a regular sample read. Non-zero values indicate control reads.
-
-    11. **Index Sequence Number (`1`)**
-        Identifies which barcode read this is in a multiplexed sequencing run.
-        - `1`: This read contains the index sequence (e.g., i7 index).
-        - `2`: This read contains the second index (e.g., i5 index in a dual-index experiment).
-
-    **Example Interpretation:**
-
-    For the Read ID
-    `@M06168:86:000000000-LMWTD:1:1101:14802:1380 1:N:0:1`:
-
-    - **Instrument:** M06168
-    - **Run ID:** 86
-    - **Flowcell ID:** 000000000-LMWTD
-    - **Lane:** 1
-    - **Tile:** 1101
-    - **Cluster Coordinates (X, Y):** (14802, 1380)
-    - **Read Number:** 1 (This is the first read, R1)
-    - **Filter Flag:** N (This is a high-quality pass)
-    - **Control Number:** 0 (This is a regular sample read)
-    - **Index Sequence Number:** 1 (This read's sequence is the i7 index barcode)
-
-    This read is an index read (i7) from a paired-end run that passed quality control.
+    2. DNBSEQ format:
+        `@<unique_identifier>/<read_end>`
+        Example: `@E250109998L1C001R00300005452/1`
     """
     line = line.strip()
     if len(line) < 2:
         return None
-    # Split into prefix and end information
+
+    # Check for DNBSEQ format (contains '/' at the end)
+    if line.endswith('/1') or line.endswith('/2'):
+        # Split on the last occurrence of '/'
+        prefix, end = line.rsplit('/', 1)
+        return (prefix, end)
+
+    # Check for Illumina format (contains space)
     parts = line.split(maxsplit=1)
-    if len(parts) != 2:
-        return None
-    prefix = parts[0]
-    end_info = parts[1].split(':', 1)[0]  # Extract first field (e.g., '1' or '2')
-    return (prefix, end_info)
+    if len(parts) == 2:
+        prefix = parts[0]
+        end_info = parts[1].split(':', 1)[0]  # Extract first field (e.g., '1' or '2')
+        return (prefix, end_info)
+
+    return None
 
 def read_fastq_ids(file_path):
     """Read FASTQ file (supports gzipped) and return a dictionary of {prefix: end}.
