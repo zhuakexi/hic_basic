@@ -1,3 +1,18 @@
+"""
+A single-process metadata management system for bioinformatics projects.
+
+This module provides version-controlled storage for structured data (DataFrame) 
+and unstructured objects (JSON-serializable lists) with automatic commit history.
+Designed for managing analysis pipelines where data provenance and reproducibility are critical.
+
+Key Features:
+- Automatic versioning with commit history
+- Support for both tabular data (DataFrame) and object storage (lists)
+- Configurable commit history limits
+- Revert functionality to previous states
+- Thread-safe for single-process use (not suitable for multiprocessing)
+"""
+
 # This module is designed for bioinformatic project management
 from pathlib import Path
 import re
@@ -8,18 +23,61 @@ from datetime import datetime
 
 class Ana:
     """
-    A class to manage analysis data and operations with version control.
+    Analysis Data Manager with automatic version control.
+    
+    Manages two types of data storage:
+    1. Structured data: Pandas DataFrames stored in compressed CSV format
+    2. Object storage: JSON-serializable lists for unstructured data
+    
+    The system maintains a commit history similar to Git, allowing users to track changes,
+    revert to previous states, and maintain data provenance throughout analysis workflows.
+    
+    Workflow:
+    1. Initialize with a home directory (creates storage structure)
+    2. Update data using update() method (automatically creates commits)
+    3. Track changes using list_commits()
+    4. Revert if needed using revert()
+    
+    Example:
+        >>> ana = Ana('/path/to/project')
+        >>> ana.update({'sample1': 42}, key='measurements')
+        >>> ana.commit('Initial data import')
     """
+    
     def __init__(self, home, data=None, obj=None, clear=False, verbose=False, max_commits=50):
         """
-        Initialize the Ana class with version control.
+        Initialize the analysis data manager.
+        
+        Parameters
+        ----------
+        home : str or Path
+            Directory path for storing all project data and metadata.
+            Will be created if it doesn't exist.
+        data : pandas.DataFrame, pandas.Series, dict, or list, optional
+            Initial data to load into the system. If provided, will trigger
+            an initial commit after loading.
+        obj : dict, optional
+            Initial object data to load (key-value pairs where values are lists).
+            Each key-value pair will be added to object storage.
+        clear : bool, default False
+            If True, clear existing data in the home directory and start fresh.
+        verbose : bool, default False
+            If True, print operational messages for debugging.
+        max_commits : int, default 50
+            Maximum number of commits to maintain in history. Older commits
+            are automatically purged when limit is exceeded.
+            
+        Raises
+        ------
+        TypeError
+            If obj values are not lists (required for JSON serialization consistency)
         """
         self.home = Path(home)
         self.home.mkdir(parents=True, exist_ok=True)
         self.max_commits = max_commits
         self.verbose = verbose
         
-        # Initialize commit history
+        # Initialize commit history - stored as JSON metadata
         self.commit_meta_path = self.home / "commits.json"
         if self.commit_meta_path.exists() and not clear:
             self.commit_meta = load_json(self.commit_meta_path)
@@ -31,22 +89,24 @@ class Ana:
             }
             dump_json(self.commit_meta, self.commit_meta_path)
 
-        # Initialize data files
+        # Initialize data storage files
         data_path = self.home / "data.csv.gz"
         obj_path = self.home / "obj.json"
         
+        # Clear existing data if requested
         if clear:
             if data_path.exists():
                 data_path.unlink()
             if obj_path.exists():
                 obj_path.unlink()
         
+        # Create empty storage files if they don't exist
         if not data_path.exists():
             data_path.touch()
         if not obj_path.exists():
             Ana.create_empty_json_file(obj_path)
         
-        # Process initial data
+        # Process initial data inputs
         if data is not None:
             self.update(data, key=None)
         if obj is not None:
@@ -57,18 +117,34 @@ class Ana:
     
     @staticmethod
     def create_empty_json_file(path):
+        """Create an empty JSON file with empty dictionary content."""
         dump_json({}, path)
     
     @property
     def data_path(self):
+        """Path to the compressed CSV file storing structured data."""
         return self.home / "data.csv.gz"
     
     @property
     def obj_path(self):
+        """Path to the JSON file storing unstructured object data."""
         return self.home / "obj.json"
     
     @property
     def data(self):
+        """
+        Retrieve the current structured data as a pandas DataFrame.
+        
+        Returns
+        -------
+        pandas.DataFrame
+            Current data state. Returns empty DataFrame if no data exists.
+            
+        Notes
+        -----
+        Index is preserved as string type to maintain consistency across reads.
+        Handles empty file cases gracefully.
+        """
         try:
             res = pd.read_csv(self.data_path, compression='gzip', index_col=0)
             res.index = res.index.astype("string")
@@ -78,32 +154,62 @@ class Ana:
     
     @property
     def obj(self):
+        """
+        Retrieve the current object storage data as a dictionary.
+        
+        Returns
+        -------
+        dict
+            Current object storage state. Returns empty dict if no objects exist.
+        """
         try:
             return load_json(self.obj_path)
         except FileNotFoundError:
             return {}
     
     def commit(self, description=None):
-        """Create a new commit of the current state"""
+        """
+        Create a new commit snapshot of the current data state.
+        
+        Parameters
+        ----------
+        description : str, optional
+            Human-readable description of the commit. If None, uses commit ID.
+            Must be unique and cannot be purely numeric.
+            
+        Returns
+        -------
+        int
+            Commit ID of the newly created commit.
+            
+        Raises
+        ------
+        ValueError
+            If description already exists or is purely numeric.
+            
+        Notes
+        -----
+        Each commit creates physical copies of data files to enable revert functionality.
+        Commit history is automatically trimmed when exceeding max_commits limit.
+        """
         assert isinstance(description, (str, type(None))), "Description must be a string or None"
         # Load current metadata
         meta = load_json(self.commit_meta_path)
         
-        # Determine commit description
+        # Generate commit ID and validate description
         commit_id = meta["last_commit_count"] + 1
         if description is None:
             description = str(commit_id)
         elif any(c["description"] == description for c in meta["commits"]):
             raise ValueError(f"Commit description '{description}' already exists")
         else:
-            # check if description is ambiguous (e.g., purely numeric)
-            # if can be converted to int, raise error
+            # Prevent ambiguous numeric descriptions that could conflict with commit IDs
             stripped_description = description.strip()
             if re.fullmatch(r'-?\d+', stripped_description):
                 raise ValueError("Commit description cannot be purely numeric")
         meta["last_commit_count"] += 1
         
-        # Create commit entry
+        # Create commit metadata entry
         commit_entry = {
             "id": commit_id,
             "description": description,
@@ -111,14 +217,14 @@ class Ana:
         }
         meta["commits"].append(commit_entry)
         
-        # Save data snapshot
+        # Create physical snapshots of current data state
         commit_data_path = self.home / f"{commit_id}.data.csv.gz"
         commit_obj_path = self.home / f"{commit_id}.obj.json"
         
         shutil.copy(self.data_path, commit_data_path)
         shutil.copy(self.obj_path, commit_obj_path)
         
-        # Enforce commit limit
+        # Enforce commit limit by removing oldest commits
         if len(meta["commits"]) > meta["max_commits"]:
             oldest = meta["commits"].pop(0)
             (self.home / f"{oldest['id']}.data.csv.gz").unlink(missing_ok=True)
@@ -134,8 +240,11 @@ class Ana:
     
     def update(self, new_data, key=None, description=None, force=False):
         """
-        Update the data in db and automatically commit changes.
-
+        Update data storage and automatically commit changes.
+        
+        This is the primary method for adding or modifying data in the system.
+        Supports multiple data types with different storage strategies.
+        
         Parameters
         ----------
         new_data : pandas.DataFrame, pandas.Series, dict, or list
@@ -163,9 +272,20 @@ class Ana:
             Custom description for the automatic commit. If not provided, uses
             an auto-generated commit identifier.
             
-        force : bool, optional, default=False
+        force : bool, optional, default False
             If True, overwrite existing data for the given key.
             If False, check if data already exists for the key and skip update if found.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        AssertionError
+            If key is required but not provided for dict/list inputs.
+        TypeError
+            If unsupported data type is provided.
 
         Notes
         -----
@@ -177,9 +297,9 @@ class Ana:
         For list inputs:
         - Data is stored in the separate object store (JSON format)
         - The entire list replaces any previous value for the given key
-        - Does not trigger data file updates, only updates object store
+        - Object store updates do not trigger automatic commits
         """
-        # Check if data already exists for the key and handle accordingly
+        # Check for existing data and handle based on force flag
         if not force and key is not None:
             if isinstance(new_data, list):
                 # For list data, check if key exists in obj
@@ -195,6 +315,7 @@ class Ana:
                         print(f"Column '{col_name}' already exists in data. Use force=True to overwrite.")
                     return
         
+        # Process different data types
         if isinstance(new_data, pd.DataFrame):
             new_data_df = new_data.copy()
         elif isinstance(new_data, pd.Series):
@@ -218,24 +339,51 @@ class Ana:
             return 
         else:
             raise TypeError(f"Unsupported data type: {type(new_data)}")
+        
+        # Merge new data with existing data and save
         res = pd.concat([self.data, new_data_df], axis=0, join="outer")    
         res = res.groupby(level=0).last()
         res.to_csv(self.data_path, compression='gzip')
         if self.verbose:
             print("Data updated.")
+        
+        # Create commit for the data change
         self.commit(description=description)
         if self.verbose:
             print("Data updated and committed.")
     
     def revert(self, commit_repr):
         """
-        Revert to a previous commit version.
-        Input:
-            commit_repr: str, commit ID or description
+        Revert the system state to a previous commit version.
+        
+        Parameters
+        ----------
+        commit_repr : str or int
+            Commit identifier, which can be either:
+            - Commit ID (integer as string or number)
+            - Commit description (exact string match)
+            
+        Returns
+        -------
+        int
+            Commit ID of the new commit created after revert operation.
+            
+        Raises
+        ------
+        ValueError
+            If the specified commit cannot be found in metadata.
+            
+        Notes
+        -----
+        This operation:
+        1. Restores data files from the specified commit snapshot
+        2. Creates a new commit to record the revert action
+        3. Maintains the entire commit history including the revert
+        
+        The revert is itself versioned, allowing undo of revert operations.
         """
-        # Validate commit exists
+        # Validate commit exists in metadata
         meta = load_json(self.commit_meta_path)
-        # check commid id by id or description
         for commit in meta["commits"]:
             if commit["id"] == commit_repr or commit["description"] == commit_repr:
                 commit_id = commit["id"]
@@ -243,14 +391,14 @@ class Ana:
         else:
             raise ValueError(f"Commit '{commit_repr}' not found in metadata")
         
-        # Restore files from commit
+        # Restore files from commit snapshot
         commit_data_path = self.home / f"{commit_id}.data.csv.gz"
         commit_obj_path = self.home / f"{commit_id}.obj.json"
         
         shutil.copy(commit_data_path, self.data_path)
         shutil.copy(commit_obj_path, self.obj_path)
         
-        # Create new commit for revert action
+        # Create new commit to record the revert action
         new_commit_id = self.commit()
         
         if self.verbose:
@@ -259,9 +407,22 @@ class Ana:
         return new_commit_id
     
     def list_commits(self):
-        """List all available commits"""
+        """
+        Display all available commits in chronological order.
+        
+        Returns
+        -------
+        None
+        
+        Notes
+        -----
+        Output format: 
+        [commit_id]: [description] at [timestamp]
+        
+        Commits are sorted by ID (chronological order). Most recent commit appears last.
+        """
         meta = load_json(self.commit_meta_path)
-        # sort by commit ID
+        # Sort commits by ID to ensure chronological order
         meta["commits"].sort(key=lambda c: c["id"])
         if self.verbose:
             print(f"Listing {len(meta['commits'])} commits:")
