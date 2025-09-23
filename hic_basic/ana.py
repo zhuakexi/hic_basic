@@ -8,7 +8,7 @@ Designed for managing analysis pipelines where data provenance and reproducibili
 Key Features:
 - Automatic versioning with commit history
 - Support for both tabular data (DataFrame) and object storage (lists)
-- Configurable commit history limits
+- Configurable commit history limits with circular commit file naming
 - Revert functionality to previous states
 - Thread-safe for single-process use (not suitable for multiprocessing)
 """
@@ -37,6 +37,11 @@ class Ana:
     2. Update data using update() method (automatically creates commits)
     3. Track changes using list_commits()
     4. Revert if needed using revert()
+    
+    Commit Storage Strategy:
+    - Uses circular file naming with modulo max_commits to prevent infinite filename growth
+    - Maintains mapping between logical commit IDs and physical file names in metadata
+    - Automatically reuses file slots when max_commits limit is reached
     
     Example:
         >>> ana = Ana('/path/to/project')
@@ -81,11 +86,14 @@ class Ana:
         self.commit_meta_path = self.home / "commits.json"
         if self.commit_meta_path.exists() and not clear:
             self.commit_meta = load_json(self.commit_meta_path)
+            # Ensure max_commits is updated if changed
+            self.commit_meta["max_commits"] = max_commits
         else:
             self.commit_meta = {
                 "commits": [],
                 "last_commit_count": 0,
-                "max_commits": max_commits
+                "max_commits": max_commits,
+                "file_mapping": {}  # Maps commit_id -> physical_filename
             }
             dump_json(self.commit_meta, self.commit_meta_path)
 
@@ -99,6 +107,11 @@ class Ana:
                 data_path.unlink()
             if obj_path.exists():
                 obj_path.unlink()
+            # Also clear any existing commit files
+            for commit_file in self.home.glob("commit_*.data.csv.gz"):
+                commit_file.unlink()
+            for commit_file in self.home.glob("commit_*.obj.json"):
+                commit_file.unlink()
         
         # Create empty storage files if they don't exist
         if not data_path.exists():
@@ -119,6 +132,28 @@ class Ana:
     def create_empty_json_file(path):
         """Create an empty JSON file with empty dictionary content."""
         dump_json({}, path)
+    
+    def _get_commit_filename(self, commit_id):
+        """
+        Generate physical filename for a commit using circular naming.
+        
+        Parameters
+        ----------
+        commit_id : int
+            Logical commit identifier.
+            
+        Returns
+        -------
+        str
+            Base filename for commit files (without extension).
+            
+        Notes
+        -----
+        Uses modulo operation with max_commits to ensure filenames cycle
+        within a fixed range, preventing infinite filename number growth.
+        """
+        file_slot = commit_id % self.max_commits
+        return f"commit_{file_slot:04d}"
     
     @property
     def data_path(self):
@@ -191,6 +226,7 @@ class Ana:
         -----
         Each commit creates physical copies of data files to enable revert functionality.
         Commit history is automatically trimmed when exceeding max_commits limit.
+        Uses circular file naming to prevent infinite filename number growth.
         """
         assert isinstance(description, (str, type(None))), "Description must be a string or None"
         # Load current metadata
@@ -207,34 +243,54 @@ class Ana:
             stripped_description = description.strip()
             if re.fullmatch(r'-?\d+', stripped_description):
                 raise ValueError("Commit description cannot be purely numeric")
-        meta["last_commit_count"] += 1
+        meta["last_commit_count"] = commit_id
+        
+        # Get physical filename for this commit using circular naming
+        commit_filename = self._get_commit_filename(commit_id)
         
         # Create commit metadata entry
         commit_entry = {
             "id": commit_id,
             "description": description,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "filename": commit_filename  # Store mapping for revert operations
         }
         meta["commits"].append(commit_entry)
         
         # Create physical snapshots of current data state
-        commit_data_path = self.home / f"{commit_id}.data.csv.gz"
-        commit_obj_path = self.home / f"{commit_id}.obj.json"
+        commit_data_path = self.home / f"{commit_filename}.data.csv.gz"
+        commit_obj_path = self.home / f"{commit_filename}.obj.json"
         
         shutil.copy(self.data_path, commit_data_path)
         shutil.copy(self.obj_path, commit_obj_path)
         
+        # Update file mapping
+        meta["file_mapping"][str(commit_id)] = commit_filename
+        
         # Enforce commit limit by removing oldest commits
         if len(meta["commits"]) > meta["max_commits"]:
             oldest = meta["commits"].pop(0)
-            (self.home / f"{oldest['id']}.data.csv.gz").unlink(missing_ok=True)
-            (self.home / f"{oldest['id']}.obj.json").unlink(missing_ok=True)
+            oldest_commit_id = oldest["id"]
+            oldest_filename = oldest["filename"]
+            
+            # Remove from file mapping
+            if str(oldest_commit_id) in meta["file_mapping"]:
+                del meta["file_mapping"][str(oldest_commit_id)]
+            
+            # Remove physical files only if they are not being used by newer commits
+            # Check if any other commit is using the same filename
+            filename_in_use = any(commit["filename"] == oldest_filename 
+                                for commit in meta["commits"])
+            
+            if not filename_in_use:
+                (self.home / f"{oldest_filename}.data.csv.gz").unlink(missing_ok=True)
+                (self.home / f"{oldest_filename}.obj.json").unlink(missing_ok=True)
         
         # Save updated metadata
         dump_json(meta, self.commit_meta_path)
         
         if self.verbose:
-            print(f"Created commit: {commit_id}")
+            print(f"Created commit: {commit_id} (file: {commit_filename})")
         
         return commit_id
     
@@ -381,28 +437,46 @@ class Ana:
         3. Maintains the entire commit history including the revert
         
         The revert is itself versioned, allowing undo of revert operations.
+        Uses the file mapping to locate the correct physical files.
         """
         # Validate commit exists in metadata
         meta = load_json(self.commit_meta_path)
+        commit_id = None
+        commit_filename = None
+        
         for commit in meta["commits"]:
             if commit["id"] == commit_repr or commit["description"] == commit_repr:
                 commit_id = commit["id"]
+                commit_filename = commit["filename"]
                 break
         else:
+            # Also check file mapping for string representations
+            if str(commit_repr) in meta["file_mapping"]:
+                commit_filename = meta["file_mapping"][str(commit_repr)]
+                # Find the commit entry to get the full metadata
+                for commit in meta["commits"]:
+                    if str(commit["id"]) == str(commit_repr):
+                        commit_id = commit["id"]
+                        break
+        
+        if commit_id is None or commit_filename is None:
             raise ValueError(f"Commit '{commit_repr}' not found in metadata")
         
         # Restore files from commit snapshot
-        commit_data_path = self.home / f"{commit_id}.data.csv.gz"
-        commit_obj_path = self.home / f"{commit_id}.obj.json"
+        commit_data_path = self.home / f"{commit_filename}.data.csv.gz"
+        commit_obj_path = self.home / f"{commit_filename}.obj.json"
+        
+        if not commit_data_path.exists() or not commit_obj_path.exists():
+            raise ValueError(f"Commit files for '{commit_repr}' not found on disk")
         
         shutil.copy(commit_data_path, self.data_path)
         shutil.copy(commit_obj_path, self.obj_path)
         
         # Create new commit to record the revert action
-        new_commit_id = self.commit()
+        new_commit_id = self.commit(f"Reverted to commit {commit_id}")
         
         if self.verbose:
-            print(f"Reverted to commit {commit_id} and created new commit {new_commit_id}")
+            print(f"Reverted to commit {commit_id} (file: {commit_filename}) and created new commit {new_commit_id}")
         
         return new_commit_id
     
@@ -417,9 +491,10 @@ class Ana:
         Notes
         -----
         Output format: 
-        [commit_id]: [description] at [timestamp]
+        [commit_id]: [description] at [timestamp] (file: [filename])
         
         Commits are sorted by ID (chronological order). Most recent commit appears last.
+        Includes physical filename information for debugging.
         """
         meta = load_json(self.commit_meta_path)
         # Sort commits by ID to ensure chronological order
@@ -427,4 +502,4 @@ class Ana:
         if self.verbose:
             print(f"Listing {len(meta['commits'])} commits:")
         for commit in meta["commits"]:
-            print(f"{commit['id']}: {commit['description']} at {commit['timestamp']}")
+            print(f"{commit['id']}: {commit['description']} at {commit['timestamp']} (file: {commit['filename']})")
