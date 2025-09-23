@@ -10,7 +10,7 @@ class Ana:
     """
     A class to manage analysis data and operations with version control.
     """
-    def __init__(self, home, tag=None, data=None, obj=None, clear=False, verbose=False, max_commits=50):
+    def __init__(self, home, data=None, obj=None, clear=False, verbose=False, max_commits=50):
         """
         Initialize the Ana class with version control.
         """
@@ -19,11 +19,8 @@ class Ana:
         self.max_commits = max_commits
         self.verbose = verbose
         
-        # Initialize tag
-        self.tag = tag or "0"
-
         # Initialize commit history
-        self.commit_meta_path = self.home / f"{self.tag}.commits.json"
+        self.commit_meta_path = self.home / "commits.json"
         if self.commit_meta_path.exists() and not clear:
             self.commit_meta = load_json(self.commit_meta_path)
         else:
@@ -35,8 +32,8 @@ class Ana:
             dump_json(self.commit_meta, self.commit_meta_path)
 
         # Initialize data files
-        data_path = self.home / f"{self.tag}.data.csv.gz"
-        obj_path = self.home / f"{self.tag}.obj.json"
+        data_path = self.home / "data.csv.gz"
+        obj_path = self.home / "obj.json"
         
         if clear:
             if data_path.exists():
@@ -64,11 +61,11 @@ class Ana:
     
     @property
     def data_path(self):
-        return self.home / f"{self.tag}.data.csv.gz"
+        return self.home / "data.csv.gz"
     
     @property
     def obj_path(self):
-        return self.home / f"{self.tag}.obj.json"
+        return self.home / "obj.json"
     
     @property
     def data(self):
@@ -110,8 +107,7 @@ class Ana:
         commit_entry = {
             "id": commit_id,
             "description": description,
-            "timestamp": datetime.now().isoformat(),
-            "tag": self.tag
+            "timestamp": datetime.now().isoformat()
         }
         meta["commits"].append(commit_entry)
         
