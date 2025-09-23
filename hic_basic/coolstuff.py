@@ -152,6 +152,8 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
         bad_bins: list of bad bins to be set to nan, a dataframe with columns ["chrom","start"]
     Output:
         pd.DataFrame
+        region1 -> numpy 1st axis; numpy/pandas row; pandas index;
+        region2 -> numpy 2nd axis; numpy/pandas column; pandas columns;
     TODO:
         min_nz and bad_bins support for separate index(region1) and columns(region2) filtering for inter-chrom matrix
     """
