@@ -766,7 +766,10 @@ def h5ad_to_files(h5ad_file: str, output_dir: str, layers: Optional[List[str]] =
     -------
     dict
         Metadata about the conversion process
+    TODO:
+        Fix: pd.Index type in obs with col name xxx now will be dumped as xxx_mask, xxx_values in csv
     """
+    print("Note: Check data type in obs before dumping. pd.Index type in obs with col name xxx now will be dumped as xxx_mask, xxx_values in csv")
     converter = H5ADConverter()
     return converter.dump(h5ad_file, output_dir, layers)
 
