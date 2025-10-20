@@ -7,6 +7,7 @@ import numpy as np
 import scipy.sparse as sp
 import h5py
 import json
+import pandas as pd
 
 # Import the module to test
 from hic_basic.hicbr import H5ADConverter, h5ad_to_files, files_to_anndata
@@ -119,6 +120,43 @@ class TestH5ADConverter(unittest.TestCase):
             f.create_dataset('X', data=x_data)
         
         self.mock_h5ad_files['minimal'] = str(minimal_file)
+        
+        # Test case 4: String-rich h5ad with various string encodings and types
+        string_rich_file = Path(self.temp_dir) / "string_rich_test.h5ad"
+        with h5py.File(string_rich_file, 'w') as f:
+            # Create X matrix
+            x_data = np.random.rand(50, 25)
+            f.create_dataset('X', data=x_data)
+            
+            # Create obs with various string types
+            obs_group = f.create_group('obs')
+            
+            # Regular ASCII strings
+            obs_group.create_dataset('cell_id', data=[f'cell_{i:03d}' for i in range(50)])
+            
+            # Unicode strings
+            obs_group.create_dataset('cell_type', data=[f'类型_{i%3}' for i in range(50)])
+            
+            # Mixed strings with special characters
+            obs_group.create_dataset('description', data=[f'sample_{i}_with_data' for i in range(50)])
+            
+            # Categorical strings (repeated values)
+            tissue_types = ['brain', 'liver', 'heart', 'kidney', 'lung']
+            obs_group.create_dataset('tissue', data=[tissue_types[i % 5] for i in range(50)])
+            
+            # Numeric data for comparison
+            obs_group.create_dataset('n_genes', data=np.random.randint(1000, 5000, 50))
+            obs_group.create_dataset('percent_mito', data=np.random.rand(50))
+            
+            # Create var with string columns
+            var_group = f.create_group('var')
+            var_group.create_dataset('gene_id', data=[f'ENSG{i:06d}' for i in range(25)])
+            var_group.create_dataset('gene_name', data=[f'Gene_{chr(65 + i%26)}{i//26}' for i in range(25)])
+            var_group.create_dataset('chromosome', data=[f'chr{(i % 10) + 1}' for i in range(25)])
+            
+            # Boolean and numeric data in var
+            var_group.create_dataset('highly_variable', data=np.random.choice([True, False], 25))
+            var_group.create_dataset('mean_expression', data=np.random.rand(25))
 
     def _print_directory_structure(self, directory_path, indent=0):
         """
@@ -141,6 +179,100 @@ class TestH5ADConverter(unittest.TestCase):
             else:
                 size = item.stat().st_size
                 print(" " * indent + f"📄 {item.name} ({size} bytes)")
+
+    def test_string_columns_export(self):
+        """
+        Test export of string columns in obs and var metadata.
+        
+        Input:
+            - h5ad file with various string column types (ASCII, Unicode, categorical)
+            - Mixed data types including strings, numbers, and booleans
+        
+        Output:
+            - All string columns properly exported to CSV
+            - Correct data types preserved
+            - Unicode and special characters handled correctly
+        """
+        # Create a test h5ad file with rich string data
+        string_test_file = Path(self.temp_dir) / "string_test.h5ad"
+        with h5py.File(string_test_file, 'w') as f:
+            # Create X matrix
+            x_data = np.random.rand(30, 20)
+            f.create_dataset('X', data=x_data)
+            
+            # Create obs with various string types
+            obs_group = f.create_group('obs')
+            
+            # ASCII strings
+            obs_group.create_dataset('cell_id', data=[f'cell_{i:03d}' for i in range(30)])
+            
+            # Unicode strings
+            obs_group.create_dataset('cell_type', data=[f'类型_{i%3}' for i in range(30)])
+            
+            # Mixed content
+            obs_group.create_dataset('sample_info', data=[f'sample_{i}_data' for i in range(30)])
+            
+            # Numeric data for comparison
+            obs_group.create_dataset('n_counts', data=np.random.randint(1000, 10000, 30))
+            
+            # Create var with string columns
+            var_group = f.create_group('var')
+            var_group.create_dataset('gene_name', data=[f'gene_{i}' for i in range(20)])
+            var_group.create_dataset('chromosome', data=[f'chr{(i % 5) + 1}' for i in range(20)])
+
+        output_dir = Path(self.temp_dir) / "string_test_output"
+        
+        # Perform conversion
+        conversion_meta = self.converter.dump(
+            str(string_test_file),
+            str(output_dir),
+            layers=['X', 'obs', 'var']
+        )
+        
+        print("\n=== String Columns Export Directory Structure ===")
+        self._print_directory_structure(output_dir)
+        
+        # Verify conversion metadata
+        self.assertIn('obs', conversion_meta['converted_layers'])
+        self.assertIn('var', conversion_meta['converted_layers'])
+        
+        # Verify files were created
+        self.assertTrue((output_dir / 'obs_metadata.csv').exists())
+        self.assertTrue((output_dir / 'var_metadata.csv').exists())
+        
+        # Load and inspect the exported CSV files
+        obs_df = pd.read_csv(output_dir / 'obs_metadata.csv', index_col=0)
+        var_df = pd.read_csv(output_dir / 'var_metadata.csv', index_col=0)
+        
+        print(f"\nExported obs columns: {list(obs_df.columns)}")
+        print(f"Exported var columns: {list(var_df.columns)}")
+        print(f"Obs dtypes: {obs_df.dtypes}")
+        print(f"Var dtypes: {var_df.dtypes}")
+        
+        # Verify all expected columns are present
+        expected_obs_columns = ['cell_id', 'cell_type', 'sample_info', 'n_counts']
+        expected_var_columns = ['gene_name', 'chromosome']
+        
+        for col in expected_obs_columns:
+            self.assertIn(col, obs_df.columns, f"Expected column '{col}' not found in obs metadata")
+        
+        for col in expected_var_columns:
+            self.assertIn(col, var_df.columns, f"Expected column '{col}' not found in var metadata")
+        
+        # Verify string columns contain expected data
+        self.assertTrue(all(obs_df['cell_id'].str.startswith('cell_')), "cell_id column doesn't contain expected string data")
+        self.assertTrue(all('类型' in str(x) for x in obs_df['cell_type']), "cell_type column doesn't contain expected unicode data")
+        self.assertTrue(all(obs_df['sample_info'].str.contains('sample_')), "sample_info column doesn't contain expected string data")
+        
+        self.assertTrue(all(var_df['gene_name'].str.startswith('gene_')), "gene_name column doesn't contain expected string data")
+        self.assertTrue(all(var_df['chromosome'].str.startswith('chr')), "chromosome column doesn't contain expected string data")
+        
+        # Verify data integrity - check a few sample values
+        self.assertEqual(obs_df.loc[0, 'cell_id'], 'cell_000')
+        self.assertEqual(var_df.loc[0, 'gene_name'], 'gene_0')
+        
+        # Verify numeric column is properly exported
+        self.assertEqual(obs_df['n_counts'].dtype, np.dtype('int64'), "n_counts column should be integer type")
 
     def test_basic_conversion(self):
         """
