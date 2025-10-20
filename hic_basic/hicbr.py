@@ -326,16 +326,86 @@ class H5ADConverter:
         for col_name in obs_group.keys():
             try:
                 col_data = obs_group[col_name]
-                # Ensure we're accessing the dataset correctly
-                if hasattr(col_data, '__len__') and len(col_data) > 0:
-                    # Use [()] to read the entire dataset
-                    obs_data[str(col_name)] = col_data[()]
+                
+                # Handle both Dataset and Group (categorical data)
+                if isinstance(col_data, h5py.Dataset):
+                    # Check data type
+                    dtype = col_data.dtype
+                    
+                    # Handle string data
+                    if h5py.check_string_dtype(dtype):
+                        # String data needs special handling
+                        if col_data.shape is None:
+                            obs_data[str(col_name)] = [col_data[()]]
+                        else:
+                            # Use asstr() method to properly handle strings
+                            string_data = col_data.asstr()[()]
+                            obs_data[str(col_name)] = string_data
+                    else:
+                        # Handle numeric and other data types
+                        if hasattr(col_data, 'shape') and col_data.shape is not None:
+                            if len(col_data.shape) > 0 and col_data.shape[0] > 0:
+                                obs_data[str(col_name)] = col_data[()]
+                            else:
+                                # Scalar data
+                                obs_data[str(col_name)] = [col_data[()]]
+                        else:
+                            obs_data[str(col_name)] = [col_data[()]]
+                
+                elif isinstance(col_data, h5py.Group):
+                    # Handle categorical data (common for string columns in AnnData)
+                    # Categorical data is stored as a group with 'categories' and 'codes'
+                    if 'categories' in col_data and 'codes' in col_data:
+                        try:
+                            # Get categories (the actual string values)
+                            categories_data = col_data['categories']
+                            if h5py.check_string_dtype(categories_data.dtype):
+                                categories = categories_data.asstr()[()]
+                            else:
+                                categories = categories_data[()]
+                            
+                            # Get codes (indices pointing to categories)
+                            codes = col_data['codes'][()]
+                            
+                            # Convert codes to actual string values
+                            string_values = []
+                            for code in codes:
+                                if code >= 0 and code < len(categories):
+                                    string_values.append(categories[code])
+                                else:
+                                    # Handle missing values (code == -1)
+                                    string_values.append(None)
+                            
+                            obs_data[str(col_name)] = string_values
+                            
+                        except Exception as e:
+                            warnings.warn(f"Failed to process categorical column {col_name}: {str(e)}")
+                            continue
+                    else:
+                        # For other types of groups, try to extract what we can
+                        warnings.warn(f"Column {col_name} is a Group but not a categorical. Attempting to extract data...")
+                        try:
+                            # Try to find any datasets in the group
+                            for key in col_data.keys():
+                                if isinstance(col_data[key], h5py.Dataset):
+                                    dataset_data = col_data[key][()]
+                                    obs_data[f"{col_name}_{key}"] = dataset_data
+                        except Exception as e:
+                            warnings.warn(f"Failed to extract data from group column {col_name}: {str(e)}")
+                            
             except Exception as e:
                 warnings.warn(f"Failed to process obs column {col_name}: {str(e)}")
                 continue
         
         if obs_data:
+            # Ensure all columns have consistent length
+            max_len = max(len(v) for v in obs_data.values()) if obs_data else 0
+            for col_name in obs_data:
+                if len(obs_data[col_name]) < max_len:
+                    obs_data[col_name] = list(obs_data[col_name]) + [None] * (max_len - len(obs_data[col_name]))
+            
             obs_df = pd.DataFrame(obs_data)
+            
             # Handle index column
             if '_index' in obs_df.columns:
                 obs_df = obs_df.set_index('_index')
@@ -344,13 +414,26 @@ class H5ADConverter:
                 obs_df = obs_df.set_index('index')
                 obs_df.index.name = None
             
-            # Convert bytes to strings if necessary
+            # More robust string conversion
             for col in obs_df.columns:
-                if obs_df[col].dtype == object and len(obs_df[col]) > 0 and isinstance(obs_df[col].iloc[0], bytes):
-                    obs_df[col] = obs_df[col].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
+                if obs_df[col].dtype == object:
+                    # Handle bytes type
+                    if len(obs_df[col]) > 0 and any(isinstance(x, bytes) for x in obs_df[col] if x is not None):
+                        obs_df[col] = obs_df[col].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
+                    # Handle numpy string types
+                    elif len(obs_df[col]) > 0 and any(isinstance(x, (np.str_, np.bytes_)) for x in obs_df[col] if x is not None):
+                        obs_df[col] = obs_df[col].astype(str)
             
             obs_df.to_csv(output_path / 'obs_metadata.csv')
-    
+        
+        # Debug output
+        # print(f"Processing obs columns: {list(obs_group.keys())}")
+        # for col_name in obs_group.keys():
+        #     col_data = obs_group[col_name]
+        #     print(f"Column: {col_name}, Type: {type(col_data)}, Shape: {getattr(col_data, 'shape', 'N/A')}, Dtype: {getattr(col_data, 'dtype', 'N/A')}")
+        #     if isinstance(col_data, h5py.Group):
+        #         print(f"  Group keys: {list(col_data.keys())}")
+        
     def _dump_var(self, h5_file: h5py.File, output_path: Path):
         """Dump variable metadata."""
         if 'var' not in h5_file:
@@ -363,16 +446,86 @@ class H5ADConverter:
         for col_name in var_group.keys():
             try:
                 col_data = var_group[col_name]
-                # Ensure we're accessing the dataset correctly
-                if hasattr(col_data, '__len__') and len(col_data) > 0:
-                    # Use [()] to read the entire dataset
-                    var_data[str(col_name)] = col_data[()]
+                
+                # Handle both Dataset and Group (categorical data)
+                if isinstance(col_data, h5py.Dataset):
+                    # Check data type
+                    dtype = col_data.dtype
+                    
+                    # Handle string data
+                    if h5py.check_string_dtype(dtype):
+                        # String data needs special handling
+                        if col_data.shape is None:
+                            var_data[str(col_name)] = [col_data[()]]
+                        else:
+                            # Use asstr() method to properly handle strings
+                            string_data = col_data.asstr()[()]
+                            var_data[str(col_name)] = string_data
+                    else:
+                        # Handle numeric and other data types
+                        if hasattr(col_data, 'shape') and col_data.shape is not None:
+                            if len(col_data.shape) > 0 and col_data.shape[0] > 0:
+                                var_data[str(col_name)] = col_data[()]
+                            else:
+                                # Scalar data
+                                var_data[str(col_name)] = [col_data[()]]
+                        else:
+                            var_data[str(col_name)] = [col_data[()]]
+                
+                elif isinstance(col_data, h5py.Group):
+                    # Handle categorical data (common for string columns in AnnData)
+                    # Categorical data is stored as a group with 'categories' and 'codes'
+                    if 'categories' in col_data and 'codes' in col_data:
+                        try:
+                            # Get categories (the actual string values)
+                            categories_data = col_data['categories']
+                            if h5py.check_string_dtype(categories_data.dtype):
+                                categories = categories_data.asstr()[()]
+                            else:
+                                categories = categories_data[()]
+                            
+                            # Get codes (indices pointing to categories)
+                            codes = col_data['codes'][()]
+                            
+                            # Convert codes to actual string values
+                            string_values = []
+                            for code in codes:
+                                if code >= 0 and code < len(categories):
+                                    string_values.append(categories[code])
+                                else:
+                                    # Handle missing values (code == -1)
+                                    string_values.append(None)
+                            
+                            var_data[str(col_name)] = string_values
+                            
+                        except Exception as e:
+                            warnings.warn(f"Failed to process categorical column {col_name}: {str(e)}")
+                            continue
+                    else:
+                        # For other types of groups, try to extract what we can
+                        warnings.warn(f"Column {col_name} is a Group but not a categorical. Attempting to extract data...")
+                        try:
+                            # Try to find any datasets in the group
+                            for key in col_data.keys():
+                                if isinstance(col_data[key], h5py.Dataset):
+                                    dataset_data = col_data[key][()]
+                                    var_data[f"{col_name}_{key}"] = dataset_data
+                        except Exception as e:
+                            warnings.warn(f"Failed to extract data from group column {col_name}: {str(e)}")
+                            
             except Exception as e:
                 warnings.warn(f"Failed to process var column {col_name}: {str(e)}")
                 continue
         
         if var_data:
+            # Ensure all columns have consistent length
+            max_len = max(len(v) for v in var_data.values()) if var_data else 0
+            for col_name in var_data:
+                if len(var_data[col_name]) < max_len:
+                    var_data[col_name] = list(var_data[col_name]) + [None] * (max_len - len(var_data[col_name]))
+            
             var_df = pd.DataFrame(var_data)
+            
             # Handle index column
             if '_index' in var_df.columns:
                 var_df = var_df.set_index('_index')
@@ -381,10 +534,15 @@ class H5ADConverter:
                 var_df = var_df.set_index('index')
                 var_df.index.name = None
             
-            # Convert bytes to strings if necessary
+            # More robust string conversion
             for col in var_df.columns:
-                if var_df[col].dtype == object and len(var_df[col]) > 0 and isinstance(var_df[col].iloc[0], bytes):
-                    var_df[col] = var_df[col].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
+                if var_df[col].dtype == object:
+                    # Handle bytes type
+                    if len(var_df[col]) > 0 and any(isinstance(x, bytes) for x in var_df[col] if x is not None):
+                        var_df[col] = var_df[col].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
+                    # Handle numpy string types
+                    elif len(var_df[col]) > 0 and any(isinstance(x, (np.str_, np.bytes_)) for x in var_df[col] if x is not None):
+                        var_df[col] = var_df[col].astype(str)
             
             var_df.to_csv(output_path / 'var_metadata.csv')
     
