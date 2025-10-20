@@ -109,9 +109,9 @@ class H5ADConverter:
             layers = self.supported_layers
         
         conversion_meta = {
-            'original_file': h5ad_file,
+            'original_file': str(Path(h5ad_file)),  # Convert to string for JSON serialization
             'converted_layers': [],
-            'output_directory': str(output_path),
+            'output_directory': str(output_path),   # Convert to string for JSON serialization
             'conversion_timestamp': pd.Timestamp.now().isoformat()
         }
         
@@ -130,11 +130,27 @@ class H5ADConverter:
         except Exception as e:
             raise ValueError(f"Failed to read h5ad file {h5ad_file}: {str(e)}")
         
-        # Save conversion metadata
+        # Save conversion metadata - ensure all values are JSON serializable
+        serializable_meta = self._make_json_serializable(conversion_meta)
         with open(output_path / 'conversion_metadata.json', 'w') as f:
-            json.dump(conversion_meta, f, indent=2)
+            json.dump(serializable_meta, f, indent=2)
         
         return conversion_meta
+    
+    def _make_json_serializable(self, obj: Any) -> Any:
+        """Recursively convert objects to JSON-serializable types."""
+        if isinstance(obj, (str, int, float, bool, type(None))):
+            return obj
+        elif isinstance(obj, (list, tuple)):
+            return [self._make_json_serializable(item) for item in obj]
+        elif isinstance(obj, dict):
+            return {str(key): self._make_json_serializable(value) for key, value in obj.items()}
+        elif isinstance(obj, (Path, pd.Timestamp)):
+            return str(obj)
+        elif hasattr(obj, 'isoformat'):  # Handle datetime objects
+            return obj.isoformat()
+        else:
+            return str(obj)
     
     def load(self, input_dir: str, layers: Optional[List[str]] = None) -> Any:
         """
@@ -215,6 +231,8 @@ class H5ADConverter:
         for layer in self.supported_layers:
             # Check for layer-specific indicators
             if layer == 'X' and (input_path / 'X_matrix.npz').exists():
+                available.append(layer)
+            elif layer == 'X' and (input_path / 'X_matrix.npy').exists():
                 available.append(layer)
             elif layer == 'obs' and (input_path / 'obs_metadata.csv').exists():
                 available.append(layer)
@@ -306,14 +324,31 @@ class H5ADConverter:
         # Convert to pandas DataFrame
         obs_data = {}
         for col_name in obs_group.keys():
-            col_data = obs_group[col_name]
-            if hasattr(col_data, '__len__') and len(col_data) > 0:
-                obs_data[col_name] = col_data[:]
+            try:
+                col_data = obs_group[col_name]
+                # Ensure we're accessing the dataset correctly
+                if hasattr(col_data, '__len__') and len(col_data) > 0:
+                    # Use [()] to read the entire dataset
+                    obs_data[str(col_name)] = col_data[()]
+            except Exception as e:
+                warnings.warn(f"Failed to process obs column {col_name}: {str(e)}")
+                continue
         
         if obs_data:
             obs_df = pd.DataFrame(obs_data)
+            # Handle index column
             if '_index' in obs_df.columns:
                 obs_df = obs_df.set_index('_index')
+                obs_df.index.name = None
+            elif 'index' in obs_df.columns:
+                obs_df = obs_df.set_index('index')
+                obs_df.index.name = None
+            
+            # Convert bytes to strings if necessary
+            for col in obs_df.columns:
+                if obs_df[col].dtype == object and len(obs_df[col]) > 0 and isinstance(obs_df[col].iloc[0], bytes):
+                    obs_df[col] = obs_df[col].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
+            
             obs_df.to_csv(output_path / 'obs_metadata.csv')
     
     def _dump_var(self, h5_file: h5py.File, output_path: Path):
@@ -326,14 +361,31 @@ class H5ADConverter:
         # Convert to pandas DataFrame
         var_data = {}
         for col_name in var_group.keys():
-            col_data = var_group[col_name]
-            if hasattr(col_data, '__len__') and len(col_data) > 0:
-                var_data[col_name] = col_data[:]
+            try:
+                col_data = var_group[col_name]
+                # Ensure we're accessing the dataset correctly
+                if hasattr(col_data, '__len__') and len(col_data) > 0:
+                    # Use [()] to read the entire dataset
+                    var_data[str(col_name)] = col_data[()]
+            except Exception as e:
+                warnings.warn(f"Failed to process var column {col_name}: {str(e)}")
+                continue
         
         if var_data:
             var_df = pd.DataFrame(var_data)
+            # Handle index column
             if '_index' in var_df.columns:
                 var_df = var_df.set_index('_index')
+                var_df.index.name = None
+            elif 'index' in var_df.columns:
+                var_df = var_df.set_index('index')
+                var_df.index.name = None
+            
+            # Convert bytes to strings if necessary
+            for col in var_df.columns:
+                if var_df[col].dtype == object and len(var_df[col]) > 0 and isinstance(var_df[col].iloc[0], bytes):
+                    var_df[col] = var_df[col].apply(lambda x: x.decode('utf-8') if isinstance(x, bytes) else x)
+            
             var_df.to_csv(output_path / 'var_metadata.csv')
     
     def _dump_obsm(self, h5_file: h5py.File, output_path: Path):
@@ -396,25 +448,25 @@ class H5ADConverter:
             
             if isinstance(item, h5py.Group):
                 # Recursively process subgroups
-                result[key] = self._extract_uns_data(item)
+                result[str(key)] = self._extract_uns_data(item)
             elif isinstance(item, h5py.Dataset):
                 # Convert dataset to appropriate Python type
                 if item.shape is None:
-                    result[key] = None
+                    result[str(key)] = None
                 elif item.shape == ():
                     # Scalar value
-                    result[key] = item[()]
+                    result[str(key)] = item[()]
                 else:
                     # Array
-                    result[key] = item[:]
+                    result[str(key)] = item[:]
                 
                 # Convert bytes to string if necessary
-                if isinstance(result[key], bytes):
-                    result[key] = result[key].decode('utf-8')
-                elif isinstance(result[key], np.ndarray) and result[key].dtype.kind in ['S', 'U']:
-                    result[key] = result[key].astype(str).tolist()
-                elif isinstance(result[key], np.ndarray):
-                    result[key] = result[key].tolist()
+                if isinstance(result[str(key)], bytes):
+                    result[str(key)] = result[str(key)].decode('utf-8')
+                elif isinstance(result[str(key)], np.ndarray) and result[str(key)].dtype.kind in ['S', 'U']:
+                    result[str(key)] = result[str(key)].astype(str).tolist()
+                elif isinstance(result[str(key)], np.ndarray):
+                    result[str(key)] = result[str(key)].tolist()
         
         return result
     
@@ -428,6 +480,8 @@ class H5ADConverter:
             return obj.tolist()
         elif isinstance(obj, np.bool_):
             return bool(obj)
+        elif isinstance(obj, (Path, pd.Timestamp)):
+            return str(obj)
         else:
             return str(obj)
     
@@ -479,14 +533,22 @@ class H5ADConverter:
         """Load observation metadata."""
         obs_file = input_path / 'obs_metadata.csv'
         if obs_file.exists():
-            return pd.read_csv(obs_file, index_col=0)
+            df = pd.read_csv(obs_file, index_col=0)
+            # Ensure index is properly set
+            if df.index.name == '_index':
+                df.index.name = None
+            return df
         return None
     
     def _load_var(self, input_path: Path):
         """Load variable metadata."""
         var_file = input_path / 'var_metadata.csv'
         if var_file.exists():
-            return pd.read_csv(var_file, index_col=0)
+            df = pd.read_csv(var_file, index_col=0)
+            # Ensure index is properly set
+            if df.index.name == '_index':
+                df.index.name = None
+            return df
         return None
     
     def _load_obsm(self, input_path: Path):
@@ -569,21 +631,3 @@ def files_to_anndata(input_dir: str, layers: Optional[List[str]] = None) -> Any:
     """
     converter = H5ADConverter()
     return converter.load(input_dir, layers)
-
-
-# Example usage
-if __name__ == "__main__":
-    # Example conversion
-    converter = H5ADConverter()
-    
-    # Convert h5ad to files
-    meta = converter.dump(
-        h5ad_file="your_file.h5ad",
-        output_dir="./converted_data",
-        layers=['X', 'obs', 'var', 'obsm', 'varm', 'uns']
-    )
-    print(f"Conversion completed: {meta}")
-    
-    # Load files back to AnnData
-    adata = converter.load("./converted_data")
-    print(f"Loaded AnnData: {adata}")
