@@ -400,33 +400,74 @@ class GenomeIdeograph:
         else:
             # For cross-chromosome bins, return the list of regions directly
             return breaks
-    def append_bins(self, pairs:pd.DataFrame, binsize:int, flavor:str="hickit"):
+    def append_bins(self, 
+                    df: pd.DataFrame, 
+                    binsize: int, 
+                    chr1_col: str = "chr1",
+                    pos1_col: str = "pos1", 
+                    chr2_col: str = None,
+                    pos2_col: str = None,
+                    flavor: str = "hickit"):
         """
-        Append bins to pairs dataframe.
+        Append bins to dataframe.
+        
         Input:
-            pairs: pairs data structure (parsing from hickit output .pairs file)
+            df: input dataframe
             binsize: binsize, see GenomeIdeograph.bins
+            chr1_col: column name for first chromosome
+            pos1_col: column name for first position
+            chr2_col: column name for second chromosome (optional)
+            pos2_col: column name for second position (optional)
             flavor: flavor of the binning, see GenomeIdeograph.bins
+            
         Output:
-            pairs_e: pairs dataframe with new columns "chrom1","start1","end1","chrom2","start2","end2"
-                as the bins of the pairs
+            df_e: dataframe with new bin columns
+                For pairs mode: adds "chrom1","start1","end1","chrom2","start2","end2"
+                For single mode: adds "chrom1","start1","end1"
         """
         bins = self.bins(binsize, flavor=flavor)
-        chunk_e_list = []
-        for (chrom1, chrom2), chunk in pairs.groupby(["chr1","chr2"],observed=True):
-            cut1 = pd.cut(chunk["pos1"], bins[chrom1])
-            cut2 = pd.cut(chunk["pos2"], bins[chrom2])
-            chunk_e = chunk.assign(
-                chrom1 = chrom1,
-                start1 = pd.Index(cut1.astype(pd.IntervalDtype())).left,
-                end1 = pd.Index(cut1.astype(pd.IntervalDtype())).right,
-                chrom2 = chrom2,
-                start2 = pd.Index(cut2.astype(pd.IntervalDtype())).left,
-                end2 = pd.Index(cut2.astype(pd.IntervalDtype())).right,
-            )
-            chunk_e_list.append(chunk_e)
-        pairs_e = pd.concat(chunk_e_list,axis=0)
-        return pairs_e
+        
+        # Determine mode based on whether chr2 and pos2 columns are provided
+        is_pairs_mode = chr2_col is not None and pos2_col is not None
+        
+        if is_pairs_mode:
+            # Pairs mode - process both sets of coordinates
+            chunk_e_list = []
+            for (chrom1, chrom2), chunk in df.groupby([chr1_col, chr2_col], observed=True):
+                cut1 = pd.cut(chunk[pos1_col], bins[chrom1])
+                cut2 = pd.cut(chunk[pos2_col], bins[chrom2])
+                
+                chunk_e = chunk.assign(
+                    chrom1=chrom1,
+                    start1=pd.Index(cut1.astype(pd.IntervalDtype())).left,
+                    end1=pd.Index(cut1.astype(pd.IntervalDtype())).right,
+                    chrom2=chrom2,
+                    start2=pd.Index(cut2.astype(pd.IntervalDtype())).left,
+                    end2=pd.Index(cut2.astype(pd.IntervalDtype())).right,
+                )
+                chunk_e_list.append(chunk_e)
+            
+            df_e = pd.concat(chunk_e_list, axis=0)
+            
+        else:
+            # Single mode - process only first set of coordinates
+            chunk_e_list = []
+            for chrom1, chunk in df.groupby(chr1_col, observed=True):
+                if chrom1 not in bins:
+                    print(f"Warning: chromosome {chrom1} not found in bins, skipping.")
+                    continue  # Skip chromosomes not in bins
+                cut1 = pd.cut(chunk[pos1_col], bins[chrom1])
+                
+                chunk_e = chunk.assign(
+                    chrom1=chrom1,
+                    start1=pd.Index(cut1.astype(pd.IntervalDtype())).left,
+                    end1=pd.Index(cut1.astype(pd.IntervalDtype())).right,
+                )
+                chunk_e_list.append(chunk_e)
+            
+            df_e = pd.concat(chunk_e_list, axis=0)
+        
+        return df_e
     def coarsen_grouper(self, binsize1:int, binsize2:int, flavor:str="hickit")->pd.Series:
         """
         Get grouper to map from binsize1 to a bigger binsize2.
