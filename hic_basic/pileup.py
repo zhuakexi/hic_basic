@@ -49,19 +49,19 @@ def block_pileup(coolp, refs, expected=None, power=0.25, give_snips=False, balan
         coolp: path to cooler file
         refs: list of (chrom, start, end)
     """
-    if all((i in tads.columns) for i in ["chrom1","start1","start2"]):
+    if all((i in refs.columns) for i in ["chrom1","start1","start2"]):
         format = "bedpe"
         chrom_col, start_col, end_col = "chrom1", "start1", "start2"
-    elif all((i in tads.columns) for i in ["chrom","start","end"]):
+    elif all((i in refs.columns) for i in ["chrom","start","end"]):
         format =  "bed"
         chrom_col, start_col, end_col = "chrom", "start", "end"
     else:
         raise ValueError("No chrom1/start1/start2 or chrom/start/end found")
     print(f"ref is treated as {format}")
-    chroms = tads[chrom_col].unique()
+    chroms = refs[chrom_col].unique()
     #print(chroms)
     all_snips = []
-    for chrom, tad_chunk in tqdm(tads.groupby(chrom_col), desc="chrom", total=len(chroms)):
+    for chrom, tad_chunk in tqdm(refs.groupby(chrom_col), desc="chrom", total=len(chroms)):
         if expected is not None:
             chrom_mat = cool2mat_OE(str(coolp), chrom, expected, balance=balance)
             chrom_mat = add_diag_law(chrom_mat, power=power)
@@ -143,6 +143,11 @@ def asymmetric_pileup(coolp, refs, expand, expected=None, binsize=None, power=0.
             ~chrom_mat.index.duplicated(keep="first"),
             ~chrom_mat.columns.duplicated(keep="first")
         ]
+        # strip first layer if chrom_mat is multiindex
+        if isinstance(chrom_mat.index, pd.MultiIndex):
+            chrom_mat.index = chrom_mat.index.get_level_values(1)
+        if isinstance(chrom_mat.columns, pd.MultiIndex):
+            chrom_mat.columns = chrom_mat.columns.get_level_values(1)
         for i, row in ref_chunk.iterrows():
             start1, end1, start2, end2 = row[["start1","end1","start2","end2"]]
             left1, left2 = start1 - expand, start2 - expand
