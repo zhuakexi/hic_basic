@@ -232,23 +232,64 @@ def add_info(annote, rd):
 def add_umis(annote, umip):
     """
     Adding umi stat to annote.
-    Assign 0 if sample not present in count matrix.
+    Accept a single umi count matrix path or an iterable (list/tuple) of umi count matrix paths.
+    Missing files will be skipped with a warning. If no valid files are found, assign 0 for both
+    "umis" and "genes" for all samples.
+
     Input:
-        umip: umi count matrix path
+        umip: umi count matrix path or iterable of paths
     """
-    if not os.path.isfile(umip):
-        print("add_umis: umi file %s not exist." % umip)
+    # Normalize input into a list of candidate paths
+    paths = []
+    if umip is None:
+        paths = []
+    elif isinstance(umip, (list, tuple, set)):
+        paths = list(umip)
+    elif isinstance(umip, str):
+        paths = [umip]
+    else:
+        # try to coerce any iterable-like into a list
+        try:
+            paths = list(umip)
+        except Exception:
+            paths = [umip]
+
+    existing = []
+    for p in paths:
+        if p is None:
+            continue
+        if os.path.isfile(p):
+            existing.append(p)
+        else:
+            # keep behavior but allow multiple files: warn and skip
+            print("add_umis: umi file %s not exist. Skipping." % p)
+
+    # If no UMI files found, keep zeros
+    if len(existing) == 0:
         annote = annote.assign(umis=0)
         annote = annote.assign(genes=0)
         return annote
-    df = pd.read_table(umip,index_col=0,dtype={"gene":"string"})
-    df.columns = df.columns.astype("string")
-    umis = df.sum()
+
+    # Read and combine count matrices by summing counts across files (aligning on genes and samples)
+    dfs = []
+    for p in existing:
+        df = pd.read_table(p, index_col=0, dtype={"gene": "string"})
+        df.columns = df.columns.astype("string")
+        dfs.append(df)
+
+    combined = dfs[0].copy()
+    for df in dfs[1:]:
+        # add will align indices and columns; missing values treated as 0
+        combined = combined.add(df, fill_value=0)
+
+    # compute UMIs (sum of counts per sample) and genes (number of genes with count > 0 per sample)
+    umis = combined.sum()
     umis.name = "umis"
-    genes = (df > 0).astype(int).sum()
+    genes = (combined > 0).astype(int).sum()
     genes.name = "genes"
-    new_annote = pd.concat([annote,umis,genes],axis=1)
-    return new_annote.fillna({"umis":0, "genes":0}, axis=0)
+
+    new_annote = pd.concat([annote, umis, genes], axis=1)
+    return new_annote.fillna({"umis": 0, "genes": 0}, axis=0)
 def add_extra(annote):
     """
     Calculate contact_per_reads, umis_per_reads, rna_ratio.
