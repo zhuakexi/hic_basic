@@ -40,11 +40,7 @@ def count_chrom_phased(filename:str, *args)->pd.Series:
     cp_count = df.value_counts(["chrom","phase"])
     return cp_count
 @mt(
-    "hic_basic.phasing",
-    force = False,
-    nproc = 16,
-    outcol = None,
-    concat = True
+    "hic_basic.phasing"
 )
 def mt_count_chrom_phased(filename:str)->pd.Series:
     pass
