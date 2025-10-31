@@ -47,6 +47,8 @@ class Ana:
         >>> ana = Ana('/path/to/project')
         >>> ana.update({'sample1': 42}, key='measurements')
         >>> ana.commit('Initial data import')
+    
+    TODO: fix force option
     """
     
     def __init__(self, home, data=None, obj=None, clear=False, verbose=False, max_commits=50):
@@ -349,6 +351,7 @@ class Ana:
         - Data is merged with existing data using concat+groupby.last()
         - New values overwrite existing values on matching indices
         - The result is automatically committed to version history
+        - If row count changes, prints information about the change
 
         For list inputs:
         - Data is stored in the separate object store (JSON format)
@@ -396,10 +399,34 @@ class Ana:
         else:
             raise TypeError(f"Unsupported data type: {type(new_data)}")
         
+        # Record original data shape for comparison
+        original_shape = self.data.shape
+        original_rows, original_cols = original_shape
+        
         # Merge new data with existing data and save
         res = pd.concat([self.data, new_data_df], axis=0, join="outer")    
         res = res.groupby(level=0).last()
+        
+        # Get new shape and compare
+        new_shape = res.shape
+        new_rows, new_cols = new_shape
+        
+        # Print shape change information if rows changed
+        if original_rows != new_rows:
+            row_change = new_rows - original_rows
+            row_change_type = "added" if row_change > 0 else "removed"
+            print(f"Data shape changed: {original_shape} -> {new_shape}")
+            print(f"Rows {row_change_type}: {abs(row_change)}")
+        
+        # Also print column changes if any
+        if original_cols != new_cols:
+            col_change = new_cols - original_cols
+            col_change_type = "added" if col_change > 0 else "removed"
+            print(f"Columns {col_change_type}: {abs(col_change)}")
+        
+        # Save the updated data
         res.to_csv(self.data_path, compression='gzip')
+        
         if self.verbose:
             print("Data updated.")
         
