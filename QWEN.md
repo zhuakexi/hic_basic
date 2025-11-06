@@ -131,3 +131,22 @@ bmi = weight / (height ** 2)
 if height <= 0:
     raise ValueError("Height must be greater than 0")
 ```
+
+## 4. Commit Guidelines
+
+All commits **must** follow a consistent format to ensure clear change tracking and review. Each commit message should:
+
+- List modified functions **one per line**
+- Specify modification type (**bug fix** or **feature**) in the first line
+- Include a brief description of the change
+
+### Commit Message Format
+- **Always** prefix with modification type: `bug fix`, `feature`, `refactor`, `documentation`
+- **Always** list each function on a new line
+- **Always** keep descriptions concise (1 sentence max)
+- **Never** combine unrelated changes in a single commit
+- **Never** omit function names in commit messages
+
+```bash
+bug fix - calculate_discount: Fix edge case for discount_rate > 100
+```
