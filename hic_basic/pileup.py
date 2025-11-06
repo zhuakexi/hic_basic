@@ -48,6 +48,10 @@ def block_pileup(coolp, refs, expected=None, power=0.25, give_snips=False, balan
     Input:
         coolp: path to cooler file
         refs: list of (chrom, start, end)
+        expected: expected dataframe, will give OBS/EXP if provided
+        power: power to add to the diagonal, use this to visualize TADs
+        give_snips: return the snips used to calculate the pileup
+        balance: use balanced matrix
     """
     if all((i in refs.columns) for i in ["chrom1","start1","start2"]):
         format = "bedpe"
@@ -64,7 +68,8 @@ def block_pileup(coolp, refs, expected=None, power=0.25, give_snips=False, balan
     for chrom, tad_chunk in tqdm(refs.groupby(chrom_col), desc="chrom", total=len(chroms)):
         if expected is not None:
             chrom_mat = cool2mat_OE(str(coolp), chrom, expected, balance=balance)
-            chrom_mat = add_diag_law(chrom_mat, power=power)
+            if power is not None:
+                chrom_mat = add_diag_law(chrom_mat, power=power)
         else:
             chrom_mat = cool2mat(str(coolp), chrom, balance=balance)
         # NOTE: this is a temporary fix for the bug in cooler
