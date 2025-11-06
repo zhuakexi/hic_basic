@@ -299,13 +299,17 @@ class TestAna(unittest.TestCase):
         initial_shape = ana.data.shape
         
         # Try to update same key without force - should be skipped
-        df2 = pd.DataFrame({"A": [3, 4]}, index=["z", "w"])
-        ana.update(df2, key="data", force=False)
+        # `force`` only work for dict and series input 
+        dat = {
+            "z" : 3,
+            "w" : 4
+        }
+        ana.update(dat, key="A", force=False)
         self.assertEqual(ana.data.shape, initial_shape)  # No change
         
         # Update with force - should overwrite
-        ana.update(df2, key="data", force=True)
-        self.assertEqual(ana.data.shape[0], 2)  # Only new data
+        ana.update(dat, key="A", force=True)
+        self.assertEqual(ana.data.shape[0], 4)  # Add new data
 
     def test_max_commits_parameter(self):
         """
