@@ -9,7 +9,7 @@ import open3d as o3d
 import numpy as np
 import pandas as pd
 from ..data import fetch_cent_chromlen
-from ..binnify import GenomeIdeograph
+from ..genome import GenomeIdeograph
 from ..hicio import parse_pairs, parse_3dg
 from .utils import space_grid, corners2edges
 
