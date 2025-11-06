@@ -346,5 +346,45 @@ class TestAna(unittest.TestCase):
             filename = ana._get_commit_filename(commit_id)
             self.assertEqual(filename, expected_filename)
 
+    def test_init_from_ana_different_directory(self):
+        """
+        Test initializing Ana from another Ana object with different directory.
+        """
+        # Create first Ana object with some data
+        ana1 = Ana(self.home)
+        data = pd.DataFrame({"A": [1, 2], "B": [3, 4]}, index=["x", "y"])
+        ana1.update(data, key=None)
+        ana1.update([1, 2, 3], key="list_data")
+        
+        # Create a second temporary directory for the new Ana object
+        with TemporaryDirectory() as temp_dir2:
+            # Initialize new Ana object from the first one
+            ana2 = Ana(Path(temp_dir2), from_ana=ana1)
+            
+            # Check that data was copied correctly
+            pd.testing.assert_frame_equal(ana1.data, ana2.data)
+            self.assertEqual(ana1.obj, ana2.obj)
+            
+            # Check that they have different home directories
+            self.assertNotEqual(ana1.home, ana2.home)
+            
+            # Check that the new Ana object has its own commit history
+            self.assertEqual(len(ana2.commit_meta["commits"]), 1)
+            self.assertEqual(ana2.commit_meta["commits"][0]["description"], 
+                            "Initialize from another Ana object")
+
+    def test_init_from_ana_same_directory_should_fail(self):
+        """
+        Test that initializing Ana from another Ana object with same directory raises ValueError.
+        """
+        # Create first Ana object
+        ana1 = Ana(self.home)
+        
+        # Try to create second Ana object with same directory - should raise ValueError
+        with self.assertRaises(ValueError) as context:
+            Ana(self.home, from_ana=ana1)
+        
+        self.assertIn("must provide a different home directory", str(context.exception))
+
 if __name__ == "__main__":
     unittest.main()

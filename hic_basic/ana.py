@@ -51,7 +51,7 @@ class Ana:
     TODO: fix force option
     """
     
-    def __init__(self, home, data=None, obj=None, clear=False, verbose=False, max_commits=50):
+    def __init__(self, home, data=None, obj=None, clear=False, verbose=False, max_commits=50, from_ana=None):
         """
         Initialize the analysis data manager.
         
@@ -73,62 +73,102 @@ class Ana:
         max_commits : int, default 50
             Maximum number of commits to maintain in history. Older commits
             are automatically purged when limit is exceeded.
+        from_ana : Ana, optional
+            Another Ana object to initialize from. If provided, will copy
+            the data and obj from that object but create a new commit history.
+            Must specify a different home directory.
             
         Raises
         ------
         TypeError
             If obj values are not lists (required for JSON serialization consistency)
+        ValueError
+            If from_ana is provided but home is the same as from_ana.home
         """
         self.home = Path(home)
-        self.home.mkdir(parents=True, exist_ok=True)
-        self.max_commits = max_commits
-        self.verbose = verbose
         
-        # Initialize commit history - stored as JSON metadata
-        self.commit_meta_path = self.home / "commits.json"
-        if self.commit_meta_path.exists() and not clear:
-            self.commit_meta = load_json(self.commit_meta_path)
-            # Ensure max_commits is updated if changed
-            self.commit_meta["max_commits"] = max_commits
-        else:
+        # Handle initialization from another Ana object
+        if from_ana is not None:
+            if self.home.resolve() == Path(from_ana.home).resolve():
+                raise ValueError("When initializing from another Ana object, "
+                               "you must provide a different home directory.")
+            
+            # Create the new directory
+            self.home.mkdir(parents=True, exist_ok=True)
+            
+            # Copy data and obj from the source Ana object
+            from_ana.data.to_csv(self.home / "data.csv.gz", compression='gzip')
+            dump_json(from_ana.obj, self.home / "obj.json")
+            
+            # Set other parameters
+            self.max_commits = max_commits
+            self.verbose = verbose
+            
+            # Initialize fresh commit history
+            self.commit_meta_path = self.home / "commits.json"
             self.commit_meta = {
                 "commits": [],
                 "last_commit_count": 0,
                 "max_commits": max_commits,
-                "file_mapping": {}  # Maps commit_id -> physical_filename
+                "file_mapping": {}
             }
             dump_json(self.commit_meta, self.commit_meta_path)
+            
+            # Create initial commit with copied data
+            commit_id = self.commit("Initialize from another Ana object")
+            # Reload commit metadata to ensure in-memory representation is up-to-date
+            self.commit_meta = load_json(self.commit_meta_path)
+        else:
+            # Original initialization logic
+            self.home.mkdir(parents=True, exist_ok=True)
+            self.max_commits = max_commits
+            self.verbose = verbose
+            
+            # Initialize commit history - stored as JSON metadata
+            self.commit_meta_path = self.home / "commits.json"
+            if self.commit_meta_path.exists() and not clear:
+                self.commit_meta = load_json(self.commit_meta_path)
+                # Ensure max_commits is updated if changed
+                self.commit_meta["max_commits"] = max_commits
+            else:
+                self.commit_meta = {
+                    "commits": [],
+                    "last_commit_count": 0,
+                    "max_commits": max_commits,
+                    "file_mapping": {}  # Maps commit_id -> physical_filename
+                }
+                dump_json(self.commit_meta, self.commit_meta_path)
 
-        # Initialize data storage files
-        data_path = self.home / "data.csv.gz"
-        obj_path = self.home / "obj.json"
-        
-        # Clear existing data if requested
-        if clear:
-            if data_path.exists():
-                data_path.unlink()
-            if obj_path.exists():
-                obj_path.unlink()
-            # Also clear any existing commit files
-            for commit_file in self.home.glob("commit_*.data.csv.gz"):
-                commit_file.unlink()
-            for commit_file in self.home.glob("commit_*.obj.json"):
-                commit_file.unlink()
-        
-        # Create empty storage files if they don't exist
-        if not data_path.exists():
-            data_path.touch()
-        if not obj_path.exists():
-            Ana.create_empty_json_file(obj_path)
-        
-        # Process initial data inputs
-        if data is not None:
-            self.update(data, key=None)
-        if obj is not None:
-            for key, value in obj.items():
-                if not isinstance(value, list):
-                    raise TypeError(f"Value for key '{key}' in obj must be a list.")
-                self.update(value, key=key)
+            # Initialize data storage files
+            data_path = self.home / "data.csv.gz"
+            obj_path = self.home / "obj.json"
+            
+            # Clear existing data if requested
+            if clear:
+                if data_path.exists():
+                    data_path.unlink()
+                if obj_path.exists():
+                    obj_path.unlink()
+                # Also clear any existing commit files
+                for commit_file in self.home.glob("commit_*.data.csv.gz"):
+                    commit_file.unlink()
+                for commit_file in self.home.glob("commit_*.obj.json"):
+                    commit_file.unlink()
+            
+            # Create empty storage files if they don't exist
+            if not data_path.exists():
+                data_path.touch()
+            if not obj_path.exists():
+                Ana.create_empty_json_file(obj_path)
+            
+            # Process initial data inputs
+            if data is not None:
+                self.update(data, key=None)
+            if obj is not None:
+                for key, value in obj.items():
+                    if not isinstance(value, list):
+                        raise TypeError(f"Value for key '{key}' in obj must be a list.")
+                    self.update(value, key=key)
     
     @staticmethod
     def create_empty_json_file(path):
