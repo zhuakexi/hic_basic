@@ -639,10 +639,10 @@ def matra(file):
     """
     expr = read_umi_tools(file,"\t")
     expr.columns = expr.columns.astype("str")
-    expr.columns.name = "sample_name"
+    expr.columns.name = "gene"
     expr.index = expr.index.astype("str")
-    expr.index.name = "gene"
-    adata = ad.AnnData(expr.T)
+    expr.index.name = "sample_name"
+    adata = ad.AnnData(expr)
     return adata
 def get_chrom_contact_counts(dump_dir):
     """
