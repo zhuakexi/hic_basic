@@ -126,10 +126,8 @@ def plot_pca(
             )
             
             # Extract the scatter trace
-            scatter_trace = scatter_fig.data[0]
-            
-            # Add to subplot
-            fig.add_trace(scatter_trace, row=row, col=col)
+            for scatter_trace in scatter_fig.data:
+                fig.add_trace(scatter_trace, row=row, col=col)
             
             # Update axis labels
             fig.update_xaxes(title_text=x_col, row=row, col=col)
