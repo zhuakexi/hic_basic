@@ -10,6 +10,7 @@ Key Features:
 - Support for both tabular data (DataFrame) and object storage (lists)
 - Configurable commit history limits with circular commit file naming
 - Revert functionality to previous states
+- Full pandas dtype preservation using CSV + JSON schema
 - Thread-safe for single-process use (not suitable for multiprocessing)
 """
 
@@ -18,19 +19,30 @@ from pathlib import Path
 import re
 import shutil
 import pandas as pd
-from .hicio import load_json, dump_json
+import numpy as np
+import json
 from datetime import datetime
+from typing import Dict, Any, Optional, Union, List
+import warnings
+from .hicio import dump_json, load_json
 
 class Ana:
     """
-    Analysis Data Manager with automatic version control.
+    Analysis Data Manager with automatic version control and full dtype preservation.
     
     Manages two types of data storage:
-    1. Structured data: Pandas DataFrames stored in compressed CSV format
+    1. Structured data: Pandas DataFrames stored in CSV format with JSON schema for dtypes
     2. Object storage: JSON-serializable lists for unstructured data
     
     The system maintains a commit history similar to Git, allowing users to track changes,
     revert to previous states, and maintain data provenance throughout analysis workflows.
+    
+    Data Type Preservation Strategy:
+    - Main data stored as CSV for compatibility
+    - Separate JSON schema file stores precise dtype information
+    - Supports all pandas dtypes including categories, strings, nullable integers, etc.
+    - Automatic dtype inference and storage during save
+    - Accurate dtype restoration during load
     
     Workflow:
     1. Initialize with a home directory (creates storage structure)
@@ -45,10 +57,11 @@ class Ana:
     
     Example:
         >>> ana = Ana('/path/to/project')
-        >>> ana.update({'sample1': 42}, key='measurements')
-        >>> ana.commit('Initial data import')
-    
-    TODO: fix force option
+        >>> df = pd.DataFrame({'A': pd.Categorical(['a', 'b', 'c']),
+        ...                    'B': pd.array([1, 2, None], dtype='Int64'),
+        ...                    'C': pd.Series(['x', 'y', 'z'], dtype='string')})
+        >>> ana.update(df)
+        >>> ana.data  # Returns DataFrame with correct dtypes: categorical, Int64, string
     """
     
     def __init__(self, home, data=None, obj=None, clear=False, verbose=False, max_commits=50, from_ana=None):
@@ -86,6 +99,7 @@ class Ana:
             If from_ana is provided but home is the same as from_ana.home
         """
         self.home = Path(home)
+        self.verbose = verbose
         
         # Handle initialization from another Ana object
         if from_ana is not None:
@@ -96,13 +110,12 @@ class Ana:
             # Create the new directory
             self.home.mkdir(parents=True, exist_ok=True)
             
-            # Copy data and obj from the source Ana object
-            from_ana.data.to_csv(self.home / "data.csv.gz", compression='gzip')
+            # Copy data, schema, and obj from the source Ana object
+            from_ana._save_data_with_schema(from_ana.data, self.home / "data.csv")
             dump_json(from_ana.obj, self.home / "obj.json")
             
             # Set other parameters
             self.max_commits = max_commits
-            self.verbose = verbose
             
             # Initialize fresh commit history
             self.commit_meta_path = self.home / "commits.json"
@@ -122,7 +135,6 @@ class Ana:
             # Original initialization logic
             self.home.mkdir(parents=True, exist_ok=True)
             self.max_commits = max_commits
-            self.verbose = verbose
             
             # Initialize commit history - stored as JSON metadata
             self.commit_meta_path = self.home / "commits.json"
@@ -140,17 +152,22 @@ class Ana:
                 dump_json(self.commit_meta, self.commit_meta_path)
 
             # Initialize data storage files
-            data_path = self.home / "data.csv.gz"
+            data_path = self.home / "data.csv"
+            schema_path = self.home / "data_schema.json"
             obj_path = self.home / "obj.json"
             
             # Clear existing data if requested
             if clear:
                 if data_path.exists():
                     data_path.unlink()
+                if schema_path.exists():
+                    schema_path.unlink()
                 if obj_path.exists():
                     obj_path.unlink()
                 # Also clear any existing commit files
-                for commit_file in self.home.glob("commit_*.data.csv.gz"):
+                for commit_file in self.home.glob("commit_*.data.csv"):
+                    commit_file.unlink()
+                for commit_file in self.home.glob("commit_*.data_schema.json"):
                     commit_file.unlink()
                 for commit_file in self.home.glob("commit_*.obj.json"):
                     commit_file.unlink()
@@ -158,17 +175,41 @@ class Ana:
             # Create empty storage files if they don't exist
             if not data_path.exists():
                 data_path.touch()
+            if not schema_path.exists():
+                Ana.create_empty_json_file(schema_path)
             if not obj_path.exists():
                 Ana.create_empty_json_file(obj_path)
             
             # Process initial data inputs
             if data is not None:
-                self.update(data, key=None)
+                if isinstance(data, pd.DataFrame):
+                    init_df = data.copy()
+                elif isinstance(data, pd.Series):
+                    init_df = data.to_frame()
+                elif isinstance(data, dict):
+                    init_df = pd.DataFrame(data)
+                else:
+                    raise TypeError("Initial data must be a pandas DataFrame, Series, or dict.")
+
+                self._save_data_with_schema(init_df, self.data_path)
+                self.commit("Initial data")
+
             if obj is not None:
                 for key, value in obj.items():
                     if not isinstance(value, list):
                         raise TypeError(f"Value for key '{key}' in obj must be a list.")
                     self.update(value, key=key)
+
+            # Ensure schema file exists even if initial data was not provided
+            if not self.schema_path.exists() and self.data_path.exists():
+                try:
+                    df = pd.read_csv(self.data_path, index_col=0)
+                    if not df.empty or len(df.columns) > 0:
+                        self._save_data_with_schema(df, self.data_path)
+                    else:
+                        dump_json({}, self.schema_path)
+                except Exception:
+                    dump_json({}, self.schema_path)
     
     @staticmethod
     def create_empty_json_file(path):
@@ -199,35 +240,403 @@ class Ana:
     
     @property
     def data_path(self):
-        """Path to the compressed CSV file storing structured data."""
-        return self.home / "data.csv.gz"
+        """Path to the CSV file storing structured data."""
+        return self.home / "data.csv"
+    
+    @property
+    def schema_path(self):
+        """Path to the JSON schema file storing dtype information."""
+        return self.home / "data_schema.json"
     
     @property
     def obj_path(self):
         """Path to the JSON file storing unstructured object data."""
         return self.home / "obj.json"
     
+    def _dtype_to_dict(self, dtype) -> Dict[str, Any]:
+        """
+        Convert pandas dtype to JSON-serializable dictionary.
+        """
+        # 处理索引为StringDtype的情况
+        if hasattr(dtype, '__class__'):
+            # 处理pandas的StringDtype
+            if isinstance(dtype, pd.StringDtype):
+                return {'type': 'string'}
+            # 处理numpy的字符串类型
+            elif dtype == np.dtype('O') or dtype == object:
+                # 对于object类型，我们无法区分是普通对象还是字符串
+                # 默认当作标准类型处理
+                return {'type': 'standard', 'dtype': str(dtype)}
+        
+        # 处理pandas扩展类型
+        if isinstance(dtype, pd.CategoricalDtype):
+            dtype_dict = {
+                'type': 'categorical',
+                'categories': dtype.categories.tolist() if dtype.categories is not None else [],
+                'ordered': dtype.ordered
+            }
+        elif isinstance(dtype, pd.StringDtype):
+            dtype_dict = {'type': 'string'}
+        elif isinstance(dtype, (pd.Int8Dtype, pd.Int16Dtype, pd.Int32Dtype, pd.Int64Dtype)):
+            dtype_name = dtype.name if hasattr(dtype, 'name') else str(dtype)
+            bits = dtype_name.replace('Int', '') if 'Int' in dtype_name else '64'
+            dtype_dict = {'type': 'nullable_int', 'bits': bits}
+        elif isinstance(dtype, (pd.Float32Dtype, pd.Float64Dtype)):
+            dtype_name = dtype.name if hasattr(dtype, 'name') else str(dtype)
+            bits = dtype_name.replace('Float', '') if 'Float' in dtype_name else '64'
+            dtype_dict = {'type': 'nullable_float', 'bits': bits}
+        elif isinstance(dtype, pd.BooleanDtype):
+            dtype_dict = {'type': 'nullable_bool'}
+        elif dtype == np.bool_ or dtype == bool:
+            dtype_dict = {'type': 'bool'}
+        elif str(dtype).startswith('datetime64'):
+            dtype_dict = {'type': 'datetime64'}
+        elif str(dtype).startswith('timedelta64'):
+            dtype_dict = {'type': 'timedelta64'}
+        elif hasattr(pd, 'PeriodDtype') and isinstance(dtype, pd.PeriodDtype):
+            dtype_dict = {'type': 'period', 'freq': str(dtype.freq)}
+        elif hasattr(pd, 'IntervalDtype') and isinstance(dtype, pd.IntervalDtype):
+            dtype_dict = {'type': 'interval'}
+        elif hasattr(pd, 'SparseDtype') and isinstance(dtype, pd.SparseDtype):
+            dtype_dict = {'type': 'sparse', 'dtype': str(dtype.subtype)}
+        elif hasattr(dtype, '_metadata') and hasattr(dtype, 'name'):
+            # 处理其他扩展类型
+            dtype_dict = {'type': 'extension', 'name': dtype.name}
+        elif isinstance(dtype, pd.RangeIndex):
+            # 特殊处理RangeIndex
+            dtype_dict = {'type': 'range_index'}
+        elif str(dtype) == 'int64' or dtype == np.int64:
+            # 处理整数类型
+            dtype_dict = {'type': 'standard', 'dtype': 'int64'}
+        elif str(dtype) == 'float64' or dtype == np.float64:
+            # 处理浮点数类型
+            dtype_dict = {'type': 'standard', 'dtype': 'float64'}
+        elif str(dtype) == 'object':
+            # 处理对象类型
+            dtype_dict = {'type': 'standard', 'dtype': 'object'}
+        else:
+            # 默认标准类型
+            dtype_dict = {'type': 'standard', 'dtype': str(dtype)}
+
+        return dtype_dict
+    
+    def _dict_to_dtype(self, dtype_dict: Dict[str, Any]):
+        """
+        Convert dictionary back to pandas dtype.
+        
+        Parameters
+        ----------
+        dtype_dict : dict
+            Dictionary representation of dtype.
+            
+        Returns
+        -------
+        any pandas dtype
+            Restored pandas dtype.
+        """
+        dtype_type = dtype_dict.get('type', 'standard')
+        
+        if dtype_type == 'categorical':
+            categories = dtype_dict.get('categories', [])
+            ordered = dtype_dict.get('ordered', False)
+            return pd.CategoricalDtype(categories=categories, ordered=ordered)
+        
+        elif dtype_type == 'string':
+            return pd.StringDtype()
+        
+        elif dtype_type == 'nullable_int':
+            bits = dtype_dict.get('bits', '64')
+            if bits == '8':
+                return pd.Int8Dtype()
+            elif bits == '16':
+                return pd.Int16Dtype()
+            elif bits == '32':
+                return pd.Int32Dtype()
+            else:
+                return pd.Int64Dtype()
+        
+        elif dtype_type == 'nullable_float':
+            bits = dtype_dict.get('bits', '64')
+            if bits == '32':
+                return pd.Float32Dtype()
+            else:
+                return pd.Float64Dtype()
+        
+        elif dtype_type == 'nullable_bool':
+            return pd.BooleanDtype()
+        
+        elif dtype_type == 'bool':
+            return np.bool_
+        
+        elif dtype_type == 'datetime64':
+            return np.dtype('datetime64[ns]')
+        
+        elif dtype_type == 'timedelta64':
+            return np.dtype('timedelta64[ns]')
+        
+        elif dtype_type == 'period':
+            freq = dtype_dict.get('freq', 'D')
+            return pd.PeriodDtype(freq=freq)
+        
+        elif dtype_type == 'interval':
+            return pd.IntervalDtype()
+        
+        elif dtype_type == 'sparse':
+            subtype = dtype_dict.get('dtype', 'float64')
+            return pd.SparseDtype(subtype)
+        
+        elif dtype_type == 'range_index':
+            # RangeIndex是特殊的，没有直接的dtype，返回int64作为索引类型
+            return np.dtype('int64')
+        
+        elif dtype_type == 'extension':
+            # Try to find extension dtype by name
+            name = dtype_dict.get('name', '')
+            for dtype in [pd.StringDtype(), pd.Int64Dtype(), pd.Float64Dtype(), 
+                        pd.BooleanDtype()]:
+                if hasattr(dtype, 'name') and dtype.name == name:
+                    return dtype
+            # 如果没找到，尝试导入ArrowDtype
+            try:
+                from pandas.core.arrays.arrow import ArrowDtype
+                if name.startswith('arrow['):
+                    return ArrowDtype.from_string(name)
+            except ImportError:
+                pass
+        
+        # Fallback: try to parse standard dtype string
+        standard_dtype = dtype_dict.get('dtype', 'object')
+        try:
+            return np.dtype(standard_dtype)
+        except:
+            warnings.warn(f"Could not parse dtype: {standard_dtype}, defaulting to object")
+            return np.dtype('object')
+    
+    def _save_data_with_schema(self, df: pd.DataFrame, data_path: Path):
+        """
+        Save DataFrame to CSV along with its dtype schema.
+        
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            DataFrame to save.
+        data_path : Path
+            Path where CSV file will be saved.
+        """
+        # Save data as CSV
+        df.to_csv(data_path, index=True)
+        
+        # Create and save schema
+        schema = {}
+        
+        # Save column dtypes
+        schema['columns'] = {}
+        for col in df.columns:
+            schema['columns'][col] = self._dtype_to_dict(df[col].dtype)
+        
+        # 总是保存索引信息，包括RangeIndex
+        schema['index'] = self._dtype_to_dict(df.index.dtype)
+        schema['index_name'] = str(df.index.name) if df.index.name else None
+        
+        # 对于string类型的索引，确保正确记录
+        if hasattr(df.index, 'dtype') and isinstance(df.index.dtype, pd.StringDtype):
+            schema['index'] = {'type': 'string'}
+        
+        # Save metadata
+        schema['shape'] = df.shape
+        schema['columns_list'] = df.columns.tolist()
+        
+        # Save schema to adjacent JSON file with _schema suffix
+        schema_path = data_path.parent / f"{data_path.stem}_schema.json"
+        dump_json(schema, schema_path)
+    
+    def _load_data_with_schema(self, data_path: Path) -> pd.DataFrame:
+        schema_path = data_path.parent / f"{data_path.stem}_schema.json"
+        if not schema_path.exists():
+            fallback = data_path.with_suffix('.json')
+            if fallback.exists():
+                schema_path = fallback
+        if not schema_path.exists():
+            warnings.warn(f"No schema file found for {data_path}, loading with default dtypes")
+            try:
+                df = pd.read_csv(data_path, index_col=0)
+            except pd.errors.EmptyDataError:
+                return pd.DataFrame()
+            if not isinstance(df.index, (pd.MultiIndex, pd.CategoricalIndex, pd.DatetimeIndex,
+                                         pd.PeriodIndex, pd.IntervalIndex, pd.TimedeltaIndex)):
+                df.index = df.index.astype("string")
+            return df
+
+        try:
+            schema = load_json(schema_path)
+        except Exception:
+            warnings.warn(f"Failed to load schema file {schema_path}, loading with default dtypes")
+            try:
+                df = pd.read_csv(data_path, index_col=0)
+            except pd.errors.EmptyDataError:
+                return pd.DataFrame()
+            if not isinstance(df.index, (pd.MultiIndex, pd.CategoricalIndex, pd.DatetimeIndex,
+                                         pd.PeriodIndex, pd.IntervalIndex, pd.TimedeltaIndex)):
+                df.index = df.index.astype("string")
+            return df
+
+        if not schema:
+            try:
+                df = pd.read_csv(data_path, index_col=0)
+            except pd.errors.EmptyDataError:
+                return pd.DataFrame()
+            if not isinstance(df.index, (pd.MultiIndex, pd.CategoricalIndex, pd.DatetimeIndex,
+                                         pd.PeriodIndex, pd.IntervalIndex, pd.TimedeltaIndex)):
+                df.index = df.index.astype("string")
+            return df
+
+        # 关键修改：先尝试用converters读取索引列为字符串，防止自动类型推断
+        try:
+            # 获取CSV文件的总列数
+            with open(data_path, 'r') as f:
+                first_line = f.readline()
+                num_columns = len(first_line.split(','))
+            
+            # 如果只有索引列，需要特殊处理
+            if num_columns == 1:
+                df = pd.read_csv(data_path, index_col=0, header=None, names=['index'])
+                df = df[[]]  # 空DataFrame，只有索引
+            else:
+                # 使用converters确保索引列以字符串形式读取
+                df = pd.read_csv(data_path, index_col=0, converters={0: str})
+        except pd.errors.EmptyDataError:
+            return pd.DataFrame()
+        except Exception as e:
+            # 如果上述方法失败，回退到普通读取
+            try:
+                df = pd.read_csv(data_path, index_col=0)
+            except pd.errors.EmptyDataError:
+                return pd.DataFrame()
+
+        if 'columns' in schema:
+            for col, dtype_dict in schema['columns'].items():
+                if col not in df.columns:
+                    continue
+                try:
+                    dtype_type = dtype_dict.get('type', 'standard')
+                    
+                    if dtype_type == 'categorical':
+                        categories = dtype_dict.get('categories', [])
+                        ordered = dtype_dict.get('ordered', False)
+                        df[col] = pd.Categorical(df[col], categories=categories, ordered=ordered)
+                    
+                    elif dtype_type == 'nullable_bool':
+                        def convert_to_nullable_bool(val):
+                            if pd.isna(val) or str(val).strip() == '':
+                                return pd.NA
+                            elif str(val).lower() in ['true', '1', 't', 'y', 'yes']:
+                                return True
+                            elif str(val).lower() in ['false', '0', 'f', 'n', 'no']:
+                                return False
+                            else:
+                                return pd.NA
+                        
+                        df[col] = df[col].apply(convert_to_nullable_bool)
+                        df[col] = df[col].astype(pd.BooleanDtype())
+                    
+                    elif dtype_type == 'nullable_int':
+                        # 先转换为float处理缺失值，再转换为nullable int
+                        df[col] = pd.to_numeric(df[col], errors='coerce')
+                        df[col] = df[col].astype(self._dict_to_dtype(dtype_dict))
+                    
+                    elif dtype_type == 'nullable_float':
+                        df[col] = pd.to_numeric(df[col], errors='coerce')
+                        df[col] = df[col].astype(self._dict_to_dtype(dtype_dict))
+                    
+                    elif dtype_type == 'string':
+                        df[col] = df[col].astype(pd.StringDtype())
+                    
+                    elif dtype_type == 'datetime64':
+                        df[col] = pd.to_datetime(df[col], errors='coerce')
+                    
+                    elif dtype_type == 'timedelta64':
+                        df[col] = pd.to_timedelta(df[col], errors='coerce')
+                    
+                    else:
+                        dtype = self._dict_to_dtype(dtype_dict)
+                        df[col] = df[col].astype(dtype)
+                        
+                except Exception as e:
+                    warnings.warn(f"Failed to restore dtype for column '{col}': {e}")
+
+        # 修复索引类型恢复
+        if 'index' in schema:
+            try:
+                dtype_type = schema['index'].get('type', 'standard')
+                
+                if dtype_type == 'categorical':
+                    categories = schema['index'].get('categories', [])
+                    ordered = schema['index'].get('ordered', False)
+                    df.index = pd.CategoricalIndex(df.index, categories=categories, ordered=ordered)
+                
+                elif dtype_type == 'string':
+                    # 确保索引是字符串类型
+                    df.index = df.index.astype(str)
+                    # 转换为pandas的StringDtype
+                    df.index = pd.Index(df.index, dtype=pd.StringDtype())
+                
+                elif dtype_type == 'datetime64':
+                    df.index = pd.to_datetime(df.index, errors='coerce')
+                
+                elif dtype_type == 'nullable_int':
+                    # 索引不支持nullable类型，转为普通整数
+                    df.index = pd.to_numeric(df.index, errors='coerce').astype('int64')
+                
+                elif dtype_type == 'nullable_float':
+                    # 索引不支持nullable类型，转为普通浮点数
+                    df.index = pd.to_numeric(df.index, errors='coerce').astype('float64')
+                
+                else:
+                    # 对于其他类型，尝试转换
+                    dtype = self._dict_to_dtype(schema['index'])
+                    try:
+                        df.index = df.index.astype(dtype)
+                    except:
+                        # 如果转换失败，保持原样
+                        pass
+                        
+            except Exception as e:
+                warnings.warn(f"Failed to restore index dtype: {e}")
+
+        # Only convert to string if no schema is available and it's not a special index type
+        if 'index' not in schema and not isinstance(df.index, (pd.MultiIndex, pd.CategoricalIndex,
+                                                               pd.DatetimeIndex, pd.PeriodIndex,
+                                                               pd.IntervalIndex, pd.TimedeltaIndex,
+                                                               pd.RangeIndex)):
+            # For backward compatibility, only convert object/string indices to string
+            if df.index.dtype == object or df.index.dtype == 'O':
+                df.index = df.index.astype("string")
+
+        if 'index_name' in schema and schema['index_name'] is not None:
+            df.index.name = schema['index_name']
+
+        return df
+    
     @property
     def data(self):
         """
-        Retrieve the current structured data as a pandas DataFrame.
+        Retrieve the current structured data as a pandas DataFrame with correct dtypes.
         
         Returns
         -------
         pandas.DataFrame
-            Current data state. Returns empty DataFrame if no data exists.
+            Current data state with restored dtypes. Returns empty DataFrame if no data exists.
             
         Notes
         -----
-        Index is preserved as string type to maintain consistency across reads.
-        Handles empty file cases gracefully.
+        Uses schema file to restore all pandas dtypes including categorical, string,
+        nullable integers, etc. Falls back to standard CSV reading if schema is missing.
         """
         try:
-            res = pd.read_csv(self.data_path, compression='gzip', index_col=0)
-            res.index = res.index.astype("string")
+            df = self._load_data_with_schema(self.data_path)
+            return df
         except (pd.errors.EmptyDataError, FileNotFoundError):
-            res = pd.DataFrame()
-        return res
+            return pd.DataFrame()
     
     @property
     def obj(self):
@@ -266,8 +675,7 @@ class Ana:
             
         Notes
         -----
-        Each commit creates physical copies of data files to enable revert functionality.
-        Commit history is automatically trimmed when exceeding max_commits limit.
+        Each commit creates physical copies of data files and schema files.
         Uses circular file naming to prevent infinite filename number growth.
         """
         assert isinstance(description, (str, type(None))), "Description must be a string or None"
@@ -295,16 +703,26 @@ class Ana:
             "id": commit_id,
             "description": description,
             "timestamp": datetime.now().isoformat(),
-            "filename": commit_filename  # Store mapping for revert operations
+            "filename": commit_filename
         }
         meta["commits"].append(commit_entry)
         
         # Create physical snapshots of current data state
-        commit_data_path = self.home / f"{commit_filename}.data.csv.gz"
+        commit_data_path = self.home / f"{commit_filename}.data.csv"
         commit_obj_path = self.home / f"{commit_filename}.obj.json"
         
-        shutil.copy(self.data_path, commit_data_path)
-        shutil.copy(self.obj_path, commit_obj_path)
+        # Save current data with schema
+        try:
+            current_df = self._load_data_with_schema(self.data_path)
+        except (pd.errors.EmptyDataError, FileNotFoundError):
+            current_df = pd.DataFrame()
+        self._save_data_with_schema(current_df, commit_data_path)
+        
+        # Copy object file if it exists
+        if self.obj_path.exists():
+            shutil.copy(self.obj_path, commit_obj_path)
+        else:
+            dump_json({}, commit_obj_path)
         
         # Update file mapping
         meta["file_mapping"][str(commit_id)] = commit_filename
@@ -320,12 +738,12 @@ class Ana:
                 del meta["file_mapping"][str(oldest_commit_id)]
             
             # Remove physical files only if they are not being used by newer commits
-            # Check if any other commit is using the same filename
             filename_in_use = any(commit["filename"] == oldest_filename 
                                 for commit in meta["commits"])
             
             if not filename_in_use:
-                (self.home / f"{oldest_filename}.data.csv.gz").unlink(missing_ok=True)
+                (self.home / f"{oldest_filename}.data.csv").unlink(missing_ok=True)
+                (self.home / f"{oldest_filename}.data_schema.json").unlink(missing_ok=True)
                 (self.home / f"{oldest_filename}.obj.json").unlink(missing_ok=True)
         
         # Save updated metadata
@@ -340,74 +758,25 @@ class Ana:
         """
         Update data storage and automatically commit changes.
         
-        This is the primary method for adding or modifying data in the system.
-        Supports multiple data types with different storage strategies.
-        
         Parameters
         ----------
         new_data : pandas.DataFrame, pandas.Series, dict, or list
-            New data to add to the database. Behavior varies by type:
-            
-            - pandas.DataFrame: Entire DataFrame will be merged with existing data.
-                Index will be used for alignment. The `key` parameter is ignored.
-                
-            - pandas.Series: Series will be converted to DataFrame and merged.
-                If `key` is provided, the Series will be renamed to this column name.
-                Otherwise, the Series name will be used.
-                
-            - dict: Dictionary will be converted to DataFrame using keys as index.
-                Requires `key` parameter to specify column name for the values.
-                
-            - list: Data will be stored in the object store (JSON) rather than the
-                main data table. Requires `key` parameter to specify the object key.
-                Note: The entire list will replace any existing value for that key.
-
+            New data to add to the database.
         key : str, optional
             Specifies the column name (for dict/Series) or object key (for list).
-            Required for dict, list, and unnamed Series inputs.
-
         description : str, optional
-            Custom description for the automatic commit. If not provided, uses
-            an auto-generated commit identifier.
-            
+            Custom description for the automatic commit.
         force : bool, optional, default False
             If True, overwrite existing data for the given key.
-            If False, check if data already exists for the key and skip update if found.
-
-        Returns
-        -------
-        None
-
-        Raises
-        ------
-        AssertionError
-            If key is required but not provided for dict/list inputs.
-        TypeError
-            If unsupported data type is provided.
-
-        Notes
-        -----
-        For DataFrame/Series/dict inputs:
-        - Data is merged with existing data using concat+groupby.last()
-        - New values overwrite existing values on matching indices
-        - The result is automatically committed to version history
-        - If row count changes, prints information about the change
-
-        For list inputs:
-        - Data is stored in the separate object store (JSON format)
-        - The entire list replaces any previous value for the given key
-        - Object store updates do not trigger automatic commits
         """
         # Check for existing data and handle based on force flag
         if not force and key is not None:
             if isinstance(new_data, list):
-                # For list data, check if key exists in obj
                 if key in self.obj:
                     if self.verbose:
                         print(f"Key '{key}' already exists in obj. Use force=True to overwrite.")
                     return
             elif isinstance(new_data, (pd.Series, dict)):
-                # For Series/dict data, check if column exists in data
                 col_name = key if key is not None else (new_data.name if hasattr(new_data, 'name') else None)
                 if col_name and col_name in self.data.columns:
                     if self.verbose:
@@ -434,7 +803,7 @@ class Ana:
             obj[key] = new_data
             dump_json(obj, self.obj_path)
             if self.verbose:
-                print("Data updated.")
+                print("Object data updated.")
             return 
         else:
             raise TypeError(f"Unsupported data type: {type(new_data)}")
@@ -443,9 +812,9 @@ class Ana:
         original_shape = self.data.shape
         original_rows, original_cols = original_shape
         
-        # Merge new data with existing data and save
-        res = pd.concat([self.data, new_data_df], axis=0, join="outer")    
-        res = res.groupby(level=0).last()
+        # Merge new data with existing data
+        res = pd.concat([self.data, new_data_df], axis=0, join="outer")
+        res = res.groupby(level=0, observed=True).last()
         
         # Get new shape and compare
         new_shape = res.shape
@@ -464,11 +833,11 @@ class Ana:
             col_change_type = "added" if col_change > 0 else "removed"
             print(f"Columns {col_change_type}: {abs(col_change)}")
         
-        # Save the updated data
-        res.to_csv(self.data_path, compression='gzip')
+        # Save the updated data with schema
+        self._save_data_with_schema(res, self.data_path)
         
         if self.verbose:
-            print("Data updated.")
+            print("Data updated with schema preservation.")
         
         # Create commit for the data change
         self.commit(description=description)
@@ -482,29 +851,12 @@ class Ana:
         Parameters
         ----------
         commit_repr : str or int
-            Commit identifier, which can be either:
-            - Commit ID (integer as string or number)
-            - Commit description (exact string match)
+            Commit identifier.
             
         Returns
         -------
         int
             Commit ID of the new commit created after revert operation.
-            
-        Raises
-        ------
-        ValueError
-            If the specified commit cannot be found in metadata.
-            
-        Notes
-        -----
-        This operation:
-        1. Restores data files from the specified commit snapshot
-        2. Creates a new commit to record the revert action
-        3. Maintains the entire commit history including the revert
-        
-        The revert is itself versioned, allowing undo of revert operations.
-        Uses the file mapping to locate the correct physical files.
         """
         # Validate commit exists in metadata
         meta = load_json(self.commit_meta_path)
@@ -520,7 +872,6 @@ class Ana:
             # Also check file mapping for string representations
             if str(commit_repr) in meta["file_mapping"]:
                 commit_filename = meta["file_mapping"][str(commit_repr)]
-                # Find the commit entry to get the full metadata
                 for commit in meta["commits"]:
                     if str(commit["id"]) == str(commit_repr):
                         commit_id = commit["id"]
@@ -530,14 +881,19 @@ class Ana:
             raise ValueError(f"Commit '{commit_repr}' not found in metadata")
         
         # Restore files from commit snapshot
-        commit_data_path = self.home / f"{commit_filename}.data.csv.gz"
+        commit_data_path = self.home / f"{commit_filename}.data.csv"
         commit_obj_path = self.home / f"{commit_filename}.obj.json"
         
-        if not commit_data_path.exists() or not commit_obj_path.exists():
-            raise ValueError(f"Commit files for '{commit_repr}' not found on disk")
+        if not commit_data_path.exists():
+            raise ValueError(f"Commit data file for '{commit_repr}' not found on disk")
         
-        shutil.copy(commit_data_path, self.data_path)
-        shutil.copy(commit_obj_path, self.obj_path)
+        # Load the commit data and save it as current (this will create schema file too)
+        commit_df = self._load_data_with_schema(commit_data_path)
+        self._save_data_with_schema(commit_df, self.data_path)
+        
+        # Restore object file
+        if commit_obj_path.exists():
+            shutil.copy(commit_obj_path, self.obj_path)
         
         # Create new commit to record the revert action
         new_commit_id = self.commit(f"Reverted to commit {commit_id}")
@@ -550,23 +906,23 @@ class Ana:
     def list_commits(self):
         """
         Display all available commits in chronological order.
-        
-        Returns
-        -------
-        None
-        
-        Notes
-        -----
-        Output format: 
-        [commit_id]: [description] at [timestamp] (file: [filename])
-        
-        Commits are sorted by ID (chronological order). Most recent commit appears last.
-        Includes physical filename information for debugging.
         """
         meta = load_json(self.commit_meta_path)
-        # Sort commits by ID to ensure chronological order
         meta["commits"].sort(key=lambda c: c["id"])
         if self.verbose:
             print(f"Listing {len(meta['commits'])} commits:")
         for commit in meta["commits"]:
             print(f"{commit['id']}: {commit['description']} at {commit['timestamp']} (file: {commit['filename']})")
+
+    def get_schema(self):
+        """
+        Get the current data schema information.
+        
+        Returns
+        -------
+        dict
+            Current schema information including column dtypes.
+        """
+        if self.schema_path.exists():
+            return load_json(self.schema_path)
+        return {}
