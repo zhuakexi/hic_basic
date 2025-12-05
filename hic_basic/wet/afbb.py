@@ -401,10 +401,21 @@ def task_stat(task_dirp, ref=None, threads=32)->pd.DataFrame:
     #   con_per_reads: raw contacts / dna_reads
     #   umis_per_reads: umis / rna_reads
     #   rna_ratio: rna_reads / raw_reads
-    if ref is not None:
-        annote = add_umis(annote,os.path.join(task_dirp,"count_matrix"+"_"+ref,"counts.gene.tsv.gz"))
+    # ref can be:
+    #   None -> use task_dirp/count_matrix/counts.gene.tsv.gz
+    #   str  -> use task_dirp/count_matrix_<ref>/counts.gene.tsv.gz
+    #   list/tuple/set -> multiple refs, each will be looked up in task_dirp/count_matrix_<ref>/counts.gene.tsv.gz
+    umip_paths = []
+    if ref is None:
+        umip_paths = [os.path.join(task_dirp, "count_matrix", "counts.gene.tsv.gz")]
+    elif isinstance(ref, (list, tuple, set)):
+        for r in ref:
+            umip_paths.append(os.path.join(task_dirp, "count_matrix_" + str(r), "counts.gene.tsv.gz"))
     else:
-        annote = add_umis(annote,os.path.join(task_dirp,"count_matrix","counts.gene.tsv.gz"))
+        umip_paths = [os.path.join(task_dirp, "count_matrix_" + str(ref), "counts.gene.tsv.gz")]
+
+    # add_umis accepts a single path or an iterable of paths; it will skip missing files and combine counts
+    annote = add_umis(annote, umip_paths)
     annote = add_extra(annote)
     return annote
 # pick useful cols
