@@ -1,19 +1,3 @@
-"""
-A single-process metadata management system for bioinformatics projects.
-
-This module provides version-controlled storage for structured data (DataFrame) 
-and unstructured objects (JSON-serializable lists) with automatic commit history.
-Designed for managing analysis pipelines where data provenance and reproducibility are critical.
-
-Key Features:
-- Automatic versioning with commit history
-- Support for both tabular data (DataFrame) and object storage (lists)
-- Configurable commit history limits with circular commit file naming
-- Revert functionality to previous states
-- Full pandas dtype preservation using CSV + JSON schema
-- Thread-safe for single-process use (not suitable for multiprocessing)
-"""
-
 # This module is designed for bioinformatic project management
 from pathlib import Path
 import re
@@ -812,9 +796,41 @@ class Ana:
         original_shape = self.data.shape
         original_rows, original_cols = original_shape
         
+        # 获取当前数据的列
+        current_columns = set(self.data.columns) if not self.data.empty else set()
+        
+        # 获取新数据的列
+        new_columns = set(new_data_df.columns)
+        
+        # 找出重叠列（force=True时需要特殊处理的列）
+        overlapping_columns = current_columns.intersection(new_columns)
+        
+        # 记录新数据中重叠列的原始dtype（仅在force=True时使用）
+        dtype_mapping = {}
+        if force and overlapping_columns:
+            for col in overlapping_columns:
+                if col in new_data_df.columns:
+                    dtype_mapping[col] = new_data_df[col].dtype
+        
         # Merge new data with existing data
         res = pd.concat([self.data, new_data_df], axis=0, join="outer")
         res = res.groupby(level=0, observed=True).last()
+        
+        # 关键修改：对于force=True的情况，修复重叠列的dtype
+        if force and dtype_mapping:
+            for col, dtype in dtype_mapping.items():
+                if col in res.columns:
+                    try:
+                        # 尝试将列转换回新数据的原始dtype
+                        res[col] = res[col].astype(dtype)
+                        if self.verbose:
+                            print(f"Column '{col}' dtype restored to {dtype}")
+                    except Exception as e:
+                        # 如果类型转换失败，发出警告但继续执行
+                        warnings.warn(
+                            f"Failed to convert column '{col}' to dtype {dtype} "
+                            f"after force update: {e}. Column will keep dtype {res[col].dtype}."
+                        )
         
         # Get new shape and compare
         new_shape = res.shape
