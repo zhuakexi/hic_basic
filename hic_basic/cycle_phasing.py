@@ -28,15 +28,22 @@ def window_count(distances:pd.Series, win_num)->pd.Series:
         index = breaks)
     # normalized by all intra contacts
     return window_count/len(distances)
-def dis_counts(pairs_fp:str):
+def dis_counts(pairs_fp:str, filter_str=None):
     """
     Get cell's intra contact's distribution in Nagano2017's window
     Using customized .pairs parser. Work for 11 column table only
+    Input:
+        pairs_fp: path to .pairs file
+        filter_str: expr string to filter pairs file
+    Output:
+        counts: pd.Series of contact distance distribution
     """
     if not os.path.exists(str(pairs_fp)):
         counts = window_count(None, 150)
     else:
         contacts = parse_pairs(pairs_fp)
+        if filter_str is not None:
+            contacts = contacts.query(filter_str)
 
         # get contact distance array
         intra = contacts.loc[contacts["chr1"] == contacts["chr2"]]
