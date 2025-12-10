@@ -61,7 +61,7 @@ def pairwise_DKL(df):
     Output:
         matrix: symdist
     """
-    y = df.values.astype(np.float) # omit non-digest and trans
+    y = df.values.astype(np.float64) # omit non-digest and trans
     y[y==0] = 1 # add a pseudocount
     y = y/y.sum(axis=1)[:,np.newaxis]
 
