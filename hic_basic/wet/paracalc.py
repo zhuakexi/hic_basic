@@ -42,9 +42,9 @@ def gen_cool(qc, cached, threads=16, sizef = "/share/home/ychi/data/genome/GRCm3
         json.dump(dict(zip(valid_samples, caching_files)), f)
     return dict(zip(valid_samples, caching_files))
 # --- generate contact decay profiles ---
-def gen_cdps(filesp, threads = 32, range_dtype='string'):
+def gen_cdps(filesp, threads = 32, range_dtype='string', pairs_col="pairs_c123"):
     # --- check pairs file ---
-    valid_samples, valid_files = check_input(filesp, "pairs_c123")
+    valid_samples, valid_files = check_input(filesp, pairs_col)
     # --- calculate --- 
     with futures.ProcessPoolExecutor(threads) as pool:
         res = pool.map(
