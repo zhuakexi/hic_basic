@@ -270,26 +270,61 @@ def add_umis(annote, umip):
         annote = annote.assign(genes=0)
         return annote
 
-    # Read and combine count matrices by summing counts across files (aligning on genes and samples)
-    dfs = []
+    # Prepare sample index from annotation
+    sample_index = pd.Index(annote.index.astype("string"))
+    
+    # Initialize accumulators for umis and genes
+    total_umis = pd.Series(0, index=sample_index)
+    total_genes = pd.Series(0, index=sample_index)  # Direct gene count without deduplication
+    
+    any_valid_data = False
+    
+    # Process each count matrix separately
     for p in existing:
+        # Read the count matrix
         df = pd.read_table(p, index_col=0, dtype={"gene": "string"})
         df.columns = df.columns.astype("string")
-        dfs.append(df)
-
-    combined = dfs[0].copy()
-    for df in dfs[1:]:
-        # add will align indices and columns; missing values treated as 0
-        combined = combined.add(df, fill_value=0)
-
-    # compute UMIs (sum of counts per sample) and genes (number of genes with count > 0 per sample)
-    umis = combined.sum()
-    umis.name = "umis"
-    genes = (combined > 0).astype(int).sum()
-    genes.name = "genes"
-
-    new_annote = pd.concat([annote, umis, genes], axis=1)
-    return new_annote.fillna({"umis": 0, "genes": 0}, axis=0)
+        
+        # Find overlapping samples
+        overlapping_cols = df.columns.intersection(sample_index)
+        ignored_cols = df.columns.difference(sample_index)
+        
+        # Handle non-overlapping cases
+        if overlapping_cols.empty:
+            print(f"add_umis: no overlapping samples in file {p}. Skipping.")
+            continue
+            
+        any_valid_data = True
+        
+        if len(ignored_cols) > 0:
+            print(f"add_umis: ignoring count-matrix columns not present in annotation: {', '.join(ignored_cols)}")
+        
+        # Process only overlapping samples
+        df = df.loc[:, overlapping_cols]
+        
+        # Calculate UMIs for this matrix (sum per sample)
+        current_umis = df.sum(axis=0)
+        # Accumulate UMIs using vectorized operation
+        total_umis.loc[overlapping_cols] += current_umis
+        
+        # Count expressed genes (>0) for each sample in this matrix
+        current_genes = (df > 0).sum(axis=0)
+        # Accumulate gene counts without deduplication
+        total_genes.loc[overlapping_cols] += current_genes
+    
+    # If no valid data was found in any matrix
+    if not any_valid_data:
+        print("add_umis: no overlapping samples between annotation and any count matrix. Filling zeros.")
+        annote = annote.assign(umis=0)
+        annote = annote.assign(genes=0)
+        return annote
+    
+    # Create result DataFrame
+    new_annote = annote.copy()
+    new_annote["umis"] = total_umis
+    new_annote["genes"] = total_genes
+    
+    return new_annote.fillna({"umis": 0, "genes": 0})
 def add_extra(annote):
     """
     Calculate contact_per_reads, umis_per_reads, rna_ratio.
