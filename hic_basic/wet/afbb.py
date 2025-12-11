@@ -16,6 +16,7 @@ import pandas as pd
 import pysam
 from tqdm import tqdm
 
+from ..hicio import read_umi_tools
 from ..pipeline.rule import bubble_flow_touched
 
 formal_feature_names = {
@@ -281,9 +282,24 @@ def add_umis(annote, umip):
     
     # Process each count matrix separately
     for p in existing:
-        # Read the count matrix
-        df = pd.read_table(p, index_col=0, dtype={"gene": "string"})
-        df.columns = df.columns.astype("string")
+        try:
+            # Read the count matrix using custom function (samples as index, genes as columns)
+            df_raw = read_umi_tools(p)
+        except Exception as e:
+            print(f"add_umis: error reading {p}: {str(e)}. Skipping.")
+            continue
+            
+        # Skip empty matrices
+        if df_raw.empty:
+            print(f"add_umis: empty matrix in file {p}. Skipping.")
+            continue
+            
+        # Transpose to have genes as rows and samples as columns
+        df = df_raw.T
+        
+        # Ensure proper data types
+        df.index = df.index.astype("string")  # genes as string index
+        df.columns = df.columns.astype("string")  # samples as string columns
         
         # Find overlapping samples
         overlapping_cols = df.columns.intersection(sample_index)
@@ -301,6 +317,9 @@ def add_umis(annote, umip):
         
         # Process only overlapping samples
         df = df.loc[:, overlapping_cols]
+        
+        # Ensure numeric values (in case read_umi_tools returned non-numeric types)
+        df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
         
         # Calculate UMIs for this matrix (sum per sample)
         current_umis = df.sum(axis=0)

@@ -375,6 +375,9 @@ def read_expr(path,sep=None)->pd.DataFrame:
             mat = pd.read_table(path,index_col=0)
     else:
         mat = pd.read_table(path,sep=sep,index_col=0)
+        if mat.shape ==(0,0):
+            # purge index and column if no content
+            mat = pd.DataFrame()
     mat.columns = mat.columns.astype("string")
     mat.index = mat.index.astype("string")
     return mat
