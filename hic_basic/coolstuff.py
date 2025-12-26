@@ -814,7 +814,7 @@ def stat_cool(names, ddir, genome, show=True):
 # lousy helper functions to work with cooler, cooltools stuff
 # you need a conda env that names `cooler`, with cooler and cooltools installed
 import subprocess
-def cli_pairs2cool(filei,fileo,sizef,binsize,force=False, conda_frontend=""):
+def cli_pairs2cool(filei,fileo,sizef,binsize,force=False, conda_frontend="", verbose=0):
     """
     Generate .cool file from 4DN .pairs file
     Input:
@@ -824,10 +824,12 @@ def cli_pairs2cool(filei,fileo,sizef,binsize,force=False, conda_frontend=""):
         binsize: binsize as you wish
         conda_frontend: use conda to run cmd in conda env
             eg. "conda run -n cooler"
+        verbose: verbosity level, default 0. When > 0, print message when skipping execution.
     """
     filei, fileo, sizef = str(filei), str(fileo), str(sizef)
     if not force and Path(fileo).exists():
-        print(f"File '{fileo}' already exists. Skipping execution.")
+        if verbose > 0:
+            print(f"File '{fileo}' already exists. Skipping execution.")
         return fileo
     subprocess.check_output(
         "%s cooler cload pairs -c1 2 -p1 3 -c2 4 -p2 5 %s:%d %s %s " % (conda_frontend,sizef,binsize,filei,fileo),
@@ -874,22 +876,24 @@ def mt_pairs2cool(sample_table, outdir, pairs_col="pairs_c123", suffix=".cool", 
                 pbar.update(1)
 
     return pd.Series(results)
-def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True, cwd=None, batch_size=1000):
+def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True, cwd=None, batch_size=1000, verbose=0):
     """
     Merge cool files with same indices to get a consensus heatmap.
     Handles large numbers of input files by batching them.
-    
+
     Input:
         incools: list of .cool file paths
         outcool: output .cool file path
         conda_env: (optional) conda environment to run in
         cwd: (optional) working directory
         batch_size: number of files to merge in each batch
+        verbose: verbosity level, default 0. When > 0, print message when skipping execution.
     """
     from tempfile import NamedTemporaryFile
 
     if not force and Path(outcool).exists():
-        print(f"File '{outcool}' already exists. Skipping execution.")
+        if verbose > 0:
+            print(f"File '{outcool}' already exists. Skipping execution.")
         return outcool
 
     if conda_env is None:
@@ -928,9 +932,10 @@ def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True
         Path(temp_file).unlink()
 
     return outcool
-def cli_downsample(coolp, output, count=100e6, cis_count=None, fraction=None, threads=8, force=False, conda_env=None, cwd=None):
+def cli_downsample(coolp, output, count=100e6, cis_count=None, fraction=None, threads=8, force=False, conda_env=None, cwd=None, verbose=0):
     if not force and Path(output).exists():
-        print(f"File '{output}' already exists. Skipping execution.")
+        if verbose > 0:
+            print(f"File '{output}' already exists. Skipping execution.")
         return output
     conda = f"conda run -n {conda_env}" if conda_env else ""
     cis_count = f"--cis-count {cis_count}" if cis_count else ""
@@ -948,7 +953,7 @@ def cli_downsample(coolp, output, count=100e6, cis_count=None, fraction=None, th
         print(e.output)
         return None
 def cli_balance(coolp, threads=8, force=False, name="weight", cis_only=False, trans_only=False,
-    min_nnz=None, min_count=None, mad_max=None, ignore_diags=None, conda_env=None, cwd=None):
+    min_nnz=None, min_count=None, mad_max=None, ignore_diags=None, conda_env=None, cwd=None, verbose=0):
     """
     Balance a cooler matrix.
     Input:
@@ -964,6 +969,7 @@ def cli_balance(coolp, threads=8, force=False, name="weight", cis_only=False, tr
             NOTE: this dominates all other filtering options
         conda_env: conda environment to run in
         cwd: working directory
+        verbose: verbosity level, default 0. When > 0, print message when skipping execution.
     Output:
         True if successful, False otherwise
     """
@@ -971,7 +977,8 @@ def cli_balance(coolp, threads=8, force=False, name="weight", cis_only=False, tr
     if not force:
         clr = cooler.Cooler(str(coolp))
         if name in clr.bins().columns:
-            print(f"Balanced matrix '{name}' already exists. Skipping execution.")
+            if verbose > 0:
+                print(f"Balanced matrix '{name}' already exists. Skipping execution.")
             return True
 
     if conda_env is None:
@@ -1013,10 +1020,11 @@ def cli_balance(coolp, threads=8, force=False, name="weight", cis_only=False, tr
     except subprocess.CalledProcessError as e:
         print(e.stderr.decode())
         return False
-def cli_zoomify(coolp, output, resolutions=[20000,40000,100000,500000,1000000], force=False, threads=8, conda_env=None, cwd=None):
+def cli_zoomify(coolp, output, resolutions=[20000,40000,100000,500000,1000000], force=False, threads=8, conda_env=None, cwd=None, verbose=0):
     conda_run = f"conda run -n {conda_env}" if conda_env else ""
     if not force and Path(output).exists():
-        print(f"File '{output}' already exists. Skipping execution.")
+        if verbose > 0:
+            print(f"File '{output}' already exists. Skipping execution.")
         return output
     resolutions = ",".join(map(str, resolutions))
     cmd = f"{conda_run} cooler zoomify -n {threads} -r {resolutions} -o {output} {coolp}"
@@ -1026,11 +1034,12 @@ def cli_zoomify(coolp, output, resolutions=[20000,40000,100000,500000,1000000], 
         cwd = cwd
     )
     return output
-def cli_compartment(coolp, phasing_track, outprefix, view=None, conda_env=None, cwd=None, force=False):
+def cli_compartment(coolp, phasing_track, outprefix, view=None, conda_env=None, cwd=None, force=False, verbose=0):
     outprefix_path = Path(outprefix)
 
     if not force and outprefix_path.with_suffix(".cis.vecs.tsv").exists():
-        print(f"Files '{outprefix}.cis.vecs.tsv' already exist. Skipping execution.")
+        if verbose > 0:
+            print(f"Files '{outprefix}.cis.vecs.tsv' already exist. Skipping execution.")
         return f"{outprefix}.cis.vecs.tsv", f"{outprefix}.cis.lam.txt"
 
     conda_run = f"conda run -n {conda_env}" if conda_env else ""
@@ -1044,9 +1053,9 @@ def cli_compartment(coolp, phasing_track, outprefix, view=None, conda_env=None, 
     )
     return f"{outprefix}.cis.vecs.tsv", f"{outprefix}.cis.lam.txt"
 
-def cli_saddle(coolp, eigv, expected, outprefix, view, 
+def cli_saddle(coolp, eigv, expected, outprefix, view,
     bin_method="quantile", qrange=[0.02,0.98], vrange=[-1,1], nbins=50, conda_env=None, cwd=None, force=False,
-    debug=False
+    debug=False, verbose=0
     ):
     """
     Run cooltools saddle.
@@ -1065,6 +1074,7 @@ def cli_saddle(coolp, eigv, expected, outprefix, view,
         conda_env: conda environment to run in
         cwd: working directory
         force: whether to overwrite existing files
+        verbose: verbosity level, default 0. When > 0, print message when skipping execution.
     """
     if bin_method == "quantile":
         assert qrange is not None
@@ -1076,7 +1086,8 @@ def cli_saddle(coolp, eigv, expected, outprefix, view,
     outprefix_path = Path(outprefix)
 
     if not force and outprefix_path.with_suffix(".saddledump.npz").exists():
-        print(f"Files '{outprefix}.saddledump.npz' already exist. Skipping execution.")
+        if verbose > 0:
+            print(f"Files '{outprefix}.saddledump.npz' already exist. Skipping execution.")
         return f"{outprefix}.saddledump.npz", f"{outprefix}.png"
 
     conda_run = f"conda run -n {conda_env}" if conda_env else ""
@@ -1090,9 +1101,10 @@ def cli_saddle(coolp, eigv, expected, outprefix, view,
         cwd=cwd
     )
     return f"{outprefix}.saddledump.npz", f"{outprefix}.png"
-def cli_IS(coolp, output, windowsizes, balanced=True, append_raw_scores=True, threads=8, conda_env=None, cwd=None, force=False):
+def cli_IS(coolp, output, windowsizes, balanced=True, append_raw_scores=True, threads=8, conda_env=None, cwd=None, force=False, verbose=0):
     if not force and Path(output).exists():
-        print(f"File '{output}' already exists. Skipping execution.")
+        if verbose > 0:
+            print(f"File '{output}' already exists. Skipping execution.")
         return output
     if conda_env is None:
         conda_run = ""
@@ -1145,11 +1157,12 @@ def cli_pileup(coolp, feature, output, format="BED", view=None, expected=None, f
             cwd = cwd
         )
     return output
-def cli_expected(coolp, output, balanced=False, view=None, ignore_diags=1, conda_env=None, cwd=None, threads=8, force=False):
+def cli_expected(coolp, output, balanced=False, view=None, ignore_diags=1, conda_env=None, cwd=None, threads=8, force=False, verbose=0):
     output_path = Path(output)
 
     if not force and output_path.exists():
-        print(f"File '{output}' already exists. Skipping execution.")
+        if verbose > 0:
+            print(f"File '{output}' already exists. Skipping execution.")
         return output
 
     conda_run = f"conda run -n {conda_env}" if conda_env else ""
