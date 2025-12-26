@@ -177,7 +177,8 @@ def lines(df, x, y, color_discrete_map=None, with_error=False, frac=0.3, ci=0.95
     )
     return fig
 def line(df, x, y, color=None, color_discrete_map=None, with_error=False, 
-          frac=0.3, ci=0.95, debug=False, gray_bg=False, **kwargs):
+                  frac=0.3, ci=0.95, debug=False, gray_bg=False, 
+                  hover_data=None, hover_format=None, **kwargs):
     """
     Plot a single trend line with optional error bands and point coloring.
     
@@ -222,8 +223,29 @@ def line(df, x, y, color=None, color_discrete_map=None, with_error=False,
     if color_discrete_map and y in color_discrete_map:
         line_color = color_discrete_map[y]
     elif color_discrete_map and len(color_discrete_map) == 1:
-        # If only one color in the map, use it
         line_color = list(color_discrete_map.values())[0]
+    
+    # Prepare hover template
+    def build_hover_template(group_name=None):
+        """Build hover template based on available data."""
+        template_parts = [f"{x}: %{{x}}", f"{y}: %{{y}}"]
+        
+        if color and group_name:
+            template_parts.append(f"{color}: {group_name}")
+        
+        if hover_data:
+            # Add additional hover data columns
+            for col_idx, col in enumerate(hover_data):
+                if col in df.columns and col != color:
+                    format_spec = hover_format.get(col, '') if hover_format else ''
+                    if format_spec:
+                        # Fix: escape curly braces properly for Plotly template
+                        template_parts.append(f"{col}: %{{customdata[{col_idx}]:{format_spec}}}")
+                    else:
+                        template_parts.append(f"{col}: %{{customdata[{col_idx}]}}")
+        
+        template_parts.append("<extra></extra>")
+        return "<br>".join(template_parts)
     
     # Add the main line trace
     fig.add_trace(
@@ -233,25 +255,28 @@ def line(df, x, y, color=None, color_discrete_map=None, with_error=False,
             mode="lines",
             line=dict(color=line_color, width=2),
             name=y,
-            showlegend=True
+            showlegend=True,
+            hovertemplate=build_hover_template()
         )
     )
     
     # Add scatter points with optional coloring
     if color and color in df.columns:
-        # Group by color column to create separate scatter traces
         color_groups = df.groupby(color)
         
         for group_name, group_data in color_groups:
-            # Get color for this group
             point_color = None
             if color_discrete_map and group_name in color_discrete_map:
                 point_color = color_discrete_map[group_name]
             elif line_color:
-                # Use line color if no specific mapping for this group
                 point_color = line_color
             
-            # Add scatter trace for this group
+            # Prepare custom data for hover
+            custom_data = None
+            if hover_data:
+                hover_cols = [col for col in hover_data if col in group_data.columns and col != color]
+                custom_data = group_data[hover_cols].values
+            
             fig.add_trace(
                 go.Scatter(
                     x=group_data[x],
@@ -264,11 +289,18 @@ def line(df, x, y, color=None, color_discrete_map=None, with_error=False,
                     ),
                     name=f"{y} ({group_name})",
                     showlegend=True,
-                    legendgroup=group_name
+                    legendgroup=group_name,
+                    hovertemplate=build_hover_template(group_name),
+                    customdata=custom_data
                 )
             )
     else:
         # Add uniform scatter points
+        custom_data = None
+        if hover_data:
+            hover_cols = [col for col in hover_data if col in df.columns]
+            customdata = df[hover_cols].values
+        
         fig.add_trace(
             go.Scatter(
                 x=df[x],
@@ -280,7 +312,9 @@ def line(df, x, y, color=None, color_discrete_map=None, with_error=False,
                     line=dict(width=1, color='white')
                 ),
                 name=y,
-                showlegend=False
+                showlegend=False,
+                hovertemplate=build_hover_template(),
+                customdata=custom_data
             )
         )
     
