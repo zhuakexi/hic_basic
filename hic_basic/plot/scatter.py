@@ -122,7 +122,7 @@ def add_error_band(fig, df, orig_color=px.colors.qualitative.Plotly[0], debug=Fa
         )
     )
     return fig
-def line(df, x, y, color_discrete_map=None, with_error=False, frac=0.3, ci=0.95, debug=False, gray_bg=False, **kwargs):
+def lines(df, x, y, color_discrete_map=None, with_error=False, frac=0.3, ci=0.95, debug=False, gray_bg=False, **kwargs):
     # fig = px.line(
     #     df,
     #     x = x,
@@ -175,4 +175,131 @@ def line(df, x, y, color_discrete_map=None, with_error=False, frac=0.3, ci=0.95,
         margin = dict(l=40, r=20, t=20, b=40),
         **kwargs
     )
+    return fig
+def line(df, x, y, color=None, color_discrete_map=None, with_error=False, 
+          frac=0.3, ci=0.95, debug=False, gray_bg=False, **kwargs):
+    """
+    Plot a single trend line with optional error bands and point coloring.
+    
+    Creates a line plot for a single variable with optional confidence intervals.
+    Points can be colored according to a specified column in the dataframe.
+    
+    Args:
+        df (pd.DataFrame): Input data.
+        x (str): Column name for x-axis values.
+        y (str): Column name for y-axis values.
+        color (str, optional): Column name for point coloring. Points will be 
+                              colored according to this column's values. 
+                              Defaults to None (uniform color).
+        color_discrete_map (dict, optional): Color mapping for points when 
+                                            `color` is specified. Keys should be 
+                                            values from the `color` column.
+                                            Defaults to None.
+        with_error (bool, optional): Whether to add confidence interval bands.
+                                    Defaults to False.
+        frac (float, optional): Fraction of data to use for smoothing (LOESS).
+                                Defaults to 0.3.
+        ci (float, optional): Confidence interval level (0-1). Defaults to 0.95.
+        debug (bool, optional): Enable debug mode for error bands. 
+                                Defaults to False.
+        gray_bg (bool, optional): Use gray color for error bands. Defaults to False.
+        **kwargs: Additional keyword arguments passed to fig.update_layout().
+    
+    Returns:
+        plotly.graph_objs.Figure: Plotly figure object.
+    
+    Examples:
+        >>> line(df, x='time', y='value', color='group')
+        >>> line(df, x='x', y='y', with_error=True, color_discrete_map={'A': 'red', 'B': 'blue'})
+    """
+    fig = go.Figure()
+    
+    # Smooth the data
+    error_df = smooth_with_ci(df, x=x, y=y, frac=frac, ci=ci)
+    
+    # Determine line color
+    line_color = None
+    if color_discrete_map and y in color_discrete_map:
+        line_color = color_discrete_map[y]
+    elif color_discrete_map and len(color_discrete_map) == 1:
+        # If only one color in the map, use it
+        line_color = list(color_discrete_map.values())[0]
+    
+    # Add the main line trace
+    fig.add_trace(
+        go.Scatter(
+            x=error_df["x"],
+            y=error_df["y_smooth"],
+            mode="lines",
+            line=dict(color=line_color, width=2),
+            name=y,
+            showlegend=True
+        )
+    )
+    
+    # Add scatter points with optional coloring
+    if color and color in df.columns:
+        # Group by color column to create separate scatter traces
+        color_groups = df.groupby(color)
+        
+        for group_name, group_data in color_groups:
+            # Get color for this group
+            point_color = None
+            if color_discrete_map and group_name in color_discrete_map:
+                point_color = color_discrete_map[group_name]
+            elif line_color:
+                # Use line color if no specific mapping for this group
+                point_color = line_color
+            
+            # Add scatter trace for this group
+            fig.add_trace(
+                go.Scatter(
+                    x=group_data[x],
+                    y=group_data[y],
+                    mode="markers",
+                    marker=dict(
+                        color=point_color,
+                        size=8,
+                        line=dict(width=1, color='white')
+                    ),
+                    name=f"{y} ({group_name})",
+                    showlegend=True,
+                    legendgroup=group_name
+                )
+            )
+    else:
+        # Add uniform scatter points
+        fig.add_trace(
+            go.Scatter(
+                x=df[x],
+                y=df[y],
+                mode="markers",
+                marker=dict(
+                    color=line_color,
+                    size=8,
+                    line=dict(width=1, color='white')
+                ),
+                name=y,
+                showlegend=False
+            )
+        )
+    
+    # Add error bands if requested
+    if with_error:
+        fig = add_error_band(
+            fig,
+            error_df,
+            orig_color=line_color if not gray_bg else "#808080",
+            debug=debug
+        )
+    
+    # Update layout
+    fig.update_layout(
+        title="",
+        height=400,
+        width=800,
+        margin=dict(l=40, r=20, t=20, b=40),
+        **kwargs
+    )
+    
     return fig
