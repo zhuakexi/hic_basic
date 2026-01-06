@@ -7,6 +7,349 @@ from .calculate import mt
 from .hicio import parse_seg
 from .genome import GenomeIdeograph
 
+
+### --- count alleles of vcf sites from sam --- ###
+class Interval:
+    """Interval operations for genomic data processing."""
+    
+    @staticmethod
+    def sort(a: List) -> None:
+        """
+        Sort intervals based on their coordinates.
+        
+        Args:
+            a: List of intervals to sort. Each interval can be a number or [start, end] pair.
+        """
+        if not a:
+            return
+        if isinstance(a[0], (int, float)):
+            # Sort by value if intervals are numbers
+            a.sort()
+        else:
+            # Sort by start position, then end position
+            a.sort(key=lambda x: (x[0], x[1]))
+
+    @staticmethod
+    def merge(a: List, sorted: bool = True) -> None:
+        """
+        Merge overlapping intervals.
+        
+        Args:
+            a: List of intervals to merge, each interval is [start, end]
+            sorted: Whether the intervals are already sorted
+        """
+        if not sorted:
+            Interval.sort(a)
+        
+        if not a:
+            return
+            
+        k = 0
+        for i in range(1, len(a)):
+            # If current interval overlaps with the last merged interval
+            if a[k][1] >= a[i][0]:
+                # Extend the end of the merged interval if needed
+                a[k][1] = max(a[k][1], a[i][1])
+            else:
+                # Move to next position and copy current interval
+                k += 1
+                a[k] = a[i][:]
+        
+        # Truncate list to contain only merged intervals
+        del a[k+1:]
+
+    @staticmethod
+    def index_end(a: List, sorted: bool = True) -> None:
+        """
+        Add index information for efficient overlap finding.
+        
+        Args:
+            a: List of intervals [start, end, ...]
+            sorted: Whether the intervals are already sorted
+        """
+        if not a:
+            return
+        if not sorted:
+            Interval.sort(a)
+        
+        # Initialize the first interval with index 0
+        a[0].append(0)
+        
+        k = 0
+        k_en = a[0][1]
+        
+        for i in range(1, len(a)):
+            # If current interval starts after the end of the indexed interval
+            if k_en <= a[i][0]:
+                # Find the next interval that overlaps with current interval
+                k += 1
+                while k < i:
+                    if a[k][1] > a[i][0]:
+                        break
+                    k += 1
+                k_en = a[k][1]
+            
+            # Add the index to the current interval
+            a[i].append(k)
+
+    @staticmethod
+    def find_intv(a: List, x: int) -> int:
+        """
+        Find the interval containing a given value using binary search.
+        
+        Args:
+            a: List of intervals
+            x: Value to search for
+            
+        Returns:
+            Index of the interval containing x, or -1 if not found
+        """
+        left = -1
+        right = len(a)
+        
+        if not a:
+            return -1
+            
+        if isinstance(a[0], (int, float)):
+            # Handle case where intervals are numbers
+            while right - left > 1:
+                mid = left + ((right - left) >> 1)  # Equivalent to (right - left) // 2
+                if a[mid] > x:
+                    right = mid
+                elif a[mid] < x:
+                    left = mid
+                else:
+                    return mid
+        else:
+            # Handle case where intervals are [start, end] pairs
+            while right - left > 1:
+                mid = left + ((right - left) >> 1)
+                if a[mid][0] > x:
+                    right = mid
+                elif a[mid][0] < x:
+                    left = mid
+                else:
+                    return mid
+        
+        return left
+
+    @staticmethod
+    def find_ovlp(a: List, st: int, en: int) -> List:
+        """
+        Find intervals overlapping with a given range.
+        
+        Args:
+            a: List of intervals [start, end, ...]
+            st: Start of the query range
+            en: End of the query range
+            
+        Returns:
+            List of overlapping intervals
+        """
+        if not a or st >= en:
+            return []
+        
+        l = Interval.find_intv(a, st)
+        k = 0 if l < 0 else a[l][-1]  # Get the index from the last element
+        b = []
+        
+        for i in range(k, len(a)):
+            if a[i][0] >= en:
+                break
+            elif st < a[i][1]:  # Check if intervals overlap
+                b.append(a[i])
+        
+        return b
+def parse_phased_snp(phased_snp_file: str) -> dict:
+    snp_dict = {}
+    with open(phased_snp_file, 'r') as f:
+        for line in f:
+            t = line.strip().split("\t")
+            if len(t) < 4 or len(t[2]) != 1 or len(t[3]) != 1:
+                continue
+            if t[0] not in snp_dict:
+                snp_dict[t[0]] = []
+            pos = int(t[1])
+            snp_dict[t[0]].append([pos - 1, pos, t[2], t[3]])
+    
+    for c in snp_dict:
+        Interval.index_end(snp_dict[c], True)
+    return snp_dict
+
+def parse_cigar(cigar: str) -> List[Tuple[int, str]]:
+    """
+    Parse CIGAR string into operations and lengths.
+    
+    Args:
+        cigar: CIGAR string (e.g., "100M5D10I")
+        
+    Returns:
+        List of (length, operation) tuples (e.g., [(100, 'M'), (5, 'D'), (10, 'I')])
+    """
+    cigar_pattern = re.compile(r'(\d+)([MIDSH])')
+    matches = cigar_pattern.findall(cigar)
+    return [(int(length), op) for length, op in matches]
+
+def entry_align_pos(entry):
+    cigar_ops = parse_cigar(entry[5])
+    clip = [0, 0]  # [left_clip, right_clip]
+    x = 0  # Reference coordinate
+    y = 0  # Query coordinate
+    flag = int(entry[1])
+    
+    # Determine if on reverse strand
+    rev = bool(flag & 16)
+    
+    # Parse CIGAR to get ref and query positions
+    cigar_ops = parse_cigar(entry[5])
+    for length, op in cigar_ops:
+        # e.g.,
+        #   "100M" -> ref forward 100 bases, query forward 100 bases
+        #   "5I"  -> ref forward 0 bases, query forward 5 bases
+        if op == 'M':  # Match or mismatch
+            x += length
+            y += length
+        elif op == 'I':  # Insertion
+            y += length
+        elif op == 'D':  # Deletion
+            x += length
+        elif op in ['S', 'H']:  # Soft or hard clipping
+            # Record clipping lengths and forward query position
+            clip[0 if y == 0 else 1] = length  # Left clip if y==0, else right clip
+            y += length
+    
+    rs = int(entry[3]) - 1  # Reference start position (0-based), directly from SAM
+    re = rs + x  # Reference end position, calculated from CIGAR
+    
+    # Calculate query start/end based on strand
+    qlen = y  # Total aligned length
+    if not rev:
+        qs = clip[0]  # Query start
+        qe = qlen - clip[1]  # Query end
+    else:
+        qs = clip[1]
+        qe = qlen - clip[0]
+    
+    read_num = (flag >> 6) & 0x3  # Extract read number (1 or 2)
+    if read_num == 3:
+        raise ValueError(f"{t[0]}: incorrect read number flags")
+    
+    read_nums |= 1 << read_num
+    
+    if read_num == 2:  # Adjust for read 2
+        qs1 = qlen - qe
+        qe = qlen - qs
+        qs = qs1
+        rev = not rev
+
+    return rs, re, qs, qe
+
+def check_allele(entry, rs, v, min_baseq=20, verbose=0):
+    cigar_ops = parse_cigar(entry[5])
+
+    x_pos = rs
+    y_pos = 0
+    for length, op in cigar_ops:
+        if op == "M": # Match or mismatch
+            p = v[0] # SNP ref position
+            if x_pos <= p < x_pos + length:
+                # SNP falls within this cigar operation
+                p_adj = p - x_pos + y_pos # relative position of SNP site in read
+                if p_adj < 0 or p_adj >= len(entry[9]):
+                    # SNP relative position out of read sequence range
+                    raise ValueError("CIGAR parsing error")
+                c = entry[9][p_adj] # read base at SNP relative position
+                q = ord(entry[10][p_adj]) - 33 if len(entry[10]) == len(entry[9]) else min_baseq
+
+                if q >= min_baseq:
+                    # Determine phase based on allele
+                    if c == v[2]:
+                        return (v[0], v[1], v[2], entry[0], p_adj) # snp chrom, snp pos, ref allele, read name, relative pos
+                    elif c == v[3]:
+                        return (v[0], v[1], v[3], entry[0], p_adj) # snp chrom, snp pos, alt allele, read name, relative pos
+                    elif verbose >= 2:
+                        # don't contribute to phase if base doesn't match either allele
+                        print(f'WARNING: a new allele {c} on read {entry[0]} at position {entry[2]}:{v[1]} (not {v[2]}/{v[3]})', file=sys.stderr)
+                        return None
+            x_pos += length
+            y_pos += length
+        elif op == "I":
+            y_pos += length
+        elif op == "D":
+            x_pos += length
+        elif op == "S":
+            y_pos += length
+    return None
+
+def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, min_mapq=20, min_baseq=20, verbose=0):
+    snp_dict = parse_phased_snp(phased_snp_file)
+    comments = []
+    marked_reads = []
+    with open(sam_file, 'r') as f_in:
+        for line in f:
+            t = line.strip().split("\t")
+            
+            # Handle header lines
+            if t[0].startswith('@'):
+                if t[0] == '@SQ':
+                    sn = None
+                    ln = None
+                    for i in range(1, len(t)):
+                        m = re.search(r'(LN|SN):(\S+)', t[i])
+                        if m:
+                            if m.group(1) == 'SN':
+                                sn = m.group(2)
+                            elif m.group(1) == 'LN':
+                                ln = int(m.group(2))
+                    
+                    if sn is None or ln is None:
+                        raise ValueError("missing SN or LN at an @SQ line")
+                    # print(f"#chromosome: {sn} {ln}")
+                    comments.append(f"#chromosome: {sn} {ln}")
+                else:
+                    continue
+                continue
+            else:
+                entry = t
+                mapq = int(entry[4])
+                if mapq < min_mapq:
+                    return None
+
+                rs, re, qs, qe = entry_align_pos(entry)
+
+                # Phase determination
+                if snp_dict and entry[2] in snp_dict:
+                    # Find overlapping SNPs according to reference positions
+                    hit_snp_sites = Interval.find_ovlp(snp_dict[entry[2]], rs, re)
+                    if hit_snp_sites:
+                        for v in hit_snp_sites:
+                            res = check_allele(
+                                entry, rs, v,
+                                min_baseq=min_baseq,
+                                verbose=verbose
+                                )
+                            if res is not None:
+                                marked_reads.append(res)
+                    else:
+                        continue
+                else:
+                    continue
+    if outfile is not None:
+        with open(outfile, 'w') as f_out:
+            for line in comments:
+                f_out.write(line + '\n')
+            for read in marked_reads:
+                f_out.write('\t'.join(map(str, read)) + '\n')
+            return outfile
+    else:
+        res = pd.DataFrame(
+            marked_reads, columns=['chrom', 'pos', 'allele', 'read_name', 'relative_pos'])
+        return res
+
+
+### --- calculate haplotype score on segments --- ###
+
+
 def hap_score_gb(df):
     df = df.droplevel(0)
     return abs(df.loc["0"] - df.loc["1"])/abs(df.loc["0"]+df.loc["1"])
