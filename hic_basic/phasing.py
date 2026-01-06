@@ -1,8 +1,10 @@
 """
 Sample sex and phasing.
 """
-import os
+import re
+import sys
 import pandas as pd
+from typing import List, Tuple
 from .calculate import mt
 from .hicio import parse_seg
 from .genome import GenomeIdeograph
@@ -195,6 +197,7 @@ def entry_align_pos(entry):
     clip = [0, 0]  # [left_clip, right_clip]
     x = 0  # Reference coordinate
     y = 0  # Query coordinate
+    read_nums = 0  # Bitwise flag for read numbers
     flag = int(entry[1])
     
     # Determine if on reverse strand
@@ -246,6 +249,7 @@ def entry_align_pos(entry):
 
 def check_allele(entry, rs, v, min_baseq=20, verbose=0):
     cigar_ops = parse_cigar(entry[5])
+    chrom = entry[2]
 
     x_pos = rs
     y_pos = 0
@@ -264,9 +268,9 @@ def check_allele(entry, rs, v, min_baseq=20, verbose=0):
                 if q >= min_baseq:
                     # Determine phase based on allele
                     if c == v[2]:
-                        return (v[0], v[1], v[2], entry[0], p_adj) # snp chrom, snp pos, ref allele, read name, relative pos
+                        return (chrom, v[1], v[2], entry[0], p_adj) # snp chrom, snp pos, ref allele, read name, relative pos
                     elif c == v[3]:
-                        return (v[0], v[1], v[3], entry[0], p_adj) # snp chrom, snp pos, alt allele, read name, relative pos
+                        return (chrom, v[1], v[3], entry[0], p_adj) # snp chrom, snp pos, alt allele, read name, relative pos
                     elif verbose >= 2:
                         # don't contribute to phase if base doesn't match either allele
                         print(f'WARNING: a new allele {c} on read {entry[0]} at position {entry[2]}:{v[1]} (not {v[2]}/{v[3]})', file=sys.stderr)
@@ -286,7 +290,7 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, min_mapq=20, min_b
     comments = []
     marked_reads = []
     with open(sam_file, 'r') as f_in:
-        for line in f:
+        for line in f_in:
             t = line.strip().split("\t")
             
             # Handle header lines
@@ -313,18 +317,18 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, min_mapq=20, min_b
                 entry = t
                 mapq = int(entry[4])
                 if mapq < min_mapq:
-                    return None
+                    continue
 
-                rs, re, qs, qe = entry_align_pos(entry)
+                r_s, r_e, q_s, q_e = entry_align_pos(entry)
 
                 # Phase determination
                 if snp_dict and entry[2] in snp_dict:
                     # Find overlapping SNPs according to reference positions
-                    hit_snp_sites = Interval.find_ovlp(snp_dict[entry[2]], rs, re)
+                    hit_snp_sites = Interval.find_ovlp(snp_dict[entry[2]], r_s, r_e)
                     if hit_snp_sites:
                         for v in hit_snp_sites:
                             res = check_allele(
-                                entry, rs, v,
+                                entry, r_s, v,
                                 min_baseq=min_baseq,
                                 verbose=verbose
                                 )
