@@ -1,12 +1,17 @@
 """
 Sample sex and phasing.
 """
+import gzip
 import os
 import re
 import sys
+import struct
 import pandas as pd
 import pysam
 from typing import List, Tuple
+
+from tqdm import tqdm
+import numpy as np
 from .calculate import mt
 from .hicio import parse_seg, parse_sam_line
 from .genome import GenomeIdeograph
@@ -196,29 +201,65 @@ def parse_cigar(cigar: str) -> List[Tuple[int, str]]:
 
 def get_file_type(file_path):
     """
-    Determine the file type by reading the first few bytes of the file.
-
+    Determine the file type by reading the file content.
+    
     Args:
         file_path (str): Path to the file to check.
-
+    
     Returns:
         str: The file type ('SAM', 'BAM', or 'unknown').
     """
-    with open(file_path, 'rb') as f:
-        # Read the first 4 bytes to check for BAM magic number
-        header = f.read(4)
-        
-        # BAM files start with 'BAM\1' (0x42 0x41 0x4D 0x01)
-        if header == b'BAM\x01':
-            return 'BAM'
-        
-        # For SAM files, check if it starts with '@HD' or similar header
-        # Read first few bytes as text to check for SAM header
-        f.seek(0)
-        first_line = f.read(100).decode('utf-8', errors='ignore')
-        
-        if first_line.startswith('@HD') or first_line.startswith('@SQ'):
-            return 'SAM'
+    try:
+        with open(file_path, 'rb') as f:
+            # 先检查是否是 gzip 压缩文件（BAM 就是 gzip）
+            magic = f.read(2)
+            
+            if magic == b'\x1f\x8b':
+                # 这是一个 gzip 文件，可能是 BAM
+                try:
+                    # 使用 gzip 打开并读取前 4 个解压后的字节
+                    with gzip.open(file_path, 'rb') as gz:
+                        decompressed_header = gz.read(4)
+                        if decompressed_header == b'BAM\x01':
+                            return 'BAM'
+                except (gzip.BadGzipFile, OSError):
+                    # 不是有效的 gzip 文件，或者不是 BAM
+                    pass
+            
+            # 如果不是 gzip，或者解压后不是 BAM，检查 SAM
+            f.seek(0)
+            # 读取足够的内容来检查
+            content = f.read(4096)
+            
+            try:
+                text = content.decode('utf-8', errors='ignore')
+                lines = text.split('\n')
+                
+                # 检查 SAM 头行
+                sam_headers = ['@HD', '@SQ', '@RG', '@PG', '@CO']
+                
+                for line in lines[:10]:  # 检查前10行
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    # 检查是否是有效的 SAM 头行
+                    if line.startswith('@'):
+                        if any(line.startswith(h) for h in sam_headers):
+                            return 'SAM'
+                    # 检查是否是有效的 SAM 数据行
+                    elif '\t' in line:
+                        fields = line.split('\t')
+                        # SAM 数据行至少有11个字段
+                        if len(fields) >= 11:
+                            return 'SAM'
+                            
+            except UnicodeDecodeError:
+                # 不是文本文件，排除 SAM
+                pass
+                
+    except (IOError, OSError) as e:
+        print(f"Error reading file: {e}")
     
     return 'unknown'
 
@@ -392,8 +433,20 @@ def convert_alignment_to_entry(alignment):
     
     return entry
 
+def count_lines_in_file(file_path):
+    """
+    Count the number of lines in a file efficiently.
 
-def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=None, min_mapq=20, min_baseq=20, verbose=0):
+    Args:
+        file_path (str): Path to the file.
+
+    Returns:
+        int: Number of lines in the file.
+    """
+    with open(file_path, 'r') as f:
+        return sum(1 for _ in f)
+
+def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=None, min_mapq=20, min_baseq=20, show_progress=False, verbose=0):
     """
     Mark alleles in SAM/BAM file based on phased SNP information.
 
@@ -404,6 +457,7 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
         append_features (list, optional): List of additional features to append to the output. Defaults to None.
         min_mapq (int, optional): Minimum mapping quality threshold. Defaults to 20.
         min_baseq (int, optional): Minimum base quality threshold. Defaults to 20.
+        show_progress (bool, optional): Whether to show a progress bar. Defaults to False.
         verbose (int, optional): Verbosity level. Defaults to 0.
 
     Returns:
@@ -411,6 +465,8 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
     """
     # Determine file type
     file_type = get_file_type(sam_file)
+    if verbose >= 1:
+        print(f"Detected file type: {file_type}", file=sys.stderr)
     
     if file_type not in ['SAM', 'BAM']:
         raise ValueError(f"Unsupported file type: {file_type}")
@@ -444,8 +500,15 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
                             comments.append(f"#chromosome: {sn} {ln}")
                         continue
             
-            # Process alignments
-            for alignment in bam_file:
+            # Count total alignments for progress bar
+            total_alignments = bam_file.count()
+            
+            # Process alignments with progress bar if verbose > 0
+            alignment_iter = bam_file
+            if show_progress:
+                alignment_iter = tqdm(alignment_iter, total=total_alignments, desc="Processing alignments")
+            
+            for i, alignment in enumerate(alignment_iter):
                 # Convert alignment to entry format
                 entry = convert_alignment_to_entry(alignment)
                 
@@ -478,8 +541,16 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
                 else:
                     continue
     else:  # SAM file
+        # Count total lines for progress bar
+        total_lines = count_lines_in_file(sam_file)
+        
         with open(sam_file, 'r') as f_in:
-            for line in f_in:
+            # Process with progress bar if verbose > 0
+            lines = f_in
+            if show_progress:
+                lines = tqdm(lines, total=total_lines, desc="Processing SAM lines")
+            
+            for i, line in enumerate(lines):
                 t = line.strip().split("\t")
                 
                 # Handle header lines
@@ -529,18 +600,14 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
                     else:
                         continue
     
+    res = pd.DataFrame(
+        marked_reads,
+        columns=['chrom', 'pos', 'allele', 'read_name', 'relative_pos'] + (append_features if append_features else [])
+        )
     if outfile is not None:
-        with open(outfile, 'w') as f_out:
-            for line in comments:
-                f_out.write(line + '\n')
-            for read in marked_reads:
-                f_out.write('\t'.join(map(str, read)) + '\n')
-            return outfile
+        res.to_csv(outfile, sep="\t", index=False)
+        return outfile
     else:
-        res = pd.DataFrame(
-            marked_reads,
-            columns=['chrom', 'pos', 'allele', 'read_name', 'relative_pos'] + (append_features if append_features else [])
-            )
         return res
 
 def sam_count_alleles(df):
