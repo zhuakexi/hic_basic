@@ -207,61 +207,98 @@ def get_file_type(file_path):
         file_path (str): Path to the file to check.
     
     Returns:
-        str: The file type ('SAM', 'BAM', or 'unknown').
+        str: The file type ('SAM', 'BAM', 'SAMgz', or 'unknown').
     """
     try:
+        # 首先检查文件扩展名（快速提示）
+        ext = os.path.splitext(file_path)[1].lower()
+        
         with open(file_path, 'rb') as f:
-            # 先检查是否是 gzip 压缩文件（BAM 就是 gzip）
-            magic = f.read(2)
+            # 读取文件开头的魔数
+            magic = f.read(4)
+            f.seek(0)
             
-            if magic == b'\x1f\x8b':
-                # 这是一个 gzip 文件，可能是 BAM
+            # 1. 检查是否是 BAM 文件
+            # BAM 是 gzip 压缩的，并且解压后以 BAM\x01 开头
+            if magic[:2] == b'\x1f\x8b':
                 try:
-                    # 使用 gzip 打开并读取前 4 个解压后的字节
                     with gzip.open(file_path, 'rb') as gz:
                         decompressed_header = gz.read(4)
                         if decompressed_header == b'BAM\x01':
                             return 'BAM'
                 except (gzip.BadGzipFile, OSError):
-                    # 不是有效的 gzip 文件，或者不是 BAM
+                    # 不是有效的 gzip 文件或不是 BAM
                     pass
             
-            # 如果不是 gzip，或者解压后不是 BAM，检查 SAM
-            f.seek(0)
-            # 读取足够的内容来检查
-            content = f.read(4096)
+            # 2. 检查是否是 gzip 压缩的 SAM 文件
+            if magic[:2] == b'\x1f\x8b':
+                try:
+                    with gzip.open(file_path, 'rb') as gz:
+                        # 读取足够的数据来检测 SAM 特征
+                        decompressed_data = gz.read(4096)
+                        
+                        # 尝试解码为文本
+                        try:
+                            text = decompressed_data.decode('utf-8', errors='ignore')
+                            if is_sam_content(text):
+                                return 'SAMgz'
+                        except UnicodeDecodeError:
+                            # 不是有效的文本
+                            pass
+                except (gzip.BadGzipFile, OSError):
+                    # 不是有效的 gzip 文件
+                    pass
             
+            # 3. 检查是否是未压缩的 SAM 文件
+            # 读取文件内容进行检测
+            content = f.read(4096)
             try:
                 text = content.decode('utf-8', errors='ignore')
-                lines = text.split('\n')
-                
-                # 检查 SAM 头行
-                sam_headers = ['@HD', '@SQ', '@RG', '@PG', '@CO']
-                
-                for line in lines[:10]:  # 检查前10行
-                    line = line.strip()
-                    if not line:
-                        continue
-                    
-                    # 检查是否是有效的 SAM 头行
-                    if line.startswith('@'):
-                        if any(line.startswith(h) for h in sam_headers):
-                            return 'SAM'
-                    # 检查是否是有效的 SAM 数据行
-                    elif '\t' in line:
-                        fields = line.split('\t')
-                        # SAM 数据行至少有11个字段
-                        if len(fields) >= 11:
-                            return 'SAM'
-                            
+                if is_sam_content(text):
+                    return 'SAM'
             except UnicodeDecodeError:
-                # 不是文本文件，排除 SAM
+                # 不是文本文件
                 pass
                 
     except (IOError, OSError) as e:
         print(f"Error reading file: {e}")
     
     return 'unknown'
+
+
+def is_sam_content(text, max_lines=20):
+    """
+    检查文本内容是否符合 SAM 格式特征
+    
+    Args:
+        text (str): 要检查的文本内容
+        max_lines (int): 最多检查的行数
+    
+    Returns:
+        bool: 如果是 SAM 格式返回 True，否则返回 False
+    """
+    lines = text.split('\n')
+    
+    # SAM 头行的有效前缀
+    sam_headers = ['@HD', '@SQ', '@RG', '@PG', '@CO']
+    
+    for line in lines[:max_lines]:
+        line = line.strip()
+        if not line:
+            continue
+        
+        # 检查是否是有效的 SAM 头行
+        if line.startswith('@'):
+            if any(line.startswith(h) for h in sam_headers):
+                return True
+        # 检查是否是有效的 SAM 数据行
+        elif '\t' in line:
+            fields = line.split('\t')
+            # SAM 数据行至少有11个字段
+            if len(fields) >= 11:
+                return True
+    
+    return False
 
 def entry_align_pos(entry):
     """
@@ -470,9 +507,6 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
     if verbose >= 1:
         print(f"Detected file type: {file_type}", file=sys.stderr)
     
-    if file_type not in ['SAM', 'BAM']:
-        raise ValueError(f"Unsupported file type: {file_type}")
-    
     snp_dict = parse_phased_snp(phased_snp_file)
     comments = []
     marked_reads = []
@@ -523,11 +557,18 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
                         continue
                 else:
                     continue
-    else:  # SAM file
+    elif file_type in ["SAM", "SAMgz"]:  # SAM file
         # Count total lines for progress bar
-        total_lines = count_lines_in_file(sam_file)
+        if file_type == "SAMgz":
+            open_func = gzip.open
+        else:
+            open_func = open
+
+        if show_progress:
+            with open_func(sam_file, 'rt') as f:
+                total_lines = sum(1 for line in f)
         
-        with open(sam_file, 'r') as f_in:
+        with open_func(sam_file, 'rt') as f_in:
             # Process with progress bar if verbose > 0
             lines = f_in
             if show_progress:
@@ -582,7 +623,9 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
                             continue
                     else:
                         continue
-    
+    else:
+        raise ValueError(f"Unsupported file type: {file_type}")
+
     res = pd.DataFrame(
         marked_reads,
         columns=['chrom', 'pos', 'allele', 'read_name', 'relative_pos'] + (append_features if append_features else [])
