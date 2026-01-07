@@ -8,6 +8,7 @@ import tarfile
 from io import StringIO
 from pathlib import Path
 from itertools import product
+from typing import Union, List, Dict, Any
 
 import anndata as ad
 import h5py
@@ -333,6 +334,224 @@ def parse_vcf(vcf_path, region, return_alleles=False):
         df = df[standard_cols + samples]
 
     return df
+
+
+### --- read DNA file --- ###
+def parse_sam_line(sam_line: Union[str, List[str]]) -> pd.Series:
+    """
+    Parse a SAM format line into a pandas Series with standardized fields and optional tags.
+    
+    This function parses a SAM (Sequence Alignment/Map) format record, extracting both
+    the 11 mandatory fields and any optional TAG:TYPE:VALUE fields according to the
+    SAM specification v1.6+.
+    
+    Args:
+        sam_line: A SAM format line as a string or pre-split list of strings.
+                  If string, it will be split by tabs.
+                  
+    Returns:
+        pd.Series: A pandas Series where:
+                   - Index includes: 'QNAME', 'FLAG', 'RNAME', 'POS', 'MAPQ', 'CIGAR',
+                     'RNEXT', 'PNEXT', 'TLEN', 'SEQ', 'QUAL' (mandatory fields)
+                   - Additional indices for any optional tags (e.g., 'NM', 'MD', 'AS')
+                   - Values are appropriately typed (int, float, str) based on SAM type codes
+                   
+    Raises:
+        ValueError: If the input doesn't contain at least 11 fields (mandatory SAM fields)
+        
+    Notes:
+        - POS, PNEXT: 1-based coordinates (0 indicates unmapped)
+        - FLAG: Bitwise flag, returned as integer for further decoding
+        - Optional tags follow pattern: TAG:TYPE:VALUE
+        - TYPE codes: i (int), f (float), Z (string), A (char), H (hex), B (byte array)
+        - For 'B' type (byte arrays), values are returned as list of appropriate type
+        
+    Examples:
+        >>> sam_line = "read1\t16\tchr1\t100\t255\t30M\t=\t200\t50\tACGT\tIIII\tNM:i:1\tMD:Z:30"
+        >>> series = parse_sam_line(sam_line)
+        >>> series['QNAME']  # Returns 'read1'
+        >>> series['FLAG']   # Returns 16
+        >>> series['NM']     # Returns 1
+        >>> series['MD']     # Returns '30'
+    """
+    # Split line if input is string
+    if isinstance(sam_line, str):
+        fields = sam_line.strip().split('\t')
+    else:
+        fields = sam_line
+    
+    # Validate minimum field count
+    if len(fields) < 11:
+        raise ValueError(
+            f"SAM line must have at least 11 fields, got {len(fields)}. "
+            f"Line: {' '.join(fields[:11])}"
+        )
+    
+    # Initialize result dictionary
+    result = {}
+    
+    # --- Parse mandatory fields ---
+    # Field 1: QNAME (Query template NAME) - string
+    result['QNAME'] = fields[0]
+    
+    # Field 2: FLAG (Bitwise FLAG) - integer
+    result['FLAG'] = int(fields[1])
+    
+    # Field 3: RNAME (Reference sequence NAME) - string
+    # '*' indicates no alignment
+    result['RNAME'] = fields[2]
+    
+    # Field 4: POS (1-based leftmost mapping POSition) - integer
+    # 0 indicates unmapped
+    result['POS'] = int(fields[3])
+    
+    # Field 5: MAPQ (MAPping Quality) - integer
+    result['MAPQ'] = int(fields[4])
+    
+    # Field 6: CIGAR (CIGAR string) - string
+    result['CIGAR'] = fields[5]
+    
+    # Field 7: RNEXT (Reference name of the mate/next read) - string
+    result['RNEXT'] = fields[6]
+    
+    # Field 8: PNEXT (Position of the mate/next read) - integer
+    result['PNEXT'] = int(fields[7])
+    
+    # Field 9: TLEN (observed Template LENgth) - integer
+    result['TLEN'] = int(fields[8])
+    
+    # Field 10: SEQ (segment SEQuence) - string
+    result['SEQ'] = fields[9]
+    
+    # Field 11: QUAL (ASCII of Phred-scaled base QUALity+33) - string
+    result['QUAL'] = fields[10]
+    
+    # --- Parse optional tags (fields 12+) ---
+    for field in fields[11:]:
+        # Skip empty fields
+        if not field:
+            continue
+            
+        # Split tag field (format: TAG:TYPE:VALUE)
+        parts = field.split(':', 2)
+        
+        # Validate tag format
+        if len(parts) != 3:
+            # Some tools may produce malformed tags; store as-is with warning
+            import warnings
+            warnings.warn(
+                f"Optional field '{field}' does not follow TAG:TYPE:VALUE format. "
+                f"Storing as raw string."
+            )
+            result[field] = field
+            continue
+        
+        tag, type_code, value_str = parts
+        
+        # Parse value based on type code
+        try:
+            if type_code == 'i':  # Integer
+                result[tag] = int(value_str)
+            elif type_code == 'f':  # Floating point
+                result[tag] = float(value_str)
+            elif type_code == 'Z':  # String
+                result[tag] = value_str
+            elif type_code == 'A':  # Single character
+                if len(value_str) != 1:
+                    raise ValueError(f"Type 'A' expects single character, got '{value_str}'")
+                result[tag] = value_str
+            elif type_code == 'H':  # Hex string
+                # Store as string; conversion to bytes if needed can be done externally
+                result[tag] = value_str
+            elif type_code == 'B':  # Byte array (numeric array)
+                # Format: B:[cCsSiIf]:[value1,value2,...]
+                # First character after 'B:' indicates array element type
+                if value_str[0] not in 'cCsSiIf':
+                    raise ValueError(f"Invalid byte array type specifier: {value_str[0]}")
+                
+                # Remove the type specifier and parse comma-separated values
+                array_values = value_str[2:] if value_str[1] == ':' else value_str[1:]
+                
+                # Handle empty array
+                if not array_values:
+                    result[tag] = []
+                    continue
+                    
+                # Parse based on element type
+                elem_type = value_str[0]
+                if elem_type in 'cCsS':  # Signed/unsigned byte/short
+                    result[tag] = [int(x) for x in array_values.split(',')]
+                elif elem_type == 'i':  # Integer
+                    result[tag] = [int(x) for x in array_values.split(',')]
+                elif elem_type == 'f':  # Float
+                    result[tag] = [float(x) for x in array_values.split(',')]
+                else:
+                    # Fallback: store as string
+                    result[tag] = array_values
+            else:
+                # Unknown type code - store as string
+                import warnings
+                warnings.warn(
+                    f"Unknown type code '{type_code}' for tag '{tag}'. "
+                    f"Storing value as string."
+                )
+                result[tag] = value_str
+                
+        except (ValueError, IndexError) as e:
+            # If parsing fails, store raw string with error indication
+            import warnings
+            warnings.warn(
+                f"Failed to parse tag '{tag}:{type_code}:{value_str}': {str(e)}. "
+                f"Storing as raw string."
+            )
+            result[tag] = field
+    
+    # Convert to pandas Series with appropriate dtype detection
+    # We'll let pandas infer dtypes, but ensure certain fields maintain correct type
+    series = pd.Series(result)
+    
+    # Ensure numeric fields remain numeric (pandas may convert to float if NaN present)
+    int_fields = ['FLAG', 'POS', 'MAPQ', 'PNEXT', 'TLEN']
+    for field in int_fields:
+        if field in series.index and pd.notna(series[field]):
+            # Convert to nullable Int64 if NaN possible, else regular int
+            if series[field] == 0 and field in ['POS', 'PNEXT']:
+                # 0 has special meaning in SAM (unmapped), keep as int
+                series[field] = int(series[field])
+    
+    return series
+
+
+# Optional utility function for decoding FLAG field
+def decode_sam_flag(flag: int) -> Dict[str, bool]:
+    """
+    Decode SAM bitwise FLAG into human-readable components.
+    
+    Args:
+        flag: Integer FLAG value from SAM field 2
+        
+    Returns:
+        Dictionary with flag component names as keys and boolean values
+        
+    Reference: SAM v1.6 specification
+    """
+    flag_dict = {
+        'READ_PAIRED': bool(flag & 0x1),
+        'PROPER_PAIR': bool(flag & 0x2),
+        'READ_UNMAPPED': bool(flag & 0x4),
+        'MATE_UNMAPPED': bool(flag & 0x8),
+        'READ_REVERSE_STRAND': bool(flag & 0x10),
+        'MATE_REVERSE_STRAND': bool(flag & 0x20),
+        'FIRST_IN_PAIR': bool(flag & 0x40),
+        'SECOND_IN_PAIR': bool(flag & 0x80),
+        'NOT_PRIMARY_ALIGNMENT': bool(flag & 0x100),
+        'READ_FAILS_QC': bool(flag & 0x200),
+        'DUPLICATE_READ': bool(flag & 0x400),
+        'SUPPLEMENTARY_ALIGNMENT': bool(flag & 0x800)
+    }
+    return flag_dict
+
+
 
 ### --- read scRNA-seq file --- ###
 def read_expr(path,sep=None)->pd.DataFrame:

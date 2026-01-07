@@ -6,7 +6,7 @@ import sys
 import pandas as pd
 from typing import List, Tuple
 from .calculate import mt
-from .hicio import parse_seg
+from .hicio import parse_seg, parse_sam_line
 from .genome import GenomeIdeograph
 
 
@@ -247,7 +247,7 @@ def entry_align_pos(entry):
 
     return rs, re, qs, qe
 
-def check_allele(entry, rs, v, min_baseq=20, verbose=0):
+def check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0):
     cigar_ops = parse_cigar(entry[5])
     chrom = entry[2]
 
@@ -265,16 +265,24 @@ def check_allele(entry, rs, v, min_baseq=20, verbose=0):
                 c = entry[9][p_adj] # read base at SNP relative position
                 q = ord(entry[10][p_adj]) - 33 if len(entry[10]) == len(entry[9]) else min_baseq
 
+                if append_features is not None and len(append_features) > 0:
+                    # parse entry
+                    entry_sr = parse_sam_line(entry)
+                    append_feature_values = entry_sr[append_features].tolist()
+                else:
+                    append_feature_values = []
+
                 if q >= min_baseq:
                     # Determine phase based on allele
                     if c == v[2]:
-                        return (chrom, v[1], v[2], entry[0], p_adj) # snp chrom, snp pos, ref allele, read name, relative pos
+                        res = [chrom, v[1], v[2], entry[0], p_adj] # snp chrom, snp pos, ref allele, read name, relative pos
                     elif c == v[3]:
-                        return (chrom, v[1], v[3], entry[0], p_adj) # snp chrom, snp pos, alt allele, read name, relative pos
-                    elif verbose >= 2:
-                        # don't contribute to phase if base doesn't match either allele
-                        print(f'WARNING: a new allele {c} on read {entry[0]} at position {entry[2]}:{v[1]} (not {v[2]}/{v[3]})', file=sys.stderr)
-                        return None
+                        res = [chrom, v[1], v[3], entry[0], p_adj] # snp chrom, snp pos, alt allele, read name, relative pos
+                    else:
+                        res = []
+                        if verbose >= 1:
+                            # don't contribute to phase if base doesn't match either allele
+                            print(f'WARNING: read {entry[0]} has base {c} at position {entry[2]}:{v[1]} (not {v[2]}/{v[3]})', file=sys.stderr)
             x_pos += length
             y_pos += length
         elif op == "I":
@@ -283,9 +291,10 @@ def check_allele(entry, rs, v, min_baseq=20, verbose=0):
             x_pos += length
         elif op == "S":
             y_pos += length
-    return None
+    res = res + append_feature_values
+    return res if res else None
 
-def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, min_mapq=20, min_baseq=20, verbose=0):
+def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=None, min_mapq=20, min_baseq=20, verbose=0):
     snp_dict = parse_phased_snp(phased_snp_file)
     comments = []
     marked_reads = []
@@ -329,6 +338,7 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, min_mapq=20, min_b
                         for v in hit_snp_sites:
                             res = check_allele(
                                 entry, r_s, v,
+                                append_features=append_features,
                                 min_baseq=min_baseq,
                                 verbose=verbose
                                 )
@@ -347,7 +357,9 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, min_mapq=20, min_b
             return outfile
     else:
         res = pd.DataFrame(
-            marked_reads, columns=['chrom', 'pos', 'allele', 'read_name', 'relative_pos'])
+            marked_reads,
+            columns=['chrom', 'pos', 'allele', 'read_name', 'relative_pos'] + (append_features if append_features else [])
+            )
         return res
 
 
