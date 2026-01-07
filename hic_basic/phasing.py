@@ -193,6 +193,22 @@ def parse_cigar(cigar: str) -> List[Tuple[int, str]]:
     return [(int(length), op) for length, op in matches]
 
 def entry_align_pos(entry):
+    """
+    Calculate reference and query start/end positions based on CIGAR string.
+
+    Args:
+        entry (list): A list representing a SAM format entry where:
+                      entry[1] is the FLAG field,
+                      entry[3] is the reference start position,
+                      entry[5] is the CIGAR string.
+
+    Returns:
+        tuple: A tuple containing (rs, re, qs, qe) where:
+               rs: Reference start position (0-based)
+               re: Reference end position
+               qs: Query start position
+               qe: Query end position
+    """
     cigar_ops = parse_cigar(entry[5])
     clip = [0, 0]  # [left_clip, right_clip]
     x = 0  # Reference coordinate
@@ -247,7 +263,27 @@ def entry_align_pos(entry):
 
     return rs, re, qs, qe
 
+
 def check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0):
+    """
+    Check if a SAM entry contains a specific allele at a given position.
+
+    Args:
+        entry (list): A list representing a SAM format entry where:
+                      entry[2] is the reference sequence name,
+                      entry[5] is the CIGAR string,
+                      entry[9] is the sequence,
+                      entry[10] is the base quality string.
+        rs (int): Reference start position (0-based).
+        v (list): A list containing SNP information [position, snp_id, ref_allele, alt_allele].
+        append_features (list, optional): List of additional features to append to the result.
+        min_baseq (int, optional): Minimum base quality threshold. Defaults to 20.
+        verbose (int, optional): Verbosity level. Defaults to 0.
+
+    Returns:
+        list or None: A list containing [chrom, pos, allele, read_name, relative_pos] and additional features if the allele matches,
+                      otherwise None.
+    """
     cigar_ops = parse_cigar(entry[5])
     chrom = entry[2]
 
@@ -294,7 +330,23 @@ def check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0):
     res = res + append_feature_values
     return res if res else None
 
+
 def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=None, min_mapq=20, min_baseq=20, verbose=0):
+    """
+    Mark alleles in SAM file based on phased SNP information.
+
+    Args:
+        sam_file (str): Path to the input SAM file.
+        phased_snp_file (str): Path to the phased SNP file.
+        outfile (str, optional): Path to the output file. If None, returns a DataFrame. Defaults to None.
+        append_features (list, optional): List of additional features to append to the output. Defaults to None.
+        min_mapq (int, optional): Minimum mapping quality threshold. Defaults to 20.
+        min_baseq (int, optional): Minimum base quality threshold. Defaults to 20.
+        verbose (int, optional): Verbosity level. Defaults to 0.
+
+    Returns:
+        str or pandas.DataFrame: Path to the output file if outfile is specified, otherwise a DataFrame containing marked alleles.
+    """
     snp_dict = parse_phased_snp(phased_snp_file)
     comments = []
     marked_reads = []
