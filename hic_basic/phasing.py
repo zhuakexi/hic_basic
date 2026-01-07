@@ -1,9 +1,11 @@
 """
 Sample sex and phasing.
 """
+import os
 import re
 import sys
 import pandas as pd
+import pysam
 from typing import List, Tuple
 from .calculate import mt
 from .hicio import parse_seg, parse_sam_line
@@ -192,6 +194,34 @@ def parse_cigar(cigar: str) -> List[Tuple[int, str]]:
     matches = cigar_pattern.findall(cigar)
     return [(int(length), op) for length, op in matches]
 
+def get_file_type(file_path):
+    """
+    Determine the file type by reading the first few bytes of the file.
+
+    Args:
+        file_path (str): Path to the file to check.
+
+    Returns:
+        str: The file type ('SAM', 'BAM', or 'unknown').
+    """
+    with open(file_path, 'rb') as f:
+        # Read the first 4 bytes to check for BAM magic number
+        header = f.read(4)
+        
+        # BAM files start with 'BAM\1' (0x42 0x41 0x4D 0x01)
+        if header == b'BAM\x01':
+            return 'BAM'
+        
+        # For SAM files, check if it starts with '@HD' or similar header
+        # Read first few bytes as text to check for SAM header
+        f.seek(0)
+        first_line = f.read(100).decode('utf-8', errors='ignore')
+        
+        if first_line.startswith('@HD') or first_line.startswith('@SQ'):
+            return 'SAM'
+    
+    return 'unknown'
+
 def entry_align_pos(entry):
     """
     Calculate reference and query start/end positions based on CIGAR string.
@@ -331,12 +361,44 @@ def check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0):
     return res if res else None
 
 
-def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=None, min_mapq=20, min_baseq=20, verbose=0):
+def convert_alignment_to_entry(alignment):
     """
-    Mark alleles in SAM file based on phased SNP information.
+    Convert a pysam.AlignedSegment object to a list in the same format as a SAM entry.
 
     Args:
-        sam_file (str): Path to the input SAM file.
+        alignment (pysam.AlignedSegment): An alignment object from pysam.
+
+    Returns:
+        list: A list representing the alignment in the same format as a SAM entry.
+    """
+    # Convert alignment to a list similar to SAM format
+    entry = [
+        alignment.query_name,  # QNAME (0)
+        str(alignment.flag),   # FLAG (1)
+        alignment.reference_name if alignment.reference_name else '*',  # RNAME (2)
+        str(alignment.reference_start + 1) if alignment.reference_start >= 0 else '0',  # POS (3)
+        str(alignment.mapping_quality),  # MAPQ (4)
+        alignment.cigarstring if alignment.cigarstring else '*',  # CIGAR (5)
+        alignment.next_reference_name if alignment.next_reference_name else '=',  # RNEXT (6)
+        str(alignment.next_reference_start + 1) if alignment.next_reference_start >= 0 else '0',  # PNEXT (7)
+        str(alignment.template_length) if alignment.template_length else '0',  # TLEN (8)
+        alignment.query_sequence if alignment.query_sequence else '*',  # SEQ (9)
+        alignment.qual if alignment.qual else '*'  # QUAL (10)
+    ]
+    
+    # Add optional fields if they exist
+    for tag, value in alignment.tags:
+        entry.append(f"{tag}:{value}")
+    
+    return entry
+
+
+def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=None, min_mapq=20, min_baseq=20, verbose=0):
+    """
+    Mark alleles in SAM/BAM file based on phased SNP information.
+
+    Args:
+        sam_file (str): Path to the input SAM or BAM file.
         phased_snp_file (str): Path to the phased SNP file.
         outfile (str, optional): Path to the output file. If None, returns a DataFrame. Defaults to None.
         append_features (list, optional): List of additional features to append to the output. Defaults to None.
@@ -347,35 +409,50 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
     Returns:
         str or pandas.DataFrame: Path to the output file if outfile is specified, otherwise a DataFrame containing marked alleles.
     """
+    # Determine file type
+    file_type = get_file_type(sam_file)
+    
+    if file_type not in ['SAM', 'BAM']:
+        raise ValueError(f"Unsupported file type: {file_type}")
+    
     snp_dict = parse_phased_snp(phased_snp_file)
     comments = []
     marked_reads = []
-    with open(sam_file, 'r') as f_in:
-        for line in f_in:
-            t = line.strip().split("\t")
-            
+    
+    if file_type == 'BAM':
+        # Process BAM file using pysam
+        with pysam.AlignmentFile(sam_file, "rb") as bam_file:
             # Handle header lines
-            if t[0].startswith('@'):
-                if t[0] == '@SQ':
-                    sn = None
-                    ln = None
-                    for i in range(1, len(t)):
-                        m = re.search(r'(LN|SN):(\S+)', t[i])
-                        if m:
-                            if m.group(1) == 'SN':
-                                sn = m.group(2)
-                            elif m.group(1) == 'LN':
-                                ln = int(m.group(2))
-                    
-                    if sn is None or ln is None:
-                        raise ValueError("missing SN or LN at an @SQ line")
-                    # print(f"#chromosome: {sn} {ln}")
-                    comments.append(f"#chromosome: {sn} {ln}")
-                else:
+            for header_line in bam_file.text.split('\n'):
+                if header_line:
+                    t = header_line.strip().split("\t")
+                    if t[0].startswith('@'):
+                        if t[0] == '@SQ':
+                            sn = None
+                            ln = None
+                            for i in range(1, len(t)):
+                                m = re.search(r'(LN|SN):(\S+)', t[i])
+                                if m:
+                                    if m.group(1) == 'SN':
+                                        sn = m.group(2)
+                                    elif m.group(1) == 'LN':
+                                        ln = int(m.group(2))
+                            
+                            if sn is None or ln is None:
+                                raise ValueError("missing SN or LN at an @SQ line")
+                            # print(f"#chromosome: {sn} {ln}")
+                            comments.append(f"#chromosome: {sn} {ln}")
+                        continue
+            
+            # Process alignments
+            for alignment in bam_file:
+                # Convert alignment to entry format
+                entry = convert_alignment_to_entry(alignment)
+                
+                # Skip unmapped reads
+                if alignment.is_unmapped:
                     continue
-                continue
-            else:
-                entry = t
+                
                 mapq = int(entry[4])
                 if mapq < min_mapq:
                     continue
@@ -400,6 +477,58 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
                         continue
                 else:
                     continue
+    else:  # SAM file
+        with open(sam_file, 'r') as f_in:
+            for line in f_in:
+                t = line.strip().split("\t")
+                
+                # Handle header lines
+                if t[0].startswith('@'):
+                    if t[0] == '@SQ':
+                        sn = None
+                        ln = None
+                        for i in range(1, len(t)):
+                            m = re.search(r'(LN|SN):(\S+)', t[i])
+                            if m:
+                                if m.group(1) == 'SN':
+                                    sn = m.group(2)
+                                elif m.group(1) == 'LN':
+                                    ln = int(m.group(2))
+                        
+                        if sn is None or ln is None:
+                            raise ValueError("missing SN or LN at an @SQ line")
+                        # print(f"#chromosome: {sn} {ln}")
+                        comments.append(f"#chromosome: {sn} {ln}")
+                    else:
+                        continue
+                    continue
+                else:
+                    entry = t
+                    mapq = int(entry[4])
+                    if mapq < min_mapq:
+                        continue
+
+                    r_s, r_e, q_s, q_e = entry_align_pos(entry)
+
+                    # Phase determination
+                    if snp_dict and entry[2] in snp_dict:
+                        # Find overlapping SNPs according to reference positions
+                        hit_snp_sites = Interval.find_ovlp(snp_dict[entry[2]], r_s, r_e)
+                        if hit_snp_sites:
+                            for v in hit_snp_sites:
+                                res = check_allele(
+                                    entry, r_s, v,
+                                    append_features=append_features,
+                                    min_baseq=min_baseq,
+                                    verbose=verbose
+                                    )
+                                if res is not None:
+                                    marked_reads.append(res)
+                        else:
+                            continue
+                    else:
+                        continue
+    
     if outfile is not None:
         with open(outfile, 'w') as f_out:
             for line in comments:
@@ -414,6 +543,51 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
             )
         return res
 
+def sam_count_alleles(df):
+    """
+    Count reference, alternative, and other alleles for each chromosome and site.
+
+    This function takes a DataFrame containing genetic data and calculates the count
+    of reference alleles, alternative alleles, and other alleles for each unique
+    chromosome and position combination.
+
+    Args:
+        df (pandas.DataFrame): A DataFrame with columns 'chrom', 'pos', 'allele',
+                               'input_ref', and 'input_alt'. Each row represents
+                               an allele observation at a specific genomic location.
+
+    Returns:
+        pandas.DataFrame: A DataFrame with columns 'chrom', 'pos', 'ref', 'alt', 'other'.
+                          Each row represents a unique chromosome and position combination
+                          with the counts of reference alleles ('ref'), alternative alleles ('alt'),
+                          and other alleles ('other').
+    """
+    # Create a copy to avoid modifying the original dataframe
+    df_copy = df.copy()
+    
+    # Create a new column to categorize each allele
+    df_copy['allele_category'] = np.select(
+        [df_copy['allele'] == df_copy['input_ref'], 
+         df_copy['allele'] == df_copy['input_alt']],
+        ['ref', 'alt'],
+        default='other'
+    )
+    
+    # Group by chrom and pos, and count the occurrences of each allele category
+    result = df_copy.groupby(['chrom', 'pos'])['allele_category'].value_counts().unstack(fill_value=0)
+    
+    # Ensure all required columns exist (ref, alt, other)
+    for col in ['ref', 'alt', 'other']:
+        if col not in result.columns:
+            result[col] = 0
+    
+    # Select only the required columns
+    result = result[['ref', 'alt', 'other']].reset_index()
+    
+    # Ensure the correct column order
+    result = result[['chrom', 'pos', 'ref', 'alt', 'other']]
+    
+    return result
 
 ### --- calculate haplotype score on segments --- ###
 
