@@ -360,6 +360,7 @@ def check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0):
 
     x_pos = rs
     y_pos = 0
+    res = None
     for length, op in cigar_ops:
         if op == "M": # Match or mismatch
             p = v[0] # SNP ref position
@@ -398,8 +399,9 @@ def check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0):
             x_pos += length
         elif op == "S":
             y_pos += length
-    res = res + append_feature_values
-    return res if res else None
+    if res is not None:
+        res = res + append_feature_values
+    return res
 
 
 def convert_alignment_to_entry(alignment):
@@ -476,39 +478,20 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
     marked_reads = []
     
     if file_type == 'BAM':
-        # Process BAM file using pysam
+        # Count total alignments for progress bar
+        if show_progress:
+            total_alignments = 0
+            with pysam.AlignmentFile(sam_file, "rb") as bam_file:
+                for _ in bam_file:
+                    total_alignments += 1
         with pysam.AlignmentFile(sam_file, "rb") as bam_file:
-            # Handle header lines
-            for header_line in bam_file.text.split('\n'):
-                if header_line:
-                    t = header_line.strip().split("\t")
-                    if t[0].startswith('@'):
-                        if t[0] == '@SQ':
-                            sn = None
-                            ln = None
-                            for i in range(1, len(t)):
-                                m = re.search(r'(LN|SN):(\S+)', t[i])
-                                if m:
-                                    if m.group(1) == 'SN':
-                                        sn = m.group(2)
-                                    elif m.group(1) == 'LN':
-                                        ln = int(m.group(2))
-                            
-                            if sn is None or ln is None:
-                                raise ValueError("missing SN or LN at an @SQ line")
-                            # print(f"#chromosome: {sn} {ln}")
-                            comments.append(f"#chromosome: {sn} {ln}")
-                        continue
-            
-            # Count total alignments for progress bar
-            total_alignments = bam_file.count()
-            
-            # Process alignments with progress bar if verbose > 0
-            alignment_iter = bam_file
+            # Process alignments with progress bar
             if show_progress:
-                alignment_iter = tqdm(alignment_iter, total=total_alignments, desc="Processing alignments")
+                alignment_iter = tqdm(bam_file, total=total_alignments, desc="Processing alignments")
+            else:
+                alignment_iter = bam_file
             
-            for i, alignment in enumerate(alignment_iter):
+            for alignment in alignment_iter:
                 # Convert alignment to entry format
                 entry = convert_alignment_to_entry(alignment)
                 
@@ -528,14 +511,14 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
                     hit_snp_sites = Interval.find_ovlp(snp_dict[entry[2]], r_s, r_e)
                     if hit_snp_sites:
                         for v in hit_snp_sites:
-                            res = check_allele(
+                            marked_read = check_allele(
                                 entry, r_s, v,
                                 append_features=append_features,
                                 min_baseq=min_baseq,
                                 verbose=verbose
                                 )
-                            if res is not None:
-                                marked_reads.append(res)
+                            if marked_read is not None:
+                                marked_reads.append(marked_read)
                     else:
                         continue
                 else:
