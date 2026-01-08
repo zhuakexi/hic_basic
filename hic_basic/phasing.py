@@ -424,9 +424,8 @@ def check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0):
                     elif c == v[3]:
                         res = [chrom, v[1], v[3], entry[0], p_adj] # snp chrom, snp pos, alt allele, read name, relative pos
                     else:
-                        res = []
+                        res = [chrom, v[1], c, entry[0], p_adj] # snp chrom, snp pos, other allele, read name, relative pos
                         if verbose >= 1:
-                            # don't contribute to phase if base doesn't match either allele
                             print(f'WARNING: read {entry[0]} has base {c} at position {entry[2]}:{v[1]} (not {v[2]}/{v[3]})', file=sys.stderr)
             x_pos += length
             y_pos += length
