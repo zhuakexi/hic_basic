@@ -734,6 +734,47 @@ def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
     
     return result
 
+def do_sam2vcf_allele_count(sam_file, ref_snp_file, output):
+    """
+    Given a SAM file and a reference SNP file, generate a parquet file with allele counts of each SNP.
+    
+    {pipeline}[Gamete SNP Phasing Pipeline][1.count alleles]:
+        `do_sam2vcf_allele_count` for each gamete SAM file to get allele counts at each SNP position.
+    
+    Parameters:
+        sam_file (str): Path to the SAM file, can be sam.gz, bam, or sam.
+        ref_snp_file (str): Path to the reference SNP file in tab-delimited format with columns: chrom, pos, ref_allele, alt_allele.
+    Output (str): Path to the output parquet file.
+    Note: output is aligned to ref_snp_file 
+    """
+    assert output.endswith(".parquet"), "Output file must be a .parquet file"
+    # Load reference SNPs
+    ref_snps = pd.read_table(ref_snp_file)
+    allele_df = sam_mark_alleles(
+        sam_file,
+        ref_snp_file,
+        output=None,
+        show_progress=False,
+        verbose=0
+    )
+    allele_df_count = sam_count_alleles(
+        allele_df,
+        ref_snp_file,
+        gt_strategy="no_conflict",
+    )
+    snp = pd.read_table(ref_snp_file, names=["chrom", "pos", "ref_allele", "alt_allele"])
+    extended_allele_count = pd.merge(
+        snp,
+        allele_df_count,
+        how="left",
+        on=["chrom", "pos"]
+    )[["chrom","pos","gt"]]
+    extended_allele_count.to_parquet(
+        output,
+        index=True
+        )
+    return output
+
 ### --- calculate haplotype score on segments --- ###
 
 
