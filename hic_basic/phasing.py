@@ -635,28 +635,42 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
     else:
         return res
 
-def sam_count_alleles(df):
+def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
     """
     Count reference, alternative, and other alleles for each chromosome and site.
 
     This function takes a DataFrame containing genetic data and calculates the count
     of reference alleles, alternative alleles, and other alleles for each unique
     chromosome and position combination.
+    TODO: Better GT strategies. For example, is 0/1 better than 1/4?
 
     Args:
-        df (pandas.DataFrame): A DataFrame with columns 'chrom', 'pos', 'allele',
+        allele_df (pandas.DataFrame): A DataFrame with columns 'chrom', 'pos', 'allele',
                                'input_ref', and 'input_alt'. Each row represents
                                an allele observation at a specific genomic location.
+        gt_strategy (str): Strategy for generating the GT column. 
+                          "max_allele": Choose the allele with the highest count (ref or alt) and convert to ATGC
+                          "no_conflict": Choose the non-zero allele if one is 0 and the other > 0, otherwise NA
 
     Returns:
-        pandas.DataFrame: A DataFrame with columns 'chrom', 'pos', 'ref', 'alt', 'other'.
+        pandas.DataFrame: A DataFrame with columns 'chrom', 'pos', 'ref', 'alt', 'other', 'gt'.
                           Each row represents a unique chromosome and position combination
                           with the counts of reference alleles ('ref'), alternative alleles ('alt'),
-                          and other alleles ('other').
+                          other alleles ('other'), and the genotype ('gt').
     """
     # Create a copy to avoid modifying the original dataframe
+    ref_snp_df = pd.read_table(
+        ref_snp_file,
+        names=['chrom', 'pos', 'input_ref', 'input_alt'],
+        usecols=[0,1,2,3]
+        )
+    df = pd.merge(
+        allele_df,
+        ref_snp_df,
+        on=['chrom', 'pos'],
+        how='left'
+    )
     df_copy = df.copy()
-    
     # Create a new column to categorize each allele
     df_copy['allele_category'] = np.select(
         [df_copy['allele'] == df_copy['input_ref'], 
@@ -678,6 +692,45 @@ def sam_count_alleles(df):
     
     # Ensure the correct column order
     result = result[['chrom', 'pos', 'ref', 'alt', 'other']]
+
+    # --- work on aggregated df to add GT column --- #
+
+    # Get the ref and alt alleles for each chrom and pos from the original df
+    allele_map = df[['chrom', 'pos', 'input_ref', 'input_alt']].drop_duplicates(subset=['chrom', 'pos']).reset_index(drop=True)
+    result = result.merge(allele_map, on=['chrom', 'pos'], how='left')
+    
+    # Add the GT column based on the specified strategy using vectorized operations
+    if gt_strategy == "max_allele":
+        # Vectorized operation:
+        condition1 = (result['ref'] > result['alt']) & (result['ref'] > result['other'])  # ref > alt and ref > other
+        condition2 = (result['alt'] > result['ref']) & (result['alt'] > result['other'])  # alt > ref and alt > other
+
+        result['gt'] = np.select(
+            [condition1, condition2],
+            [result['input_ref'], result['input_alt']],
+            default=pd.NA
+        )
+        
+    elif gt_strategy == "no_conflict":
+        # Vectorized operation: if one is 0 and other > 0, choose the > 0 allele; if both > 0, return NA
+        condition1 = (result['ref'] > 0) & (result['alt'] == 0) & (result['other'] == 0) # ref > 0, alt = 0, other = 0
+        condition2 = (result['ref'] == 0) & (result['alt'] > 0) & (result['other'] == 0)  # ref = 0, alt > 0, other = 0
+        condition3 = (result['ref'] > 0) & (result['alt'] > 0)   # both > 0
+        
+        result['gt'] = np.select(
+            [condition1, condition2, condition3],
+            [result['input_ref'], result['input_alt'], pd.NA],
+            default=pd.NA
+        )
+        
+    else:
+        raise ValueError(f"Invalid gt_strategy: {gt_strategy}. Valid options are 'max_allele' or 'no_conflict'.")
+    
+    # Drop the temporary columns used for allele mapping
+    result = result.drop(['input_ref', 'input_alt'], axis=1)
+    
+    # Ensure the correct column order
+    result = result[['chrom', 'pos', 'ref', 'alt', 'other', 'gt']]
     
     return result
 
