@@ -734,7 +734,7 @@ def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
     
     return result
 
-def do_sam2vcf_allele_count(sam_file, ref_snp_file, output):
+def do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None):
     """
     Given a SAM file and a reference SNP file, generate a parquet file with allele counts of each SNP.
     
@@ -747,13 +747,14 @@ def do_sam2vcf_allele_count(sam_file, ref_snp_file, output):
     Output (str): Path to the output parquet file.
     Note: output is aligned to ref_snp_file 
     """
+    assert ref_snp_file is not None, "Reference SNP file must be provided"
     assert output.endswith(".parquet"), "Output file must be a .parquet file"
     # Load reference SNPs
     ref_snps = pd.read_table(ref_snp_file)
     allele_df = sam_mark_alleles(
         sam_file,
         ref_snp_file,
-        output=None,
+        outfile=None,
         show_progress=False,
         verbose=0
     )
