@@ -11,7 +11,7 @@ from sklearn.decomposition import PCA, TruncatedSVD
 
 from .metrics import pairwise_DKL
 
-def pca_rep(mat, n_components, with_std=False):
+def pca_rep(mat, n_components, with_std=False, retmodel=False):
     """
     Return pca representation of data.
     Input:
@@ -19,6 +19,7 @@ def pca_rep(mat, n_components, with_std=False):
         n_components: number of components to keep
         with_std: whether doing std scaling. No consensus but 
             usually don't scale it in omic-biology.
+        retmodel: whether return all related model objects.
     Output:
         m * n_components matrix
     """
@@ -26,6 +27,9 @@ def pca_rep(mat, n_components, with_std=False):
     scaled = scaler.fit_transform(mat)
     pca = PCA(n_components)
     pca_res = pca.fit_transform(scaled)
+    if retmodel:
+        # scaler model weights are useless outside, so only give blank scaler and pca
+        return pca_res, [preprocessing.StandardScaler(with_std=with_std), pca]
     return pca_res
 
 def band_svd(cell_list, res, dist=10000000, dim=50):
