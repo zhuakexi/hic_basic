@@ -98,7 +98,18 @@ def mt(
                     idx_num += 1
                 else:
                     break
-            
+
+            if concat:
+                assert new_cols is None, (
+                    "new_cols parameter is not allowed when concat=True. This parameter is "
+                    "only relevant for file-based workflows (concat=False)."
+                )
+                
+                # Inform user that file existence checks are skipped in concat mode
+                print("Note: In concat=True mode, all tasks will be executed regardless of "
+                      "any existing output files. File existence checks are disabled as "
+                      "concat mode is designed for computational results rather than file I/O.")
+
             # Extract output_cols next
             output_cols_list = []
             if "output_cols" in kwargs:
@@ -122,6 +133,13 @@ def mt(
                     idx_num += 1
                 else:
                     break
+            if concat:
+                # Prevent output pattern usage in concat mode
+                assert len(output_patterns) == 0, (
+                    "Output patterns (output_pattern, output_pattern1, etc.) are not allowed "
+                    "when concat=True. Concat mode is designed for computational results, not "
+                    "file generation. Use concat=False for file-based workflows."
+                )
 
             # Check if we have any output sources
             if not output_sources and not concat:
@@ -165,11 +183,13 @@ def mt(
                         resolved_outputs.append(output_path)
                         pattern_outputs.append(output_path)
 
-                # Skip check - if any output exists and force=False, skip
+                # Determine if task should be skipped
                 skip_task = False
-                if resolved_outputs and not force:
+                # Only perform skip check if concat=False AND outputs exist AND force=False
+                if not concat and resolved_outputs and not force:
                     if all(os.path.exists(op) for op in resolved_outputs):
                         skip_task = True
+                # When concat=True, skip_task remains False for all tasks
 
                 # Store task information
                 tasks_info[idx] = {
