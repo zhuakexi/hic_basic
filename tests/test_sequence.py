@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 import pandas as pd
-from hic_basic.binnify import GenomeIdeograph
+from hic_basic.genome import GenomeIdeograph
 from hic_basic.sequence import count_CpG
 from hic_basic.sequence import compare_fastq_pairs
 from hic_basic.sequence import search_primers

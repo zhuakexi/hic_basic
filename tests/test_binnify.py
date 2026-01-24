@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from hic_basic.binnify import GenomeIdeograph
+from hic_basic.genome import GenomeIdeograph
 
 class TestGenomeIdeograph(unittest.TestCase):
     def setUp(self):
