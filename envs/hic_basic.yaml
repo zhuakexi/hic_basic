@@ -1,0 +1,46 @@
+# Minimal conda environment for hic_basic
+# Generated from hic_basic_v096.yaml by analyzing actual imports
+# This is a subset containing only the packages directly used by the codebase
+# All versions are tested and match hic_basic_v096
+
+name: hic_basic
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - anndata=0.11.3=pyhd8ed1ab_0
+  - bioframe=0.7.2=pyhdfd78af_0
+  - click=8.1.8=pyh707e725_0
+  - cooler=0.10.2=pyhdfd78af_0
+  - cooltools=0.7.1=py310h20b60a1_2
+  - cytoolz=1.0.1=py310ha75aee5_0
+  - dask=2024.8.2=pyhd8ed1ab_0
+  - h5py=3.13.0=nompi_py310h60e0fe6_100
+  - loompy=3.0.6=py_0
+  - matplotlib=3.10.1=py310hff52083_0
+  - numpy=1.23.1=py310h53a5b5f_0
+  - pandas=2.2.3=py310h5eaa309_1
+  - pillow=11.1.0=py310h7e6dc6c_0
+  - plotly=6.0.1=pyhd8ed1ab_0
+  - pybedtools=0.12.0=py310h275bdba_0
+  - pymol-open-source=3.1.0=py310h980ad22_0
+  - pysam=0.23.0=py310h64e62c9_0
+  - python=3.10.16=he725a3c_1_cpython
+  - pyyaml=6.0.2=py310h89163eb_2
+  - requests=2.32.3=pyhd8ed1ab_1
+  - scanpy=1.10.4=pyhd8ed1ab_0
+  - scikit-image=0.24.0=py310h5eaa309_3
+  - scikit-learn=1.5.2=py310h27f47ee_1
+  - scipy=1.13.1=py310h93e2701_0
+  - scvelo=0.3.3=pyhd8ed1ab_0
+  - seaborn=0.13.2=hd8ed1ab_3
+  - statsmodels=0.14.4=py310hf462985_0
+  - threadpoolctl=3.6.0=pyhecae5ae_0
+  - toolz=1.0.0=pyhd8ed1ab_1
+  - tqdm=4.67.1=pyhd8ed1ab_1
+  - umap-learn=0.5.7=py310hff52083_1
+  - upsetplot=0.9.0=pyhd8ed1ab_1
+  - xarray=2024.7.0=pyhd8ed1ab_0
+  - pip:
+    - open3d==0.19.0
+    - pytest==9.0.1
