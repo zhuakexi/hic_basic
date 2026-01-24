@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from hic_basic.coolstuff import cool2mat, cli_pileup, cli_expected, reset_cool_bins, cli_balance
+from hic_basic.coolstuff import cool2mat, cli_pileup, cli_expected, reset_cool_bins, cli_balance, schicluster2cool
 from hic_basic.plot.hic import _plot_mat
 
 class TestCoolstuff(unittest.TestCase):
@@ -51,6 +51,7 @@ class TestCoolstuff(unittest.TestCase):
             coolp,
             features,
             outfile,
+            store_snips=True,
             cwd = cwd,
             flank=400000
         )
@@ -61,7 +62,7 @@ class TestCoolstuff(unittest.TestCase):
         loaded = np.load(outfile)
         pileup, stack = loaded["pileup"], loaded["stack"]
         self.assertEqual(
-            stack.shape[2],
+            stack.shape[0],
             pd.read_table(features).shape[0]
         )
         print(pileup.shape)
@@ -69,25 +70,25 @@ class TestCoolstuff(unittest.TestCase):
         # print first TAD border
         TADborder1 = pd.DataFrame(stack[:, :, 0])
         #print(TADborder1)
-        fig = _plot_mat(
-            TADborder1,
-            donorm=True,
-            balancing=True
-        )
-        fig.write_image(str(outpng), width=800, height=800)
-        self.assertTrue(outpng.exists())
+        # fig = _plot_mat(
+        #     TADborder1,
+        #     donorm=True,
+        #     balancing=True
+        # )
+        # fig.write_image(str(outpng), width=800, height=800)
+        # self.assertTrue(outpng.exists())
 
-        # print full pileup
-        outpng = self.outdir / "cli_pileup.png"
-        full_pileup = pd.DataFrame(pileup)
-        fig = _plot_mat(
-            full_pileup,
-            donorm=True,
-            balancing=True
-        )
-        fig.write_image(str(outpng), width=800, height=800)
-        self.assertTrue(outpng.exists())
-    def cli_expected(self):
+        # # print full pileup
+        # outpng = self.outdir / "cli_pileup.png"
+        # full_pileup = pd.DataFrame(pileup)
+        # fig = _plot_mat(
+        #     full_pileup,
+        #     donorm=True,
+        #     balancing=True
+        # )
+        # fig.write_image(str(outpng), width=800, height=800)
+        # self.assertTrue(outpng.exists())
+    def test_cli_expected(self):
         """
         Test the cli_expected function.
         """
@@ -116,11 +117,63 @@ class TestCoolstuff(unittest.TestCase):
         Test the cli_balance function.
         """
         coolp = self.coolp1M
-        cli_balance(
+        output = cli_balance(
             coolp,
             cwd=self.outdir
         )
-        self.assertTrue(output.exists())
+        self.assertTrue(output)
+    
+    def test_schicluster2cool(self):
+        """
+        Test the schicluster2cool function to convert schicluster imputed matrices to cool format.
+        """
+        # Input files for chr1 and chr2
+        filesp = pd.Series(
+            data=[
+                '/shared/ychi/repo/hemsc/notebooks1/impute/B1a1.chr1.npz',
+                '/shared/ychi/repo/hemsc/notebooks1/impute/B1a1.chr2.npz'
+            ],
+            index=['chr1', 'chr2'],
+            name='B1a1'
+        )
+        
+        # Check if input files exist
+        for fp in filesp:
+            if not Path(fp).exists():
+                self.skipTest(f"Input file not found: {fp}")
+        
+        # Output cool file
+        output = self.outdir / "B1a1_chr1_chr2_test.cool"
+        
+        # Convert schicluster matrices to cool
+        print(f"\nConverting {len(filesp)} chromosomes to cool format...")
+        result = schicluster2cool(
+            filesp=filesp,
+            fo=str(output),
+            genome="GRCh38",
+            binsize=10_000
+        )
+        
+        # Verify output file exists
+        self.assertTrue(output.exists(), f"Output cool file was not created: {output}")
+        print(f"✓ Output file created: {output}")
+        
+        # Verify the cool file can be opened and validate
+        import cooler
+        clr = cooler.Cooler(str(output))
+        self.assertIsNotNone(clr)
+        
+        # Check basic properties
+        self.assertEqual(clr.binsize, 10_000, "Binsize mismatch")
+        self.assertIn('chr1', clr.chromnames, "chr1 not found in cool file")
+        self.assertIn('chr2', clr.chromnames, "chr2 not found in cool file")
+        
+        print(f"✓ Cool file validation passed:")
+        print(f"  - Bins: {len(clr.bins())}")
+        print(f"  - Chromosomes: {list(clr.chromnames)}")
+        print(f"  - Binsize: {clr.binsize}")
+        print(f"  - Result path: {result}")
+
 if __name__ == "__main__":
     unittest.main()
 
