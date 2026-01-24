@@ -38,6 +38,7 @@ class Feature(ABC):
             self._is_temp = True
         else:
             self.db_dir = Path(db_dir)
+            self.db_dir.mkdir(parents=True, exist_ok=True)
         self.feature_name = feature_name
         self.file_type = file_type
 
