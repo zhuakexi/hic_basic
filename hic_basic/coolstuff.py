@@ -16,8 +16,9 @@ from cooler.create import sanitize_records, aggregate_records
 from cytoolz import compose # fail in HPC
 from tqdm import tqdm
 
+from .data import RefGenome
+from .feature import Chromosomes
 from .genome import GenomeIdeograph
-from .data import chromosomes
 from .genome import Region
 from .hicio import schicluster2mat, DevNull
 from .utils import binnify
@@ -242,6 +243,9 @@ def cool2mat(cool, region:Union[str, List[str], slice, List[slice]], balance:boo
 def gen_bins(genome, binsize):
     """
     Generate "bins" for cooler api.
+    Input:
+        genome: RefGenome obj or Chromosomes obj or chromsizes dataframe with columns ["length"]
+        binsize: bin size; int
     """
     try:
         binsize = int(binsize)
@@ -249,7 +253,14 @@ def gen_bins(genome, binsize):
         raise ValueError(
             'Expected integer binsize argument (bp), got "{}"'.format(binsize)
         )
-    chromsizes = chromosomes(genome)["length"]
+    if isinstance(genome, RefGenome):
+        chromsizes = genome.chromosomes.data["length"]
+    elif isinstance(genome, Chromosomes):
+        chromsizes = genome.data["length"]
+    elif isinstance(genome, pd.DataFrame):
+        chromsizes = genome["length"]
+    else:
+        raise ValueError('genome must be RefGenome object or Chromosomes object or chromsizes dataframe')
     bins = binnify(chromsizes, binsize)
     return bins
 
@@ -413,14 +424,14 @@ def schicluster2cool(filesp, fo, genome, binsize,
     ```
         from pathlib import Path
         import pandas as pd
-        from hic_basic.data import chromosomes
+        from hic_basic.data import mm10
         from hic_basic.coolstuff import schicluster2cool
         
         
         sample = "2021110112"
         ddir = "/shareb/ychi/repo/embryo_integrate/schicluster/imputed_matrix/100000/"
 
-        chroms = [chrom for chrom in chromosomes(genome).index if chrom not in ["chrX","chrY"]]
+        chroms = [chrom for chrom in mm10.chromosomes.data.index if chrom not in ["chrX","chrY"]]
         filesp = pd.Series(
             data = [
                 Path(ddir)/ "{chrom}".format(chrom=chrom) / "{sample}_{chrom}_pad1_std1_rp0.5_sqrtvc.hdf5".format(sample=sample, chrom=chrom) 
