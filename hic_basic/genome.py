@@ -1,10 +1,65 @@
 import re
+from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from hires_utils import chrom_rm_suffix
 
 
 ### --- functions about 1D genome --- ###
+
+
+def _get_chrom_data(genome, order=False):
+    """
+    Helper function to get chromosome data from various genome inputs.
+    Input:
+        genome: genome name (str), RefGenome object, Chromosomes object, or DataFrame
+        order: if True, order chromosomes naturally (chr1, chr2, ...)
+    Returns:
+        pd.DataFrame with chromosome lengths
+    """
+    from .data import RefGenome
+    from .feature import Chromosomes
+    
+    # Handle RefGenome objects
+    if isinstance(genome, RefGenome):
+        chrom_df = genome.chromosomes.data
+    # Handle Chromosomes objects
+    elif isinstance(genome, Chromosomes):
+        chrom_df = genome.data
+    # Handle DataFrame
+    elif isinstance(genome, pd.DataFrame):
+        chrom_df = genome
+    # Handle string (genome name)
+    elif isinstance(genome, str):
+        # Try to get predefined genome
+        try:
+            from . import data
+            if hasattr(data, genome):
+                ref_genome = getattr(data, genome)
+                if isinstance(ref_genome, RefGenome):
+                    chrom_df = ref_genome.chromosomes.data
+                else:
+                    raise ValueError(f"Invalid genome object for {genome}")
+            else:
+                # Fall back to GenomeIdeograph for genome name lookup
+                gi = GenomeIdeograph(genome)
+                chrom_df = gi.chromosomes
+        except Exception:
+            # Try as file path
+            try:
+                chrom_df = Chromosomes().load(genome)
+            except:
+                raise ValueError(f"Cannot resolve genome: {genome}")
+    else:
+        raise ValueError("genome must be RefGenome, Chromosomes, DataFrame, or genome name string")
+    
+    # Apply ordering if requested
+    if order:
+        # Use categorical index to maintain natural chromosome order
+        chrom_df.index = pd.CategoricalIndex(chrom_df.index, categories=chrom_df.index, ordered=True)
+    
+    return chrom_df
 
 
 def parse_ucsc_region(region_str):
@@ -80,8 +135,7 @@ class Region:
             
             # Recalculate genome-dependent properties if genome changed
             if genome is not None and genome != region_arg.genome:
-                from .data import chromosomes
-                chrom_df = chromosomes(genome)
+                chrom_df = _get_chrom_data(genome)
                 chrom_idict = dict(zip(chrom_df.index, range(len(chrom_df))))
                 
                 # Update index representation with new genome
@@ -117,9 +171,8 @@ class Region:
             ir: [(chrom_idx, start), (chrom_idx, end)] or None if genome unavailable
         """
         if genome is not None:
-            from .data import chromosomes
             # Genome available - use chromosome info
-            chrom_df = chromosomes(genome)
+            chrom_df = _get_chrom_data(genome)
             chrom_idict = dict(zip(chrom_df.index, range(len(chrom_df))))
             
             if isinstance(region_arg, str):
@@ -160,8 +213,7 @@ class Region:
 
     def _get_relevant_chromosomes(self):
         """Get relevant chromosomes (requires genome)"""
-        from .data import chromosomes
-        chrom_df = chromosomes(self.genome)
+        chrom_df = _get_chrom_data(self.genome)
         return chrom_df.loc[self.r[0][0]:self.r[1][0]].index.tolist()
 
     def _get_bin_index(self, binsize):
@@ -187,8 +239,7 @@ class Region:
             # Multi-chromosome region
             if self.genome is None:
                 raise ValueError("Multi-chromosome containment requires genome reference")
-            from .data import chromosomes
-            chrom_df = chromosomes(self.genome)
+            chrom_df = _get_chrom_data(self.genome)
             chrom_order = chrom_df.index.tolist()
             start_idx = chrom_order.index(self.r[0][0])
             end_idx = chrom_order.index(self.r[1][0])
@@ -210,21 +261,26 @@ class Region:
 class GenomeIdeograph:
     def __init__(self, chromosomes):
         """
-        ref: reference_abbrevations(file stored in module) 
-            or lengths file_path(csv format:: chrom, lengths)
+        Initialize GenomeIdeograph with chromosome data.
+        Input:
+            chromosomes: RefGenome object, Chromosomes object, DataFrame, 
+                        genome name string, or file path to chromosome lengths
         """
-        from .feature import Chromosomes
-        if isinstance(chromosomes, Chromosomes):
-            self.chromosomes = chromosomes.data
-        elif isinstance(chromosomes, str) or isinstance(chromosomes, Path):
-            # File path provided, use Chromosomes class to load
-            self.chromosomes = Chromosomes().load(chromosomes)
-        elif isinstance(chromosomes, pd.DataFrame):
-            assert "length" in chromosomes.columns, "DataFrame must contain 'length' column"
-            assert isinstance(chromosomes.index, pd.CategoricalIndex), "DataFrame index must be a CategoricalIndex"
-            self.chromosomes = chromosomes
-        else:
-            raise ValueError("chromosomes must be a Chromosomes instance, a file path, or a DataFrame with 'length' column")
+        # Use _get_chrom_data to handle all input types
+        chrom_df = _get_chrom_data(chromosomes, order=False)
+        
+        # Ensure DataFrame has required format
+        assert "length" in chrom_df.columns, "DataFrame must contain 'length' column"
+        
+        # Ensure index is CategoricalIndex for proper ordering
+        if not isinstance(chrom_df.index, pd.CategoricalIndex):
+            chrom_df.index = pd.CategoricalIndex(
+                chrom_df.index, 
+                categories=chrom_df.index, 
+                ordered=True
+            )
+        
+        self.chromosomes = chrom_df
     
     def breaks(self, binsize: int, flavor="hickit", within_chromosome=True):
         """
@@ -663,7 +719,7 @@ def sort_chrom(df, genome):
     Output:
         df: sorted by natural chromosome order
     """
-    genome = chromosomes(genome, order=True)
+    genome = _get_chrom_data(genome, order=True)
     genome = genome.reset_index()
     genome = genome.assign(
         chromint = genome.index
