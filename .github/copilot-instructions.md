@@ -2,6 +2,8 @@
 # hic_basic — Copilot instructions (concise)
 
 This file gives focused, repository-specific guidance so an AI coding agent can be immediately productive.
+0) Run commands
+hic_basic relies on micromamba for dependency management. To run any test commands, you must prefix them with `micromamba run -n hic_basic`. The environment definition file is located at `envs/hic_basic.yaml`.
 
 1) Quick summary / big picture
 - hic_basic is a Python library and CLI for processing Hi-C / 3D genome data. Core responsibilities:
@@ -11,35 +13,35 @@ This file gives focused, repository-specific guidance so an AI coding agent can 
   - CLI wrappers: `hic_basic/cli/*` (e.g. `render.py`, `download.py`).
   - Higher-level analysis modules: many modules under `hic_basic/` (e.g. `impute/`, `wet/`, `pseudotime/`).
 
-2) Why things are organized this way
+1) Why things are organized this way
 - The codebase groups domain concerns: file-format conversions and caching live in `coolstuff.py`, visualization in `plot/`, and sample/meta handling in `hicio.py`. This keeps I/O and heavy data transforms separated from plotting and analysis logic.
 
-3) Key files to read first (order matters)
+1) Key files to read first (order matters)
 - `hic_basic/hicio.py` — metadata readers and lightweight I/O utilities (call sites across CLI and tests).
 - `hic_basic/coolstuff.py` — conversion and batch utilities; examples in the README and used by `wet/` utilities.
 - `hic_basic/plot/hic.py` — plotting primitives and example usages (tests under `tests/test_plot.py`).
 - `hic_basic/cli/render.py` — shows how CLI commands construct and consume metadata and call plot/render flows.
 - `setup.py` — package entrypoint (`hic_basic` console script) and packaging hints.
 
-4) Typical developer workflows (commands you can rely on)
+1) Typical developer workflows (commands you can rely on)
 - Create a Python environment: a conda YAML is provided in `envs/` (`hic_basic_py3.10_.yaml`, `hic_basic_py3.7_.yaml`). Prefer these for reproducibility.
   - Example: `conda env create -f envs/hic_basic_py3.10_.yaml` (or adapt to pip/venv if you prefer).
 - Install editable package: `pip install -e .` so `python -m hic_basic` and `import hic_basic` use workspace code.
 - Run unit tests: `pytest -q tests` or `python -m pytest tests` (tests use pytest and reference test-data under `tests/data`).
 - Run CLI entrypoint locally: `python -m hic_basic` (maps to `hic_basic.__main__:main`). After install, the `hic_basic` console script is available.
 
-5) Project-specific conventions and patterns
+1) Project-specific conventions and patterns
 - Metadata: `read_meta()` is the canonical helper for reading compressed CSV/TSV metadata used by many modules and CLI functions — prefer it over ad-hoc pandas reads.
 - File types: code expects Cooler (.cool/.mcool), scool (multi-sample cool), and pairs files. See `coolstuff.py` for conversion utilities and typical parameters.
 - Plotting: `plot_cool` is the common entrypoint; callers pass either chromosome names ("chr1") or region slices. Watch `vmax` and `binsize` — tests confirm expected defaults.
 - Long-running/parallel helpers: `mt_pairs2cool` and worker patterns in `coolstuff.py` — prefer reusing these helpers for parallelizing conversion tasks.
 - Tests and examples sometimes reference absolute paths in older tests; prefer using `request.fspath` fixtures or test-data under `tests/data` for new tests.
 
-6) Integration points & external dependencies
+1) Integration points & external dependencies
 - External file formats and tools: cooler, cooler-tools ecosystems are expected (mcool, .cool). Also common bioinformatics formats (pairs). Check `envs/*.yaml` for exact packages to install.
 - Notebooks: the `notebooks/` directory contains runnable examples. Some notebooks mutate `sys.path` to include `hires_utils` — if you see this, emulate the same pattern when running notebooks locally.
 
-7) Small extractable examples (copyable references)
+1) Small extractable examples (copyable references)
 - Convert pairs table to scool (README & `coolstuff.py`):
   - `from hic_basic.coolstuff import pairs2scool; pairs2scool(filesp["pairs_c12"].to_dict(), "xx.scool", "mm10.len.tsv", 20000)`
 - Read metadata (used throughout):
@@ -47,14 +49,14 @@ This file gives focused, repository-specific guidance so an AI coding agent can 
 - Plot a cool file (used in tests):
   - `from hic_basic.plot.hic import plot_cool; fig = plot_cool("xx.cool", "title", region="chr1", vmax=500)`
 
-8) When editing code, watch for these fragile areas
+1) When editing code, watch for these fragile areas
 - Hard-coded file paths or absolute paths in tests — prefer using `request.fspath` fixtures or test-data under `tests/data`.
 - Plotting and I/O functions may assume cooler-backed arrays; avoid introducing heavy in-memory copies in hot code paths.
 
-9) Where to add tests / quick validation
+1) Where to add tests / quick validation
 - Add unit tests under `tests/` alongside `test_*.py`. Look at `tests/test_plot.py` for plotting test patterns. Use small synthetic data files from `tests/data/` or create temporary files.
 
-10) If you need more context or can't infer intent
+1)  If you need more context or can't infer intent
 - Point me to the specific module/PR and I will: (a) open the top-level functions used by callers, (b) list call sites across the repo, and (c) propose minimal tests demonstrating intended behavior.
 
 -- End of file
