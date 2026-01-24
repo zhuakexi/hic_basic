@@ -122,6 +122,81 @@ def _make_ref_genome(genome_name, chrom_sizes_file):
     return ref
 
 
+def get_chrom_data(genome, order=False):
+    """Get chromosome data from various genome representations.
+    
+    This helper function provides a unified interface to extract chromosome
+    length data from different genome input formats.
+    
+    Args:
+        genome: Genome specification in one of these forms:
+            - RefGenome object (e.g., mm10, GRCh38)
+            - Chromosomes object from feature module
+            - pandas DataFrame with chromosome lengths
+            - str: genome name (e.g., "mm10") or path to chromosome sizes file
+        order (bool): If True, ensure chromosomes are ordered naturally
+            (chr1, chr2, ..., chr10, ..., chrX, chrY).
+    
+    Returns:
+        pd.DataFrame: DataFrame with chromosome names as index and at least
+            a 'length' column containing chromosome lengths.
+    
+    Raises:
+        ValueError: If genome cannot be resolved or has invalid format.
+        FileNotFoundError: If genome string refers to non-existent file.
+    
+    Examples:
+        >>> from hic_basic.data import mm10, get_chrom_data
+        >>> # From RefGenome object
+        >>> chrom_df = get_chrom_data(mm10)
+        >>> # From genome name string
+        >>> chrom_df = get_chrom_data("mm10")
+        >>> # From file path
+        >>> chrom_df = get_chrom_data("/path/to/chrom.sizes")
+    """
+    from .feature import Chromosomes
+    
+    # Handle RefGenome objects
+    if isinstance(genome, RefGenome):
+        chrom_df = genome.chromosomes.data
+    # Handle Chromosomes objects
+    elif isinstance(genome, Chromosomes):
+        chrom_df = genome.data
+    # Handle DataFrame
+    elif isinstance(genome, pd.DataFrame):
+        chrom_df = genome
+    # Handle string (genome name or file path)
+    elif isinstance(genome, str):
+        # Try to get predefined genome
+        import sys
+        current_module = sys.modules[__name__]
+        if hasattr(current_module, genome):
+            ref_genome = getattr(current_module, genome)
+            if isinstance(ref_genome, RefGenome):
+                chrom_df = ref_genome.chromosomes.data
+            else:
+                raise ValueError(f"Invalid genome object for {genome}")
+        else:
+            # Try as file path
+            try:
+                chrom_df = Chromosomes().load(Path(genome))
+            except Exception as e:
+                raise ValueError(f"Cannot resolve genome: {genome}") from e
+    else:
+        raise ValueError(
+            "genome must be RefGenome, Chromosomes, DataFrame, or genome name string"
+        )
+    
+    # Apply ordering if requested
+    if order:
+        # Use categorical index to maintain natural chromosome order
+        chrom_df.index = pd.CategoricalIndex(
+            chrom_df.index, categories=chrom_df.index, ordered=True
+        )
+    
+    return chrom_df
+
+
 # Out-of-the-box reference genomes
 mm10 = _make_ref_genome("mm10", ref_dir / "mm10.len.tsv")
 GRCh38 = _make_ref_genome("GRCh38", ref_dir / "GRCh38.len.tsv")
