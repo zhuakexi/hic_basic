@@ -17,7 +17,9 @@ from hic_basic.data import (
     dupref_annote, 
     fetch_cent_chromlen, 
     chromosomes,
-    fetch_centromeres
+    fetch_centromeres,
+    mm10,
+    GRCh38,
 )
 from hic_basic.hicio import get_ref_dir
 
@@ -137,3 +139,85 @@ def test_fetch_cent_chromlen():
     assert any("(pat)" in str(idx) for idx in cent_chromlen.index)
     assert all(col in cent_chromlen.columns for col in ["start", "end", "chrom_length"])
 
+
+def test_mm10_ref_genome():
+    """Test the mm10 RefGenome object.
+    
+    Validates that mm10 is properly configured with chromosomes feature.
+    """
+    # Test that mm10 is a RefGenome object
+    from hic_basic.data import RefGenome
+    assert isinstance(mm10, RefGenome)
+    assert mm10.name == "mm10"
+    
+    # Test that chromosomes feature is accessible
+    chroms = mm10.chromosomes
+    assert chroms is not None
+    
+    # Test that chromosome data is loaded
+    chrom_data = chroms.data
+    assert isinstance(chrom_data, pd.DataFrame)
+    assert "length" in chrom_data.columns
+    assert len(chrom_data) > 0
+    
+    # Verify common mouse chromosomes are present
+    assert "chr1" in chrom_data.index
+    assert "chrX" in chrom_data.index
+    assert "chrY" in chrom_data.index
+    
+    # Verify chromosome lengths are positive integers
+    assert (chrom_data["length"] > 0).all()
+    assert chrom_data["length"].dtype in [int, "int64", "Int64"]
+    
+    # Test chromosome alias also works (creates new instance but same data)
+    chrom_alias = mm10.chromosome
+    assert chrom_alias.data.equals(mm10.chromosomes.data)
+
+
+def test_GRCh38_ref_genome():
+    """Test the GRCh38 RefGenome object.
+    
+    Validates that GRCh38 is properly configured with chromosomes feature.
+    """
+    # Test that GRCh38 is a RefGenome object
+    from hic_basic.data import RefGenome
+    assert isinstance(GRCh38, RefGenome)
+    assert GRCh38.name == "GRCh38"
+    
+    # Test that chromosomes feature is accessible
+    chroms = GRCh38.chromosomes
+    assert chroms is not None
+    
+    # Test that chromosome data is loaded
+    chrom_data = chroms.data
+    assert isinstance(chrom_data, pd.DataFrame)
+    assert "length" in chrom_data.columns
+    assert len(chrom_data) > 0
+    
+    # Verify common human chromosomes are present
+    assert "chr1" in chrom_data.index
+    assert "chrX" in chrom_data.index
+    assert "chrY" in chrom_data.index
+    
+    # Verify chromosome lengths are positive integers
+    assert (chrom_data["length"] > 0).all()
+    assert chrom_data["length"].dtype in [int, "int64", "Int64"]
+    
+    # Test chromosome alias also works (creates new instance but same data)
+    chrom_alias = GRCh38.chromosome
+    assert chrom_alias.data.equals(GRCh38.chromosomes.data)
+    
+    # Verify hg38 alias exists
+    from hic_basic.data import hg38
+    assert hg38 is GRCh38
+
+
+def test_ref_genome_cache_dir():
+    """Test that RefGenome objects have proper cache directories."""
+    # Verify cache directories exist
+    assert mm10.cache_dir.exists()
+    assert GRCh38.cache_dir.exists()
+    
+    # Verify cache directory structure
+    assert "mm10" in str(mm10.cache_dir)
+    assert "GRCh38" in str(GRCh38.cache_dir)

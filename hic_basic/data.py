@@ -17,6 +17,118 @@ from tqdm import tqdm
 ref_dir = Path(get_ref_dir())
 
 
+### --- shipped ref data --- ###
+
+
+class RefGenome:
+    """Reference genome feature registry.
+
+    This class provides a thin wrapper around feature classes in
+    `hic_basic.feature` and exposes them as attributes.
+
+    Attributes:
+        name (str): Genome name.
+        cache_dir (pathlib.Path): Directory for compiled feature cache.
+
+    Examples:
+        >>> from hic_basic.data import mm10
+        >>> mm10.chromosomes.data.head()
+
+    Notes:
+        Only registered features can be accessed. Accessing a missing
+        feature raises an informative AttributeError listing available
+        features.
+    """
+
+    def __init__(self, name, cache_dir=None):
+        """Initialize a reference genome wrapper.
+
+        Args:
+            name (str): Genome name (e.g., "mm10", "GRCh38").
+            cache_dir (str | pathlib.Path | None): Cache directory for
+                compiled features. Defaults to `ref/cache/<name>` under
+                `get_ref_dir()`.
+        """
+        self.name = name
+        if cache_dir is None:
+            cache_dir = Path(get_ref_dir()) / "cache" / name
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self._features = {}
+        self._feature_factories = {}
+
+    def register_feature(self, feature_name, factory):
+        """Register a feature factory.
+
+        Args:
+            feature_name (str): Attribute name for the feature.
+            factory (Callable[[], Any]): Function that builds the feature.
+        """
+        self._feature_factories[feature_name] = factory
+
+    def _build_chromosomes(self, size_file):
+        from .feature import Chromosomes
+
+        size_file = Path(size_file)
+        if not size_file.exists():
+            raise FileNotFoundError(f"Chromosome size file not found: {size_file}")
+        feature = Chromosomes(genome_name=self.name, db_dir=self.cache_dir)
+        if not feature._is_compiled:
+            feature.compile(size_file=str(size_file))
+        return feature
+
+    def register_chromosomes(self, size_file):
+        """Register chromosome sizes for this genome.
+
+        Args:
+            size_file (str | pathlib.Path): Path to a two-column
+                chromosome sizes file.
+        """
+        self.register_feature(
+            "chromosomes",
+            lambda: self._build_chromosomes(size_file),
+        )
+        # alias for convenience
+        self.register_feature(
+            "chromosome",
+            lambda: self._build_chromosomes(size_file),
+        )
+
+    def __getattr__(self, name):
+        if name in self._features:
+            return self._features[name]
+        if name in self._feature_factories:
+            self._features[name] = self._feature_factories[name]()
+            return self._features[name]
+        available = sorted(self._feature_factories.keys())
+        raise AttributeError(
+            f"RefGenome '{self.name}' has no feature '{name}'. "
+            f"Available: {', '.join(available) if available else 'none'}"
+        )
+
+
+def _make_ref_genome(genome_name, chrom_sizes_file):
+    """Create a RefGenome with chromosome sizes configured.
+
+    Args:
+        genome_name (str): Genome name.
+        chrom_sizes_file (str | pathlib.Path): Path to the chromosome sizes.
+
+    Returns:
+        RefGenome: Configured reference genome object.
+    """
+    ref = RefGenome(genome_name)
+    ref.register_chromosomes(chrom_sizes_file)
+    return ref
+
+
+# Out-of-the-box reference genomes
+mm10 = _make_ref_genome("mm10", ref_dir / "mm10.len.tsv")
+GRCh38 = _make_ref_genome("GRCh38", ref_dir / "GRCh38.len.tsv")
+hg38 = GRCh38
+
+
+
 ### --- download data --- ###
 import time
 
@@ -140,6 +252,124 @@ def download_geo(geo_id, outdir, method="ftp", timeout=30, retries=3, block_size
         raise ValueError("Method must be 'ftp' or 'https'")
 
     print(f"Download completed for GEO ID: {geo_id}. Files saved to {outdir}.")
+
+def download_sra(accessions, outdir, method="ena", timeout=30, retries=3, block_size=8192):
+    """
+    Download sequencing data by SRA run accession(s).
+
+    Input:
+        accessions:
+            - single accession string (e.g., "SRR1234567")
+            - comma-separated string (e.g., "SRR1,SRR2")
+            - list/tuple of accessions
+            Note: reading a run-list text file is handled by the CLI; pass a list here.
+        outdir: output directory
+        method:
+            - "ena": use ENA filereport to resolve FASTQ URLs and download via HTTPS/FTP with resume and retries
+            - "sra-tools": use prefetch + fasterq-dump if SRA Toolkit is available in PATH
+        timeout: request timeout in seconds
+        retries: retry count for transient errors
+        block_size: chunk size for streaming downloads
+    """
+    from pathlib import Path
+    os.makedirs(outdir, exist_ok=True)
+
+    # normalize accessions
+    if isinstance(accessions, (str, Path)):
+        accessions = str(accessions)
+        # allow comma-separated list in a single string
+        accessions = [a.strip() for a in accessions.split(",") if a.strip()]
+    else:
+        accessions = list(accessions)
+
+    if method == "ena":
+        import requests
+        import csv
+        import io
+        base = "https://www.ebi.ac.uk/ena/portal/api/filereport"
+        fields = [
+            "run_accession",
+            "fastq_ftp",
+            "fastq_http",
+            "fastq_md5",
+            "submitted_ftp",
+            "submitted_http"
+        ]
+        for acc in accessions:
+            params = {
+                "accession": acc,
+                "result": "read_run",
+                "fields": ",".join(fields),
+                "format": "tsv"
+            }
+            print(f"Resolving ENA links for {acc}...")
+            r = requests.get(base, params=params, timeout=timeout)
+            r.raise_for_status()
+            # parse TSV
+            reader = csv.DictReader(io.StringIO(r.text), delimiter='\t')
+            rows = list(reader)
+            if len(rows) == 0:
+                print(f"Warning: No ENA records found for {acc}")
+                continue
+            row = rows[0]
+            # Prefer fastq_http, fallback to fastq_ftp, fallback to submitted_http/ftp
+            def split_links(v):
+                return [x for x in v.split(';') if len(x) > 0]
+            links = []
+            if row.get("fastq_http"):
+                links = split_links(row["fastq_http"])
+            elif row.get("fastq_ftp"):
+                # ensure scheme
+                links = [f"https://{u}" if not u.startswith("http") else u for u in split_links(row["fastq_ftp"])]
+            elif row.get("submitted_http"):
+                links = split_links(row["submitted_http"])
+            elif row.get("submitted_ftp"):
+                links = [f"https://{u}" if not u.startswith("http") else u for u in split_links(row["submitted_ftp"]) ]
+            else:
+                print(f"Warning: No FASTQ links for {acc}")
+                continue
+
+            print(f"Found {len(links)} files for {acc}")
+            for link in links:
+                fname = os.path.basename(link)
+                fpath = os.path.join(outdir, fname)
+                local_size = os.path.getsize(fpath) if os.path.exists(fpath) else 0
+                for attempt in range(retries):
+                    try:
+                        headers = {"Range": f"bytes={local_size}-"} if local_size > 0 else {}
+                        with requests.get(link, stream=True, timeout=timeout, headers=headers) as resp:
+                            resp.raise_for_status()
+                            total = int(resp.headers.get('content-length', 0)) + local_size
+                            with open(fpath, "ab") as f, tqdm(total=total, initial=local_size, unit='B', unit_scale=True, unit_divisor=1024, desc=fname) as pbar:
+                                for chunk in resp.iter_content(chunk_size=block_size):
+                                    if not chunk:
+                                        continue
+                                    f.write(chunk)
+                                    pbar.update(len(chunk))
+                        break
+                    except Exception as e:
+                        print(f"Attempt {attempt+1} failed for {fname}: {e}")
+                        if attempt + 1 == retries:
+                            print(f"Failed to download {fname} after {retries} attempts.")
+            print(f"Completed downloads for {acc} -> {outdir}")
+
+    elif method == "sra-tools":
+        import shutil
+        import subprocess
+        prefetch = shutil.which("prefetch")
+        fqdump = shutil.which("fasterq-dump") or shutil.which("fastq-dump")
+        if prefetch is None or fqdump is None:
+            raise RuntimeError("SRA Toolkit not found in PATH. Install sra-tools or use method='ena'.")
+        for acc in accessions:
+            print(f"Prefetching {acc}...")
+            subprocess.check_call([prefetch, acc])
+            print(f"Converting {acc} to FASTQ...")
+            # output to outdir
+            subprocess.check_call([fqdump, acc, "-O", str(outdir)])
+    else:
+        raise ValueError("method must be 'ena' or 'sra-tools'")
+
+    print(f"SRA download completed. Files saved to {outdir}.")
 
 ### --- data manipulates --- ###
 
