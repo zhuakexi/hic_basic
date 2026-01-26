@@ -773,18 +773,79 @@ def parse_hicluster_res(embed, sample_table):
     f.close()
     data.columns = ["PC%d" % i for i in range(1, data.shape[1]+1)]
     return data
+import h5py
+import numpy as np
+from scipy.sparse import csr_matrix
+
+
 def schicluster2mat(filei):
     """
-    Read in schicluster impute .hdf5 file to sparse matrix.
-    Input:
-        filei: schicluster imputed .hdf5 file
-    Output:
-        sparse matrix
+    Read in schicluster impute .hdf5 or np.savez_compressed .npz file to sparse matrix.
+
+    This function supports two file formats:
+    1. HDF5 files with standard schicluster sparse matrix structure
+    2. NPZ files saved using np.savez_compressed with 'data' key
+
+    Args:
+        filei: Path to input file. Supported formats:
+               - .hdf5: schicluster imputed HDF5 file
+               - .npz: Compressed numpy archive with sparse matrix components
+
+    Returns:
+        csr_matrix: Scipy sparse matrix in CSR format
+
+    Raises:
+        ValueError: If file format is not supported or required keys are missing
+        OSError: If file cannot be opened or read
     """
-    with h5py.File(filei, "r") as f:
-        g = f["Matrix"]
-        A = csr_matrix((g["data"][()], g["indices"][()], g["indptr"][()]), g.attrs["shape"])
-    return A
+    if filei.endswith('.hdf5') or filei.endswith('.h5'):
+        # Read HDF5 format
+        with h5py.File(filei, "r") as f:
+            g = f["Matrix"]
+            A = csr_matrix(
+                (g["data"][()], g["indices"][()], g["indptr"][()]), 
+                g.attrs["shape"]
+            )
+        return A
+    
+    elif filei.endswith('.npz'):
+        # Read compressed NPZ format
+        npz_data = np.load(filei, allow_pickle=True)
+        
+        # Check if it's a sparse matrix saved with individual components
+        if all(key in npz_data for key in ['data', 'indices', 'indptr', 'shape']):
+            # Reconstruct CSR matrix from components
+            A = csr_matrix(
+                (npz_data['data'], npz_data['indices'], npz_data['indptr']),
+                shape=tuple(npz_data['shape'])
+            )
+            return A
+        
+        # Otherwise, check for a single 'data' key with pickled matrix
+        elif 'data' in npz_data:
+            # Extract the matrix - handle 0-d array case
+            mat_data = npz_data['data']
+            if mat_data.shape == ():
+                # 0-dimensional array, extract the actual object
+                A = mat_data.item()
+            else:
+                # Regular array, convert to csr_matrix
+                A = csr_matrix(mat_data)
+            return A
+        
+        else:
+            raise ValueError(
+                f"NPZ file has unexpected structure. "
+                f"Expected either CSR components (data, indices, indptr, shape) "
+                f"or a 'data' key with matrix. "
+                f"Available keys: {list(npz_data.keys())}"
+            )
+    
+    else:
+        raise ValueError(
+            f"Unsupported file format: {filei}. "
+            "Supported formats: .hdf5, .h5, .npz"
+        )
 def schiclusterDir2mat(hiclusterdir):
     """
     Read in schicluster imputed .hdf5 files (from a dir) to sparse matrix.
