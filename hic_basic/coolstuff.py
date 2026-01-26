@@ -253,14 +253,8 @@ def gen_bins(genome, binsize):
         raise ValueError(
             'Expected integer binsize argument (bp), got "{}"'.format(binsize)
         )
-    if isinstance(genome, RefGenome):
-        chromsizes = genome.chromosomes.data["length"]
-    elif isinstance(genome, Chromosomes):
-        chromsizes = genome.data["length"]
-    elif isinstance(genome, pd.DataFrame):
-        chromsizes = genome["length"]
-    else:
-        raise ValueError('genome must be RefGenome object or Chromosomes object or chromsizes dataframe')
+    from .data import get_chrom_data
+    chromsizes = get_chrom_data(genome, order=False)["length"]
     bins = binnify(chromsizes, binsize)
     return bins
 
@@ -1027,10 +1021,10 @@ def cli_balance(coolp, threads=8, force=False, name="weight", cis_only=False, tr
             if process.returncode != 0:
                 print(stderr.decode())
                 raise subprocess.CalledProcessError(process.returncode, cmd, output=stdout, stderr=stderr)
-            return True
+            return coolp
     except subprocess.CalledProcessError as e:
         print(e.stderr.decode())
-        return False
+        return None
 def cli_zoomify(coolp, output, resolutions=[20000,40000,100000,500000,1000000], force=False, threads=8, conda_env=None, cwd=None, verbose=0):
     conda_run = f"conda run -n {conda_env}" if conda_env else ""
     if not force and Path(output).exists():
@@ -1134,7 +1128,7 @@ def cli_IS(coolp, output, windowsizes, balanced=True, append_raw_scores=True, th
         cwd = cwd
     )
     return output
-def cli_pileup(coolp, feature, output, format="BED", view=None, expected=None, flank=100000, conda_env=None, cwd=None, threads=8):
+def cli_pileup(coolp, feature, output, format="BED", view=None, expected=None, flank=100000, store_snips=False, conda_env=None, cwd=None, threads=8):
     if conda_env is None:
         conda_run = ""
     else:
@@ -1147,6 +1141,10 @@ def cli_pileup(coolp, feature, output, format="BED", view=None, expected=None, f
         expected = ""
     else:
         expected = f"--expected {expected}"
+    if store_snips:
+        store_snips = "--store-snips"
+    else:
+        store_snips = ""
 
     with tempfile.NamedTemporaryFile(mode="w+t", delete=True, dir=cwd if cwd is not None else "/tmp") as tmpfile:
         if isinstance(feature, str) or isinstance(feature, Path):
@@ -1161,7 +1159,7 @@ def cli_pileup(coolp, feature, output, format="BED", view=None, expected=None, f
             feature = tmpfile.name
         else:
             raise ValueError("feature should be a path or a dataframe")
-        cmd = f"{conda_run} cooltools pileup -p {threads} {view} {expected} --flank {flank} --features-format {format} -o {output} {coolp} {feature}"
+        cmd = f"{conda_run} cooltools pileup -p {threads} {view} {expected} --flank {flank} --features-format {format} {store_snips} -o {output} {coolp} {feature}"
         subprocess.check_output(
             cmd,
             shell=True,
