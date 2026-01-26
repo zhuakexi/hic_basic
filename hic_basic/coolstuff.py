@@ -881,6 +881,16 @@ def mt_pairs2cool(sample_table, outdir, pairs_col="pairs_c123", suffix=".cool", 
                 pbar.update(1)
 
     return pd.Series(results)
+def cool_uri_to_path(cool_uri):
+    """
+    Extract file path from a cool URI.
+
+    Examples:
+        - "xx.cool" -> "xx.cool"
+        - "xx.mcool::/resolutions/20000" -> "xx.mcool"
+    """
+    cool_uri = str(cool_uri)
+    return cool_uri.split("::", 1)[0]
 def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True, cwd=None, batch_size=1000, verbose=0):
     """
     Merge cool files with same indices to get a consensus heatmap.
@@ -909,7 +919,8 @@ def cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True
     # Filter valid input files
     valid_cools = []
     for cool in incools:
-        if not Path(cool).exists() or not Cooler(cool).info:
+        cool_path = cool_uri_to_path(cool)
+        if not Path(cool_path).exists() or not Cooler(cool).info:
             if skip_blank:
                 print(f"File '{cool}' does not exist or is empty. Skipping.")
                 continue
