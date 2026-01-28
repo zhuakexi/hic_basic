@@ -1,0 +1,3843 @@
+{
+  "DI": [
+    {
+      "name": "normalize_band",
+      "signature": "normalize_band(df, chrom=None, max_dist=2000000, binsize=20000)",
+      "docstring": "Input:\n    df: bedpe like dask dataframe, with columns chrom1, start1, end1, chrom2, start2, end2, value\n        don't assume value name\n    chrom: if not None, assume df has only intra pixels\n    max...",
+      "return_type": null,
+      "lineno": 13
+    },
+    {
+      "name": "multiple_testing_correction",
+      "signature": "multiple_testing_correction(pvalues, correction_type='FDR')",
+      "docstring": "Consistent with R - print\ncorrect_pvalues_for_multiple_testing([0.0, 0.01, 0.029, 0.03, 0.031, 0.05,\n                                      0.069, 0.07, 0.071, 0.09, 0.1])\nfrom https://github.com/CoBiG...",
+      "return_type": null,
+      "lineno": 50
+    },
+    {
+      "name": "mannwhitneyu_row",
+      "signature": "mannwhitneyu_row(row, m1, m2)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 88
+    },
+    {
+      "name": "N_partitions",
+      "signature": "N_partitions(max_dist=2000000.0, binsize=20000.0, chrom_mean_length=100000000.0, chunksize=100000)",
+      "docstring": "Pick a number of partitions suitable for the data.\nInput:\n    max_dist: max distance in impuation\n    binsize: resolution of the data\n    chrom_mean_lengths: mean length of chromosomes\n    chunksize: ...",
+      "return_type": null,
+      "lineno": 104
+    },
+    {
+      "name": "process_file",
+      "signature": "process_file(imputed_path, chrom, genome, max_dist, binsize, chunksize=10000)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 122
+    },
+    {
+      "name": "simpleDiff",
+      "signature": "simpleDiff(groupA, groupB, chrom='chr1', genome='mm10', fo=None, max_3d_dist=5, max_dist=2000000, binsize=20000, chunksize=10000, cache=None)",
+      "docstring": "Input:\n    groupA: imputed .parquet file path for groupA\n    groupB: imputed .parquet file paths for groupB\n    fo: output parquet file\n    filt_fdr: filter pixels with fdr > filt_fdr, if None, no fil...",
+      "return_type": null,
+      "lineno": 210
+    },
+    {
+      "name": "imputed_reader",
+      "signature": "imputed_reader(imputed_path, sample_id, genome, binsize, max_dist)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 274
+    },
+    {
+      "name": "imputed_reader_strID",
+      "signature": "imputed_reader_strID(imputed_path, sample_id, binsize=20000, max_dist=None)",
+      "docstring": "Read in imputed data, zscore normalize, and add pixel_id.\nNote: this function treat imputation as intra-chromosomal.\nIt assumes all row has the same chrom1, chrom2. It then do groupby only on band,\nan...",
+      "return_type": null,
+      "lineno": 372
+    },
+    {
+      "name": "get_sample_name",
+      "signature": "get_sample_name(imputed_path)",
+      "docstring": "Get sample name from file with many possible suffix.\nInput:\n    imputed_path: path to imputed data\nOutput:\n    sample name",
+      "return_type": null,
+      "lineno": 416
+    },
+    {
+      "name": "gen_design_matrix",
+      "signature": "gen_design_matrix(imputed_paths, sample_names=None, fo=None, binsize=20000, max_dist=None)",
+      "docstring": "Horizontal concat all imputed data, with pixel_id as index\nInput:\n    imputed_paths: list of imputed data paths\n    sample_names: list of sample names, if None, derive from imputed_paths\n    fo: outpu...",
+      "return_type": null,
+      "lineno": 425
+    },
+    {
+      "name": "mannwhitneyu_row_labeled",
+      "signature": "mannwhitneyu_row_labeled(row, groupA, groupB)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 467
+    },
+    {
+      "name": "mannwhitneyu_test_pandas",
+      "signature": "mannwhitneyu_test_pandas(task_name, combined_df, groupA, groupB, max_3d_dist, withdf=False)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 472
+    },
+    {
+      "name": "read_pvalues",
+      "signature": "read_pvalues(pval_path, chrom)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 526
+    },
+    {
+      "name": "simpleDiff_postprocess",
+      "signature": "simpleDiff_postprocess(pvalue_files, chroms, genome='mm10', binsize=20000, filt_fdr=0.05, topDI=0.2, fo=None)",
+      "docstring": "Input:\n    pvalue_file: pvalue file path\n        meanA, meanB, diff, pvalue\n    filt_fdr: filter pixels with fdr > filt_fdr\n        if None, no filtering\n    topDI: mark abs diff > topDI as topDI\n    ...",
+      "return_type": null,
+      "lineno": 530
+    },
+    {
+      "name": "project_DI",
+      "signature": "project_DI(genome, chrom, start, end, binsize, DI)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 566
+    },
+    {
+      "name": "pileup_impute",
+      "signature": "pileup_impute(imputes, genome, binsize, chrom, start, end, zscore=False, symmetric=True)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 580
+    },
+    {
+      "name": "plot_DI",
+      "signature": "plot_DI(genome, chrom, start, end, binsize, DI)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 627
+    },
+    {
+      "name": "plot_compare_impute",
+      "signature": "plot_compare_impute(imputesA, imputesB, genome, binsize, chrom, start, end, zscore=True, subplot_titles=('A', 'B', 'A-B'))",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 642
+    }
+  ],
+  "Ps": [
+    {
+      "name": "get_full_chrom_arm_view",
+      "signature": "get_full_chrom_arm_view(clr, genome)",
+      "docstring": "Get chromosome arm regions used in clr.\nInput:\n    clr: cooler object\n    genome: name of clr's ref genome\nOutput:\n    dataframe",
+      "return_type": null,
+      "lineno": 16
+    },
+    {
+      "name": "ps_curve",
+      "signature": "ps_curve(coolp, view_df=None, all_region=False, nproc=4, clr_weight_name='weight', drop2diags=False)",
+      "docstring": "Get P(s) curve of a balanced clr.\ncooltools version 0.5.1 or higher is required.\nInput:\n    coolp: cooler file path\n    view_df: dataframe with columns ['chrom', 'start', 'end', 'name']\n    all_region...",
+      "return_type": null,
+      "lineno": 31
+    },
+    {
+      "name": "plot_ps_curve",
+      "signature": "plot_ps_curve(cvd_smooth_agg, ps_col='balanced.avg.smoothed.agg')",
+      "docstring": "Plot P(s) curve.\nInput:\n    cvd_smooth_agg: output of ps_curve\n    ps_col: column name of P(s) curve\nOutput:\n    fig: plotly figure",
+      "return_type": null,
+      "lineno": 82
+    },
+    {
+      "name": "plot_ps_curves",
+      "signature": "plot_ps_curves(cvd_smooth_aggs, batches, subset=None, color_map=None)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 113
+    },
+    {
+      "name": "plot_ps_curve_all_chromosomes",
+      "signature": "plot_ps_curve_all_chromosomes(cvd_smooth_agg, ps_col='balanced.avg.smoothed', highlight_chroms=None, subset=None)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 137
+    }
+  ],
+  "TAD.IS": [
+    {
+      "name": "find_peak_prominence",
+      "signature": "find_peak_prominence(arr, max_dist=None)",
+      "docstring": "Find the local maxima of an array and their prominence.\nThe prominence of a peak is defined as the maximal difference between the\nheight of the peak and the lowest point in the range until a higher pe...",
+      "return_type": null,
+      "lineno": 3
+    },
+    {
+      "name": "IS2blocks",
+      "signature": "IS2blocks(borders)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 169
+    }
+  ],
+  "TAD.tad": [
+    {
+      "name": "corate",
+      "signature": "corate(A, n, time)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 22
+    },
+    {
+      "name": "silhou",
+      "signature": "silhou(R, pos)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 44
+    },
+    {
+      "name": "IS",
+      "signature": "IS(R, length)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 55
+    },
+    {
+      "name": "bestco",
+      "signature": "bestco(F, reso, length, delta, min_val, max_val)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 70
+    },
+    {
+      "name": "zero",
+      "signature": "zero(R, t, length, delta)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 101
+    },
+    {
+      "name": "part_zero",
+      "signature": "part_zero(F: np.ndarray, core: int, window: float, reso: int, delta, length, min_val, max_val)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 151
+    },
+    {
+      "name": "tad",
+      "signature": "tad(F, core: int=1, reso: int=40, min_val: int=600, max_val: int=1000, window_size_raw: int=8000, delta_raw: int=100)",
+      "docstring": "Input:\n    F: input contact matrix : np.ndarray\n    reso: resolution of the matrix (kbp)\n    min, max: tad mean size (kbp)\n    split: window size (kbp) \n    core: treads used",
+      "return_type": null,
+      "lineno": 215
+    },
+    {
+      "name": "task",
+      "signature": "task(i)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 167
+    }
+  ],
+  "ana": [
+    {
+      "name": "create_empty_json_file",
+      "signature": "create_empty_json_file(path)",
+      "docstring": "Create an empty JSON file with empty dictionary content.",
+      "return_type": null,
+      "lineno": 199
+    },
+    {
+      "name": "data_path",
+      "signature": "data_path(self)",
+      "docstring": "Path to the CSV file storing structured data.",
+      "return_type": null,
+      "lineno": 226
+    },
+    {
+      "name": "schema_path",
+      "signature": "schema_path(self)",
+      "docstring": "Path to the JSON schema file storing dtype information.",
+      "return_type": null,
+      "lineno": 231
+    },
+    {
+      "name": "obj_path",
+      "signature": "obj_path(self)",
+      "docstring": "Path to the JSON file storing unstructured object data.",
+      "return_type": null,
+      "lineno": 236
+    },
+    {
+      "name": "data",
+      "signature": "data(self)",
+      "docstring": "Retrieve the current structured data as a pandas DataFrame with correct dtypes.\n\nReturns\n-------\npandas.DataFrame\n    Current data state with restored dtypes. Returns empty DataFrame if no data exists...",
+      "return_type": null,
+      "lineno": 605
+    },
+    {
+      "name": "obj",
+      "signature": "obj(self)",
+      "docstring": "Retrieve the current object storage data as a dictionary.\n\nReturns\n-------\ndict\n    Current object storage state. Returns empty dict if no objects exist.",
+      "return_type": null,
+      "lineno": 626
+    },
+    {
+      "name": "commit",
+      "signature": "commit(self, description=None)",
+      "docstring": "Create a new commit snapshot of the current data state.\n\nParameters\n----------\ndescription : str, optional\n    Human-readable description of the commit. If None, uses commit ID.\n    Must be unique and...",
+      "return_type": null,
+      "lineno": 640
+    },
+    {
+      "name": "update",
+      "signature": "update(self, new_data, key=None, description=None, force=False)",
+      "docstring": "Update data storage and automatically commit changes.\n\nParameters\n----------\nnew_data : pandas.DataFrame, pandas.Series, dict, or list\n    New data to add to the database.\nkey : str, optional\n    Spec...",
+      "return_type": null,
+      "lineno": 741
+    },
+    {
+      "name": "revert",
+      "signature": "revert(self, commit_repr)",
+      "docstring": "Revert the system state to a previous commit version.\n\nParameters\n----------\ncommit_repr : str or int\n    Commit identifier.\n    \nReturns\n-------\nint\n    Commit ID of the new commit created after reve...",
+      "return_type": null,
+      "lineno": 863
+    },
+    {
+      "name": "list_commits",
+      "signature": "list_commits(self)",
+      "docstring": "Display all available commits in chronological order.",
+      "return_type": null,
+      "lineno": 922
+    },
+    {
+      "name": "get_schema",
+      "signature": "get_schema(self)",
+      "docstring": "Get the current data schema information.\n\nReturns\n-------\ndict\n    Current schema information including column dtypes.",
+      "return_type": null,
+      "lineno": 933
+    },
+    {
+      "name": "convert_to_nullable_bool",
+      "signature": "convert_to_nullable_bool(val)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 513
+    }
+  ],
+  "atac": [
+    {
+      "name": "calculate_fragment_lengths",
+      "signature": "calculate_fragment_lengths(bam_path: str, sampling: Optional[Union[float, int]]=None)",
+      "docstring": "Calculate fragment lengths from a BAM file with optional sampling.\n\nParameters:\n    bam_path (str): Path to the BAM file.\n    sampling (Optional[Union[float, int]]): \n        If float, sample this pro...",
+      "return_type": "np.ndarray",
+      "lineno": 11
+    },
+    {
+      "name": "plot_fragment_length_distribution",
+      "signature": "plot_fragment_length_distribution(fragment_lengths: np.ndarray)",
+      "docstring": "Plot fragment length distribution using Plotly.\n\nInput:\n    fragment_lengths (np.ndarray): Array of fragment lengths.\n    **kwargs: Additional keyword arguments for histogram plotting.\n\nOutput:\n    go...",
+      "return_type": "go.Figure",
+      "lineno": 84
+    },
+    {
+      "name": "get_tss_regions",
+      "signature": "get_tss_regions(tss_bed_path=None, chrom_size_path=None, window_size: int=2000)",
+      "docstring": "Expands TSS regions by a specified window size (default: 2000 bp upstream and downstream).\n\nInput\n   tss_bed_path (str): Path to the TSS BED file (1-based coordinates).\n   chrom_size_path (str): Path ...",
+      "return_type": null,
+      "lineno": 152
+    },
+    {
+      "name": "calculate_coverage",
+      "signature": "calculate_coverage(bam_path: str, tss_regions, read_length: int, sampling=None)",
+      "docstring": "Computes coverage across TSS regions using pysam.depth, with optional sampling.\n\nInput\n   bam_path (str): Path to the BAM file (must be indexed).\n   tss_regions (BedTool): Expanded TSS regions (output...",
+      "return_type": null,
+      "lineno": 175
+    },
+    {
+      "name": "normalize_coverage",
+      "signature": "normalize_coverage(coverage_array: np.ndarray, read_length: int, greenleaf_norm: bool=True)",
+      "docstring": "Normalizes coverage using Greenleaf-style or per million mapped reads normalization.\n\nInput:\n   coverage_array (np.ndarray): 2D coverage array (shape: [n_TSS, bins]).\n   read_length (int): Read length...",
+      "return_type": "np.ndarray",
+      "lineno": 233
+    },
+    {
+      "name": "process_tss_enrichment",
+      "signature": "process_tss_enrichment(bam_path: str, tss_bed_path: str, chrom_size_path: str, read_length: int, window_size: int=2000, greenleaf_norm: bool=True)",
+      "docstring": "Full TSS enrichment analysis pipeline: region expansion, coverage calculation, and normalization.\n\nInput:\n   bam_path (str): Path to the BAM file.\n   tss_bed_path (str): Path to the TSS BED file.\n   c...",
+      "return_type": "Tuple[np.ndarray, float]",
+      "lineno": 255
+    }
+  ],
+  "basic": [
+    {
+      "name": "add_contact_describe",
+      "signature": "add_contact_describe(adata, inplace=True)",
+      "docstring": "Get cell's contact decay statistics, defined in Nagano2017.\nInput:\n    adata: AnnData object, must have uns[\"cdps\"]\nOutput:\n    adata will extra obs cols",
+      "return_type": null,
+      "lineno": 7
+    },
+    {
+      "name": "add_pmUMIs",
+      "signature": "add_pmUMIs(adata, inplace=True)",
+      "docstring": "Add cell's g1 UMI ratio.\nInput:\n    adata: AnnData object, must have [\"g1_UMIs\",\"g2_UMIs\"]\nOutput:\n    adata will extra obs cols",
+      "return_type": null,
+      "lineno": 25
+    },
+    {
+      "name": "chrom_cov",
+      "signature": "chrom_cov(pairs: pd.DataFrame)",
+      "docstring": "Calculate the contact coverage of each chromosome.\nInput:\n    pairs: DataFrame, must have [\"chr1\",\"chr2\"] in columns\nOutput:\n    DataFrame with index as chromosome and columns as:\n        intra: intra...",
+      "return_type": "pd.DataFrame",
+      "lineno": 39
+    },
+    {
+      "name": "pairs_coverage",
+      "signature": "pairs_coverage(pairs_fp, genome: str=None, binsize: int=1000000, flavor: str='hickit', sub: str=None)",
+      "docstring": "Calculate coverage of pairs in bins.\nInput:\n    pairs_fp: str, path to pairs file\n    genome: str, genome name\n    binsize: int, size of bins\n    flavor: str, flavor of bins\n    sub: only calculate co...",
+      "return_type": "pd.DataFrame",
+      "lineno": 82
+    },
+    {
+      "name": "pairs_coverages",
+      "signature": "pairs_coverages(pairs_fps, sample_names, n_jobs=8, genome: str=None, binsize: int=1000000, flavor: str='hickit', sub=None)",
+      "docstring": "Multiple pairs_coverage\nInput:\n    pairs_fps: list of str, paths to pairs files\n    sample_names: list of str, sample names\n    genome, binsize, flavor: see pairs_coverage\nOutput:\n    n_bins * n_sampl...",
+      "return_type": "pd.DataFrame",
+      "lineno": 131
+    }
+  ],
+  "binnify": [
+    {
+      "name": "bed_center",
+      "signature": "bed_center(bed_df)",
+      "docstring": "Get center of each bin\nInput:\n    bed_df: DataFrame, bed-like with columns 'chrom', 'start', 'end'\nOutput:\n    DataFrame with additional column 'center'",
+      "return_type": null,
+      "lineno": 11
+    }
+  ],
+  "calculate": [
+    {
+      "name": "task_wrapper",
+      "signature": "task_wrapper(module_name, func_name)",
+      "docstring": "Wrapper function to import and execute a function from a module.\n\nParameters:\n    module_name (str): Name of the module to import from\n    func_name (str): Name of the function to execute\n    *args: P...",
+      "return_type": null,
+      "lineno": 10
+    },
+    {
+      "name": "mt",
+      "signature": "mt(module_name: str)",
+      "docstring": "A decorator factory to create parallelized function decorators.\n\nThis factory returns a decorator that parallelizes the function it decorates,\nproviding features like file skipping, path templating, p...",
+      "return_type": null,
+      "lineno": 28
+    },
+    {
+      "name": "decorator",
+      "signature": "decorator(func)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 43
+    },
+    {
+      "name": "wrapper",
+      "signature": "wrapper(input_data: pd.DataFrame, force=False, nproc=None, concat=False, new_cols=None)",
+      "docstring": "Parallelized function wrapper with input/output pattern support.\n\nThe function uses a pattern-based system for input and output file handling:\n- Input sources: input_cols, input_pattern, input_pattern...",
+      "return_type": null,
+      "lineno": 45
+    }
+  ],
+  "cli.download": [
+    {
+      "name": "add_arguments",
+      "signature": "add_arguments(subparser)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 38
+    },
+    {
+      "name": "run",
+      "signature": "run(args)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 71
+    }
+  ],
+  "cli.render": [
+    {
+      "name": "render_task",
+      "signature": "render_task(args)",
+      "docstring": "Render a single structure.",
+      "return_type": null,
+      "lineno": 21
+    },
+    {
+      "name": "add_arguments",
+      "signature": "add_arguments(subparser)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 102
+    },
+    {
+      "name": "run",
+      "signature": "run(args)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 161
+    }
+  ],
+  "cli.version": [
+    {
+      "name": "add_arguments",
+      "signature": "add_arguments(subparser)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 3
+    },
+    {
+      "name": "run",
+      "signature": "run()",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 5
+    }
+  ],
+  "clustering": [
+    {
+      "name": "do_kmeans",
+      "signature": "do_kmeans(adata: ad.AnnData, layer: str)",
+      "docstring": "Input:\n    adata\n    layer: which layer to operate kmeans on\nReturn:\n    adata with new obs col.",
+      "return_type": "ad.AnnData",
+      "lineno": 20
+    }
+  ],
+  "compare_pixels": [
+    {
+      "name": "pick_band_pixels",
+      "signature": "pick_band_pixels(coolp, threshold=5000000)",
+      "docstring": "Pick (intra) pixels within a certain band distance.\nInput:\n    coolp: str, path to coolp file\n    threshold: int, band distance threshold\n    **kwargs: additional arguments for cool2pixels\nOutput:\n   ...",
+      "return_type": "pd.DataFrame",
+      "lineno": 7
+    },
+    {
+      "name": "compare_pixels",
+      "signature": "compare_pixels(this_coolp, ref_coolp, threshold=5000000, clr_weight_name='weight')",
+      "docstring": "Extract and align pixels from two coolp files. \nInput:\n    this_coolp: str, path to first coolp file\n    ref_coolp: str, path to second coolp file\n    threshold: int, band distance threshold\n        o...",
+      "return_type": "pd.DataFrame",
+      "lineno": 25
+    },
+    {
+      "name": "plot_compare_pixels",
+      "signature": "plot_compare_pixels(this_coolp, ref_coolp, sample_titles=['THIS', 'REF'], ignore_diags=0, clr_weight_name='weight', lognorm=False, sample_ratio=None, debug=False)",
+      "docstring": "Compare pixels between two coolp files.\nScatter plot version.\nInput:\n    this_coolp: str, path to first coolp file\n    ref_coolp: str, path to second coolp file\n    sample_titles: list of str, titles ...",
+      "return_type": null,
+      "lineno": 53
+    },
+    {
+      "name": "histogram2d",
+      "signature": "histogram2d(data, x1, x2, bins=100, range=None)",
+      "docstring": "Calculate 2D histogram for two columns in a DataFrame.\nDensity plot version.\nInput:\n    data: pd.DataFrame, data\n    x1: str, column name for x axis\n    x2: str, column name for y axis\n    bins: int, ...",
+      "return_type": null,
+      "lineno": 140
+    },
+    {
+      "name": "plot_compare_pixels_density",
+      "signature": "plot_compare_pixels_density(this_coolp, ref_coolp, qrange=None, sample_titles=['THIS', 'REF'], bins=100, ignore_diags=0, clr_weight_name='weight', lognorm=False, vlognorm=False, retdata=False, vrange=None, label_x=0.01, label_y=0.015, debug=False)",
+      "docstring": "Compare pixels between two coolp files and plot density plot.\nInput:\n    this_coolp: str, path to first coolp file\n    ref_coolp: str, path to second coolp file\n    qrange: list of float, quantiles fo...",
+      "return_type": null,
+      "lineno": 170
+    }
+  ],
+  "compartment": [
+    {
+      "name": "distance_law_from_mat",
+      "signature": "distance_law_from_mat(matrix, indices=None, log_bins=True, base=1.1)",
+      "docstring": "Compute distance law as a function of the genomic coordinate aka P(s).\nBin length increases exponentially with distance if log_bins is True. Works\non dense and sparse matrices. Less precise than the o...",
+      "return_type": null,
+      "lineno": 3
+    },
+    {
+      "name": "extrude_full_zero",
+      "signature": "extrude_full_zero(mat: pd.DataFrame)",
+      "docstring": "No documentation available.",
+      "return_type": "pd.DataFrame",
+      "lineno": 57
+    },
+    {
+      "name": "upper_to_symmetry",
+      "signature": "upper_to_symmetry(mat: pd.DataFrame)",
+      "docstring": "No documentation available.",
+      "return_type": "pd.DataFrame",
+      "lineno": 64
+    },
+    {
+      "name": "normalize_dense",
+      "signature": "normalize_dense(M, norm='SCN', order=1, iterations=40)",
+      "docstring": "Apply one of the many normalization types to input dense\nmatrix. Will also apply any callable norms such as a user-made\nor a lambda function.\nNOTE: Legacy function for dense maps\n\nParameters\n---------...",
+      "return_type": null,
+      "lineno": 72
+    },
+    {
+      "name": "compartments",
+      "signature": "compartments(M, normalize=True, matrixonly=False, nPCs=2)",
+      "docstring": "A/B compartment analysis\n\nPerform a PCA-based A/B compartment analysis on a normalized, single\nchromosome contact map. The results are two vectors whose values (negative\nor positive) should presumably...",
+      "return_type": null,
+      "lineno": 146
+    },
+    {
+      "name": "call_compartment",
+      "signature": "call_compartment(df: pd.DataFrame, norm: bool=True)",
+      "docstring": "No documentation available.",
+      "return_type": "tuple",
+      "lineno": 208
+    },
+    {
+      "name": "AB_block_ends",
+      "signature": "AB_block_ends(orig_data: pd.DataFrame, min_winSize=3, binsize=1000000)",
+      "docstring": "Generate AB bed-like reference from cooltools vecs dataframe.\nInput:\n    orig_data: chrom, start, end, E1\nOutput:\n    chrom, start, end, AB, mean_E1; one row per block",
+      "return_type": null,
+      "lineno": 217
+    },
+    {
+      "name": "sc_compartment_strength",
+      "signature": "sc_compartment_strength(cool_f, outfile=None, eigen_track=None)",
+      "docstring": "Calculate compartment strength from a single-cell eigenvector track.\nInput:\n    cool_f: cooler file path\n    eigen_track: eigenvector track file path, e.g. CpG/GC count track.\n    outfile: output file...",
+      "return_type": null,
+      "lineno": 255
+    }
+  ],
+  "coolstuff": [
+    {
+      "name": "pos2id",
+      "signature": "pos2id(clr, chrom, pos)",
+      "docstring": "Transform a genomic position to a bin ID in the cooler matrix.\n\nParameters\n----------\nclr : cooler.Cooler or str\n    A cooler object or path to cooler file.\nchrom : str\n    Chromosome name.\npos : int\n...",
+      "return_type": null,
+      "lineno": 45
+    },
+    {
+      "name": "region2slice",
+      "signature": "region2slice(clr, region)",
+      "docstring": "Transform a genomic region to a slice of a cooler matrix.\nRegion can cross chromosomes.\n\nParameters\n----------\nclr : cooler.Cooler or str\n    A cooler object.\nregion : see hic_basic.genome.Region\n\nRet...",
+      "return_type": null,
+      "lineno": 67
+    },
+    {
+      "name": "str2slice",
+      "signature": "str2slice(clr, region: str)",
+      "docstring": "Convert region string to slice object.\nInput:\n    clr: cooler file object\n    region: region string, eg. \"chr1:1,000,000-2,000,000\"\nOutput:\n    slice object",
+      "return_type": null,
+      "lineno": 98
+    },
+    {
+      "name": "iter_pixels",
+      "signature": "iter_pixels(clr, chunksize=1000000.0, join=True)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 108
+    },
+    {
+      "name": "cool2pixels",
+      "signature": "cool2pixels(coolp: str, clr_weight_name: bool=None)",
+      "docstring": "Fetch all pixels from a cooler file.\nInput:\n    coolp: path to cooler file\n    clr_weight_name: name of weight column\n        if None, use raw count\nOutput:\n    pixels: DataFrame of pixels, [bin1_id, ...",
+      "return_type": "pd.DataFrame",
+      "lineno": 113
+    },
+    {
+      "name": "cool2mat",
+      "signature": "cool2mat(cool, region: Union[str, List[str], slice, List[slice]], balance: bool=False, min_nz=None, bad_bins=None)",
+      "docstring": "Fetch matrix from cooler file with proper index and columns.\nInput:\n    cool: cooler file path\n    region: genome region to fetch.\n        \"chr1\" or \"chr1:1000000-2000000\":\n            ucsc styl, get ...",
+      "return_type": "pd.DataFrame",
+      "lineno": 132
+    },
+    {
+      "name": "gen_bins",
+      "signature": "gen_bins(genome, binsize)",
+      "docstring": "Generate \"bins\" for cooler api.\nInput:\n    genome: RefGenome obj or Chromosomes obj or chromsizes dataframe with columns [\"length\"]\n    binsize: bin size; int",
+      "return_type": null,
+      "lineno": 243
+    },
+    {
+      "name": "pairs2cool",
+      "signature": "pairs2cool(pairs_path, coolpath, sizef, binsize)",
+      "docstring": "Generate .cool file from 4DN .pairs file",
+      "return_type": null,
+      "lineno": 303
+    },
+    {
+      "name": "pixels2cool",
+      "signature": "pixels2cool(pixels: pd.DataFrame, bins: pd.DataFrame, outfile, columns: list=['count'], dtypes: dict={'count': int})",
+      "docstring": "Dump pixels to cool file.\nInput:\n    pixels: pixels dataframe or iterator of pixels dataframes,\n        [chrom1, start1, (end1), chrom2, start2, (end2), vcol1, vcol2, ...]\n    bins: [chrom, start, end...",
+      "return_type": null,
+      "lineno": 313
+    },
+    {
+      "name": "schicluster2cool",
+      "signature": "schicluster2cool(filesp, fo, genome, binsize, ordered=True, ensure_sorted=True)",
+      "docstring": "Dump schicluster imputed matrix to .cool file.\nInput:\n    filesp: All hdf5 file paths for 1 cell, chrom as index; pd.Series\n    fo: output cool uri\n    genome: eg. \"mm10\"\n    binsize: binsize of origi...",
+      "return_type": null,
+      "lineno": 404
+    },
+    {
+      "name": "peek_gam",
+      "signature": "peek_gam(gam_file)",
+      "docstring": "Peek into gam file to get some basic info.\nInput:\n    gam_file: path to gam file\nOutput:\n    dict of basic info\n        chrom1: most common chrom1\n        chrom2: most common chrom2",
+      "return_type": null,
+      "lineno": 457
+    },
+    {
+      "name": "parse_gam",
+      "signature": "parse_gam(gam_file, pixel=False)",
+      "docstring": "Input:\n    gam_file: path to gam file\n        temporarily, only support .npz file\n    pixel: a cooler's joint pixel format\nOutput:\n    mat: pandas.DataFrame\n        if not pixel, a DataFrame with 2-le...",
+      "return_type": null,
+      "lineno": 475
+    },
+    {
+      "name": "gam2cool",
+      "signature": "gam2cool(gam_filepat, bin_file, outfile, force=False, intra_only=True)",
+      "docstring": "Transform gam result to cool format.\nUse intra_only when binsize is small.\nInput:\n    gam_filepat: path pattern to gam file, use * to represent any string,\n        typically chrom names\n    bin_file: ...",
+      "return_type": null,
+      "lineno": 547
+    },
+    {
+      "name": "pairs2scool",
+      "signature": "pairs2scool(pairs_paths, coolpath, sizef, binsize)",
+      "docstring": "Generate .scool file from multiple 4DN .pairs file\nInput:\n    pairs_path: pairs file path; dict\n        {cell_name: pairs_path}\n    coolpath: output .scool file path; str\n    sizef: chrom size file pa...",
+      "return_type": null,
+      "lineno": 592
+    },
+    {
+      "name": "cools2scool",
+      "signature": "cools2scool(cools, scool_path)",
+      "docstring": "Generate scool from cooler files.\nTODO:\n    don't readin all cools together.\nInput:\n    cools: dict of name-cooler file, using first file's bins as default bins\n    scool_path: outputfile name",
+      "return_type": null,
+      "lineno": 616
+    },
+    {
+      "name": "hic_pileup",
+      "signature": "hic_pileup(scool, grouping, cache_pattern='{}.pileup.cool', mergebuf=1000000.0)",
+      "docstring": "Generate pileup cool file for each cluster.\nTo simply pileup all cells, use `grouping = pd.Series(1, index=cells)`\nInput:\n    scool: cooler's scool file path\n    grouping: dict, key is cluster name, v...",
+      "return_type": null,
+      "lineno": 636
+    },
+    {
+      "name": "reset_cool_bins",
+      "signature": "reset_cool_bins(coolpin, coolpout, new_bins=None, genome='GRCh38', chunksize=1000000.0)",
+      "docstring": "Reset bins of cool file. Can also use this to filter out some bins.\nInput:\n    coolpin: input cool file path\n    coolpout: output cool file path\n    bins: new bins, if None, generate from genome\n    g...",
+      "return_type": null,
+      "lineno": 655
+    },
+    {
+      "name": "gen_config",
+      "signature": "gen_config(sample_table, cfg, assembly='mm10', bwa='/share/home/ychi/data/genome/GRCm38/bwa_index/mm10.*', chrom_size='/share/home/ychi/data/genome/GRCm38/mm10.len.forCool.tsv', template='/shareb/ychi/ana/distiller-nf/project.yml')",
+      "docstring": "Generate distiller.nf project.yaml file from bubble_flow sample_table.csv.\nInput:\n    sample_table: any csv, index as sample_name, using sample-name and task_dirp to infer DNA reads files\n    cfg: out...",
+      "return_type": null,
+      "lineno": 722
+    },
+    {
+      "name": "stat_cool",
+      "signature": "stat_cool(names, ddir, genome, show=True)",
+      "docstring": "Statistic technical details.\nInput:\n    names: list of cooler paths\n    ddir: distiller-nf directory\n    genome: genome name eg. \"mm10\"\nOutput:\n    pd.DataFrame",
+      "return_type": null,
+      "lineno": 763
+    },
+    {
+      "name": "cli_pairs2cool",
+      "signature": "cli_pairs2cool(filei, fileo, sizef, binsize, force=False, conda_frontend='', verbose=0)",
+      "docstring": "Generate .cool file from 4DN .pairs file\nInput:\n    filei: input pairs file\n    fileo: output .cool file\n    sizef: chrom size file, 2col(chrom:str, size:int) tsv\n    binsize: binsize as you wish\n    ...",
+      "return_type": null,
+      "lineno": 822
+    },
+    {
+      "name": "pairs2cool_worker",
+      "signature": "pairs2cool_worker(sample, sample_table, outdir, pairs_col, suffix, kwargs)",
+      "docstring": "This function is used to run pairs2cool in parallel.\nTODO: hide output",
+      "return_type": null,
+      "lineno": 843
+    },
+    {
+      "name": "mt_pairs2cool",
+      "signature": "mt_pairs2cool(sample_table, outdir, pairs_col='pairs_c123', suffix='.cool', nproc=16)",
+      "docstring": "TODO: Will still print first stdout and stderr message now. Fix this.",
+      "return_type": null,
+      "lineno": 859
+    },
+    {
+      "name": "cool_uri_to_path",
+      "signature": "cool_uri_to_path(cool_uri)",
+      "docstring": "Extract file path from a cool URI.\n\nExamples:\n    - \"xx.cool\" -> \"xx.cool\"\n    - \"xx.mcool::/resolutions/20000\" -> \"xx.mcool\"",
+      "return_type": null,
+      "lineno": 884
+    },
+    {
+      "name": "cli_mergecool",
+      "signature": "cli_mergecool(incools, outcool, force=False, conda_env=None, skip_blank=True, cwd=None, batch_size=1000, verbose=0)",
+      "docstring": "Merge cool files with same indices to get a consensus heatmap.\nHandles large numbers of input files by batching them.\n\nInput:\n    incools: list of .cool file paths\n    outcool: output .cool file path\n...",
+      "return_type": null,
+      "lineno": 894
+    },
+    {
+      "name": "cli_downsample",
+      "signature": "cli_downsample(coolp, output, count=100000000.0, cis_count=None, fraction=None, threads=8, force=False, conda_env=None, cwd=None, verbose=0)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 951
+    },
+    {
+      "name": "cli_balance",
+      "signature": "cli_balance(coolp, threads=8, force=False, name='weight', cis_only=False, trans_only=False, min_nnz=None, min_count=None, mad_max=None, ignore_diags=None, conda_env=None, cwd=None, verbose=0)",
+      "docstring": "Balance a cooler matrix.\nInput:\n    coolp: cooler file path\n    threads: number of threads\n    force: whether to overwrite existing balanced matrix\n    name: name of the balanced matrix\n    cis_only: ...",
+      "return_type": null,
+      "lineno": 971
+    },
+    {
+      "name": "cli_zoomify",
+      "signature": "cli_zoomify(coolp, output, resolutions=[20000, 40000, 100000, 500000, 1000000], force=False, threads=8, conda_env=None, cwd=None, verbose=0)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 1039
+    },
+    {
+      "name": "cli_compartment",
+      "signature": "cli_compartment(coolp, phasing_track, outprefix, view=None, conda_env=None, cwd=None, force=False, verbose=0)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 1053
+    },
+    {
+      "name": "cli_saddle",
+      "signature": "cli_saddle(coolp, eigv, expected, outprefix, view, bin_method='quantile', qrange=[0.02, 0.98], vrange=[-1, 1], nbins=50, conda_env=None, cwd=None, force=False, debug=False, verbose=0)",
+      "docstring": "Run cooltools saddle.\nInput:\n    coolp: cooler file path\n    eigv: eigenvector file path\n    expected: expected file path\n    outprefix: output prefix\n    view: genome view file path\n    bin_method: b...",
+      "return_type": null,
+      "lineno": 1072
+    },
+    {
+      "name": "cli_IS",
+      "signature": "cli_IS(coolp, output, windowsizes, balanced=True, append_raw_scores=True, threads=8, conda_env=None, cwd=None, force=False, verbose=0)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 1120
+    },
+    {
+      "name": "cli_pileup",
+      "signature": "cli_pileup(coolp, feature, output, format='BED', view=None, expected=None, flank=100000, store_snips=False, conda_env=None, cwd=None, threads=8)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 1142
+    },
+    {
+      "name": "cli_expected",
+      "signature": "cli_expected(coolp, output, balanced=False, view=None, ignore_diags=1, conda_env=None, cwd=None, threads=8, force=False, verbose=0)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 1180
+    }
+  ],
+  "cycle_phasing": [
+    {
+      "name": "window_count",
+      "signature": "window_count(distances: pd.Series, win_num)",
+      "docstring": "Count distribution of distance array with Nagano2017's window.\nIf distances is None, return nan Series.\nInput:\n    distances: distance array\n    win_num: number of windows\nOutput:\n    window_count: di...",
+      "return_type": "pd.Series",
+      "lineno": 7
+    },
+    {
+      "name": "dis_counts",
+      "signature": "dis_counts(pairs_fp: str, filter_str=None)",
+      "docstring": "Get cell's intra contact's distribution in Nagano2017's window\nUsing customized .pairs parser. Work for 11 column table only\nInput:\n    pairs_fp: path to .pairs file\n    filter_str: expr string to fil...",
+      "return_type": null,
+      "lineno": 31
+    }
+  ],
+  "data": [
+    {
+      "name": "get_chrom_data",
+      "signature": "get_chrom_data(genome, order=False)",
+      "docstring": "Get chromosome data from various genome representations.\n\nThis helper function provides a unified interface to extract chromosome\nlength data from different genome input formats.\n\nArgs:\n    genome: Ge...",
+      "return_type": null,
+      "lineno": 125
+    },
+    {
+      "name": "download_geo",
+      "signature": "download_geo(geo_id, outdir, method='ftp', timeout=30, retries=3, block_size=8192)",
+      "docstring": "Download GEO data with enhanced error handling, retries, larger block size, passive mode for FTP, and download resumption.\n\nInput:\n    geo_id: GEO ID; string\n    outdir: output directory; string\n    m...",
+      "return_type": null,
+      "lineno": 210
+    },
+    {
+      "name": "download_sra",
+      "signature": "download_sra(accessions, outdir, method='ena', timeout=30, retries=3, block_size=8192)",
+      "docstring": "Download sequencing data by SRA run accession(s).\n\nInput:\n    accessions:\n        - single accession string (e.g., \"SRR1234567\")\n        - comma-separated string (e.g., \"SRR1,SRR2\")\n        - list/tup...",
+      "return_type": null,
+      "lineno": 331
+    },
+    {
+      "name": "dupref_annote",
+      "signature": "dupref_annote(bins, ref)",
+      "docstring": "Annotate diploid genome with haploid ref\nInput:\n    bins: pd.DataFrame, 2-level index\n    ref: pd.DataFrame, 2-level index\nOutput:\n    pd.DataFrame, 3dg with ref",
+      "return_type": null,
+      "lineno": 452
+    },
+    {
+      "name": "chromosomes",
+      "signature": "chromosomes(genome, order=False)",
+      "docstring": "Get chromosome lengths.\nInput:\n    genome: genome name or chromosome length table; string or pd.DataFrame;\n        Now support hg19, hg19_dip, GRCh38, GRCh38_dip, mm10, mm10_dip\n    order: if True, or...",
+      "return_type": null,
+      "lineno": 481
+    },
+    {
+      "name": "fetch_centromeres",
+      "signature": "fetch_centromeres(genome)",
+      "docstring": "Get centromere regions.\nReturns:\n    pandas.DataFrame",
+      "return_type": null,
+      "lineno": 521
+    },
+    {
+      "name": "fetch_cent_chromlen",
+      "signature": "fetch_cent_chromlen(genome)",
+      "docstring": "Get centromere regions and chromosome lengths.\nOnly work with mm10 for now.\nTODO: generalize to other genomes\nInput:\n    fp (str): path to the gap file\nReturns:\n    dict(chrom) of list[start, end, chr...",
+      "return_type": null,
+      "lineno": 543
+    },
+    {
+      "name": "id2name",
+      "signature": "id2name(genelist, genome)",
+      "docstring": "Convert gene IDs to gene names.\nInput:\n    genelist: list of gene IDs\n    genome: genome name or gene ID to gene name mapping dataframe; string or pd.DataFrame\n        gene ID as index when using a da...",
+      "return_type": null,
+      "lineno": 643
+    },
+    {
+      "name": "name2id",
+      "signature": "name2id(genelist, genome, pickid=False)",
+      "docstring": "Convert gene names to gene IDs.\nInput:\n    genelist: list of gene names\n    genome: genome name or gene ID to gene name mapping dataframe (name 2 id df will have non-unique index); string or pd.DataFr...",
+      "return_type": null,
+      "lineno": 664
+    },
+    {
+      "name": "fetch_TSS",
+      "signature": "fetch_TSS(gnames, TSS, name_col='gene_name')",
+      "docstring": "Fetch TSS regions for given gene names.\nInput:\n    gnames: genename list\n    TSS: genome name or TSS reference table; string or pd.DataFrame\n    name_col: column name of gene name in TSS table; string...",
+      "return_type": null,
+      "lineno": 701
+    },
+    {
+      "name": "Jichang2022_embryo_gene_module",
+      "signature": "Jichang2022_embryo_gene_module()",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 743
+    },
+    {
+      "name": "XijinGe2017_embryo_gene_module",
+      "signature": "XijinGe2017_embryo_gene_module()",
+      "docstring": "Gene clusters from `Exploratory bioinformatics investigation reveals importance of \u201cjunk\u201d DNA in early embryo development`.\nNote:\n    has excel gene-name to Date problem\nOutput:\n    dict of list.\n    ...",
+      "return_type": null,
+      "lineno": 752
+    },
+    {
+      "name": "mouse_cell_cycle",
+      "signature": "mouse_cell_cycle()",
+      "docstring": "Cell cycle gene sets in mouse. Used in seurat or scanpy g1/s, g2/m score.\nOutput:\n    dict of list.",
+      "return_type": null,
+      "lineno": 779
+    },
+    {
+      "name": "mouse_GO_cell_cycle",
+      "signature": "mouse_GO_cell_cycle()",
+      "docstring": "Mouse cell cycle genes with term: `G2/M transition of mitotic cell cycle` and `G1/S transition of mitotic cell cycle`.\nOutput:\n    dict of list",
+      "return_type": null,
+      "lineno": 789
+    },
+    {
+      "name": "register_feature",
+      "signature": "register_feature(self, feature_name, factory)",
+      "docstring": "Register a feature factory.\n\nArgs:\n    feature_name (str): Attribute name for the feature.\n    factory (Callable[[], Any]): Function that builds the feature.",
+      "return_type": null,
+      "lineno": 60
+    },
+    {
+      "name": "register_chromosomes",
+      "signature": "register_chromosomes(self, size_file)",
+      "docstring": "Register chromosome sizes for this genome.\n\nArgs:\n    size_file (str | pathlib.Path): Path to a two-column\n        chromosome sizes file.",
+      "return_type": null,
+      "lineno": 80
+    },
+    {
+      "name": "split_links",
+      "signature": "split_links(v)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 391
+    },
+    {
+      "name": "callback",
+      "signature": "callback(data)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 265
+    }
+  ],
+  "embedding": [
+    {
+      "name": "pca_rep",
+      "signature": "pca_rep(mat, n_components, with_std=False, retmodel=False)",
+      "docstring": "Return pca representation of data.\nInput:\n    mat: m * n matrix\n    n_components: number of components to keep\n    with_std: whether doing std scaling. No consensus but \n        usually don't scale it...",
+      "return_type": null,
+      "lineno": 14
+    },
+    {
+      "name": "band_svd",
+      "signature": "band_svd(cell_list, res, dist=10000000, dim=50)",
+      "docstring": "Doing svd on cell matrix band(leg distance < dist).\nTODO: using api compatible to cools.",
+      "return_type": null,
+      "lineno": 35
+    },
+    {
+      "name": "band_seg_svd",
+      "signature": "band_seg_svd(cell_list, res=100000.0, segL=10000000.0, dist=10000000.0, dim=50)",
+      "docstring": "Doing svd on cell matrix band(leg distance < dist) segments.\nInput:\n    cell_list: file list of cell matrix.\n    res: resolution of matrix(binsize in bp).\n    segL: length of segment(in bp).\n    dist:...",
+      "return_type": null,
+      "lineno": 69
+    },
+    {
+      "name": "NN_spectral_embedding",
+      "signature": "NN_spectral_embedding(symdist, k_nn=7)",
+      "docstring": "Non-linear dimensionality reduction of cdps curve\nInput:\n    symdist: symmetric distance matrix\n    k_nn: number of neighbors when build NN graph\nOutput:\n    2nd 3rd smallest eigenvectors of the graph...",
+      "return_type": null,
+      "lineno": 120
+    },
+    {
+      "name": "plot_elbow",
+      "signature": "plot_elbow(pca: PCA, title='TITLE')",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 167
+    }
+  ],
+  "feature": [
+    {
+      "name": "data",
+      "signature": "data(self, fn=None)",
+      "docstring": "Lazy-loaded data property.",
+      "return_type": null,
+      "lineno": 76
+    },
+    {
+      "name": "compile",
+      "signature": "compile(self)",
+      "docstring": "Process standardized genomic data formats (e.g., GTF, VCF) and convert them into simplified intermediate formats like BED or CSV.\n\nThis abstract method serves two primary purposes:\n1. Data Transformat...",
+      "return_type": null,
+      "lineno": 84
+    },
+    {
+      "name": "load",
+      "signature": "load(self, fn=None)",
+      "docstring": "Load the feature data to inner data structure from the compiled file.\n\nSets the `self.data` attribute to the loaded data.",
+      "return_type": null,
+      "lineno": 99
+    },
+    {
+      "name": "compile",
+      "signature": "compile(self, size_file=None, force=False)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 124
+    },
+    {
+      "name": "load",
+      "signature": "load(self, fn=None)",
+      "docstring": "Load chromosome sizes from compiled file.",
+      "return_type": null,
+      "lineno": 132
+    },
+    {
+      "name": "get_tss_region_from_gtf",
+      "signature": "get_tss_region_from_gtf(gtf_path, cache_file=None)",
+      "docstring": "Get TSS region from GTF file.\nInput:\n    gtf_path: path to the GTF file; string\n    cache_file: path to the cache file; string or None\nOutput:\n    TSS table; pd.DataFrame with columns:\n        gene_id...",
+      "return_type": null,
+      "lineno": 170
+    },
+    {
+      "name": "compile",
+      "signature": "compile(self, gtf_path, force=False)",
+      "docstring": "Compile TSS regions from GTF file.",
+      "return_type": null,
+      "lineno": 200
+    },
+    {
+      "name": "load",
+      "signature": "load(self)",
+      "docstring": "Load TSS regions from compiled file.",
+      "return_type": null,
+      "lineno": 227
+    },
+    {
+      "name": "compile",
+      "signature": "compile(self, fasta, force=False)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 247
+    },
+    {
+      "name": "load",
+      "signature": "load(self)",
+      "docstring": "Load CpG regions from compiled file.",
+      "return_type": null,
+      "lineno": 276
+    }
+  ],
+  "genome": [
+    {
+      "name": "parse_ucsc_region",
+      "signature": "parse_ucsc_region(region_str)",
+      "docstring": "Parses a UCSC-style region string and returns a tuple of (chromosome, start, end).\n\nParameters:\n    region_str (str): A UCSC-style region string like 'chr1:2,345-6,789' or 'chrX:2345-6789'.\n\nReturns:\n...",
+      "return_type": null,
+      "lineno": 12
+    },
+    {
+      "name": "index_merge_hom",
+      "signature": "index_merge_hom(df)",
+      "docstring": "Cancel ploidiness in index. You can then merge homologous chromosomes use functions like groupby.\nThis will change index inplace.\nInput:\n    df: DataFrame with MultiIndex [\"chrom\", \"start\"], chom is p...",
+      "return_type": null,
+      "lineno": 643
+    },
+    {
+      "name": "sort_chrom",
+      "signature": "sort_chrom(df, genome)",
+      "docstring": "Sort dataframe by natural chromosome order.\nTODO:\n    1. ask whether to rm chromint after sorting\n    2. ask whether to reset index\nInput:\n    df: must have a column named \"chrom\"\nOutput:\n    df: sort...",
+      "return_type": null,
+      "lineno": 662
+    },
+    {
+      "name": "breaks",
+      "signature": "breaks(self, binsize: int, flavor='hickit', within_chromosome=True)",
+      "docstring": "Get binned reference(int version)\nInput:\n    binsize: int\n    flavor: str, \"hickit\", \"bedtools\", \"cooler_compat\", \"default\", or \"nearest_boundary\"\n    within_chromosome: bool, if True, each bin is con...",
+      "return_type": null,
+      "lineno": 236
+    },
+    {
+      "name": "bins",
+      "signature": "bins(self, binsize: int, bed=False, order=False, flavor='hickit', within_chromosome=True)",
+      "docstring": "Get binned reference(IntervalIndex version)\nInput:\n    binsize: int\n    bed: bool, if True, return bed format\n    order: bool, if True, sort by chromosome and start position\n    flavor: str, binning f...",
+      "return_type": null,
+      "lineno": 354
+    },
+    {
+      "name": "append_bins",
+      "signature": "append_bins(self, df: pd.DataFrame, binsize: int, chr1_col: str='chr1', pos1_col: str='pos1', chr2_col: str=None, pos2_col: str=None, flavor: str='hickit')",
+      "docstring": "Append bins to dataframe.\n\nInput:\n    df: input dataframe\n    binsize: binsize, see GenomeIdeograph.bins\n    chr1_col: column name for first chromosome\n    pos1_col: column name for first position\n   ...",
+      "return_type": null,
+      "lineno": 410
+    },
+    {
+      "name": "coarsen_grouper",
+      "signature": "coarsen_grouper(self, binsize1: int, binsize2: int, flavor: str='hickit')",
+      "docstring": "Get grouper to map from binsize1 to a bigger binsize2.\nInput:\n    binsize1: int\n    binsize2: int\n    flavor: str, \"hickit\" or \"bedtools\"\nOutput:\n    pd.Series, 2-level index (chrom, start) from binsi...",
+      "return_type": "pd.Series",
+      "lineno": 478
+    },
+    {
+      "name": "pixel_id",
+      "signature": "pixel_id(self, row, binsize: int, intra=True)",
+      "docstring": "Get pixel_id from row\nInput:\n    row: pd.Series, assume bedpe format\n    binsize: int\nOutput:\n    int",
+      "return_type": null,
+      "lineno": 511
+    },
+    {
+      "name": "join_pixel_id",
+      "signature": "join_pixel_id(self, df, binsize, intra=True, filep=None)",
+      "docstring": "Add a 'pixel_id' column to the input DataFrame in a vectorized manner.\nInput:\n    df: DataFrame, bedpe-like with columns 'chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2'\n    binsize: int, size o...",
+      "return_type": null,
+      "lineno": 533
+    },
+    {
+      "name": "join_positions",
+      "signature": "join_positions(self, df, binsize, intra=True)",
+      "docstring": "Add columns 'chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2' to the input DataFrame in a vectorized manner.\nInput:\n    df: DataFrame, bedpe-like with column 'pixel_id'\n    binsize: int, size of ...",
+      "return_type": null,
+      "lineno": 562
+    },
+    {
+      "name": "new_start",
+      "signature": "new_start(row, chrom_intervals=None)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 489
+    }
+  ],
+  "heuristic_ordering": [
+    {
+      "name": "ra_ordering",
+      "signature": "ra_ordering(filesp, threads=24)",
+      "docstring": "Random Annealing ordering of contact-decay-profiles.\nInput:\n    filesp : DataFrame, must have pairs col\nOutput:\n    DataFrame with additional col \"order_index\"",
+      "return_type": null,
+      "lineno": 6
+    }
+  ],
+  "hicbr": [
+    {
+      "name": "h5ad_to_files",
+      "signature": "h5ad_to_files(h5ad_file: str, output_dir: str, layers: Optional[List[str]]=None)",
+      "docstring": "Convert h5ad file to generic file formats.\n\nParameters\n----------\nh5ad_file : str\n    Path to input h5ad file\noutput_dir : str\n    Directory to save converted files\nlayers : list, optional\n    List of...",
+      "return_type": "Dict[str, Any]",
+      "lineno": 752
+    },
+    {
+      "name": "files_to_anndata",
+      "signature": "files_to_anndata(input_dir: str, layers: Optional[List[str]]=None)",
+      "docstring": "Load converted files back into an AnnData object.\n\nParameters\n----------\ninput_dir : str\n    Directory containing converted files\nlayers : list, optional\n    List of layers to load. If None, loads all...",
+      "return_type": "Any",
+      "lineno": 777
+    },
+    {
+      "name": "register_dump_handler",
+      "signature": "register_dump_handler(self, layer_name: str, handler_func)",
+      "docstring": "Register a custom dump handler for a specific layer.\n\nParameters\n----------\nlayer_name : str\n    Name of the layer to register handler for\nhandler_func : callable\n    Function that handles dumping thi...",
+      "return_type": null,
+      "lineno": 61
+    },
+    {
+      "name": "register_load_handler",
+      "signature": "register_load_handler(self, layer_name: str, handler_func)",
+      "docstring": "Register a custom load handler for a specific layer.\n\nParameters\n----------\nlayer_name : str\n    Name of the layer to register handler for\nhandler_func : callable\n    Function that handles loading thi...",
+      "return_type": null,
+      "lineno": 74
+    },
+    {
+      "name": "dump",
+      "signature": "dump(self, h5ad_file: str, output_dir: str, layers: Optional[List[str]]=None)",
+      "docstring": "Convert h5ad file to generic file formats.\n\nParameters\n----------\nh5ad_file : str\n    Path to input h5ad file\noutput_dir : str\n    Directory to save converted files\nlayers : list, optional\n    List of...",
+      "return_type": "Dict[str, Any]",
+      "lineno": 87
+    },
+    {
+      "name": "load",
+      "signature": "load(self, input_dir: str, layers: Optional[List[str]]=None)",
+      "docstring": "Load converted files back into an AnnData object.\n\nParameters\n----------\ninput_dir : str\n    Directory containing converted files\nlayers : list, optional\n    List of layers to load. If None, loads all...",
+      "return_type": "Any",
+      "lineno": 155
+    }
+  ],
+  "hicio": [
+    {
+      "name": "divide_name",
+      "signature": "divide_name(filename)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 37
+    },
+    {
+      "name": "parse_bed",
+      "signature": "parse_bed(bed_path: str)",
+      "docstring": "Load and parse BED format files, automatically assigning BED12 column names.\n\nInputs:\n    bed_path (str): Path to the BED file.\n    \nReturns:\n    pd.DataFrame: Parsed BED data with columns named accor...",
+      "return_type": "pd.DataFrame",
+      "lineno": 47
+    },
+    {
+      "name": "parse_pairs",
+      "signature": "parse_pairs(filename: str)",
+      "docstring": "read from 4DN's standard .pairs format\ncompatible with all hickit originated pairs-like format ",
+      "return_type": "pd.DataFrame",
+      "lineno": 125
+    },
+    {
+      "name": "parse_pairs_like",
+      "signature": "parse_pairs_like(filename: str)",
+      "docstring": "read from 4DN's standard .pairs format\ncompatible with all hickit originated pairs-like format ",
+      "return_type": "pd.DataFrame",
+      "lineno": 175
+    },
+    {
+      "name": "parse_gtf",
+      "signature": "parse_gtf(file, ID=True, name=True, mgi_id=True)",
+      "docstring": "Parsing gtf file. Read all in memory. Extract gene_id to df if set true.\nInput:\n    file: path to .gtf file.\n    ID: whether to parse gene_id from attribute string.\n    name: whether to parse gene_nam...",
+      "return_type": null,
+      "lineno": 220
+    },
+    {
+      "name": "parse_gff",
+      "signature": "parse_gff(file, ID=False, Name=False)",
+      "docstring": "Parsing gff file. Read all in memory. Extract ID(gene), and Name if set true.",
+      "return_type": null,
+      "lineno": 248
+    },
+    {
+      "name": "parse_vcf",
+      "signature": "parse_vcf(vcf_path, region, return_alleles=False)",
+      "docstring": "Extracts genotype data for all samples within a specified genomic region from a VCF file.\nOptionally returns genotypes in allele form (e.g., 'GA/GA' instead of '1/1').\n\nParameters:\n    vcf_path (str):...",
+      "return_type": null,
+      "lineno": 272
+    },
+    {
+      "name": "parse_sam_line",
+      "signature": "parse_sam_line(sam_line: Union[str, List[str]])",
+      "docstring": "Parse a SAM format line into a pandas Series with standardized fields and optional tags.\n\nThis function parses a SAM (Sequence Alignment/Map) format record, extracting both\nthe 11 mandatory fields and...",
+      "return_type": "pd.Series",
+      "lineno": 340
+    },
+    {
+      "name": "decode_sam_flag",
+      "signature": "decode_sam_flag(flag: int)",
+      "docstring": "Decode SAM bitwise FLAG into human-readable components.\n\nArgs:\n    flag: Integer FLAG value from SAM field 2\n    \nReturns:\n    Dictionary with flag component names as keys and boolean values\n    \nRefe...",
+      "return_type": "Dict[str, bool]",
+      "lineno": 526
+    },
+    {
+      "name": "read_expr",
+      "signature": "read_expr(path, sep=None)",
+      "docstring": "Read expression matrix from file.\nDon't guarantee OV(obs*var) or VO(var*obs) output. It just read in the file.\nInput:\n    path: path to matrix file\n    sep: separator, if None will infer from file ext...",
+      "return_type": "pd.DataFrame",
+      "lineno": 557
+    },
+    {
+      "name": "match_10x",
+      "signature": "match_10x(file_list: list, retind=False)",
+      "docstring": "Check if input file names contains a 10x result.\nInput:\n    file_list: list of file path\n    retind: return index of matched file instead of file path\nOutput:\n    {\"matrix\":matrix_file, \"genes\":gene_f...",
+      "return_type": "dict",
+      "lineno": 603
+    },
+    {
+      "name": "combine_10x",
+      "signature": "combine_10x(annoted_file: dict)",
+      "docstring": "Extract data from files and combine them into a expression matrix.\nInput:\n    annoted_file: {\"matrix\":matrix_file, \"genes\":gene, \"barcodes\":barcodes}\nOutput:\n    a cell * gene matrix",
+      "return_type": "pd.DataFrame",
+      "lineno": 636
+    },
+    {
+      "name": "read_10x",
+      "signature": "read_10x(fp, gene_column=1, cell_column=0)",
+      "docstring": "Read 10x-flavor matrix market file.\nInput:\n    fp: file path\n    gene_column: use this column from gene/feature matrix\n    cell_column: use this column from cell matrix\nOutput:\n    a cell * gene matri...",
+      "return_type": "pd.DataFrame",
+      "lineno": 645
+    },
+    {
+      "name": "read_h5_ds",
+      "signature": "read_h5_ds(group)",
+      "docstring": "Read .h5 bottom level group into dataframe.\nInput:\n    group: h5py.Group; must have same length datasets.\nOutput:\n    pd.DataFrame",
+      "return_type": null,
+      "lineno": 704
+    },
+    {
+      "name": "load_cool",
+      "signature": "load_cool(cool, root='/')",
+      "docstring": "Load simple cooler file as sparsematrix\n\nParameters\n----------\ncool : str\n    Path to the input .cool file.\n\nReturns\n-------\nmat : scipy coo_matrix\n    Hi-C contact map in COO format.\nfrags : pandas D...",
+      "return_type": null,
+      "lineno": 719
+    },
+    {
+      "name": "parse_hicluster_res",
+      "signature": "parse_hicluster_res(embed, sample_table)",
+      "docstring": "Read schicluster embedding result into dataframe.\nInput:\n    embed: schicluster concat-cell output hdf5 file\n    sample_table: input sample file of schicluster pipeline or list of sample names\nExample...",
+      "return_type": null,
+      "lineno": 754
+    },
+    {
+      "name": "schicluster2mat",
+      "signature": "schicluster2mat(filei)",
+      "docstring": "Read in schicluster impute .hdf5 or np.savez_compressed .npz file to sparse matrix.\n\nThis function supports two file formats:\n1. HDF5 files with standard schicluster sparse matrix structure\n2. NPZ fil...",
+      "return_type": null,
+      "lineno": 781
+    },
+    {
+      "name": "schiclusterDir2mat",
+      "signature": "schiclusterDir2mat(hiclusterdir)",
+      "docstring": "Read in schicluster imputed .hdf5 files (from a dir) to sparse matrix.\nInput:\n    hicluster: schicluster imputed .hdf5 file dir. e.g. f\"/shareb/ychi/repo/sperm22_schicluster/imputed_matrix/100000/{chr...",
+      "return_type": null,
+      "lineno": 849
+    },
+    {
+      "name": "write_triplet",
+      "signature": "write_triplet(sparseM, filep, max_coo=False, zipping=True)",
+      "docstring": "Write sparse matrix to triplet txt, assume symmetry.\nFor scipy doesn't give a way to write triplet format directly.\nInput:\n    sparseM: scipy sparse matrix\n    filesp: output file path\n    max_coo: if...",
+      "return_type": null,
+      "lineno": 861
+    },
+    {
+      "name": "read_meta",
+      "signature": "read_meta(fp)",
+      "docstring": "Read general metadata, take care of sample_name.",
+      "return_type": null,
+      "lineno": 892
+    },
+    {
+      "name": "read_umi_tools",
+      "signature": "read_umi_tools(path, sep=None)",
+      "docstring": "Read umi_tools long-form output matrix.\nA wrapper for read_expr.\nBy default umi_tools file store matrix in VO format, this function will transpose it to OV.\nSee read_expr for more details.\nInput:\n    ...",
+      "return_type": "pd.DataFrame",
+      "lineno": 906
+    },
+    {
+      "name": "matra",
+      "signature": "matra(file)",
+      "docstring": "Read umi-tools output to anndata object.",
+      "return_type": null,
+      "lineno": 919
+    },
+    {
+      "name": "get_chrom_contact_counts",
+      "signature": "get_chrom_contact_counts(dump_dir)",
+      "docstring": "Get per-chromosome-per-phase contacts counts of samples.\nInput:\n    dump_dir: rd/dump generated by hires_utils\nOutput:\n    pd.DataFrame",
+      "return_type": null,
+      "lineno": 930
+    },
+    {
+      "name": "align_to_df",
+      "signature": "align_to_df(primary_views)",
+      "docstring": "Extract general dataframe from primary_view function output.\nInput:\n    primary_views: complex data structure list of dict\nOutput:\n    dataframe",
+      "return_type": null,
+      "lineno": 941
+    },
+    {
+      "name": "dump_json",
+      "signature": "dump_json(obj, filep)",
+      "docstring": "Dump to json shortcut.",
+      "return_type": null,
+      "lineno": 976
+    },
+    {
+      "name": "load_json",
+      "signature": "load_json(filep)",
+      "docstring": "Load from json file shortcut.",
+      "return_type": null,
+      "lineno": 982
+    },
+    {
+      "name": "load_pickle",
+      "signature": "load_pickle(filep)",
+      "docstring": "Load from pickle file shortcut.",
+      "return_type": null,
+      "lineno": 988
+    },
+    {
+      "name": "dump_pickle",
+      "signature": "dump_pickle(obj, filep)",
+      "docstring": "Dump to pickle shortcut.",
+      "return_type": null,
+      "lineno": 994
+    },
+    {
+      "name": "get_ref_dir",
+      "signature": "get_ref_dir()",
+      "docstring": "Return a path to src's ref",
+      "return_type": null,
+      "lineno": 1000
+    },
+    {
+      "name": "write",
+      "signature": "write(self, _)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 25
+    },
+    {
+      "name": "flush",
+      "signature": "flush(self)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 28
+    }
+  ],
+  "impute.schicluster": [
+    {
+      "name": "solve_rwr_inverse",
+      "signature": "solve_rwr_inverse(stoch_matrix, alpha=0.05)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 10
+    },
+    {
+      "name": "schicluster_imputation_for_mat",
+      "signature": "schicluster_imputation_for_mat(mat, alpha=0.05, kernel_size=3, sigma=2, if_convolve=True)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 33
+    },
+    {
+      "name": "schicluster_impute",
+      "signature": "schicluster_impute(coolp, region, fo, max_dist: Optional[int]=20000000, alpha: float=0.05, kernel_size: int=3, sigma: int=2, if_convolve: bool=True)",
+      "docstring": "Impute Hi-C matrix using schicluster method from cooler file.\nInput:\n    coolp: cooler file\n    region: region to impute, normally a chromosome,\n        otherwise maybe incompatible with downstream an...",
+      "return_type": null,
+      "lineno": 49
+    }
+  ],
+  "impute.simpute": [
+    {
+      "name": "boolean_radius_neighbor",
+      "signature": "boolean_radius_neighbor(df, min_dist=3, n_jobs=4, pixels=True)",
+      "docstring": "generate boolean matrix from dataframe\nInput:\n    df: dataframe, index is position, columns are x, y, z\n    min_dist: int, minimum distance to be considered as neighbor\n    n_jobs: int, number of jobs...",
+      "return_type": null,
+      "lineno": 21
+    },
+    {
+      "name": "cis_proximity_graph",
+      "signature": "cis_proximity_graph(_3dg_path, fo, min_dist=3, genome='mm10', binsize=20000, agg_dip=False, flavor='hickit', n_jobs=4)",
+      "docstring": "Genereate 0,1 cooler file of region proximity from 3dg file.\nOnly cis region is considered.\nInput:\n    _3dg_path: str, path to 3dg file\n    fo: str, path to output cooler file\n    min_dist: int, minim...",
+      "return_type": null,
+      "lineno": 122
+    },
+    {
+      "name": "parse_3dg_dask",
+      "signature": "parse_3dg_dask(_3dg_path)",
+      "docstring": "Parse 3dg file to dask dataframe.\nInput:\n    _3dg_path: str, path to 3dg file\nOutput:\n    structure: dask dataframe, index is (chr, pos), columns are x, y, z",
+      "return_type": null,
+      "lineno": 194
+    },
+    {
+      "name": "cis_distance_graph",
+      "signature": "cis_distance_graph(_3dg_path, fo=None, genome=None, max_dist=2000000, binsize=20000, n_jobs=None)",
+      "docstring": "Generate distance matrix (store in bedpe-like format) from 3dg file.\nOnly cis region is considered.\nInput:\n    _3dg_path: str, path to 3dg file\n    fo: str, path to output parquet file, if None, retur...",
+      "return_type": null,
+      "lineno": 216
+    },
+    {
+      "name": "cis_distance_graph_df",
+      "signature": "cis_distance_graph_df(_3dg_path, chrom=None, genome=None, fo=None, max_dist=2000000, binsize=20000, fill=False)",
+      "docstring": "Generate distance matrix (store in bedpe-like format) from 3dg file.\nTODO: fix max_dist, now is using 3d distance mistakenly!\nOnly cis region is considered.\npandas.DataFrame version, all in memory.\nIn...",
+      "return_type": null,
+      "lineno": 281
+    },
+    {
+      "name": "DMimpute",
+      "signature": "DMimpute(_3dg_path, fo, genome='GRCh38', binsize=20000, agg_dip=False, flavor='cooler_compat', max_dist=None)",
+      "docstring": "Generate distance matrix (store in cooler) from 3dg file.\nOnly cis region is considered.\nInput:\n    _3dg_path: str, path to 3dg file\n    genome: give genome name or length path and add pixel_id to out...",
+      "return_type": null,
+      "lineno": 402
+    },
+    {
+      "name": "chrom_dist_mat_long",
+      "signature": "chrom_dist_mat_long(chunk)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 240
+    },
+    {
+      "name": "process_chunk",
+      "signature": "process_chunk(chunk, chrom=None)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 317
+    },
+    {
+      "name": "process_chunk",
+      "signature": "process_chunk(chunk, chrom=None)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 421
+    }
+  ],
+  "inter_contact": [
+    {
+      "name": "expected_inter",
+      "signature": "expected_inter(pairs: pd.DataFrame)",
+      "docstring": "No documentation available.",
+      "return_type": "pd.DataFrame",
+      "lineno": 6
+    },
+    {
+      "name": "pick_triu",
+      "signature": "pick_triu(matrix: pd.DataFrame)",
+      "docstring": "No documentation available.",
+      "return_type": "pd.DataFrame",
+      "lineno": 19
+    },
+    {
+      "name": "cell_sig",
+      "signature": "cell_sig(file_path: str)",
+      "docstring": "No documentation available.",
+      "return_type": "pd.Series",
+      "lineno": 32
+    }
+  ],
+  "interpolate": [
+    {
+      "name": "gaussian_interpolate",
+      "signature": "gaussian_interpolate(adata, pseudotime_col, obs_using, winSz=0.1, numPts=200, inplace=True)",
+      "docstring": "Interpolation of all concerned traits in adata.\nInput:\n    adata: AnnData object, must have adata.obs[pseudotime_col]\n    pseudotime_col: pseudotime column name\n    obs_using: list of obs column names...",
+      "return_type": null,
+      "lineno": 63
+    },
+    {
+      "name": "correct_pseudotime",
+      "signature": "correct_pseudotime(adata, pseudotime_col, n_pcs=15, inplace=True)",
+      "docstring": "Correct pseudotime of adata to make it linearly correlated with a distance metrix.\nInspired by Alpert et al. (2018)\nInput:\n    adata: AnnData object, must have adata.obs[pseudotime_col]\n    pseudotime...",
+      "return_type": null,
+      "lineno": 90
+    },
+    {
+      "name": "gaussian_weights",
+      "signature": "gaussian_weights(x, y)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 20
+    }
+  ],
+  "lap_embedding": [
+    {
+      "name": "get_distance_matrix",
+      "signature": "get_distance_matrix(cell_cdps: pd.DataFrame)",
+      "docstring": "No documentation available.",
+      "return_type": "pd.DataFrame",
+      "lineno": 7
+    },
+    {
+      "name": "circle_arctan",
+      "signature": "circle_arctan(cordinate: pd.Series)",
+      "docstring": "No documentation available.",
+      "return_type": "float",
+      "lineno": 14
+    },
+    {
+      "name": "spectral_ordering",
+      "signature": "spectral_ordering(distance_matrix: pd.DataFrame)",
+      "docstring": "No documentation available.",
+      "return_type": "pd.DataFrame",
+      "lineno": 31
+    }
+  ],
+  "mchr": [
+    {
+      "name": "multiple_testing_correction",
+      "signature": "multiple_testing_correction(pvalues, correction_type='FDR')",
+      "docstring": "Consistent with R - print\ncorrect_pvalues_for_multiple_testing([0.0, 0.01, 0.029, 0.03, 0.031, 0.05,\n                                      0.069, 0.07, 0.071, 0.09, 0.1])\nfrom https://github.com/CoBiG...",
+      "return_type": null,
+      "lineno": 21
+    },
+    {
+      "name": "from_netcdf",
+      "signature": "from_netcdf(cls, _3dg_ds_fp: str, ddir=None, _3dg_files=None, samples=None, genome=None, binsize=None, flavor=None)",
+      "docstring": "Initialize a Mchr object from a netcdf file.\nInput:\n    _3dg_ds_fp: netcdf file path\nOutput:\n    Mchr object",
+      "return_type": null,
+      "lineno": 226
+    },
+    {
+      "name": "multiDM",
+      "signature": "multiDM(self, samples: list, region_pair: list)",
+      "docstring": "Compute distance matrix for each single sample.\nNOTE: this method is not recommended for large regions.\nA better way is to aggregate DM to 1D feature in a split-apply-combine manner.\nInput:\n    sample...",
+      "return_type": "xr.DataArray",
+      "lineno": 254
+    },
+    {
+      "name": "IS",
+      "signature": "IS(self, samples: list, region_pair: list, w: int)",
+      "docstring": "Compute insulation score for each sample.\nNOTE: this method is not recommended for large regions.\n    Will be replaced by a more efficient method.\nInput:\n    samples: sample names to compute\n    regio...",
+      "return_type": "pd.DataFrame",
+      "lineno": 277
+    },
+    {
+      "name": "DM",
+      "signature": "DM(self, samples: list, region_pair: list, min_samples=None, n_jobs=None)",
+      "docstring": "Compute distance matrix.\nInput:\n    samples: sample names to compute\n    region_pair: genome region to compute DM, can include inter-chromosome regions,\n        can cross chromosomes.\n        [[(chrom...",
+      "return_type": "pd.DataFrame",
+      "lineno": 310
+    },
+    {
+      "name": "PM",
+      "signature": "PM(self, samples: list, region_pair: list, proximity: int, min_samples=None, n_jobs=None)",
+      "docstring": "Compute proximity matrix.\nInput:\n    samples: sample names to compute\n    region_pair: genome region to compute PM, can include inter-chromosome regions,\n        can cross chromosomes.\n        [[(chro...",
+      "return_type": "pd.DataFrame",
+      "lineno": 334
+    },
+    {
+      "name": "DI",
+      "signature": "DI(self, groupA_samples, groupB_samples, max_linear_dist=2000000, max_3d_dist=5, fdrcut=0.05, chrom_blacklist: list=['chrX', 'chrY'], n_jobs=None, mem: int=4)",
+      "docstring": "Simplediff method to compute differential interactions.\nInput:\n    groupA_samples: sample names of group A\n    groupB_samples: sample names of group B\n    max_linear_dist: max linear distance to consi...",
+      "return_type": "pd.DataFrame",
+      "lineno": 358
+    }
+  ],
+  "metrics": [
+    {
+      "name": "distance_pca_euclid",
+      "signature": "distance_pca_euclid(mat: np.ndarray, n_components: int, with_std=False)",
+      "docstring": "Euclid distances in PCA-space.\nInput:\n    mat: m( sample ) * n( feature ) matrix\n    n_components: number of PCA components used to calculate distance.\nOutput:\n    m * m distance matrix",
+      "return_type": "np.ndarray",
+      "lineno": 24
+    },
+    {
+      "name": "kernel_pca_euclid",
+      "signature": "kernel_pca_euclid(mat: np.ndarray, n_components: int)",
+      "docstring": "Affinity based on PCA-euclid-distance\nInput:\n    mat: m( sample ) * n( feature ) matrix\n    n_components: number of PCA components used to calculate distance.\nOutput:\n    m * m similarity matrix",
+      "return_type": "np.ndarray",
+      "lineno": 39
+    },
+    {
+      "name": "kernel_c_rbf",
+      "signature": "kernel_c_rbf(mat)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 51
+    },
+    {
+      "name": "pairwise_DKL",
+      "signature": "pairwise_DKL(df)",
+      "docstring": "compute pairwise Kullback-Leibler Divergence.\nresulting D'(i,j) = D'(j,i) = D_KL(i,j) + D_KL(j,i).\nInput:\n    df: sample x feature matrix\nOutput:\n    matrix: symdist",
+      "return_type": null,
+      "lineno": 55
+    }
+  ],
+  "nagano_cycle_phasing": [
+    {
+      "name": "contact_describe",
+      "signature": "contact_describe(cell_name: str, c1=1, p1=2, c2=3, p2=4)",
+      "docstring": "No documentation available.",
+      "return_type": "pd.Series",
+      "lineno": 11
+    },
+    {
+      "name": "smooth_cluster",
+      "signature": "smooth_cluster(cdps, annote, cluster_col='named_cluster', batchsize=5, pca_n=6)",
+      "docstring": "# fine-tuned group assignment using k-means clustering voting\nInput:\n    cdps: contact decay profiles\n    annote: df that records original group assignment, must using sample names as index\n    cluste...",
+      "return_type": null,
+      "lineno": 60
+    },
+    {
+      "name": "Nagano_ordering",
+      "signature": "Nagano_ordering(metrics: pd.DataFrame)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 91
+    },
+    {
+      "name": "order_sample_within_group",
+      "signature": "order_sample_within_group(chunk, shift)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 133
+    },
+    {
+      "name": "order_sample",
+      "signature": "order_sample(ordering_values)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 140
+    },
+    {
+      "name": "schic_spectral_embedding",
+      "signature": "schic_spectral_embedding(df)",
+      "docstring": "non-linear dimensionality reduction of cdps curve\nInput:\n    df: sample x feature matrix\nOutput:\n    2nd 3rd smallest eigenvectors of the graph Laplacian",
+      "return_type": null,
+      "lineno": 164
+    }
+  ],
+  "paracalc": [
+    {
+      "name": "mt",
+      "signature": "mt(func)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 22
+    },
+    {
+      "name": "wrapper",
+      "signature": "wrapper(iterable)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 24
+    }
+  ],
+  "phasing": [
+    {
+      "name": "parse_phased_snp",
+      "signature": "parse_phased_snp(phased_snp_file: str)",
+      "docstring": "No documentation available.",
+      "return_type": "dict",
+      "lineno": 172
+    },
+    {
+      "name": "parse_cigar",
+      "signature": "parse_cigar(cigar: str)",
+      "docstring": "Parse CIGAR string into operations and lengths.\n\nArgs:\n    cigar: CIGAR string (e.g., \"100M5D10I\")\n    \nReturns:\n    List of (length, operation) tuples (e.g., [(100, 'M'), (5, 'D'), (10, 'I')])",
+      "return_type": "List[Tuple[int, str]]",
+      "lineno": 188
+    },
+    {
+      "name": "get_file_type",
+      "signature": "get_file_type(file_path)",
+      "docstring": "Determine the file type by reading the file content.\n\nArgs:\n    file_path (str): Path to the file to check.\n\nReturns:\n    str: The file type ('SAM', 'BAM', 'SAMgz', or 'unknown').",
+      "return_type": null,
+      "lineno": 202
+    },
+    {
+      "name": "is_sam_content",
+      "signature": "is_sam_content(text, max_lines=20)",
+      "docstring": "\u68c0\u67e5\u6587\u672c\u5185\u5bb9\u662f\u5426\u7b26\u5408 SAM \u683c\u5f0f\u7279\u5f81\n\nArgs:\n    text (str): \u8981\u68c0\u67e5\u7684\u6587\u672c\u5185\u5bb9\n    max_lines (int): \u6700\u591a\u68c0\u67e5\u7684\u884c\u6570\n\nReturns:\n    bool: \u5982\u679c\u662f SAM \u683c\u5f0f\u8fd4\u56de True\uff0c\u5426\u5219\u8fd4\u56de False",
+      "return_type": null,
+      "lineno": 269
+    },
+    {
+      "name": "entry_align_pos",
+      "signature": "entry_align_pos(entry)",
+      "docstring": "Calculate reference and query start/end positions based on CIGAR string.\n\nArgs:\n    entry (list): A list representing a SAM format entry where:\n                  entry[1] is the FLAG field,\n          ...",
+      "return_type": null,
+      "lineno": 303
+    },
+    {
+      "name": "check_allele",
+      "signature": "check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0)",
+      "docstring": "Check if a SAM entry contains a specific allele at a given position.\n\nArgs:\n    entry (list): A list representing a SAM format entry where:\n                  entry[2] is the reference sequence name,\n ...",
+      "return_type": null,
+      "lineno": 375
+    },
+    {
+      "name": "convert_alignment_to_entry",
+      "signature": "convert_alignment_to_entry(alignment)",
+      "docstring": "Convert a pysam.AlignedSegment object to a list in the same format as a SAM entry.\n\nArgs:\n    alignment (pysam.AlignedSegment): An alignment object from pysam.\n\nReturns:\n    list: A list representing ...",
+      "return_type": null,
+      "lineno": 443
+    },
+    {
+      "name": "count_lines_in_file",
+      "signature": "count_lines_in_file(file_path)",
+      "docstring": "Count the number of lines in a file efficiently.\n\nArgs:\n    file_path (str): Path to the file.\n\nReturns:\n    int: Number of lines in the file.",
+      "return_type": null,
+      "lineno": 474
+    },
+    {
+      "name": "sam_mark_alleles",
+      "signature": "sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=None, min_mapq=20, min_baseq=20, show_progress=False, verbose=0)",
+      "docstring": "Mark alleles in SAM/BAM file based on phased SNP information.\n\nArgs:\n    sam_file (str): Path to the input SAM or BAM file.\n    phased_snp_file (str): Path to the phased SNP file.\n    outfile (str, op...",
+      "return_type": null,
+      "lineno": 487
+    },
+    {
+      "name": "sam_count_alleles",
+      "signature": "sam_count_alleles(allele_df, ref_snp_file, gt_strategy='max_allele')",
+      "docstring": "Count reference, alternative, and other alleles for each chromosome and site.\n\nThis function takes a DataFrame containing genetic data and calculates the count\nof reference alleles, alternative allele...",
+      "return_type": null,
+      "lineno": 638
+    },
+    {
+      "name": "do_sam2vcf_allele_count",
+      "signature": "do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None)",
+      "docstring": "Given a SAM file and a reference SNP file, generate a parquet file with allele counts of each SNP.\n\n{pipeline}[Gamete SNP Phasing Pipeline][1.count alleles]:\n    `do_sam2vcf_allele_count` for each gam...",
+      "return_type": null,
+      "lineno": 737
+    },
+    {
+      "name": "hap_score_gb",
+      "signature": "hap_score_gb(df)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 782
+    },
+    {
+      "name": "get_chrom_hap_score",
+      "signature": "get_chrom_hap_score(dump_dir)",
+      "docstring": "Get chrom_hap_score of samples.\nInput:\n    dump_dir: rd/dump generated by hires_utils\nOutput:\n    pd.Series",
+      "return_type": null,
+      "lineno": 785
+    },
+    {
+      "name": "count_chrom_phased",
+      "signature": "count_chrom_phased(filename: str)",
+      "docstring": "Count number of phased (with separable SNP) segments per chromosome from a .seg.gz file.\nInput:\n    filename: Path to the .seg.gz file.\nOutput:\n    A pandas Series with multi-index (chromosome, phasin...",
+      "return_type": "pd.Series",
+      "lineno": 802
+    },
+    {
+      "name": "mt_count_chrom_phased",
+      "signature": "mt_count_chrom_phased(filename: str)",
+      "docstring": "No documentation available.",
+      "return_type": "pd.Series",
+      "lineno": 817
+    },
+    {
+      "name": "count_phased_seg_perbin",
+      "signature": "count_phased_seg_perbin(filename, genome='mm10', binsize=1000000.0)",
+      "docstring": "Count the number of phased segments per bin of a given genome.\nInput:\n    filename: str, path to the .seg file\n    genome: str, genome name (default: \"mm10\")\n    binsize: int, size of the bins (defaul...",
+      "return_type": null,
+      "lineno": 820
+    },
+    {
+      "name": "sort",
+      "signature": "sort(a: List)",
+      "docstring": "Sort intervals based on their coordinates.\n\nArgs:\n    a: List of intervals to sort. Each interval can be a number or [start, end] pair.",
+      "return_type": "None",
+      "lineno": 25
+    },
+    {
+      "name": "merge",
+      "signature": "merge(a: List, sorted: bool=True)",
+      "docstring": "Merge overlapping intervals.\n\nArgs:\n    a: List of intervals to merge, each interval is [start, end]\n    sorted: Whether the intervals are already sorted",
+      "return_type": "None",
+      "lineno": 42
+    },
+    {
+      "name": "index_end",
+      "signature": "index_end(a: List, sorted: bool=True)",
+      "docstring": "Add index information for efficient overlap finding.\n\nArgs:\n    a: List of intervals [start, end, ...]\n    sorted: Whether the intervals are already sorted",
+      "return_type": "None",
+      "lineno": 71
+    },
+    {
+      "name": "find_intv",
+      "signature": "find_intv(a: List, x: int)",
+      "docstring": "Find the interval containing a given value using binary search.\n\nArgs:\n    a: List of intervals\n    x: Value to search for\n    \nReturns:\n    Index of the interval containing x, or -1 if not found",
+      "return_type": "int",
+      "lineno": 105
+    },
+    {
+      "name": "find_ovlp",
+      "signature": "find_ovlp(a: List, st: int, en: int)",
+      "docstring": "Find intervals overlapping with a given range.\n\nArgs:\n    a: List of intervals [start, end, ...]\n    st: Start of the query range\n    en: End of the query range\n    \nReturns:\n    List of overlapping i...",
+      "return_type": "List",
+      "lineno": 146
+    }
+  ],
+  "pileup": [
+    {
+      "name": "cool2mat_OE",
+      "signature": "cool2mat_OE(coolp, chrom, expected, balance=False)",
+      "docstring": "Fetch cooler matrix and calculate OE.\nInput:\n    coolp: path to cooler\n    chrom: chromosome",
+      "return_type": null,
+      "lineno": 9
+    },
+    {
+      "name": "add_diag_law",
+      "signature": "add_diag_law(raw_mat, binsize=20000, power=0.25)",
+      "docstring": "Add artificial diagonal law to the matrix.",
+      "return_type": null,
+      "lineno": 35
+    },
+    {
+      "name": "block_pileup",
+      "signature": "block_pileup(coolp, refs, expected=None, power=0.25, give_snips=False, balance=False, debug=False)",
+      "docstring": "Fetch regions from cooler, iterate chrom by chrom.\nInput:\n    coolp: path to cooler file\n    refs: list of (chrom, start, end)\n    expected: expected dataframe, will give OBS/EXP if provided\n    power...",
+      "return_type": null,
+      "lineno": 45
+    },
+    {
+      "name": "asymmetric_pileup",
+      "signature": "asymmetric_pileup(coolp, refs, expand, expected=None, binsize=None, power=0.25, give_snips=False, balance=False, show_progress=True)",
+      "docstring": "Fetch any regions from cooler, iterate chrom by chrom.\nTODO: support inter-chrom regions\nInput:\n    coolp: path to cooler file\n    refs: list of (chrom1, start1, end1, chrom2, start2, end2)\n    expand...",
+      "return_type": null,
+      "lineno": 112
+    },
+    {
+      "name": "TAD_pileup_strength",
+      "signature": "TAD_pileup_strength(mat, strip=3)",
+      "docstring": "Calculate TAD strength from pileup matrix.\nTo remove influence from diagonal, we calculate region around domain loop.\nThe size of region is determined by strip.\nInput:\n    mat: 2D numpy array\n    stri...",
+      "return_type": "float",
+      "lineno": 192
+    },
+    {
+      "name": "kernel_strength",
+      "signature": "kernel_strength(kernel, matrix, retmat=False)",
+      "docstring": "Calculate the signal strength of matrix according to the kernel.\n\nThe function computes the signal strength by averaging the values of the kernel\nwhere the mask is True, and dividing by the mean of th...",
+      "return_type": null,
+      "lineno": 212
+    }
+  ],
+  "pipeline.rule": [
+    {
+      "name": "safe_input",
+      "signature": "safe_input(file_pat, with_key=False)",
+      "docstring": "Expand file_pat to see if the input files exist, if not, skip.\nInput:\n    file_pat: file pattern\n    with_key: return outkeys or not, bool\n    kwargs: key word arguments, to expand file_pat with wildc...",
+      "return_type": null,
+      "lineno": 9
+    },
+    {
+      "name": "check_input",
+      "signature": "check_input(file_pat)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 42
+    },
+    {
+      "name": "check_key",
+      "signature": "check_key(file_pat, key_to_check)",
+      "docstring": "Check one key against other keys in the file pattern.\nFor exmaple, if key_to_check is \"sample\", pick sample\nthat has all files that are expanted from file_pat using\nother keys in kwargs.\nInput:\n    fi...",
+      "return_type": null,
+      "lineno": 59
+    },
+    {
+      "name": "check_exist",
+      "signature": "check_exist(path)",
+      "docstring": "Check if a file exists.\nTolerate the pd.NA, None, math.nan, np.nan",
+      "return_type": null,
+      "lineno": 96
+    },
+    {
+      "name": "bubble_flow_touched",
+      "signature": "bubble_flow_touched()",
+      "docstring": "This function returns a dictionary that maps the file paths pattern for\nall the files that are touched by the bubble_flow pipeline.",
+      "return_type": null,
+      "lineno": 116
+    },
+    {
+      "name": "symlink_files",
+      "signature": "symlink_files(sample, task_dirp, target_dir, ref, omit=None, filepats=None)",
+      "docstring": "Create symbolic links from a old task directory to a new task directory.\nUse this to partially run the pipeline.\nInput:\n    sample: the sample name\n    task_dirp: the old task directory\n    target_dir...",
+      "return_type": null,
+      "lineno": 201
+    },
+    {
+      "name": "unlink_files",
+      "signature": "unlink_files(sample, target_dir, ref, subset=None)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 256
+    },
+    {
+      "name": "json_reader",
+      "signature": "json_reader(file)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 270
+    }
+  ],
+  "plot.bar": [
+    {
+      "name": "plot_bar",
+      "signature": "plot_bar(df, val_col='value', group_by='group', color_map=None, x_sep=' ')",
+      "docstring": "Plot bar plot with point and error bar.\nInput:\n    df: DataFrame with columns [group_by, val_col]\n    val_col: column name for the value to plot\n    group_by: column name to group by\n    color_map: di...",
+      "return_type": null,
+      "lineno": 8
+    }
+  ],
+  "plot.general": [
+    {
+      "name": "plot_colorbar",
+      "signature": "plot_colorbar(vmin, vmax, colorscale='Viridis', title='TITLE')",
+      "docstring": "Plot colorbar.\nIt is achieved by invisible scatter plot with colorbar.\nInput:\n    vmin: min value\n    vmax: max value\n    colorscale: color scale\n    title: colorbar title\n    colorbar_kwargs: other a...",
+      "return_type": null,
+      "lineno": 74
+    },
+    {
+      "name": "plot_upsetplot",
+      "signature": "plot_upsetplot(sets, show_counts)",
+      "docstring": "Upset plot like in R.\nInput:\n    sets: dict of set\nOutput:\n    upset figure",
+      "return_type": null,
+      "lineno": 128
+    },
+    {
+      "name": "upset_plot_getter",
+      "signature": "upset_plot_getter(data, keys)",
+      "docstring": "Get aggregate data from upsetplot internal data format (boolen multiindex).\nInput:\n    data: dict of set\n    keys: set names to intersect\nOutput:\n    (count, set)",
+      "return_type": null,
+      "lineno": 137
+    },
+    {
+      "name": "scatter_cols",
+      "signature": "scatter_cols(data, points=None, trends=[])",
+      "docstring": "Multi-traces scatter plot.\nInput:\n    data: x as index, traces as cols\n    trend: plot lowess trends\n    point: plot scatter points\nReturn:\n    go.Figure",
+      "return_type": null,
+      "lineno": 241
+    },
+    {
+      "name": "plot_ols",
+      "signature": "plot_ols(data, x, y, title)",
+      "docstring": "Plot linear regression of dataframe",
+      "return_type": null,
+      "lineno": 281
+    },
+    {
+      "name": "plot_points",
+      "signature": "plot_points(array)",
+      "docstring": "Wrapping points (represent in numpy column arrays) to dataframe(treate x, y, z as features so in shape N * 3) and plot.\nInput:\n    array: column array\nOutput:\n    dataframe, x, y, z as columns",
+      "return_type": null,
+      "lineno": 316
+    },
+    {
+      "name": "get",
+      "signature": "get(self, trace_name=None)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 19
+    },
+    {
+      "name": "extend",
+      "signature": "extend(self, trace_names)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 24
+    }
+  ],
+  "plot.hic": [
+    {
+      "name": "plot_CM",
+      "signature": "plot_CM(cm, grid=True)",
+      "docstring": "Plot contact matrix.\nInput:\n    cm: pd.DataFrame; contact matrix.\n    grid: whether to add chrom boundaries.",
+      "return_type": null,
+      "lineno": 196
+    },
+    {
+      "name": "plot_cool",
+      "signature": "plot_cool(coolp, title='', region='chr1', vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False)",
+      "docstring": "\"\nPlot heatmap of single cooler file.\nInput:\n    coolp: path to cooler file.\n    title: name of the plot.\n    region: genome region to plot.\n        \"chr1\" or \"chr1:1000000-2000000\" or [\"chr1:1,000,00...",
+      "return_type": null,
+      "lineno": 235
+    },
+    {
+      "name": "plot_cools",
+      "signature": "plot_cools(cools, regions, ncols=3, subplot_titles=None, sub_height=100, sub_width=100, margin=None)",
+      "docstring": "Plot multiple regions in multiple cooler files.\nIterate over regions first, then coolers. Will skip if either is None.\nInput:\n    cools: list of cooler file paths.\n    regions: list of genome regions ...",
+      "return_type": null,
+      "lineno": 293
+    },
+    {
+      "name": "merge_track_data",
+      "signature": "merge_track_data(clr, track_file, region)",
+      "docstring": "Pick out the track data that is in the region.\nInput:\n    clr: cooler obj.\n    track_file: path to track file\n    region: genome region to plot.\nOutput:\n    pd.Series; index: start of each bin, value:...",
+      "return_type": null,
+      "lineno": 359
+    },
+    {
+      "name": "plot_cool_track",
+      "signature": "plot_cool_track(coolp, track_files, region, title, balance=False)",
+      "docstring": "Plot cooler with additional track files.\nInput:\n    coolp: path to cooler file.\n    track_files: dict; key: track name, value: (path to track file, column name in track file)\n    region: genome region...",
+      "return_type": null,
+      "lineno": 380
+    },
+    {
+      "name": "plot_compare_cool_track_hor",
+      "signature": "plot_compare_cool_track_hor(coolp1, coolp2, IS_file1, IS_file2, eigs_file1, eigs_file2, subplot_titles, region, title, balance=False, winSize=500000)",
+      "docstring": "Plot cooler with additional track files",
+      "return_type": null,
+      "lineno": 441
+    },
+    {
+      "name": "plot_compare_cool_pixels",
+      "signature": "plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels, subplot_titles=['A', 'B'])",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 574
+    },
+    {
+      "name": "add_eig_track",
+      "signature": "add_eig_track(fig, orig_data, eig_col=None, y_kwargs={}, row=None, col=None)",
+      "docstring": "Add eigen vector track to a plotly figure or subplot.\nInput:\n    fig: figure to add trace.\n    orig_data: dataframe or series; [chrom, start, eig_col]\n    eig_col: column name of eigen vector.\n    y_k...",
+      "return_type": null,
+      "lineno": 638
+    },
+    {
+      "name": "plot_tiling_compartment",
+      "signature": "plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=True, balance=False, cmap='RdBu', donorm=False, Enames=['E1', 'E1'], eig_y_kwargs={})",
+      "docstring": "Plot 2 coolers in a upper-lower manner with compartment track data.\nFirst cooler will be on the lower triangle, second cooler will be on the upper triangle.\nWill ignore diagonal because their values c...",
+      "return_type": null,
+      "lineno": 696
+    },
+    {
+      "name": "plot_compartment",
+      "signature": "plot_compartment(coolp, eigs_file, region, title, eigen_col='E1', strip=False, balance=False, mask_eig_na=True, give_mat=False, quant=0.005, minmax='min', cmap='RdBu_r', eq_hist=False)",
+      "docstring": "Plot distance-normalized Hi-C correlation matrix with compartment track.\nInput:\n    coolp: path to cooler file.\n    eigs_file: path to eigen vector file.\n    region: genome region to plot.\n    title: ...",
+      "return_type": null,
+      "lineno": 874
+    },
+    {
+      "name": "plot_saddle_mpl",
+      "signature": "plot_saddle_mpl(file, title, vmin=10 ** (-1), vmax=10 ** 1)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 1088
+    },
+    {
+      "name": "plot_saddle",
+      "signature": "plot_saddle(file, title, vmin=10 ** (-1), vmax=10 ** 1, strength_square_size=10)",
+      "docstring": "Plot saddle plot.\nInput:\n    file: path to saddle file, usually ends with .saddledump.npz.\n    title: title of the plot.\n    vmin: min z value.\n    vmax: max z value.\n    strength_square_size: which s...",
+      "return_type": null,
+      "lineno": 1102
+    },
+    {
+      "name": "plot_IS",
+      "signature": "plot_IS(IS_file)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 1176
+    },
+    {
+      "name": "pileup_IS",
+      "signature": "pileup_IS(coolp, IS, genome='hg19', flank=800000)",
+      "docstring": "Pileup TAD boundaries from a cool file.\nInput:\n    coolp: cooler path(adding resolutions when mcool)\n    IS: Insulation score; pd.Dataframe\n    genome: reference genome. eg. hg19\n    flank: flank size...",
+      "return_type": null,
+      "lineno": 1244
+    },
+    {
+      "name": "format_ticks",
+      "signature": "format_ticks(ax, x=True, y=True, rotate=True)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 1272
+    },
+    {
+      "name": "plot_IS",
+      "signature": "plot_IS(clr, insulation_table, title, resolution=500000.0, window=1500000.0, balance=True, chrom='chr2', start=10500000, steps=90, vmin=0.001, vmax=0.1)",
+      "docstring": "Plot insulation score together with Hi-C matrix strata.\nInput:\n    clr: cooler obj.\n    insulation_table: insulation score table.",
+      "return_type": null,
+      "lineno": 1281
+    },
+    {
+      "name": "plot_cdps",
+      "signature": "plot_cdps(adata, index_col='velocity_pseudotime', reverse=False)",
+      "docstring": "Input:\n    index_col: wich adata.obs col to sort sample by\n    reverse: whether to reverse the order of the sample",
+      "return_type": null,
+      "lineno": 1351
+    },
+    {
+      "name": "plot_compartment_strength",
+      "signature": "plot_compartment_strength(adata, index_col='velocity_pseudotime')",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 1417
+    }
+  ],
+  "plot.pca": [
+    {
+      "name": "plot_eigenfaces",
+      "signature": "plot_eigenfaces(pca, rows=2, cols=2, fsize=16)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 5
+    },
+    {
+      "name": "plot_elbow",
+      "signature": "plot_elbow(pca)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 25
+    }
+  ],
+  "plot.plot": [
+    {
+      "name": "cdp_scatter",
+      "signature": "cdp_scatter(dat: pd.DataFrame)",
+      "docstring": "No documentation available.",
+      "return_type": "go.Figure",
+      "lineno": 15
+    },
+    {
+      "name": "plot_cdps_mark",
+      "signature": "plot_cdps_mark(cdps, orig_annote, sample_col='sample_name', order_col='index_order', group_col='group', color_map=None, hline=False)",
+      "docstring": "# plot cdps heatmap with group marker in different color\n# Input:\n#    cdps: contact decay profile, row for sample\n#    cell_annote: must contain group and ordering col\n#    sample_col: name of sample...",
+      "return_type": null,
+      "lineno": 29
+    },
+    {
+      "name": "add_cdps",
+      "signature": "add_cdps(fig, row, col, adata, sorted_obs)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 124
+    },
+    {
+      "name": "add_compartment_strength",
+      "signature": "add_compartment_strength(fig, row, col, adata, sorted_obs)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 138
+    },
+    {
+      "name": "add_pmUMI",
+      "signature": "add_pmUMI(fig, row, col, adata, sorted_obs)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 147
+    },
+    {
+      "name": "add_contact_number",
+      "signature": "add_contact_number(fig, row, col, adata, sorted_obs)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 170
+    },
+    {
+      "name": "add_intra",
+      "signature": "add_intra(fig, row, col, adata, sorted_obs)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 186
+    },
+    {
+      "name": "add_rs",
+      "signature": "add_rs(fig, row, col, adata, sorted_obs)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 202
+    },
+    {
+      "name": "add_schicluster_res",
+      "signature": "add_schicluster_res(fig, row, col, adata, sorted_obs)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 217
+    },
+    {
+      "name": "add_gene_heatmap",
+      "signature": "add_gene_heatmap(fig, row, col, adata, sorted_obs, gene_order)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 232
+    },
+    {
+      "name": "add_rs_config",
+      "signature": "add_rs_config(fig, row, col, adata, sorted_obs)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 246
+    },
+    {
+      "name": "add_compartment_strength_config",
+      "signature": "add_compartment_strength_config(fig, row, col, adata, sorted_obs)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 255
+    },
+    {
+      "name": "add_schicluster_res_config",
+      "signature": "add_schicluster_res_config(fig, row, col, adata, sorted_obs)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 264
+    },
+    {
+      "name": "time_attr",
+      "signature": "time_attr(adata, order_col='velocity_pseudotime', using=None, ascending=True, gene_order=None)",
+      "docstring": "Plot the time attributes of the cells.\nInput:\n    adata: AnnData object\n    order_col: column in adata.obs to sort cells\n    using: name of attrs to plot; list; cdps, rs, gene, pmUMI, cs\n    ascending...",
+      "return_type": null,
+      "lineno": 272
+    },
+    {
+      "name": "gen_gap",
+      "signature": "gen_gap(features: list, number: int, k: int)",
+      "docstring": "Input:\n    index: index of features\n    m: number of gaps\n    k: width of gaps\nOutput:\n    iterator of NA dataframes",
+      "return_type": null,
+      "lineno": 332
+    }
+  ],
+  "plot.render": [
+    {
+      "name": "search_point",
+      "signature": "search_point(p, points, atol=0.001)",
+      "docstring": "Iterate over points and check if p is close to any point in points.\nInput:\n    p: flattened np.ndarray\n    points: dict of flattened np.ndarray\n    atol: float, tolerance for checking if two points ar...",
+      "return_type": null,
+      "lineno": 22
+    },
+    {
+      "name": "dump_chimera_links",
+      "signature": "dump_chimera_links(links, outfile, rgb: str='255,255,255', radius=0.1, atol=0.001)",
+      "docstring": "Dump links to Chimera marker file (.cmm file).\nInput:\n    links: list of tuple of np.ndarray of shape (3,)\n        [(corner1, corner2), ...]\n    outfile: str, output file name\n    rgb: str, color in r...",
+      "return_type": null,
+      "lineno": 38
+    },
+    {
+      "name": "get_rotation_commands",
+      "signature": "get_rotation_commands(target_vector, retvec=False)",
+      "docstring": "Calculate PyMOL turn commands to rotate the camera to face a given direction.\n\nInput:\n    target_vector: A list or numpy array representing the unit vector towards which the camera should be oriented....",
+      "return_type": null,
+      "lineno": 99
+    },
+    {
+      "name": "apply_rotation_commands",
+      "signature": "apply_rotation_commands(df, commands_str)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 166
+    },
+    {
+      "name": "surface_territory_pymol",
+      "signature": "surface_territory_pymol(_3dg, png, tmpdir=None, conda='pymol', dcmap='dip_c', turn_cmd='', cif_name=None)",
+      "docstring": "Render surface, color by each chromosome.\nInput:\n    _3dg: _3dg file path\n    png: output png file path\n    dcmap: discrete color map.\n        dip_c: each chromosome has a different rainbow color\n    ...",
+      "return_type": null,
+      "lineno": 288
+    },
+    {
+      "name": "clip_territory_pymol",
+      "signature": "clip_territory_pymol(_3dg, png, clip=0, slab=2, tmpdir=None, conda='pymol', turn_cmd='')",
+      "docstring": "Render clip view, color by each chromosome.\nInput:\n    _3dg: _3dg file path\n    png: output png file path\n    clip: clip position 0 for middle, negative for more back, positive for more front\n    tmpd...",
+      "return_type": null,
+      "lineno": 346
+    },
+    {
+      "name": "surface_b_pymol",
+      "signature": "surface_b_pymol(_3dg, b_factor, png, cmap='magenta green, all, 0.005, 0.02', tmpdir=None, conda='pymol', turn_cmd='')",
+      "docstring": "Render surface, color by b factor.\nInput:\n    _3dg: _3dg file path\n    b_factor: a 3 column tsv (chrom pos b_factor) without header\n    png: output png file path\n    cmap: pymol color map\n    tmpdir: ...",
+      "return_type": null,
+      "lineno": 369
+    },
+    {
+      "name": "clip_b_pymol",
+      "signature": "clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap='magenta green, all, 0.005, 0.02', turn_cmd='', tmpdir=None, conda='pymol')",
+      "docstring": "Render clip view, color by b factor.\nInput:\n    _3dg: _3dg file path\n    b_factor: a 3 column tsv (chrom pos b_factor) without header\n    png: output png file path\n    clip: clip position 0 for middle...",
+      "return_type": null,
+      "lineno": 389
+    },
+    {
+      "name": "highlight_surface_b_pymol",
+      "signature": "highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap='magenta green, chain {}, 0.005, 0.02', turn_cmd='', tmpdir=None, conda='pymol')",
+      "docstring": "Render surface, color by b factor, highlight only one chain, other chains are transparent.\nInput:\n    _3dg: _3dg file path\n    b_factor: a 3 column tsv (chrom pos b_factor) without header\n    chain: c...",
+      "return_type": null,
+      "lineno": 411
+    },
+    {
+      "name": "clip_single_territory_pymol",
+      "signature": "clip_single_territory_pymol(_3dg_file, png, target_chroms=['chrX', 'chrY'], clip=0, slab=2, tmpdir=None, conda=None, turn_cmd='')",
+      "docstring": "Render clip view, only color target chromosomes.\nInput:\n    _3dg_file: _3dg file path\n    png: output png file path\n    target_chroms: chromosomes to color; list\n    clip: clip position 0 for middle, ...",
+      "return_type": null,
+      "lineno": 437
+    },
+    {
+      "name": "centelo_relpos",
+      "signature": "centelo_relpos(positions_2col, genome, dupref=False)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 477
+    },
+    {
+      "name": "surface_centelo_pymol",
+      "signature": "surface_centelo_pymol(_3dg_file, png, genome='mm10', tmpdir=None, cif_name=None, dupref=False, conda='pymol', turn_cmd='')",
+      "docstring": "Render clip view, color centromere-telomere.\nInput:\n    _3dg_file: _3dg file path\n    png: output png file path\n    genome: genome name, used to fetch centromere position\n    tmpdir: directory to save...",
+      "return_type": null,
+      "lineno": 506
+    },
+    {
+      "name": "clip_centelo_pymol",
+      "signature": "clip_centelo_pymol(_3dg_file, png, genome='mm10', clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda='pymol', turn_cmd='')",
+      "docstring": "Render clip view, color centromere-telomere.\nInput:\n    _3dg_file: _3dg file path\n    png: output png file path\n    genome: genome name, used to fetch centromere position\n    tmpdir: directory to save...",
+      "return_type": null,
+      "lineno": 540
+    },
+    {
+      "name": "single_centelo_relpos",
+      "signature": "single_centelo_relpos(positions_2col, genome, target_chroms, dupref=False)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 577
+    },
+    {
+      "name": "clip_single_centelo_pymol",
+      "signature": "clip_single_centelo_pymol(_3dg_file, png, target_chroms=['chrX', 'chrY'], genome='mm10', clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda='pymol', turn_cmd='')",
+      "docstring": "Render clip view, color centromere-telomere of target chromosomes. Other chromosomes are set to 0.5/white.\nInput:\n    _3dg_file: _3dg file path\n    png: output png file path\n    target_chroms: chromos...",
+      "return_type": null,
+      "lineno": 614
+    },
+    {
+      "name": "pymol_primary_views",
+      "signature": "pymol_primary_views(_3dg_file, view='lr', targets=None)",
+      "docstring": "Rotate a 3dg structure relative to primary axis.\nInput:\n    _3dg_file: 3dg file of a single-cell structure\n    view: view to look at in pymol, [\"lr\", \"ht\", \"dv\"], means looking towards             lef...",
+      "return_type": null,
+      "lineno": 660
+    },
+    {
+      "name": "render_surface_primary_view",
+      "signature": "render_surface_primary_view(_3dg_file, outpng, tmpdir, view='lr', targets=None)",
+      "docstring": "Rendering primary views of a single-cell structure with pymol.\nDesigned for a none-glomerulus nucleus.\nInput:\n    _3dg_file: 3dg file of a single-cell structure\n    outpng: output png file\n    tmpdir:...",
+      "return_type": null,
+      "lineno": 714
+    },
+    {
+      "name": "render_surface_centelo_primary_view",
+      "signature": "render_surface_centelo_primary_view(_3dg_file, outpng, genome, tmpdir, view='lr', targets=None)",
+      "docstring": "Color primary views of a single-cell structure with relative dist to centromeres and telomeres.\nDesigned for a none-glomerulus nucleus.\nInput:\n    _3dg_file: 3dg file of a single-cell structure\n    ou...",
+      "return_type": null,
+      "lineno": 735
+    },
+    {
+      "name": "render_clip_primary_view",
+      "signature": "render_clip_primary_view(_3dg_file, outpng, view='lr', targets=None)",
+      "docstring": "Rendering clip primary views of a single-cell structure with pymol, colored by territory.\nDesigned for a none-glomerulus nucleus.\nInput:\n    _3dg_file: 3dg file of a single-cell structure\n    outpng: ...",
+      "return_type": null,
+      "lineno": 778
+    },
+    {
+      "name": "render_clip_b_primary_view",
+      "signature": "render_clip_b_primary_view(_3dg_file, b_factor, outpng, view='lr', targets=None)",
+      "docstring": "Rendering clip primary views of a single-cell structure with pymol, colored by territory.\nDesigned for a none-glomerulus nucleus.\nInput:\n    _3dg_file: 3dg file of a single-cell structure\n    b_factor...",
+      "return_type": null,
+      "lineno": 797
+    },
+    {
+      "name": "render_clip_centelo_primary_view",
+      "signature": "render_clip_centelo_primary_view(_3dg_file, outpng, genome, clip, slab, tmpdir, view='lr', targets=None)",
+      "docstring": "Color primary views of a single-cell structure with relative dist to centromeres and telomeres.\nDesigned for a none-glomerulus nucleus.\nInput:\n    _3dg_file: 3dg file of a single-cell structure\n    ou...",
+      "return_type": null,
+      "lineno": 818
+    },
+    {
+      "name": "parse_commands",
+      "signature": "parse_commands(commands_str)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 167
+    },
+    {
+      "name": "get_rotation_matrix",
+      "signature": "get_rotation_matrix(axis, theta)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 189
+    },
+    {
+      "name": "apply_rotation",
+      "signature": "apply_rotation(df, R)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 207
+    },
+    {
+      "name": "gen_cif",
+      "signature": "gen_cif(self, _3dg)",
+      "docstring": "Rewrite the intermediate cif file with the given kwargs.",
+      "return_type": null,
+      "lineno": 258
+    },
+    {
+      "name": "gen_script",
+      "signature": "gen_script(self)",
+      "docstring": "Rewrite the intermediate pymol script with the given kwargs.",
+      "return_type": null,
+      "lineno": 264
+    },
+    {
+      "name": "render",
+      "signature": "render(self)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 281
+    }
+  ],
+  "plot.rna": [
+    {
+      "name": "plot_gene_module_mean",
+      "signature": "plot_gene_module_mean(adata, gene_sets, ps_col, layer='not_known', trends=False, points=True)",
+      "docstring": "Plot mean expression of module along trajectory. \nInput:\n    adata: anndata object, or dataframe\n    gene_sets: dict, module names as keys, list of module gene names as values\n    ps_col: pseudotime c...",
+      "return_type": null,
+      "lineno": 57
+    },
+    {
+      "name": "plot_gene_trend",
+      "signature": "plot_gene_trend(adata, gene, order_col='velocity_pseudotime', additional=None)",
+      "docstring": "Ploting expression trends along time.\nMust have pSmooth in uns; normalized and log1p X counts",
+      "return_type": null,
+      "lineno": 69
+    },
+    {
+      "name": "plot_gene_trends",
+      "signature": "plot_gene_trends(data, additional, genes, order_col, ncols)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 121
+    }
+  ],
+  "plot.scanpy": [
+    {
+      "name": "plot_pca",
+      "signature": "plot_pca(adata, color: str, PCs: Optional[Union[List[int], List[List[int]]]]=None, ncols: int=2)",
+      "docstring": "Plot PCA results from AnnData object with flexible subplot configurations.\n\nThis function creates scatter plots of PCA components from single-cell data.\nIt can generate single plots or multiple subplo...",
+      "return_type": null,
+      "lineno": 14
+    },
+    {
+      "name": "plot_elbow",
+      "signature": "plot_elbow(adata)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 150
+    },
+    {
+      "name": "plot_umap",
+      "signature": "plot_umap(adata, color, key='X_umap')",
+      "docstring": "Plot scanpy umap using plotly.",
+      "return_type": null,
+      "lineno": 159
+    },
+    {
+      "name": "plot_tsne",
+      "signature": "plot_tsne(adata, color)",
+      "docstring": "Plot scanpy tsne using plotly.",
+      "return_type": null,
+      "lineno": 177
+    },
+    {
+      "name": "plot_diffmap",
+      "signature": "plot_diffmap(adata, color, title)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 193
+    }
+  ],
+  "plot.scatter": [
+    {
+      "name": "smooth_with_ci",
+      "signature": "smooth_with_ci(df, x, y, frac=0.3, ci=0.95)",
+      "docstring": "Apply LOESS smoothing to time-series data and estimate confidence intervals.\n\nParameters\n----------\nx : array-like\n    Independent variable (e.g., time points).\ny : array-like\n    Dependent variable (...",
+      "return_type": null,
+      "lineno": 11
+    },
+    {
+      "name": "rgb_grayer",
+      "signature": "rgb_grayer(color, white_ratio=0.7, opacity=0.3)",
+      "docstring": "Convert a color to a lighter, more transparent version by blending with white\nand reducing opacity.\n\nParameters:\n    color: A list of three integers representing RGB values (0-255).\n\nReturns:\n    A st...",
+      "return_type": null,
+      "lineno": 69
+    },
+    {
+      "name": "add_error_band",
+      "signature": "add_error_band(fig, df, orig_color=px.colors.qualitative.Plotly[0], debug=False)",
+      "docstring": "Input:\n    df: must have x, upper, lower cols\n    orig_color: color of original line, will use a grayer version",
+      "return_type": null,
+      "lineno": 93
+    },
+    {
+      "name": "lines",
+      "signature": "lines(df, x, y, color_discrete_map=None, with_error=False, frac=0.3, ci=0.95, debug=False, gray_bg=False)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 125
+    },
+    {
+      "name": "line",
+      "signature": "line(df, x, y, color=None, color_discrete_map=None, with_error=False, frac=0.3, ci=0.95, debug=False, gray_bg=False, hover_data=None, hover_format=None)",
+      "docstring": "Plot a single trend line with optional error bands and point coloring.\n\nCreates a line plot for a single variable with optional confidence intervals.\nPoints can be colored according to a specified col...",
+      "return_type": null,
+      "lineno": 179
+    },
+    {
+      "name": "build_hover_template",
+      "signature": "build_hover_template(group_name=None)",
+      "docstring": "Build hover template based on available data.",
+      "return_type": null,
+      "lineno": 229
+    }
+  ],
+  "plot.tech": [
+    {
+      "name": "tech_box",
+      "signature": "tech_box(annote, grouping='condition', features=['defaults'], ncols=3, size=200, color_discrete_sequence=color_discrete_sequence, use_label=True, labels: dict=None)",
+      "docstring": "DNA and RNA tech metrics.\nInput:\n    annote: sample * feature dataframe\n    grouping: col name to group by\n        use all if grouping is None\n    features: features to be plot. [\"defaults\", ...]\n    ...",
+      "return_type": "go.Figure",
+      "lineno": 9
+    }
+  ],
+  "plot.track": [
+    {
+      "name": "sort_index_chrom",
+      "signature": "sort_index_chrom(df, chromosomes)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 8
+    },
+    {
+      "name": "plot_genome_scatter",
+      "signature": "plot_genome_scatter(genome_data, chromosomes=None, value_cols=None, shift_unit=0.05, shift_threshold=100, chorm_label_shift=0.05, y_extra_expansion=0.1, range_y=None)",
+      "docstring": "Scatter genome wide data. Sepaarate chromosomes by vertical lines and add chromosome names.\nTODO: add real positions, now only add 1,2,3,4... as x axis.\nInput:\n    genome_data: pd.DataFrame, index is ...",
+      "return_type": null,
+      "lineno": 26
+    },
+    {
+      "name": "plot_genome_heatmap",
+      "signature": "plot_genome_heatmap(genome_data, chromosomes=None)",
+      "docstring": "Heatmap genome wide data. Sepaarate chromosomes by vertical lines and add chromosome names.\nInput:\n    genome_data: pd.DataFrame, index is multiindex with level 0 as chromosome names\n        columns a...",
+      "return_type": null,
+      "lineno": 77
+    },
+    {
+      "name": "add_chrom_grid",
+      "signature": "add_chrom_grid(df, fig, fig_type='scatter', x_extra_expansion=0, y_extra_expansion=0.1, value_cols=None, range_y=None)",
+      "docstring": "Add chromosome grid lines to an existing genome track figure.\nInput:\n    df: pd.DataFrame, the genome data used to plot the figure. Index is multiindex with level 0 as chromosome names \n        and le...",
+      "return_type": null,
+      "lineno": 111
+    }
+  ],
+  "plot.utils": [
+    {
+      "name": "clip_axis_range",
+      "signature": "clip_axis_range(fig, x_lower=True, x_upper=True, y_lower=False, y_upper=False, main_fig=None, row=None, col=None)",
+      "docstring": "Clip plotly axis range to exactly match data.\n\nx- and y-axis, lower and upper bound are both free to choose.\nIterates through data traces contained in figure, extracts min and max, and sets the respec...",
+      "return_type": null,
+      "lineno": 15
+    },
+    {
+      "name": "filling_l2r_plotly",
+      "signature": "filling_l2r_plotly(rows, cols, features)",
+      "docstring": "Helper to iterate within row-cols.\nPlotly_flavor, starts with 1.\nReturn:\n    row, col, index, feature",
+      "return_type": null,
+      "lineno": 114
+    },
+    {
+      "name": "filling_l2r_mpl",
+      "signature": "filling_l2r_mpl(rows, cols, features)",
+      "docstring": "Helper to iterate within row-cols. \nMpl_flavor, starts with 0.",
+      "return_type": null,
+      "lineno": 130
+    },
+    {
+      "name": "list2colorlist",
+      "signature": "list2colorlist(celltypes)",
+      "docstring": "Tranform a data list to a color list, ready for all color argument.\nTODO:\n    custom mapper;\n    custom color sequence",
+      "return_type": null,
+      "lineno": 143
+    },
+    {
+      "name": "add_cat_marker",
+      "signature": "add_cat_marker(fig, data, catcol='cell_type', ypos=1)",
+      "docstring": "Adding colored scatter trace to figure to mark x categories.\nInput:\n    fig: plotly figure\n    data: dataframe storing category info, must have same x index with fig data\n    catcol: category column n...",
+      "return_type": null,
+      "lineno": 160
+    },
+    {
+      "name": "tiling_mat",
+      "signature": "tiling_mat(A_orig, Ref_orig, adjust=True, ignore_diags=True)",
+      "docstring": "Tiling 2 matrix. Rising light to the lighter one.\nInput:\n    A: matrix to show on upper right.\n    Ref: matrix to show on lower left.\n    adjust: adjust the color scale to the stronger one. Note: mayb...",
+      "return_type": null,
+      "lineno": 187
+    },
+    {
+      "name": "sub_genome_mat",
+      "signature": "sub_genome_mat(mat, keep_regions)",
+      "docstring": "Keep only the regions in the keep_regions list.\nInput:\n    mat: index and columns are [chrom, start]\n    keep_regions: list of regions to keep\n        regions are tuples of (start, end)\nOutput:\n    ma...",
+      "return_type": null,
+      "lineno": 216
+    },
+    {
+      "name": "pcolormesh_45deg",
+      "signature": "pcolormesh_45deg(ax, matrix_c, start=0, resolution=1)",
+      "docstring": "Helper to plot a matrix with 45 degree angle.",
+      "return_type": null,
+      "lineno": 241
+    },
+    {
+      "name": "mat_coarsen",
+      "signature": "mat_coarsen(mat, coarseness)",
+      "docstring": "# coarsen matrix to lower resolution\n# Input:\n#    mat: matrix\n# Output:\n#    matrix",
+      "return_type": null,
+      "lineno": 257
+    },
+    {
+      "name": "spread_text",
+      "signature": "spread_text(text_list, track_width=5, fold=2)",
+      "docstring": "Spread text list to a several tracks.\nInput:\n    text_list: list of text to spread\n    track_width: width of each track\n    fold: number of tracks\nOutput:\n    list of position shift for each text\nTODO...",
+      "return_type": null,
+      "lineno": 279
+    },
+    {
+      "name": "plot_color_sequence",
+      "signature": "plot_color_sequence(colors, output_file=None)",
+      "docstring": "Plot a color sequence as a 1-row heatmap.\n\nArgs:\n    colors (List[str] or List[tuple]): List of colors in hex or RGB format.\n    output_file (str, optional): Path to save the plot as an image. If None...",
+      "return_type": null,
+      "lineno": 299
+    },
+    {
+      "name": "hex_to_rgb",
+      "signature": "hex_to_rgb(hex_color)",
+      "docstring": "\u5c06\u5341\u516d\u8fdb\u5236\u989c\u8272\u5b57\u7b26\u4e32\u8f6c\u6362\u4e3a RGB \u683c\u5f0f\u3002\n\n\u53c2\u6570:\n    hex_color (str): \u5341\u516d\u8fdb\u5236\u989c\u8272\u5b57\u7b26\u4e32\uff0c\u4f8b\u5982 \"#4C78A8\"\n\n\u8fd4\u56de:\n    tuple: \u4e09\u5143\u7ec4 (r, g, b)\uff0c\u5176\u4e2d r, g, b \u5206\u522b\u4e3a\u7ea2\u3001\u7eff\u3001\u84dd\u901a\u9053\u7684\u503c (0-255)",
+      "return_type": null,
+      "lineno": 335
+    },
+    {
+      "name": "rgb_to_hex",
+      "signature": "rgb_to_hex(rgb_color)",
+      "docstring": "\u5c06 RGB \u683c\u5f0f\u8f6c\u6362\u4e3a\u5341\u516d\u8fdb\u5236\u989c\u8272\u5b57\u7b26\u4e32\u3002\n\n\u53c2\u6570:\n    r (int): \u7ea2\u8272\u901a\u9053\u7684\u503c (0-255)\n    g (int): \u7eff\u8272\u901a\u9053\u7684\u503c (0-255)\n    b (int): \u84dd\u8272\u901a\u9053\u7684\u503c (0-255)\n\n\u8fd4\u56de:\n    str: \u5341\u516d\u8fdb\u5236\u989c\u8272\u5b57\u7b26\u4e32\uff0c\u4f8b\u5982 \"#4C78A8\"",
+      "return_type": null,
+      "lineno": 349
+    },
+    {
+      "name": "hex_split",
+      "signature": "hex_split(hex_color)",
+      "docstring": "\u89e3\u6790\u5341\u516d\u8fdb\u5236\u989c\u8272\u4ee3\u7801\uff0c\u5e76\u8fd4\u56de R\u3001G\u3001B \u548c A \u5206\u91cf\u3002\n\n:param hex_color: \u5341\u516d\u8fdb\u5236\u989c\u8272\u4ee3\u7801\uff0c\u53ef\u4ee5\u662f\u516d\u4f4d (#RRGGBB) \u6216\u516b\u4f4d (#RRGGBBAA)\n:return: \u4e00\u4e2a\u5143\u7ec4 (R, G, B, A)\uff0c\u5176\u4e2d A \u662f\u53ef\u9009\u7684\u900f\u660e\u5ea6\u5206\u91cf",
+      "return_type": null,
+      "lineno": 369
+    },
+    {
+      "name": "compute_hue_diff",
+      "signature": "compute_hue_diff(h1_deg, h2_deg)",
+      "docstring": "\u8ba1\u7b97\u4e24\u4e2a\u8272\u76f8\u4e4b\u95f4\u7684\u6700\u77ed\u5dee\u503c\uff08\u8003\u8651\u73af\u5f62\u7279\u6027\uff09",
+      "return_type": null,
+      "lineno": 397
+    },
+    {
+      "name": "interpolate_color_rgb_linear",
+      "signature": "interpolate_color_rgb_linear(orig, target, n, cap=1)",
+      "docstring": "Interpolate between two colors in RGB space.\nInput:\n    orig: original color (r, g, b)\n    target: target color (r, g, b)\n    n: number of colors to generate\n    cap: 0<cap<1, ensure the last interpol...",
+      "return_type": null,
+      "lineno": 408
+    },
+    {
+      "name": "expand_color_sequence",
+      "signature": "expand_color_sequence(colors, n, cap=0.75)",
+      "docstring": "Expand color sequence by create n interpolated colors for each original color.\nThe created colors are \"whiter\" version of the original colors.\nGroup the original colors (orig_colors) in pairs, and wit...",
+      "return_type": null,
+      "lineno": 439
+    },
+    {
+      "name": "expand_colors",
+      "signature": "expand_colors(colors, n_interpolate=1)",
+      "docstring": "\u5728\u76f8\u90bb\u989c\u8272\u4e4b\u95f4\u63d2\u5165 n_interpolate \u4e2a\u65b0\u989c\u8272\uff0c\u4f7f\u989c\u8272\u8fc7\u6e21\u81ea\u7136\u3002\n\n\u53c2\u6570:\n    colors (List[tuple]): \u8f93\u5165\u989c\u8272\u5e8f\u5217\uff0c\u6bcf\u4e2a\u989c\u8272\u662f (r, g, b) \u7684 RGB \u5143\u7ec4\uff0c\u8303\u56f4 0~1\u3002\n    n_interpolate (int): \u6bcf\u5bf9\u989c\u8272\u4e4b\u95f4\u63d2\u5165\u7684\u65b0\u989c\u8272\u6570\u91cf\u3002\n\n\u8fd4\u56de:\n    List[tuple]: \u6269\u5c55\u540e\u7684\u989c\u8272\u5e8f\u5217\uff0c\u6bcf\u4e2a\u989c\u8272\u4e3a (r, g, b) \u7684\u6574\u6570...",
+      "return_type": null,
+      "lineno": 470
+    },
+    {
+      "name": "plotly_fig2array",
+      "signature": "plotly_fig2array(fig)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 540
+    },
+    {
+      "name": "get_fig_outprefix",
+      "signature": "get_fig_outprefix()",
+      "docstring": "Get the output prefix for the current figure.\nChange directory name and this will get the right prefix.\nFig1a -> output/Fig.1a_\nFig1Sb -> output/Extended_Data_Fig.1b_",
+      "return_type": "str",
+      "lineno": 550
+    }
+  ],
+  "pp": [
+    {
+      "name": "standard_scaler",
+      "signature": "standard_scaler(df, axis=0, with_std=False)",
+      "docstring": "Return scaled dataframe.\nInput:\n    df: pandas dataframe\n    axis: 0 or 1. 0 to scale each col(col as feature), 1 to scale each row(row as feature).\n    with_std: whether doing std scaling. No consens...",
+      "return_type": null,
+      "lineno": 77
+    }
+  ],
+  "pseudotime.TI": [
+    {
+      "name": "angle_pseudotime",
+      "signature": "angle_pseudotime(root, embedding, direction=1, colname='pseudotime')",
+      "docstring": "Transform 2D embedding to pseudotime by naive circular ordering.\nInput:\n    root: set what sample/angle to 0.\n        str: name of sample, must be in data.index; float: angle value\n    df: 2d embeddin...",
+      "return_type": "pd.DataFrame",
+      "lineno": 33
+    }
+  ],
+  "pymol.color_centelo": [
+    {
+      "name": "fetch_cent_chromlen",
+      "signature": "fetch_cent_chromlen(genome)",
+      "docstring": "Get centromere regions and chromosome lengths.\nOnly work with mm10 for now.\nTODO: generalize to other genomes\nInput:\n    fp (str): path to the gap file\nReturns:\n    dict(chrom) of list[start, end, chr...",
+      "return_type": null,
+      "lineno": 17
+    },
+    {
+      "name": "color_centelo",
+      "signature": "color_centelo(obj, genome)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 71
+    }
+  ],
+  "pymol.glow": [
+    {
+      "name": "glow",
+      "signature": "glow(colors, selections)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 15
+    }
+  ],
+  "pymol.sele_cent": [
+    {
+      "name": "fetch_centromeres",
+      "signature": "fetch_centromeres(genome)",
+      "docstring": "Get centromere regions.\nOnly work with mm10 for now.\nTODO: generalize to other genomes\nInput:\n    fp (str): path to the gap file\nReturns:\n    dict(chrom) of list[start, end]",
+      "return_type": null,
+      "lineno": 27
+    },
+    {
+      "name": "sele_cent",
+      "signature": "sele_cent(obj, genome, flank=1)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 62
+    }
+  ],
+  "pymol.sele_telo": [
+    {
+      "name": "fetch_telomeres",
+      "signature": "fetch_telomeres(genome)",
+      "docstring": "Get centromere regions.\nReturns:\n    dict(chrom) of list[left centromere, right centromere] of list[start, end]",
+      "return_type": null,
+      "lineno": 27
+    },
+    {
+      "name": "sele_telo",
+      "signature": "sele_telo(obj, genome, flank=1)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 61
+    }
+  ],
+  "pymol.utils": [
+    {
+      "name": "get_ref_dir",
+      "signature": "get_ref_dir()",
+      "docstring": "Return a path to src's ref",
+      "return_type": null,
+      "lineno": 11
+    },
+    {
+      "name": "fetch_centromeres",
+      "signature": "fetch_centromeres(genome)",
+      "docstring": "Get centromere regions.\nOnly work with mm10 for now.\nTODO: generalize to other genomes\nInput:\n    fp (str): path to the gap file\nReturns:\n    dict(chrom) of list[start, end]",
+      "return_type": null,
+      "lineno": 18
+    }
+  ],
+  "scAB_embedding": [
+    {
+      "name": "get_bin_locus",
+      "signature": "get_bin_locus(pos, size)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 20
+    },
+    {
+      "name": "color2",
+      "signature": "color2(pairsf, color_file, bin_size, merge_haplotypes=True, dupref=False, dropXY=True, custom_color_file=False)",
+      "docstring": "Calculate 3D CpG density of each chromosome bin\nInput:\n    pairsf: 4DN's pairs file\n    color_file: reference linear CpG density\n    bin_size: binsize of color_file(and the result output)\n    merge_ha...",
+      "return_type": null,
+      "lineno": 22
+    },
+    {
+      "name": "s_color2",
+      "signature": "s_color2(_3dg: pd.DataFrame, color_file, min_dist=3, rank_norm=False, n_jobs=12, dupref=True)",
+      "docstring": "Calculate intermingling metrics for each particle in 3dg file.\nInput:\n    _3dg: dataframe, result of hic_basic.hicio parse_3dg\n    color_file: reference linear CpG density\n    min_dist: int, minimum d...",
+      "return_type": "pd.DataFrame",
+      "lineno": 112
+    },
+    {
+      "name": "stack_dict",
+      "signature": "stack_dict(ares, sample_name: None, col_thresh=0.9, row_thresh=0.9)",
+      "docstring": "# stack list of dict, drop bad rows and columns\n# first clean bad cols, then clean bad rows\n# Input:\n#    ares: list of dict\n#    sample_name: name list of samples\n#    col_thresh: [0,1] larger is str...",
+      "return_type": null,
+      "lineno": 226
+    },
+    {
+      "name": "fill_color",
+      "signature": "fill_color(data, color_file, grt_full=True)",
+      "docstring": "# Fill in NA using reference CpG value\n# This make sense because spacing CpG is highly correlated with Sequencing CpG\n# Input:\n#    grt_full: guarantee that output dataframe is NA free,\n#        this ...",
+      "return_type": null,
+      "lineno": 244
+    },
+    {
+      "name": "calc_color2",
+      "signature": "calc_color2(filesp, file_col, color_file, binsize, rank_norm=True, merge_haplotypes=True, dropXY=True, dupref=False, col_thresh=0.9, row_thresh=0.9, color_fill=True, threads=24)",
+      "docstring": "Input:\n    filesp: dataframe, must have file_col col\n    file_col: column in filesp that stores pairs file path\n    color_file: ref bed file that stores linear CpG density\n    binsize: binsize of colo...",
+      "return_type": null,
+      "lineno": 267
+    },
+    {
+      "name": "do_umap",
+      "signature": "do_umap(data, ndims=30)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 308
+    },
+    {
+      "name": "scAB_embedding",
+      "signature": "scAB_embedding(data, ndims=30, dorank=False)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 337
+    },
+    {
+      "name": "CpG_stat",
+      "signature": "CpG_stat(acc, x)",
+      "docstring": "Add value to CpG sum and neighbor count.\nInput:\n    acc: original stat, 2-tuple, (CpG_sum, n_neighbors)\n    x: input_line, (index, neighbor CpG value)\nOuput:\n    new_acc: updated stat\nNote: if nan, wi...",
+      "return_type": null,
+      "lineno": 186
+    }
+  ],
+  "scripts.downsra": [
+    {
+      "name": "newname",
+      "signature": "newname(url)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 23
+    }
+  ],
+  "scripts.rescue_jupyter": [
+    {
+      "name": "find_code",
+      "signature": "find_code(text)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 8
+    },
+    {
+      "name": "print_code",
+      "signature": "print_code(source)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 20
+    }
+  ],
+  "sequence": [
+    {
+      "name": "count_fastq_worker",
+      "signature": "count_fastq_worker(file_path, form='s')",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 13
+    },
+    {
+      "name": "parse_fastq_id",
+      "signature": "parse_fastq_id(line)",
+      "docstring": "Parse a FASTQ ID line into (prefix, end) tuple or None if invalid.\n\nArgs:\n    line (str): The FASTQ ID line (e.g., '@M06168:... 1:N:0:1' or '@E250109998L1C001R00300005452/1')\n    \nReturns:\n    tuple o...",
+      "return_type": null,
+      "lineno": 20
+    },
+    {
+      "name": "read_fastq_ids",
+      "signature": "read_fastq_ids(file_path)",
+      "docstring": "Read FASTQ file (supports gzipped) and return a dictionary of {prefix: end}.\n\nThis function correctly identifies ID lines by tracking the 4-line FASTQ structure.\n\nArgs:\n    file_path (str): Path to th...",
+      "return_type": null,
+      "lineno": 61
+    },
+    {
+      "name": "compare_fastq_pairs",
+      "signature": "compare_fastq_pairs(fq1_path, fq2_path, showstats=False)",
+      "docstring": "Compare paired-end FASTQ files and return statistics.\n\nArgs:\n    fq1_path (str): Path to FASTQ file 1 (R1)\n    fq2_path (str): Path to FASTQ file 2 (R2)\n    \nReturns:\n    dict: Statistics including:\n ...",
+      "return_type": null,
+      "lineno": 89
+    },
+    {
+      "name": "print_stats",
+      "signature": "print_stats(stats)",
+      "docstring": "Print comparison statistics in a human-readable format.",
+      "return_type": null,
+      "lineno": 138
+    },
+    {
+      "name": "count_CpG",
+      "signature": "count_CpG(bed_df: pd.DataFrame, fasta: str)",
+      "docstring": "Calculate CpG ratio for each bin in bed_df.\nInput:\n    bed_df: pd.DataFrame, bed file with columns chrom, start, end\n    fasta: str, path to the fasta file\nOutput:\n    pd.DataFrame, bed file with addi...",
+      "return_type": "pd.DataFrame",
+      "lineno": 147
+    },
+    {
+      "name": "search_primers",
+      "signature": "search_primers(fq_fp, primers, sample_n=None, sample_r=None, seed=None, keep_hits=0)",
+      "docstring": "Search primers in fastq file and return distribution of primer start positions.\nWill search forward, reverse, complement and reverse complement.\n\nInput:\n    fq_fp: str, fastq file path\n    primers: li...",
+      "return_type": null,
+      "lineno": 181
+    },
+    {
+      "name": "plot_search_primers",
+      "signature": "plot_search_primers(result, output_file=None)",
+      "docstring": "Visualize the primer search result using bar plots with 4 subplots.\n\nArgs:\n    result (pd.DataFrame): Primer search result with columns for each form.\n    output_file (str, optional): Path to save the...",
+      "return_type": null,
+      "lineno": 292
+    },
+    {
+      "name": "add_suffix_to_fastq",
+      "signature": "add_suffix_to_fastq(input_file: str, output_file: str, skip_incomplete=True)",
+      "docstring": "Process a FASTQ file by appending \"/1\" or \"/2\" (MGI/DNBSEQ flavor) to read IDs if not already present (illumina_flavor).\n\nFor Illumina reads, the prefix of the read ID is determined according to the c...",
+      "return_type": "None",
+      "lineno": 342
+    },
+    {
+      "name": "extract_first_n_reads",
+      "signature": "extract_first_n_reads(input_file: str, output_file: str, n: int)",
+      "docstring": "Extract the first N reads from a FASTQ file.\n\nReads from the input FASTQ file and writes the first N reads to the output file.\nThe compression format of the output matches the input (compressed if inp...",
+      "return_type": "None",
+      "lineno": 425
+    },
+    {
+      "name": "count_cg",
+      "signature": "count_cg(seq)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 166
+    }
+  ],
+  "shuffle": [
+    {
+      "name": "get_shape",
+      "signature": "get_shape(nested_list)",
+      "docstring": "Get shape of a nested list with any depth",
+      "return_type": null,
+      "lineno": 2
+    },
+    {
+      "name": "random_group",
+      "signature": "random_group(group, size_of_each_group, N)",
+      "docstring": "Random sample each group N times.\nInput:\n    group: list of elements\n    size_of_each_group: size of each group selected\n    N: number of groups\nOutput:\n    list of random groups",
+      "return_type": null,
+      "lineno": 10
+    },
+    {
+      "name": "exchange_group",
+      "signature": "exchange_group(groupA, groupB, fraction=0.5)",
+      "docstring": "Swith fraction of elements of groupA with groupB.\nNote:\n    1. groupA and groupB must have same length\n    2. result groups have no intersection\nInput:\n    groupA: list of elements\n    groupB: list of...",
+      "return_type": null,
+      "lineno": 27
+    },
+    {
+      "name": "AB_mix",
+      "signature": "AB_mix(obsA: list, obsB: list, size_of_each_group=100, fraction=0.5, N=1000, seed=None)",
+      "docstring": "Shuffle two groups. Will first random sample each group N times, then exchange fraction of elements for each pair.\nBoth group-pair and mix-pair are returned, all pairs are non-overlapping.\nThis is use...",
+      "return_type": null,
+      "lineno": 48
+    }
+  ],
+  "spectral_ordering": [
+    {
+      "name": "spectral_ordering",
+      "signature": "spectral_ordering(filesp, threads=24)",
+      "docstring": "Input:\n    filesp : DataFrame, must have pairs col\nOutput:\n    DataFrame with additional col \"order_index\"",
+      "return_type": null,
+      "lineno": 28
+    }
+  ],
+  "structure.align": [
+    {
+      "name": "align_structures",
+      "signature": "align_structures(df1: pd.DataFrame, df2: pd.DataFrame, agg_chrom=True, ret3d: bool=False)",
+      "docstring": "Compute the homogeneous transformation matrix or transformed coordinates to align structure 2 to structure 1.\n\nArgs:\n    df1 (pd.DataFrame): DataFrame with MultiIndex (chr, pos) and columns ['x', 'y',...",
+      "return_type": "np.ndarray",
+      "lineno": 4
+    }
+  ],
+  "structure.measure": [
+    {
+      "name": "parallel_light",
+      "signature": "parallel_light(plate, direction)",
+      "docstring": "Adding same direction to all origin points.\nInput:\n    plate: N * N * 3 array\n    direction: (3,) 3D vector\nOutput:\n    N * N * 6 array",
+      "return_type": null,
+      "lineno": 20
+    },
+    {
+      "name": "say_cheese",
+      "signature": "say_cheese(plate, direction, scene)",
+      "docstring": "Take a photo. The plate way!",
+      "return_type": null,
+      "lineno": 34
+    },
+    {
+      "name": "primary_views",
+      "signature": "primary_views(_3dg, ngrid=16, method='ray', keep_main=True)",
+      "docstring": "Get primary views from three orthogonal faces of the nucleus' oriented bounding box.\nInput:\n    _3dg: inner _3dg data structure (parsing from hickit output .3dg file)\n    ngrid: number of grids in eac...",
+      "return_type": null,
+      "lineno": 42
+    },
+    {
+      "name": "calc_depth",
+      "signature": "calc_depth(_3dg)",
+      "docstring": "Calculate the depth (from nuclear membrane) of a chromatin bin.\nInput:\n    inner _3dg data structure (parsing from hickit output .3dg file)\nOutput:\n    same dataframe with new column 'depth'",
+      "return_type": null,
+      "lineno": 199
+    },
+    {
+      "name": "radial_position",
+      "signature": "radial_position(_3dg: pd.DataFrame)",
+      "docstring": "Calculate the radial position of each chromatin bin.\nInput:\n    inner _3dg data structure (parsing from hickit output .3dg file)\nOutput:\n    same dataframe with new column 'radial_position'",
+      "return_type": null,
+      "lineno": 219
+    },
+    {
+      "name": "restraint_violations",
+      "signature": "restraint_violations(pairs, _3dg, genome, binsize, flavor='hickit')",
+      "docstring": "Calculate distances between pairs, this is used to evaluate the extent of how reconstructed structure\nviolates the input contact restraints.\nInput:\n    pairs: pairs data structure (parsing from hickit...",
+      "return_type": null,
+      "lineno": 300
+    },
+    {
+      "name": "fetch_strong_violates",
+      "signature": "fetch_strong_violates(_3dg_f, pairs_f, genome, binsize, d_thres=4)",
+      "docstring": "Fetch strong constraint violations from pairs and _3dg data.\nInput:\n    _3dg_f: path to _3dg file\n    pairs_f: path to pairs file\n    genome: genome assembly identifier (e.g., 'mm10')\n    binsize: Chr...",
+      "return_type": null,
+      "lineno": 335
+    },
+    {
+      "name": "mt_strong_violation_ratio",
+      "signature": "mt_strong_violation_ratio(sample_table, outfile, force=False, pairs_col='pairs_c12', _3dg_col='20k_g_struct1', genome=None, binsize=20000.0, d_thres=4, n_jobs=16)",
+      "docstring": "Process multiple samples in parallel to calculate strong constraint violations.\nTODO: make explicit cache\n\nInput:\n    sample_table (pd.DataFrame): DataFrame containing sample metadata with columns \n  ...",
+      "return_type": null,
+      "lineno": 360
+    },
+    {
+      "name": "append_centelo_to_index",
+      "signature": "append_centelo_to_index(df, genome='mm10', dis=2000000.0, p=False, q=True)",
+      "docstring": "Append centromere and telomere information to the index.\nInput:\n    df: inner _3dg data structure (see parse_3dg in hires_utils)\n    genome: genome name, use this to determine centromere and telomere ...",
+      "return_type": null,
+      "lineno": 408
+    },
+    {
+      "name": "C2T_diff",
+      "signature": "C2T_diff(chunk)",
+      "docstring": "Compute the difference between centromere and telomere.\nUse this to treat various centromere and telomere circumstances.",
+      "return_type": null,
+      "lineno": 449
+    },
+    {
+      "name": "cent2telo_vector",
+      "signature": "cent2telo_vector(_3dg, genome='mm10', dis=2000000.0, p=False, q=True, show_chroms=False)",
+      "docstring": "Compute the C2T vector.\nInput:\n    _3dg: inner _3dg data structure (see parse_3dg in hires_utils)\n    genome: genome name, use this to determine centromere and telomere positions\n    dis: distance thr...",
+      "return_type": null,
+      "lineno": 471
+    },
+    {
+      "name": "append_pm_to_index",
+      "signature": "append_pm_to_index(df)",
+      "docstring": "Append paternal and maternal information to the index.\nInput:\n    df: inner _3dg data structure (see parse_3dg in hires_utils)\nOutput:\n    dat: data structure with paternal and maternal information\nTO...",
+      "return_type": null,
+      "lineno": 521
+    },
+    {
+      "name": "pm_vector",
+      "signature": "pm_vector(_3dg)",
+      "docstring": "Compute the paternal/maternal vector.\nAssume chromosome names are in the format of \"chr1(pat)/chr1(mat)\".\nInput:\n    _3dg: inner _3dg data structure (see parse_3dg in hires_utils)\nOutput:\n    pm_vecto...",
+      "return_type": null,
+      "lineno": 535
+    },
+    {
+      "name": "angle_between_vectors",
+      "signature": "angle_between_vectors(vector_a, vector_b)",
+      "docstring": "Calculate the angle between two 3D vectors.\n\nInput:\n    vector_a (np.array): First 3D vector.\n    vector_b (np.array): Second 3D vector.\nOutput:\n    angle_degrees (float): The angle between the two ve...",
+      "return_type": null,
+      "lineno": 552
+    },
+    {
+      "name": "perpendicular_unit_vector",
+      "signature": "perpendicular_unit_vector(A, B)",
+      "docstring": "Calculate a unit vector that is perpendicular to both A and B,\nensuring the resulting coordinate system (A, B, C) follows the right-hand rule.\n\nInput:\n    A (np.array): First 3D vector.\n    B (np.arra...",
+      "return_type": null,
+      "lineno": 585
+    }
+  ],
+  "structure.pileup": [
+    {
+      "name": "spatial_binnify",
+      "signature": "spatial_binnify(left: tuple=(-70, -50, -40), right: tuple=(80, 60, 50), step: int=2, plot: bool=True)",
+      "docstring": "Generate spatial grid in primary-coordinate(3D) space.\nInput:\n    xyzf: first 3 col must be [\"ht\",\"dv\",\"lr\"], index must be [\"chrom\",\"start\"]\n    step: bin size\n    plot: for plot compatibility, use l...",
+      "return_type": "pd.DataFrame",
+      "lineno": 15
+    },
+    {
+      "name": "sig_primary_coords",
+      "signature": "sig_primary_coords(primary_views, sig, _3dg)",
+      "docstring": "Transform xyz coordinates to primary coordinates.\nInput:\n    primary_views: primary_views[sample]\n    sig: 3 iterable, ht,dv, lr\n    _3dg: xyz of sample\nOutput:\n    new _3dg; columns as head_tail coor...",
+      "return_type": null,
+      "lineno": 55
+    },
+    {
+      "name": "pc_bin_feature",
+      "signature": "pc_bin_feature(xyzf: pd.DataFrame, step: int, plot: bool=True)",
+      "docstring": "Binnify feature in primary-coordinate(3D) space.\nInput:\n    xyzf: first 3 col must be [\"ht\",\"dv\",\"lr\"], index must be [\"chrom\",\"start\"]\n    step: bin size\nOutput:\n    3d-binned feature\n    if plot, re...",
+      "return_type": "pd.DataFrame",
+      "lineno": 192
+    },
+    {
+      "name": "pc_binagg_feature",
+      "signature": "pc_binagg_feature(xyzf, step, grouping=['ht', 'dv', 'lr'], agg=dict(density=('particle', 'sum')), min_particles={}, plot=True, global_min_particles=10)",
+      "docstring": "Binnify feature and aggregate whithin in primary-coordinate(3D) space.\nInput:\n    xyzf: first 3 col must be [\"ht\",\"dv\",\"lr\"]\n    step: bin size\n    min_particles: min particles in a bin to be valid, f...",
+      "return_type": null,
+      "lineno": 241
+    },
+    {
+      "name": "pileup_bf",
+      "signature": "pileup_bf(primary_views, targets, sample_table, features, pb_features=None, agg={'density': ('particle', 'sum')}, sub=None, step=2, grouping=['ht', 'dv'], min_particles={}, global_min_particle=10)",
+      "docstring": "Pileup binned features.\nInput:\n    primary_views: to get three bases of each sample; structured data.\n    targets: additional direction for each base. df.\n    sample_table: to get path of structure(3d...",
+      "return_type": null,
+      "lineno": 269
+    },
+    {
+      "name": "pileup_bf_mt_task",
+      "signature": "pileup_bf_mt_task(sample_name: str, primary_view: dict, directions, _3dg_file, features, cache_file, pb_features=None, pb_readers=None, agg=None, sub=None, step=2, grouping=['ht', 'dv', 'lr'], min_particles={}, global_min_particle=10)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 348
+    },
+    {
+      "name": "echo_file",
+      "signature": "echo_file(file_path)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 408
+    },
+    {
+      "name": "pileup_bf_mt",
+      "signature": "pileup_bf_mt(sample_names: list, primary_views: dict, targets: pd.DataFrame, _3dg_files: Union[pd.DataFrame, List[str]], features: pd.DataFrame, outfile: Union[str, Path]=None, pb_features: Union[dict, pd.DataFrame]=None, pb_readers: dict=None, agg={'density': ('particle', 'sum')}, sub=None, step=2, grouping=['ht', 'dv', 'lr'], min_particles={}, global_min_particle=10, cache_dir: Union[str, Path]=None, n_threads=8)",
+      "docstring": "Pileup binned features.\nMulti-threaded version.\nNote: output not compatible with single-threade version.\nInput:\n    sample_names: list of sample names\n    primary_views: to get three bases of each sam...",
+      "return_type": null,
+      "lineno": 410
+    },
+    {
+      "name": "project_back",
+      "signature": "project_back(sample_name: str, primary_view: dict, directions: pd.Series, _3dg_file: pd.DataFrame, spatial_features: pd.DataFrame, cache_file, step=2)",
+      "docstring": "Project back spatial feature to primary coordinates.\nInput:\n    sample_name: sample name\n    primary_view: primary view\n    directions: directions\n    _3dg_file: 3dg file path\n    spatial_features: sp...",
+      "return_type": null,
+      "lineno": 549
+    },
+    {
+      "name": "project_back_mt_task",
+      "signature": "project_back_mt_task(sample_name: str, primary_view: dict, directions: pd.Series, _3dg_file: pd.DataFrame, spatial_features: pd.DataFrame, cache_file, step=2)",
+      "docstring": "Project back spatial feature to primary coordinates.\nA wrapper for project_back.\nInput:\n    sample_name: sample name\n    primary_view: primary view\n    directions: directions\n    _3dg_file: 3dg file p...",
+      "return_type": null,
+      "lineno": 594
+    },
+    {
+      "name": "project_back_mt",
+      "signature": "project_back_mt(sample_names: list, primary_views: dict, targets: pd.DataFrame, _3dg_files: Union[pd.DataFrame, List[str]], spatial_features: pd.DataFrame, outfile: Union[str, Path]=None, step=2, cache_dir: Union[str, Path]=None, n_threads=8)",
+      "docstring": "Project spatial features back to single-cell genome.\nInput:\n    sample_names: list of sample names\n    primary_views: to get three bases of each sample; structured data.\n    targets: additional direct...",
+      "return_type": null,
+      "lineno": 630
+    },
+    {
+      "name": "consecutive_slice_pileup_bf",
+      "signature": "consecutive_slice_pileup_bf(primary_views, targets, sample_table, features, step=2, upper=6, lower=-6, axis='ht')",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 739
+    },
+    {
+      "name": "pileup_bf_parallel_task",
+      "signature": "pileup_bf_parallel_task(primary_views, targets, sample_table, features, step, grouping, sub, axis, prefix, key)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 768
+    },
+    {
+      "name": "consecutive_slice_pileup_bf_parallel",
+      "signature": "consecutive_slice_pileup_bf_parallel(primary_views, targets, sample_table, features, step=2, upper=6, lower=-6, axis='ht', prefix=None, threads=8)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 798
+    },
+    {
+      "name": "voxelize",
+      "signature": "voxelize(_3dg, primary_view, target, step=2, plot=True, observed=True, lr90=False)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 835
+    },
+    {
+      "name": "mix_layer",
+      "signature": "mix_layer(x_voxel, axis='ht', near=1)",
+      "docstring": "Mix the layer of the x_voxel with the near layer",
+      "return_type": null,
+      "lineno": 897
+    }
+  ],
+  "structure.utils": [
+    {
+      "name": "coord2point",
+      "signature": "coord2point(coords, bases)",
+      "docstring": "Input:\n    coord: column array, homogeneous coordinates (dim N+1 in dim N space)\n    bases: column vectors (N+1 vectors for dim N space, the last col is origin point)\nOutput:\n    points in space (dim ...",
+      "return_type": null,
+      "lineno": 6
+    },
+    {
+      "name": "coords2point",
+      "signature": "coords2point(coords, bases)",
+      "docstring": "Input:\n    coords: column arrays, homogeneous coordinates (dim N+1 in dim N space)\n    bases: column vectors (N+1 vectors for dim N space, the last col is origin point)\nOutput:\n    points in space (di...",
+      "return_type": null,
+      "lineno": 18
+    },
+    {
+      "name": "space_grid",
+      "signature": "space_grid(bases, extent=(1, 1, 1), num=8)",
+      "docstring": "Generate (3D) spactial grid within a box defined by some bases.\nInput:\n    bases: 4 vectors. 3 from box center to its three faces. 1 the center.\n    extent: size of the box.\n    num: number of grids t...",
+      "return_type": null,
+      "lineno": 32
+    },
+    {
+      "name": "grid_cords",
+      "signature": "grid_cords(grid)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 60
+    },
+    {
+      "name": "vector_fbclose",
+      "signature": "vector_fbclose(v1, v2, atol=0.001)",
+      "docstring": "Check if two vectors are close to each other in same direction or opposite direction",
+      "return_type": null,
+      "lineno": 62
+    },
+    {
+      "name": "corners2edges",
+      "signature": "corners2edges(corners, atol=0.001, ret_xyz=False)",
+      "docstring": "Generate edges from random order of 8 corners.\nInput:\n    corners: np.ndarray or pd.DataFrame of shape (8, 3)\n    atol: float, tolerance for checking if two vectors are close\n    ret_xyz: whether retu...",
+      "return_type": null,
+      "lineno": 67
+    }
+  ],
+  "territory": [
+    {
+      "name": "shannon_index",
+      "signature": "shannon_index(x)",
+      "docstring": "Calculate shannon index for a row of frequency table.",
+      "return_type": null,
+      "lineno": 7
+    },
+    {
+      "name": "intermingle",
+      "signature": "intermingle(_3dg, min_dist=3, n_jobs=12, table=False)",
+      "docstring": "Calculate intermingling metrics for each particle in 3dg file.\nInput:\n    _3dg: dataframe, result of hic_basic.hicio parse_3dg\n    min_dist: int, minimum distance to be considered as neighbor\n    n_jo...",
+      "return_type": null,
+      "lineno": 13
+    },
+    {
+      "name": "chrom_stat",
+      "signature": "chrom_stat(acc, x)",
+      "docstring": "Add value to chromosome frequency stat.\nInput:\n    acc: original stat, dict, {chrom: count}, must be well initiated (has all possible chrom names as keys)\n    x: input_line, (index, chromosome name), ...",
+      "return_type": null,
+      "lineno": 54
+    }
+  ],
+  "utils": [
+    {
+      "name": "two_sets",
+      "signature": "two_sets(ref, check, warning=False)",
+      "docstring": "Check two sample list.\nInput:\n    ref: reference list, iterable.\n    check: list to be checked, iterable.\nOutput:\n    [missing, extra]; list of sets",
+      "return_type": null,
+      "lineno": 8
+    },
+    {
+      "name": "natsort_key",
+      "signature": "natsort_key(s, _NS_REGEX=re.compile('(\\\\d+)', re.U))",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 32
+    },
+    {
+      "name": "argnatsort",
+      "signature": "argnatsort(array)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 34
+    },
+    {
+      "name": "read_chromsizes",
+      "signature": "read_chromsizes(filepath_or, name_patterns=('^chr[0-9]+$', '^chr[XY]$', '^chrM$'), all_names=False)",
+      "docstring": "Parse a ``<db>.chrom.sizes`` or ``<db>.chromInfo.txt`` file from the UCSC\ndatabase, where ``db`` is a genome assembly name.\n\nnote: sep = \"       \", can't have header.\n\nParameters\n----------\nfilepath_o...",
+      "return_type": null,
+      "lineno": 40
+    },
+    {
+      "name": "binnify",
+      "signature": "binnify(chromsizes, binsize)",
+      "docstring": "Divide a genome into evenly sized bins.\n\nParameters\n----------\nchromsizes : Series\n    pandas Series indexed by chromosome name with chromosome lengths in bp.\nbinsize : int\n    size of bins in bp\n\nRet...",
+      "return_type": null,
+      "lineno": 93
+    },
+    {
+      "name": "gen_fileis",
+      "signature": "gen_fileis(sample_table, dir_path, str_pat)",
+      "docstring": "Check and generate fileis(input file tables storing file path) for downstream calculating.\nInput:\n    sample_table: meta, sample_names as index, try to ensure all samples have their input file.\n    di...",
+      "return_type": null,
+      "lineno": 128
+    },
+    {
+      "name": "mouse_id2name",
+      "signature": "mouse_id2name(id_lists, ref_file, multi=False)",
+      "docstring": "Convert moust gene_IDs to gene_names.\nInput:\n    id_list: gene_ID list or list of gene_ID lists, do this because ref parsing is slow\n        e.g. [[\"ENSG0000012345\", \"ENSG0000012346\"], [\"ENSG000001234...",
+      "return_type": null,
+      "lineno": 172
+    },
+    {
+      "name": "z_score",
+      "signature": "z_score(array, mean=0, std=1)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 194
+    }
+  ],
+  "wet.adtools": [
+    {
+      "name": "fix_velocyto_names",
+      "signature": "fix_velocyto_names(adata, annote, verbose=False)",
+      "docstring": "Fix obs.index of velocyto output.\ne.g. 220110_embryo_8EZD5:2021123110 -> 2021123110.",
+      "return_type": null,
+      "lineno": 63
+    },
+    {
+      "name": "clean_velocyto_names",
+      "signature": "clean_velocyto_names(adata, using_dup: list)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 72
+    },
+    {
+      "name": "gen_cs",
+      "signature": "gen_cs(fileis)",
+      "docstring": "Generate compartment strength table from pre-computed files.",
+      "return_type": null,
+      "lineno": 87
+    },
+    {
+      "name": "expand_df",
+      "signature": "expand_df(target_df, ref_df, count_matrix=False, fill_na_value=0)",
+      "docstring": "expand target_df to shape(with same index, columns) of ref_df, fill with 0\nInput:\n    target_df: df to be transformed; sparse df\n    ref_df: axis reference, must contain all rows and cols of target_df...",
+      "return_type": null,
+      "lineno": 98
+    },
+    {
+      "name": "create_adata_layers",
+      "signature": "create_adata_layers(ws, funcs, debug=False)",
+      "docstring": "Create adata object form the layers\nInput:\n    ws: dict of layer name and dataframe\n    funcs: functions to access layers\nOutput:\n    adata object\nTODO: figure out what cause the \"Index of obs must ma...",
+      "return_type": null,
+      "lineno": 266
+    },
+    {
+      "name": "add_obsm",
+      "signature": "add_obsm(adata, data, obsm_key)",
+      "docstring": "Adding obsm to anndata.\nInput:\n    data: low-dim representation of samples. samples x feature\n    obsm_key: name of the representation",
+      "return_type": null,
+      "lineno": 327
+    },
+    {
+      "name": "gen_adata",
+      "signature": "gen_adata(qc, cache_dir, rewrite=[], debug=False)",
+      "docstring": "Generate anndata object from the QC data.\nInput:\n    qc: QC dataframe\n    cache_dir: directory to store the generated adata object\n    rewrite: list of dataframe name to rewrite\n\n    --- layers ---\n  ...",
+      "return_type": null,
+      "lineno": 345
+    }
+  ],
+  "wet.afbb": [
+    {
+      "name": "zcount",
+      "signature": "zcount(filename: str, target: str)",
+      "docstring": "No documentation available.",
+      "return_type": "int",
+      "lineno": 34
+    },
+    {
+      "name": "count_pairs",
+      "signature": "count_pairs(filename: str)",
+      "docstring": "No documentation available.",
+      "return_type": "int",
+      "lineno": 43
+    },
+    {
+      "name": "add_pairs_num",
+      "signature": "add_pairs_num(annote, threads, pairs_types=['pairs_c1', 'pairs_c12', 'pairs_c123', 'dip'])",
+      "docstring": "count contact number of pairs file in parallel\nInput:\n    annote: must have all pairs_type cols\nOutput:\n    annote with extra cols, pairs_type + \"_num\" by default",
+      "return_type": null,
+      "lineno": 56
+    },
+    {
+      "name": "mapping_rate",
+      "signature": "mapping_rate(bam, threads=4)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 76
+    },
+    {
+      "name": "real_file",
+      "signature": "real_file(i)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 84
+    },
+    {
+      "name": "multi_re",
+      "signature": "multi_re(key_array, re_array, base_array)",
+      "docstring": "Search according to regular expressions. Used in log file info extraction.\nPrint finding result and return finding as dict.\nInput:\n    key_array: feature name of each re target.\n    re_s_array: re str...",
+      "return_type": null,
+      "lineno": 91
+    },
+    {
+      "name": "add_pairs",
+      "signature": "add_pairs(annote, task_dirp)",
+      "docstring": "try add pairs file path, by default using:\n    pairs_0/*sample*.pairs.gz\n    pairs_c1/*sample*.c1.pairs.gz\n    pairs_c12/*sample*.c12.pairs.gz\n    pairs_c123/*sample*.c123.pairs.gz\n    dip/*sample*.di...",
+      "return_type": null,
+      "lineno": 126
+    },
+    {
+      "name": "update_values",
+      "signature": "update_values(base: dict, record: str)",
+      "docstring": "Update a base dictionary with values from a JSON record file.\n\nFor each key in the record, if the key exists in base, update the nested dictionary.\nIf the key doesn't exist, add the entire record to b...",
+      "return_type": "dict",
+      "lineno": 156
+    },
+    {
+      "name": "listdir_bytime",
+      "signature": "listdir_bytime(folder)",
+      "docstring": "List all files in a directory sorted by modification time (oldest first).\n\nArgs:\n    folder: Path to directory to scan\n    \nReturns:\n    List of full file paths sorted by modification time",
+      "return_type": null,
+      "lineno": 179
+    },
+    {
+      "name": "get_info",
+      "signature": "get_info(log_d)",
+      "docstring": "Extract and combine information from all JSON files in a directory.\n\nProcesses JSON files in chronological order, merging their contents.\nEach JSON file should contain sample information as key-value ...",
+      "return_type": null,
+      "lineno": 196
+    },
+    {
+      "name": "add_info",
+      "signature": "add_info(annote, rd)",
+      "docstring": "Add sample information from JSON files to an existing annotation DataFrame.\n\nArgs:\n    annote: Existing annotation DataFrame\n    rd: Directory containing JSON files with additional sample information\n...",
+      "return_type": null,
+      "lineno": 219
+    },
+    {
+      "name": "add_umis",
+      "signature": "add_umis(annote, umip)",
+      "docstring": "Adding umi stat to annote.\nAccept a single umi count matrix path or an iterable (list/tuple) of umi count matrix paths.\nMissing files will be skipped with a warning. If no valid files are found, assig...",
+      "return_type": null,
+      "lineno": 233
+    },
+    {
+      "name": "add_extra",
+      "signature": "add_extra(annote)",
+      "docstring": "Calculate contact_per_reads, umis_per_reads, rna_ratio.\nHandling zero-division and NA values(and set to -1).\nOutput:\n    new df with extra cols.",
+      "return_type": null,
+      "lineno": 347
+    },
+    {
+      "name": "add_mapping",
+      "signature": "add_mapping(annote, threads=16)",
+      "docstring": "Adding mapping and primary mapping rate of DNA library.\nInput:\n    old: sam version compatible to old pipeline. task_dirp/sam/xxx.aln.sam.gz",
+      "return_type": null,
+      "lineno": 382
+    },
+    {
+      "name": "check_RNA",
+      "signature": "check_RNA(task_dirp)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 433
+    },
+    {
+      "name": "task_stat",
+      "signature": "task_stat(task_dirp, ref=None, threads=32)",
+      "docstring": "Get all infomation about this bubble_flow task in the form of a dataframe.\nThe meta dataframe is constructed by adding additional columns to \"contacts_info.csv\" generated by bubble_flow.\nTODO:\n    mak...",
+      "return_type": "pd.DataFrame",
+      "lineno": 440
+    },
+    {
+      "name": "pick_useful",
+      "signature": "pick_useful(annote, features=['basic'])",
+      "docstring": "Pick useful cols from meta dataframe.\nInput:\n    annote: meta dataframe\n    features: list of features to pick, default words are \"DNA\" and \"DNA_RNA\"\nOutput:\n    new df with useful cols.",
+      "return_type": null,
+      "lineno": 476
+    },
+    {
+      "name": "multi_re_",
+      "signature": "multi_re_(logfile)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 103
+    }
+  ],
+  "wet.exp_record": [
+    {
+      "name": "drange",
+      "signature": "drange(a, b, seats)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 12
+    },
+    {
+      "name": "parse_group_string",
+      "signature": "parse_group_string(group_string, last_mouse)",
+      "docstring": "Parsing the cell meta data record from experiment.\nInput:\n    group_string: string to be parsed, should be in yaml format.\n    last_mouse: largest mouse number in past experiments ",
+      "return_type": null,
+      "lineno": 21
+    },
+    {
+      "name": "add_group_order",
+      "signature": "add_group_order(annote)",
+      "docstring": "Add additional order index col indicating sample collection time order to input df.\nInput must have a \"group\" col.",
+      "return_type": null,
+      "lineno": 189
+    },
+    {
+      "name": "add_group_hour",
+      "signature": "add_group_hour(annote, col='collect_hour')",
+      "docstring": "Add additional order index col to input df indicating hour post fertilizing time when the sample was collected.\nInput:\n    annote: sample-feature table, must have a \"group\" col.\n    col: name of new c...",
+      "return_type": null,
+      "lineno": 203
+    },
+    {
+      "name": "add_cell_type",
+      "signature": "add_cell_type(annote)",
+      "docstring": "Add cell_type col to input df according to group name.\nInput must have \"group\" col.",
+      "return_type": null,
+      "lineno": 215
+    },
+    {
+      "name": "plot_real_pseudo_time",
+      "signature": "plot_real_pseudo_time(adata, ps_col='velocity_pseudotime', hour=True)",
+      "docstring": "Plot experiment time with pseudotime.\n(adata plot; scatter plot;)\nInput:\n    adata: AnnData object with \"group\" col in obs.\n    ps_col: obs col storing pseudotime to plot real time with. \n    hour: so...",
+      "return_type": null,
+      "lineno": 232
+    },
+    {
+      "name": "d2",
+      "signature": "d2(time_str)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 126
+    },
+    {
+      "name": "find_time_str",
+      "signature": "find_time_str(group)",
+      "docstring": "Find time substring in sample's group_string.",
+      "return_type": null,
+      "lineno": 133
+    },
+    {
+      "name": "find_day",
+      "signature": "find_day(group)",
+      "docstring": "Find day mark.",
+      "return_type": null,
+      "lineno": 147
+    },
+    {
+      "name": "get_cell_type",
+      "signature": "get_cell_type(grp)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 220
+    }
+  ],
+  "wet.gam": [
+    {
+      "name": "add_gam_mapping",
+      "signature": "add_gam_mapping(sample_table_fp, ana_home)",
+      "docstring": "Adding mapping and primary mapping rate to meta table.\nInput:\n    sample_table_fp: path to the meta table.\n    ana_home: analysis home directory, check ana_home/logs/mapping.log\n        for the mappin...",
+      "return_type": "pd.DataFrame",
+      "lineno": 34
+    }
+  ],
+  "wet.meta_trick": [
+    {
+      "name": "merge_meta",
+      "signature": "merge_meta()",
+      "docstring": "Merging metadata object.\nInput:\n    DataFrame object seperate with , .",
+      "return_type": null,
+      "lineno": 4
+    },
+    {
+      "name": "rmsd_filter",
+      "signature": "rmsd_filter(meta, reso='20k', rmsd_thres=1, samples=True, rmsd=False)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 19
+    },
+    {
+      "name": "last_mouse",
+      "signature": "last_mouse(df)",
+      "docstring": "Find last batch number.",
+      "return_type": null,
+      "lineno": 36
+    }
+  ],
+  "wet.paracalc": [
+    {
+      "name": "gen_cool",
+      "signature": "gen_cool(qc, cached, threads=16, sizef='/share/home/ychi/data/genome/GRCm38/mm10.chrom.sizes', binsize=40000, cool_addr='cool_paths.json')",
+      "docstring": "Generate cooler files from qc file.\nUsing mid-files of compartment strength pipeline is better.",
+      "return_type": null,
+      "lineno": 15
+    },
+    {
+      "name": "gen_cdps",
+      "signature": "gen_cdps(filesp, threads=32, range_dtype='string', pairs_col='pairs_c123', filter_str=None)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 45
+    },
+    {
+      "name": "count_MP",
+      "signature": "count_MP(filename: str)",
+      "docstring": "No documentation available.",
+      "return_type": "int",
+      "lineno": 62
+    },
+    {
+      "name": "gen_PM_interactions",
+      "signature": "gen_PM_interactions(filesp, threads=32)",
+      "docstring": "MP: Maternal-Paternal interaction, e.g. chr1(mat)-chr1(pat), chr1(mat)-chr2(pat)\nMMPP: Maternal-Maternal/Paternal-Paternal interaction, e.g. chr1(mat)-chr2(mat)\nAll_inter_contacts: MP + MMPP is all in...",
+      "return_type": null,
+      "lineno": 80
+    },
+    {
+      "name": "safe_repli_score",
+      "signature": "safe_repli_score(pairsf, ref, outf)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 102
+    },
+    {
+      "name": "gen_repli_score",
+      "signature": "gen_repli_score(qc, cached, threads=32, ref='/share/home/ychi/data/genome/GRCm38/mm10_repli_chip.wig')",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 110
+    }
+  ],
+  "wet.qc": [
+    {
+      "name": "c_u_filter",
+      "signature": "c_u_filter(meta, ccol, ucol, c_threshold, u_threshold)",
+      "docstring": "Filter out low-quality cells.\nInput:\n    ccol: column name of contact number\n    ucol: column name of umis\n    c_threshold: [low, high] for contacts\n    u_threshold: [low, high] for contacts\nOutput:\n ...",
+      "return_type": null,
+      "lineno": 3
+    },
+    {
+      "name": "plot_qc",
+      "signature": "plot_qc(meta, ccol='contacts', ucol='umis', c_threshold=[150000, 1000000], u_threshold=[10000, 600000])",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 21
+    },
+    {
+      "name": "plot_qc",
+      "signature": "plot_qc(meta, ccol='contacts', ucol='umis', c_threshold=[150000, 1000000], u_threshold=[10000, 600000])",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 52
+    }
+  ],
+  "wet.rawcheck": [
+    {
+      "name": "calculate_md5_for_file",
+      "signature": "calculate_md5_for_file(file_path)",
+      "docstring": "Calculate md5 checksum for a file.\nThis give exactly the same result as md5sum command.\nInput:\n    file_path: path to the file\nOutput:\n    file_path: path to the file\n    md5: md5 checksum of the file",
+      "return_type": null,
+      "lineno": 7
+    },
+    {
+      "name": "ls_md5_files",
+      "signature": "ls_md5_files(download_dir)",
+      "docstring": "Find all md5.txt files in download_dir.\nInput:\n    download_dir: directory containing downloaded files\nOutput:\n    md5_lines: list of tuples, (parent_dir, md5, filename)",
+      "return_type": null,
+      "lineno": 22
+    },
+    {
+      "name": "calc_md5",
+      "signature": "calc_md5(input_files, file_labels=None, result_file=None, force=False, threads=8)",
+      "docstring": "Calculate md5 checksums of input files.\nInput:\n    input_files: list of files to calculate md5 checksums\n    file_labels: rename files in md5 checksum results, for example: /dir/file -> file\n    resul...",
+      "return_type": null,
+      "lineno": 45
+    },
+    {
+      "name": "verify_md5",
+      "signature": "verify_md5(download_dir, result_file, threads=8)",
+      "docstring": "Verify md5 checksums of downloaded files.\nInput:\n    download_dir: directory containing downloaded files\n    result_file: file to write md5 checksum results\nOutput:\n    True if all md5 checksums are O...",
+      "return_type": null,
+      "lineno": 93
+    },
+    {
+      "name": "ls_samples",
+      "signature": "ls_samples(download_dir, show=False)",
+      "docstring": "Find all samples in download_dir. Samples are defined as the directories containing fastq files.\nInput:\n    download_dir: directory containing downloaded files\n    show: print samples if True\nOutput:\n...",
+      "return_type": null,
+      "lineno": 134
+    },
+    {
+      "name": "split_download_dir",
+      "signature": "split_download_dir(download_dir, task_dirps, sub='Rawdata')",
+      "docstring": "Split download_dir into multiple directories, each containing multiple samples and 1 md5 file for each sample.\nInput:\n    download_dir: directory containing downloaded files\n    task_dirps: dictionary...",
+      "return_type": null,
+      "lineno": 161
+    },
+    {
+      "name": "gen_sample_table",
+      "signature": "gen_sample_table(task_dirp, R1_file='_R1.fq.gz', R2_file='_R2.fq.gz')",
+      "docstring": "Create sample table for a raw directory.\nInput:\n    task_dirp: directory containing samples\n    R1_file: R1 file suffix\n    R2_file: R2 file suffix\nOutput:\n    sample_table will be written to task_dir...",
+      "return_type": null,
+      "lineno": 214
+    }
+  ],
+  "wet.utils": [
+    {
+      "name": "check_input",
+      "signature": "check_input(filesp, cols)",
+      "docstring": "Check if the input files are valid.\nInput:\n    filesp: dataframe storing file paths.\n    cols: cols to check; list or string.",
+      "return_type": null,
+      "lineno": 4
+    }
+  ]
+}
