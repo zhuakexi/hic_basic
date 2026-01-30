@@ -734,7 +734,7 @@ def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
     
     return result
 
-def do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None):
+def do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None, marked_allele_file=None, force=False):
     """
     Given a SAM file and a reference SNP file, generate a parquet file with allele counts of each SNP.
     
@@ -744,26 +744,43 @@ def do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None):
     Parameters:
         sam_file (str): Path to the SAM file, can be sam.gz, bam, or sam.
         ref_snp_file (str): Path to the reference SNP file in tab-delimited format with columns: chrom, pos, ref_allele, alt_allele.
+        marked_allele_file (str, optional): Path to the intermediate marked allele file.
+        output (str): Path to the output parquet file.
+        force (bool, optional): Whether to overwrite existing output files. Defaults to False.
     Output (str): Path to the output parquet file.
     Note: output is aligned to ref_snp_file 
     """
     assert ref_snp_file is not None, "Reference SNP file must be provided"
     assert output.endswith(".parquet"), "Output file must be a .parquet file"
     # Load reference SNPs
-    ref_snps = pd.read_table(ref_snp_file)
-    allele_df = sam_mark_alleles(
-        sam_file,
-        ref_snp_file,
-        outfile=None,
-        show_progress=False,
-        verbose=0
-    )
+    if os.path.exists(output) and not force:
+        print(f"{output} exists, skip sam2vcf_allele_count")
+        return output
+    if marked_allele_file is None:
+        marked_allele_file = output.replace(".parquet", ".marked_allele.tsv.gz")
+    if not os.path.exists(marked_allele_file) or force:
+        sam_mark_alleles(
+            sam_file,
+            ref_snp_file,
+            outfile=marked_allele_file,
+            show_progress=False,
+            verbose=0
+        )
+    allele_df = pd.read_table(
+        marked_allele_file,
+        names=['chrom', 'pos', 'allele', 'read_name', 'relative_pos'],
+        usecols=[0,1,2,3,4]
+        )
     allele_df_count = sam_count_alleles(
         allele_df,
         ref_snp_file,
         gt_strategy="no_conflict",
     )
-    snp = pd.read_table(ref_snp_file, names=["chrom", "pos", "ref_allele", "alt_allele"])
+    snp = pd.read_table(
+        ref_snp_file,
+        names=["chrom", "pos", "ref_allele", "alt_allele"],
+        dtype={"chrom":str,"pos":int,"ref_allele":str,"alt_allele":str}
+        )
     extended_allele_count = pd.merge(
         snp,
         allele_df_count,
