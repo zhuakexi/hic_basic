@@ -170,16 +170,47 @@ class Interval:
         
         return b
 def parse_phased_snp(phased_snp_file: str) -> dict:
+    """
+    Parse a phased SNP file into a dictionary for interval-based lookups.
+
+    Args:
+        phased_snp_file (str): Path to the phased SNP file. Can be tab-delimited (.tsv, .txt, etc.)
+                              or parquet format (.parquet). Expected columns: chrom, pos, ref_allele, alt_allele.
+
+    Returns:
+        dict: A dictionary where keys are chromosome names and values are lists of 
+              [start, end, ref_allele, alt_allele, index] intervals for efficient overlap finding.
+    """
     snp_dict = {}
-    with open(phased_snp_file, 'r') as f:
-        for line in f:
-            t = line.strip().split("\t")
-            if len(t) < 4 or len(t[2]) != 1 or len(t[3]) != 1:
+    
+    if phased_snp_file.endswith('.parquet'):
+        # Read parquet file
+        df = pd.read_parquet(phased_snp_file)
+        if len(df.columns) >= 4:
+            df = df.iloc[:, :4]
+            df.columns = ['chrom', 'pos', 'ref', 'alt']
+        df = df.astype({'chrom': str, 'pos': int, 'ref': str, 'alt': str})
+        
+        for _, row in df.iterrows():
+            # Skip if ref or alt alleles are not single characters
+            if len(row['ref']) != 1 or len(row['alt']) != 1:
                 continue
-            if t[0] not in snp_dict:
-                snp_dict[t[0]] = []
-            pos = int(t[1])
-            snp_dict[t[0]].append([pos - 1, pos, t[2], t[3]])
+            chrom = row['chrom']
+            if chrom not in snp_dict:
+                snp_dict[chrom] = []
+            pos = int(row['pos'])
+            snp_dict[chrom].append([pos - 1, pos, row['ref'], row['alt']])
+    else:
+        # Read tab-delimited file
+        with open(phased_snp_file, 'r') as f:
+            for line in f:
+                t = line.strip().split("\t")
+                if len(t) < 4 or len(t[2]) != 1 or len(t[3]) != 1:
+                    continue
+                if t[0] not in snp_dict:
+                    snp_dict[t[0]] = []
+                pos = int(t[1])
+                snp_dict[t[0]].append([pos - 1, pos, t[2], t[3]])
     
     for c in snp_dict:
         Interval.index_end(snp_dict[c], True)
@@ -490,7 +521,8 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
 
     Args:
         sam_file (str): Path to the input SAM or BAM file.
-        phased_snp_file (str): Path to the phased SNP file.
+        phased_snp_file (str): Path to the phased SNP file. Can be tab-delimited (.tsv, .txt, etc.)
+                              or parquet format (.parquet). Expected columns: chrom, pos, ref_allele, alt_allele.
         outfile (str, optional): Path to the output file. If None, returns a DataFrame. Defaults to None.
         append_features (list, optional): List of additional features to append to the output. Defaults to None.
         min_mapq (int, optional): Minimum mapping quality threshold. Defaults to 20.
@@ -635,6 +667,34 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
     else:
         return res
 
+def read_ref_snp_file(ref_snp_file):
+    """
+    Read a reference SNP file, supporting both TSV and parquet formats.
+
+    Args:
+        ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited (.tsv, .txt, etc.)
+                           or parquet format (.parquet).
+
+    Returns:
+        pandas.DataFrame: A DataFrame with columns 'chrom', 'pos', 'input_ref', 'input_alt'.
+    """
+    if ref_snp_file.endswith('.parquet'):
+        ref_snp_df = pd.read_parquet(ref_snp_file)
+        # Ensure correct column names and types
+        if len(ref_snp_df.columns) >= 4:
+            ref_snp_df = ref_snp_df.iloc[:, :4]
+            ref_snp_df.columns = ['chrom', 'pos', 'input_ref', 'input_alt']
+        ref_snp_df = ref_snp_df.astype({'chrom': str, 'pos': int, 'input_ref': str, 'input_alt': str})
+    else:
+        ref_snp_df = pd.read_table(
+            ref_snp_file,
+            names=['chrom', 'pos', 'input_ref', 'input_alt'],
+            usecols=[0, 1, 2, 3],
+            dtype={'chrom': str, 'pos': int, 'input_ref': str, 'input_alt': str}
+        )
+    return ref_snp_df
+
+
 def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
     """
     Count reference, alternative, and other alleles for each chromosome and site.
@@ -648,6 +708,7 @@ def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
         allele_df (pandas.DataFrame): A DataFrame with columns 'chrom', 'pos', 'allele',
                                'input_ref', and 'input_alt'. Each row represents
                                an allele observation at a specific genomic location.
+        ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited or parquet format.
         gt_strategy (str): Strategy for generating the GT column. 
                           "max_allele": Choose the allele with the highest count (ref or alt) and convert to ATGC
                           "no_conflict": Choose the non-zero allele if one is 0 and the other > 0, otherwise NA
@@ -659,12 +720,7 @@ def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
                           other alleles ('other'), and the genotype ('gt').
     """
     # Create a copy to avoid modifying the original dataframe
-    ref_snp_df = pd.read_table(
-        ref_snp_file,
-        names=['chrom', 'pos', 'input_ref', 'input_alt'],
-        usecols=[0,1,2,3],
-        dtype={'chrom':str,'pos':int,'input_ref':str,'input_alt':str}
-        )
+    ref_snp_df = read_ref_snp_file(ref_snp_file)
     df = pd.merge(
         allele_df,
         ref_snp_df,
@@ -743,7 +799,8 @@ def do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None, marked_allele_f
     
     Parameters:
         sam_file (str): Path to the SAM file, can be sam.gz, bam, or sam.
-        ref_snp_file (str): Path to the reference SNP file in tab-delimited format with columns: chrom, pos, ref_allele, alt_allele.
+        ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited (.tsv, .txt, etc.)
+                           or parquet format (.parquet). Expected columns: chrom, pos, ref_allele, alt_allele.
         marked_allele_file (str, optional): Path to the intermediate marked allele file.
         output (str): Path to the output parquet file.
         force (bool, optional): Whether to overwrite existing output files. Defaults to False.
@@ -776,12 +833,7 @@ def do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None, marked_allele_f
         ref_snp_file,
         gt_strategy="no_conflict"
     )
-    ref_snp = pd.read_table(
-        ref_snp_file,
-        names=['chrom', 'pos', 'input_ref', 'input_alt'],
-        usecols=[0,1,2,3],
-        dtype={'chrom':str,'pos':int,'input_ref':str,'input_alt':str}
-    )
+    ref_snp = read_ref_snp_file(ref_snp_file)
     extended_allele_count = pd.merge(
         ref_snp,
         allele_df_count,
