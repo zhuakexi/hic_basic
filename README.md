@@ -9,6 +9,8 @@ A Python library for processing Hi-C and 3D genome data.
 - Auto-generated from source code
 - Searchable with `python docs/search_api.py`
 
+**Agent guidance**: [AGENTS.md](AGENTS.md)
+
 Quick examples:
 ```bash
 # Search for a function
