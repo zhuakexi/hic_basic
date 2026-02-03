@@ -147,7 +147,7 @@ def example_function(param1: str, param2: int = 10) -> pd.DataFrame:
 ## 📊 Statistics
 
 - **76** modules documented
-- **527** public functions  
+- **528** public functions  
 - **~10,000** lines of documentation
 - **Auto-generated** from source
 
