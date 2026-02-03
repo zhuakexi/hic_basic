@@ -5,7 +5,7 @@ A Python library for processing Hi-C and 3D genome data.
 ## 📚 Documentation
 
 **Complete API Reference**: [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
-- 527 public functions across 76 modules
+- 528 public functions across 76 modules
 - Auto-generated from source code
 - Searchable with `python docs/search_api.py`
 
@@ -33,6 +33,25 @@ import sys
 sys.path.insert(0, "$YourGitDir/hic_basic")
 sys.path.insert(0, "$YourGitDir/hires_utils")
 ```
+
+## Compatibility Policy (Downstream Projects)
+
+- Downstream projects should **pin a hic_basic commit** (or tag) in their `README.md` or config.
+- We aim for **backwards-compatible** changes by default.
+- If a breaking change is unavoidable:
+  - provide a deprecation window or migration note
+  - add or update tests to cover legacy and new behavior when feasible
+  - call out the change in release notes or PR description
+
+## Contributing Checklist (PRs)
+
+- Search existing APIs before adding new ones (prefer extending a module over creating a new one).
+- Add tests that use **minimal data** from `tests/data` and tmp paths only.
+- Avoid hard-coded absolute paths or project-specific logic.
+- Update docstrings and regenerate API docs when public APIs change:
+  - `python scripts/generate_api_reference.py`
+  - commit `docs/API_REFERENCE.md` and `docs/api_index.json`
+
 ## Quick Start Examples
 
 ### Pseudo bulk analysis
