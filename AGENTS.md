@@ -23,12 +23,24 @@ This repository is a Python library and CLI for Hi-C / 3D genome data processing
 - Conda environment definition: `envs/hic_basic.yaml` (name: `hic_basic`, Python 3.10)
 - Install editable for local use: `pip install -e .`
 - Run tests: `pytest -q tests`
+- If you need a one-liner with micromamba: `micromamba run -n hic_basic pytest -q tests`
 
 ## Documentation workflow
 - Public functions are auto-indexed; keep docstrings accurate.
 - Regenerate docs after adding/updating public APIs:
   - `python scripts/generate_api_reference.py`
   - Commit both code changes and updated docs (`docs/API_REFERENCE.md`, `docs/api_index.json`).
+
+## Agent workflow (library-first)
+1. **Search existing APIs** in `hic_basic` before adding new code. Prefer extending a relevant module over creating a new one.
+2. **Keep changes backwards compatible** whenever possible. If a break is unavoidable:
+   - add a deprecation path or migration note
+   - update tests to cover both old and new behavior if feasible
+3. **Add tests with minimal data**:
+   - use `tests/data` and tmp paths
+   - avoid absolute paths and large files
+   - when shrinking data, keep a reproducible command or note in the test
+4. **Avoid project-specific logic** in this repo; put shared, general utilities only.
 
 ## Project conventions
 - Prefer `read_meta()` from `hic_basic.hicio` for metadata ingestion instead of ad-hoc pandas reads.
