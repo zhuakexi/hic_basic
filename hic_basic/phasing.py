@@ -792,7 +792,7 @@ def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
     return result
 def do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None, marked_allele_file=None, force=False):
     """
-    Given a SAM file and a reference SNP file, generate a parquet file with allele counts of each SNP.
+    Given a SAM file and a reference SNP file, generate a parquet file with allele counts at each SNP.
     
     {pipeline}[Gamete SNP Phasing Pipeline][1.count alleles]:
         `do_sam2vcf_allele_count` for each gamete SAM file to get allele counts at each SNP position.
@@ -805,7 +805,9 @@ def do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None, marked_allele_f
         output (str): Path to the output parquet file.
         force (bool, optional): Whether to overwrite existing output files. Defaults to False.
     Output (str): Path to the output parquet file.
-    Note: output is aligned to ref_snp_file 
+    Note:
+        The output is aligned to ref_snp_file and includes all columns from the reference SNP table
+        plus allele count fields and genotype (e.g., input_ref/input_alt, ref/alt/other, gt).
     """
     assert ref_snp_file is not None, "Reference SNP file must be provided"
     assert output.endswith(".parquet"), "Output file must be a .parquet file"
@@ -839,7 +841,7 @@ def do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None, marked_allele_f
         allele_df_count,
         how="left",
         on=["chrom", "pos"]
-    )[["chrom","pos","gt"]]
+    )
     extended_allele_count.to_parquet(
         output,
         index=True
