@@ -28,7 +28,7 @@ This directory contains a **complete, auto-generated API reference** for the hic
 ## 🔢 Statistics
 
 - **76 modules** documented
-- **527 public functions** indexed
+- **528 public functions** indexed
 - **~10,000 lines** of documentation
 - **Auto-generated** from source code
 

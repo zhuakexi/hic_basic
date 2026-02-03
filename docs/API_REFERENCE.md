@@ -41,7 +41,7 @@ Total modules with public functions: 76
 - [metrics](#metrics) (4 functions)
 - [nagano_cycle_phasing](#nagano_cycle_phasing) (6 functions)
 - [paracalc](#paracalc) (2 functions)
-- [phasing](#phasing) (21 functions)
+- [phasing](#phasing) (22 functions)
 - [pileup](#pileup) (6 functions)
 - [pipeline.rule](#pipeline-rule) (8 functions)
 - [plot.bar](#plot-bar) (1 functions)
@@ -4647,7 +4647,7 @@ No documentation available.
 
 **File:** `phasing.py`
 
-**Public functions:** 21
+**Public functions:** 22
 
 
 ### `check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0)`
@@ -4672,7 +4672,7 @@ Returns:
                   otherwise None.
 
 
-**Source:** Line 375 in [phasing.py](phasing.py#L375)
+**Source:** Line 406 in [phasing.py](phasing.py#L406)
 
 
 ---
@@ -4690,7 +4690,7 @@ Returns:
     list: A list representing the alignment in the same format as a SAM entry.
 
 
-**Source:** Line 443 in [phasing.py](phasing.py#L443)
+**Source:** Line 474 in [phasing.py](phasing.py#L474)
 
 
 ---
@@ -4708,7 +4708,7 @@ Output:
     A pandas Series with multi-index (chromosome, phasing) and counts.
 
 
-**Source:** Line 802 in [phasing.py](phasing.py#L802)
+**Source:** Line 874 in [phasing.py](phasing.py#L874)
 
 
 ---
@@ -4726,7 +4726,7 @@ Returns:
     int: Number of lines in the file.
 
 
-**Source:** Line 474 in [phasing.py](phasing.py#L474)
+**Source:** Line 505 in [phasing.py](phasing.py#L505)
 
 
 ---
@@ -4744,28 +4744,34 @@ Output:
     pandas DataFrame with columns: "chrom", "start", "phase", "count"
 
 
-**Source:** Line 820 in [phasing.py](phasing.py#L820)
+**Source:** Line 892 in [phasing.py](phasing.py#L892)
 
 
 ---
 
 
-### `do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None)`
+### `do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None, marked_allele_file=None, force=False)`
 
 
-Given a SAM file and a reference SNP file, generate a parquet file with allele counts of each SNP.
+Given a SAM file and a reference SNP file, generate a parquet file with allele counts at each SNP.
 
 {pipeline}[Gamete SNP Phasing Pipeline][1.count alleles]:
     `do_sam2vcf_allele_count` for each gamete SAM file to get allele counts at each SNP position.
 
 Parameters:
     sam_file (str): Path to the SAM file, can be sam.gz, bam, or sam.
-    ref_snp_file (str): Path to the reference SNP file in tab-delimited format with columns: chrom, pos, ref_allele, alt_allele.
+    ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited (.tsv, .txt, etc.)
+                       or parquet format (.parquet). Expected columns: chrom, pos, ref_allele, alt_allele.
+    marked_allele_file (str, optional): Path to the intermediate marked allele file.
+    output (str): Path to the output parquet file.
+    force (bool, optional): Whether to overwrite existing output files. Defaults to False.
 Output (str): Path to the output parquet file.
-Note: output is aligned to ref_snp_file
+Note:
+    The output is aligned to ref_snp_file and includes all columns from the reference SNP table
+    plus allele count fields and genotype (e.g., input_ref/input_alt, ref/alt/other, gt).
 
 
-**Source:** Line 737 in [phasing.py](phasing.py#L737)
+**Source:** Line 793 in [phasing.py](phasing.py#L793)
 
 
 ---
@@ -4790,7 +4796,7 @@ Returns:
            qe: Query end position
 
 
-**Source:** Line 303 in [phasing.py](phasing.py#L303)
+**Source:** Line 334 in [phasing.py](phasing.py#L334)
 
 
 ---
@@ -4849,7 +4855,7 @@ Output:
     pd.Series
 
 
-**Source:** Line 785 in [phasing.py](phasing.py#L785)
+**Source:** Line 857 in [phasing.py](phasing.py#L857)
 
 
 ---
@@ -4867,7 +4873,7 @@ Returns:
     str: The file type ('SAM', 'BAM', 'SAMgz', or 'unknown').
 
 
-**Source:** Line 202 in [phasing.py](phasing.py#L202)
+**Source:** Line 233 in [phasing.py](phasing.py#L233)
 
 
 ---
@@ -4879,7 +4885,7 @@ Returns:
 No documentation available.
 
 
-**Source:** Line 782 in [phasing.py](phasing.py#L782)
+**Source:** Line 854 in [phasing.py](phasing.py#L854)
 
 
 ---
@@ -4916,7 +4922,7 @@ Returns:
     bool: 如果是 SAM 格式返回 True，否则返回 False
 
 
-**Source:** Line 269 in [phasing.py](phasing.py#L269)
+**Source:** Line 300 in [phasing.py](phasing.py#L300)
 
 
 ---
@@ -4948,7 +4954,7 @@ Args:
 No documentation available.
 
 
-**Source:** Line 817 in [phasing.py](phasing.py#L817)
+**Source:** Line 889 in [phasing.py](phasing.py#L889)
 
 
 ---
@@ -4968,7 +4974,7 @@ Returns:
     List of (length, operation) tuples (e.g., [(100, 'M'), (5, 'D'), (10, 'I')])
 
 
-**Source:** Line 188 in [phasing.py](phasing.py#L188)
+**Source:** Line 219 in [phasing.py](phasing.py#L219)
 
 
 ---
@@ -4979,10 +4985,37 @@ Returns:
 **Returns:** `dict`
 
 
-No documentation available.
+Parse a phased SNP file into a dictionary for interval-based lookups.
+
+Args:
+    phased_snp_file (str): Path to the phased SNP file. Can be tab-delimited (.tsv, .txt, etc.)
+                          or parquet format (.parquet). Expected columns: chrom, pos, ref_allele, alt_allele.
+
+Returns:
+    dict: A dictionary where keys are chromosome names and values are lists of 
+          [start, end, ref_allele, alt_allele, index] intervals for efficient overlap finding.
 
 
 **Source:** Line 172 in [phasing.py](phasing.py#L172)
+
+
+---
+
+
+### `read_ref_snp_file(ref_snp_file)`
+
+
+Read a reference SNP file, supporting both TSV and parquet formats.
+
+Args:
+    ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited (.tsv, .txt, etc.)
+                       or parquet format (.parquet).
+
+Returns:
+    pandas.DataFrame: A DataFrame with columns 'chrom', 'pos', 'input_ref', 'input_alt'.
+
+
+**Source:** Line 670 in [phasing.py](phasing.py#L670)
 
 
 ---
@@ -5002,6 +5035,7 @@ Args:
     allele_df (pandas.DataFrame): A DataFrame with columns 'chrom', 'pos', 'allele',
                            'input_ref', and 'input_alt'. Each row represents
                            an allele observation at a specific genomic location.
+    ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited or parquet format.
     gt_strategy (str): Strategy for generating the GT column. 
                       "max_allele": Choose the allele with the highest count (ref or alt) and convert to ATGC
                       "no_conflict": Choose the non-zero allele if one is 0 and the other > 0, otherwise NA
@@ -5013,7 +5047,7 @@ Returns:
                       other alleles ('other'), and the genotype ('gt').
 
 
-**Source:** Line 638 in [phasing.py](phasing.py#L638)
+**Source:** Line 698 in [phasing.py](phasing.py#L698)
 
 
 ---
@@ -5026,7 +5060,8 @@ Mark alleles in SAM/BAM file based on phased SNP information.
 
 Args:
     sam_file (str): Path to the input SAM or BAM file.
-    phased_snp_file (str): Path to the phased SNP file.
+    phased_snp_file (str): Path to the phased SNP file. Can be tab-delimited (.tsv, .txt, etc.)
+                          or parquet format (.parquet). Expected columns: chrom, pos, ref_allele, alt_allele.
     outfile (str, optional): Path to the output file. If None, returns a DataFrame. Defaults to None.
     append_features (list, optional): List of additional features to append to the output. Defaults to None.
     min_mapq (int, optional): Minimum mapping quality threshold. Defaults to 20.
@@ -5038,7 +5073,7 @@ Returns:
     str or pandas.DataFrame: Path to the output file if outfile is specified, otherwise a DataFrame containing marked alleles.
 
 
-**Source:** Line 487 in [phasing.py](phasing.py#L487)
+**Source:** Line 518 in [phasing.py](phasing.py#L518)
 
 
 ---

@@ -1735,7 +1735,7 @@
     {
       "name": "parse_phased_snp",
       "signature": "parse_phased_snp(phased_snp_file: str)",
-      "docstring": "No documentation available.",
+      "docstring": "Parse a phased SNP file into a dictionary for interval-based lookups.\n\nArgs:\n    phased_snp_file (str): Path to the phased SNP file. Can be tab-delimited (.tsv, .txt, etc.)\n                          o...",
       "return_type": "dict",
       "lineno": 172
     },
@@ -1744,105 +1744,112 @@
       "signature": "parse_cigar(cigar: str)",
       "docstring": "Parse CIGAR string into operations and lengths.\n\nArgs:\n    cigar: CIGAR string (e.g., \"100M5D10I\")\n    \nReturns:\n    List of (length, operation) tuples (e.g., [(100, 'M'), (5, 'D'), (10, 'I')])",
       "return_type": "List[Tuple[int, str]]",
-      "lineno": 188
+      "lineno": 219
     },
     {
       "name": "get_file_type",
       "signature": "get_file_type(file_path)",
       "docstring": "Determine the file type by reading the file content.\n\nArgs:\n    file_path (str): Path to the file to check.\n\nReturns:\n    str: The file type ('SAM', 'BAM', 'SAMgz', or 'unknown').",
       "return_type": null,
-      "lineno": 202
+      "lineno": 233
     },
     {
       "name": "is_sam_content",
       "signature": "is_sam_content(text, max_lines=20)",
       "docstring": "\u68c0\u67e5\u6587\u672c\u5185\u5bb9\u662f\u5426\u7b26\u5408 SAM \u683c\u5f0f\u7279\u5f81\n\nArgs:\n    text (str): \u8981\u68c0\u67e5\u7684\u6587\u672c\u5185\u5bb9\n    max_lines (int): \u6700\u591a\u68c0\u67e5\u7684\u884c\u6570\n\nReturns:\n    bool: \u5982\u679c\u662f SAM \u683c\u5f0f\u8fd4\u56de True\uff0c\u5426\u5219\u8fd4\u56de False",
       "return_type": null,
-      "lineno": 269
+      "lineno": 300
     },
     {
       "name": "entry_align_pos",
       "signature": "entry_align_pos(entry)",
       "docstring": "Calculate reference and query start/end positions based on CIGAR string.\n\nArgs:\n    entry (list): A list representing a SAM format entry where:\n                  entry[1] is the FLAG field,\n          ...",
       "return_type": null,
-      "lineno": 303
+      "lineno": 334
     },
     {
       "name": "check_allele",
       "signature": "check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0)",
       "docstring": "Check if a SAM entry contains a specific allele at a given position.\n\nArgs:\n    entry (list): A list representing a SAM format entry where:\n                  entry[2] is the reference sequence name,\n ...",
       "return_type": null,
-      "lineno": 375
+      "lineno": 406
     },
     {
       "name": "convert_alignment_to_entry",
       "signature": "convert_alignment_to_entry(alignment)",
       "docstring": "Convert a pysam.AlignedSegment object to a list in the same format as a SAM entry.\n\nArgs:\n    alignment (pysam.AlignedSegment): An alignment object from pysam.\n\nReturns:\n    list: A list representing ...",
       "return_type": null,
-      "lineno": 443
+      "lineno": 474
     },
     {
       "name": "count_lines_in_file",
       "signature": "count_lines_in_file(file_path)",
       "docstring": "Count the number of lines in a file efficiently.\n\nArgs:\n    file_path (str): Path to the file.\n\nReturns:\n    int: Number of lines in the file.",
       "return_type": null,
-      "lineno": 474
+      "lineno": 505
     },
     {
       "name": "sam_mark_alleles",
       "signature": "sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=None, min_mapq=20, min_baseq=20, show_progress=False, verbose=0)",
-      "docstring": "Mark alleles in SAM/BAM file based on phased SNP information.\n\nArgs:\n    sam_file (str): Path to the input SAM or BAM file.\n    phased_snp_file (str): Path to the phased SNP file.\n    outfile (str, op...",
+      "docstring": "Mark alleles in SAM/BAM file based on phased SNP information.\n\nArgs:\n    sam_file (str): Path to the input SAM or BAM file.\n    phased_snp_file (str): Path to the phased SNP file. Can be tab-delimited...",
       "return_type": null,
-      "lineno": 487
+      "lineno": 518
+    },
+    {
+      "name": "read_ref_snp_file",
+      "signature": "read_ref_snp_file(ref_snp_file)",
+      "docstring": "Read a reference SNP file, supporting both TSV and parquet formats.\n\nArgs:\n    ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited (.tsv, .txt, etc.)\n                       or par...",
+      "return_type": null,
+      "lineno": 670
     },
     {
       "name": "sam_count_alleles",
       "signature": "sam_count_alleles(allele_df, ref_snp_file, gt_strategy='max_allele')",
       "docstring": "Count reference, alternative, and other alleles for each chromosome and site.\n\nThis function takes a DataFrame containing genetic data and calculates the count\nof reference alleles, alternative allele...",
       "return_type": null,
-      "lineno": 638
+      "lineno": 698
     },
     {
       "name": "do_sam2vcf_allele_count",
-      "signature": "do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None)",
-      "docstring": "Given a SAM file and a reference SNP file, generate a parquet file with allele counts of each SNP.\n\n{pipeline}[Gamete SNP Phasing Pipeline][1.count alleles]:\n    `do_sam2vcf_allele_count` for each gam...",
+      "signature": "do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None, marked_allele_file=None, force=False)",
+      "docstring": "Given a SAM file and a reference SNP file, generate a parquet file with allele counts at each SNP.\n\n{pipeline}[Gamete SNP Phasing Pipeline][1.count alleles]:\n    `do_sam2vcf_allele_count` for each gam...",
       "return_type": null,
-      "lineno": 737
+      "lineno": 793
     },
     {
       "name": "hap_score_gb",
       "signature": "hap_score_gb(df)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 782
+      "lineno": 854
     },
     {
       "name": "get_chrom_hap_score",
       "signature": "get_chrom_hap_score(dump_dir)",
       "docstring": "Get chrom_hap_score of samples.\nInput:\n    dump_dir: rd/dump generated by hires_utils\nOutput:\n    pd.Series",
       "return_type": null,
-      "lineno": 785
+      "lineno": 857
     },
     {
       "name": "count_chrom_phased",
       "signature": "count_chrom_phased(filename: str)",
       "docstring": "Count number of phased (with separable SNP) segments per chromosome from a .seg.gz file.\nInput:\n    filename: Path to the .seg.gz file.\nOutput:\n    A pandas Series with multi-index (chromosome, phasin...",
       "return_type": "pd.Series",
-      "lineno": 802
+      "lineno": 874
     },
     {
       "name": "mt_count_chrom_phased",
       "signature": "mt_count_chrom_phased(filename: str)",
       "docstring": "No documentation available.",
       "return_type": "pd.Series",
-      "lineno": 817
+      "lineno": 889
     },
     {
       "name": "count_phased_seg_perbin",
       "signature": "count_phased_seg_perbin(filename, genome='mm10', binsize=1000000.0)",
       "docstring": "Count the number of phased segments per bin of a given genome.\nInput:\n    filename: str, path to the .seg file\n    genome: str, genome name (default: \"mm10\")\n    binsize: int, size of the bins (defaul...",
       "return_type": null,
-      "lineno": 820
+      "lineno": 892
     },
     {
       "name": "sort",
