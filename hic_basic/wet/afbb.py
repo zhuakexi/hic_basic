@@ -9,6 +9,7 @@ import re
 from concurrent import futures
 from genericpath import isfile
 from itertools import repeat
+from pathlib import Path
 from subprocess import check_output, CalledProcessError
 
 import numpy as np
@@ -32,7 +33,21 @@ formal_feature_names = {
 }
 # add pairs num
 def zcount(filename:str,target:str)->int:
-    # count zipped file line number
+    """
+    Count the number of lines matching a target string in a gzip-compressed file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the gzip-compressed file.
+    target : str
+        String pattern to search for (passed to ``zgrep -c``).
+
+    Returns
+    -------
+    int
+        Number of matching lines; 0 if none found or file is absent.
+    """
     try:
         output_bytes = check_output([
             "zgrep","-c",target,
@@ -41,7 +56,23 @@ def zcount(filename:str,target:str)->int:
         return 0
     return int(output_bytes.decode("utf-8").strip())
 def count_pairs(filename:str)->int:
-    # count number of contacts in 4DN pairs file
+    """
+    Count the number of contact records in a 4DN pairs file.
+
+    Lines beginning with ``#`` are treated as header/comment lines and
+    excluded from the count.
+
+    Parameters
+    ----------
+    filename : str
+        Path to a gzip-compressed ``.pairs.gz`` file.
+
+    Returns
+    -------
+    int or None
+        Number of contact records, or ``None`` if *filename* is not a string
+        or the file does not exist.
+    """
     if not isinstance(filename,str):
         return None
     if not os.path.isfile(filename):
@@ -74,6 +105,22 @@ def add_pairs_num(annote,threads,pairs_types=["pairs_c1","pairs_c12","pairs_c123
     return filesp.assign(**ares)
 # count mapping rate
 def mapping_rate(bam,threads=4):
+    """
+    Compute the primary-mapped and overall mapped rates for a BAM file.
+
+    Parameters
+    ----------
+    bam : str or None
+        Path to the sorted BAM file. If ``None``, returns zeros.
+    threads : int, optional
+        Number of threads for ``pysam.flagstat`` (default 4).
+
+    Returns
+    -------
+    dict
+        Dictionary with keys ``"primary mapped"`` and ``"mapped"``, each
+        holding the corresponding fraction of QC-passed reads.
+    """
     if bam is None:
         return {"primary mapped":0, "mapped":0}
     bamstat = json.loads(pysam.flagstat(bam, "-O","json","-@",str(threads)))
@@ -82,6 +129,19 @@ def mapping_rate(bam,threads=4):
             "mapped":bamstat["QC-passed reads"]["mapped"]/bamstat["QC-passed reads"]["total"]}
 # add_pairs path
 def real_file(i):
+    """
+    Return the path if it points to an existing file, otherwise ``None``.
+
+    Parameters
+    ----------
+    i : str or any
+        A file path string to validate. Non-string values are returned as-is.
+
+    Returns
+    -------
+    str or None
+        The original path if the file exists; ``None`` otherwise.
+    """
     if not isinstance(i,str):
         return i
     if os.path.isfile(i):
@@ -381,9 +441,26 @@ def add_extra(annote):
 
 def add_mapping(annote, threads=16):
     """
-    Adding mapping and primary mapping rate of DNA library.
-    Input:
-        old: sam version compatible to old pipeline. task_dirp/sam/xxx.aln.sam.gz
+    Add DNA-library mapping and primary-mapping rate columns to annotation.
+
+    BAM paths are resolved via ``bubble_flow_touched()["hic_mapped"]``.  Samples
+    whose BAM file is missing are processed with ``mapping_rate(None)`` and
+    receive zero rates.
+
+    Parameters
+    ----------
+    annote : pandas.DataFrame
+        Annotation DataFrame indexed by sample name; must include a
+        ``task_dirp`` column.
+    threads : int, optional
+        Total worker threads (divided among parallel ``pysam.flagstat`` calls,
+        default 16).
+
+    Returns
+    -------
+    pandas.DataFrame
+        Original DataFrame with two new columns appended: ``"primary mapped"``
+        and ``"mapped"``.
     """
     sthreads = 4
     file_paths = []
@@ -431,6 +508,18 @@ def add_mapping(annote, threads=16):
     ares = pd.DataFrame(results, index=annote.index)
     return pd.concat([annote, ares], axis=1, join="outer")
 def check_RNA(task_dirp):
+    """
+    Print RNA-seq QC statistics for a bubble_flow task directory.
+
+    Reads STAR alignment summary (``star_mapped/Log.final.out``) and
+    featureCounts assignment summary (``count_gene/gene_assigned.summary``)
+    from *task_dirp*, then prints and returns the combined statistics.
+
+    Parameters
+    ----------
+    task_dirp : str
+        Root directory of a bubble_flow task.
+    """
     res = {}
     res.update(star_stat(os.path.join(task_dirp,"star_mapped","Log.final.out")))
     res.update(fc_stat(os.path.join(task_dirp, "count_gene","gene_assigned.summary")))
@@ -472,6 +561,70 @@ def task_stat(task_dirp, ref=None, threads=32)->pd.DataFrame:
     annote = add_umis(annote, umip_paths)
     annote = add_extra(annote)
     return annote
+def task_stat_rna_wgs(task_dirp: str, ref: str) -> pd.DataFrame:
+    """
+    Build a QC summary DataFrame for a combined RNA + WGS bubble_flow task.
+
+    Reads sample metadata from ``<task_dirp>/rd``, filters to a fixed set of
+    QC columns (mapping rates, read counts, phasing scores, etc.), appends UMI
+    and gene counts from the specified count matrix, and calculates derived
+    metrics via :func:`add_extra`.
+
+    Parameters
+    ----------
+    task_dirp : str
+        Root directory of the bubble_flow task.
+    ref : str
+        Reference genome tag used to locate the count matrix at
+        ``<task_dirp>/count_matrix_<ref>/counts.gene.tsv.gz``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Per-sample QC DataFrame with columns for mapping rates, read counts,
+        phasing metrics, UMIs, genes, and derived ratios.
+    """
+    meta = get_info(Path(task_dirp) / "rd").T
+    required_cols = [
+        'R1_file', 'R2_file', 'dna_reads', 'rna_reads', 'rna_c1_reads',
+        'rna_c2_reads', 'primary mapped', 'mapped', 'raw_reads', 'hap1_phased',
+        'hap2_phased', 'biasedX_score', 'hap_score', 'ypercent', 'xpercent',
+        'cell_state'
+    ]
+    dtypes = {
+        "R1_file": str,
+        "R2_file": str,
+        "dna_reads": int,
+        "rna_reads": int,
+        "rna_c1_reads": int,
+        "rna_c2_reads": int,
+        "primary mapped": float,
+        "mapped": float,
+        "raw_reads": int,
+        "hap1_phased": float,
+        "hap2_phased": float,
+        "biasedX_score": float,
+        "hap_score": float,
+        "ypercent": float,
+        "xpercent": float,
+        "cell_state": str
+    }
+    # Check which columns exist in the metadata
+    available_cols = [col for col in required_cols if col in meta.columns]
+    missing_cols = [col for col in required_cols if col not in meta.columns]
+    # Print warnings for missing columns
+    if missing_cols:
+        print(f"Warning: The following columns are missing from the metadata and will be skipped: {missing_cols}")
+    meta = meta.loc[
+        :,
+        available_cols
+        ].astype({col: dtypes[col] for col in available_cols if col in dtypes})
+    cm_path = bubble_flow_touched()["count_matrix"][0].format(
+        task_dirp=task_dirp, ref=ref
+    )
+    meta_e = add_umis(meta, cm_path)
+    meta_e = add_extra(meta_e)
+    return meta_e
 # pick useful cols
 def pick_useful(annote,features=["basic"]):
     """
