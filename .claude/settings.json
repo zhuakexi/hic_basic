@@ -1,0 +1,105 @@
+{
+  "sandbox": {
+    "enabled": false
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "additionalDirectories": [
+      "/share/home/ychi/dev/hires_utils",
+      "/share/home/ychi/dev/hic_basic",
+      "/shareb/ychi",
+      "/share/Data/ychi",
+      "/shareb/ychi",
+      "/sharec/ychi",
+      "/shared/ychi"
+    ],
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "WebFetch",
+
+      "Bash(curl *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(grep *)",
+      "Bash(sort *)",
+      "Bash(cut *)",
+      "Bash(awk *)",
+      "Bash(sed *)",
+      "Bash(diff *)",
+      "Bash(echo *)",
+      "Bash(printf *)",
+      "Bash(test *)",
+      "Bash(stat *)",
+      "Bash(file *)",
+      "Bash(readlink *)",
+      "Bash(realpath *)",
+      "Bash(basename *)",
+      "Bash(dirname *)",
+      "Bash(pwd)",
+      "Bash(which *)",
+      "Bash(command *)",
+      "Bash(type *)",
+      "Bash(env *)",
+      "Bash(export *)",
+
+      "Bash(cd *)",
+      "Bash(pushd *)",
+      "Bash(popd *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(rm *)",
+      "Bash(ln *)",
+      "Bash(touch *)",
+      "Bash(chmod *)",
+      "Bash(./run_in_env.sh *)",
+      "Bash(/share/home/ychi/dev/omic_skills/v2_claude/run_in_env.sh *)",
+
+      "Bash(zcat *)",
+      "Bash(gzip *)",
+      "Bash(gunzip *)",
+      "Bash(tar *)",
+      "Bash(xargs *)",
+      "Bash(tee *)",
+
+      "Bash(git *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git checkout*)",
+      "Bash(git branch*)",
+
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(pip *)",
+      "Bash(pip3 *)",
+      "Bash(conda *)",
+      "Bash(micromamba *)",
+      "Bash(Rscript *)",
+      "Bash(jupyter *)",
+
+      "Bash(singularity *)",
+      "Bash(snakemake *)",
+
+      "Bash(cooler *)",
+      "Bash(pairtools *)",
+      "Bash(samtools *)",
+      "Bash(bedtools *)",
+      "Bash(bgzip *)",
+      "Bash(tabix *)"
+    ],
+    "deny": []
+  }
+}

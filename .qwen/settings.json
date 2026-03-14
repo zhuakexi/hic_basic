@@ -1,0 +1,15 @@
+{
+  "context": {
+    "fileName": [
+      "QWEN.md"
+    ]
+  },
+  "tools": {
+    "approvalMode": "yolo",
+    "sandbox": false
+  },
+  "general": {
+    "gitCoAuthor": false
+  },
+  "$version": 3
+}
