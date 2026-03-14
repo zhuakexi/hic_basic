@@ -35,7 +35,7 @@ Total modules with public functions: 76
 - [impute.schicluster](#impute-schicluster) (3 functions)
 - [impute.simpute](#impute-simpute) (9 functions)
 - [inter_contact](#inter_contact) (3 functions)
-- [interpolate](#interpolate) (3 functions)
+- [interpolate](#interpolate) (4 functions)
 - [lap_embedding](#lap_embedding) (3 functions)
 - [mchr](#mchr) (7 functions)
 - [metrics](#metrics) (4 functions)
@@ -4175,7 +4175,7 @@ No documentation available.
 
 **File:** `interpolate.py`
 
-**Public functions:** 3
+**Public functions:** 4
 
 
 ### `correct_pseudotime(adata, pseudotime_col, n_pcs=15, inplace=True)`
@@ -4190,7 +4190,7 @@ Output:
     new adata object
 
 
-**Source:** Line 90 in [interpolate.py](interpolate.py#L90)
+**Source:** Line 298 in [interpolate.py](interpolate.py#L298)
 
 
 ---
@@ -4210,7 +4210,7 @@ Output:
     new adata object numPts * adata.shape[1]
 
 
-**Source:** Line 63 in [interpolate.py](interpolate.py#L63)
+**Source:** Line 66 in [interpolate.py](interpolate.py#L66)
 
 
 ---
@@ -4222,8 +4222,53 @@ Output:
 No documentation available.
 
 
-**Source:** Line 20 in [interpolate.py](interpolate.py#L20)
+**Source:** Line 23 in [interpolate.py](interpolate.py#L23)
 
+
+---
+
+
+### `gp_interpolate(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, alpha=1e-06, length_scale=0.1, length_scale_bounds=(0.01, 1.0), n_restarts_optimizer=5, normalize_y=True, result_key='gp_interpolate', inplace=True)`
+
+
+Interpolate single-trajectory expression dynamics with Gaussian Processes.
+
+Parameters
+----------
+adata : anndata.AnnData
+    AnnData object containing expression values and pseudotime annotations.
+pseudotime_col : str
+    Column in ``adata.obs`` containing numeric pseudotime values.
+layer : str, optional
+    Expression source. Use ``"X"`` for ``adata.X`` or the name of an
+    entry in ``adata.layers``.
+gene_mask_key : str, optional
+    Boolean column in ``adata.var`` used to select genes for fitting.
+numPts : int, optional
+    Number of evenly spaced interpolation points on normalized pseudotime.
+alpha : float, optional
+    Fixed observation noise variance passed to the GP regressor.
+length_scale : float, optional
+    Initial RBF length scale.
+length_scale_bounds : tuple, optional
+    Bounds for RBF length-scale optimization.
+n_restarts_optimizer : int, optional
+    Number of optimizer restarts for hyperparameter fitting.
+normalize_y : bool, optional
+    Whether to normalize the target values before fitting.
+result_key : str, optional
+    Key used to store outputs in ``adata.uns``.
+inplace : bool, optional
+    If ``True``, write results to ``adata`` directly. Otherwise fit on a
+    copy and return the copy.
+
+Returns
+-------
+anndata.AnnData
+    AnnData with GP interpolation results stored in ``adata.uns[result_key]``.
+
+
+**Source:** Line 183 in [interpolate.py](interpolate.py#L183)
 
 ---
 
