@@ -1,145 +1,95 @@
-# Code Style Guide
+# QWEN.md — hic_basic
 
-This part specifies the coding standards for Qwen3 codebase. All contributions **must** adhere to these guidelines to ensure consistency, readability, and maintainability.
+This file provides guidance for Qwen when working in the hic_basic codebase.
 
----
+## Quick function discovery
+- **Search by name**: `python docs/search_api.py cool2mat`
+- **Search by module**: `python docs/search_api.py --module coolstuff`
+- **Search by keyword**: `python docs/search_api.py --keyword "convert"`
+- **Interactive search**: `python docs/search_api.py --interactive`
+- **Programmatic index**: `docs/api_index.json`
+- **Full reference**: `docs/API_REFERENCE.md` (527 functions across 76 modules)
 
-## 1. Docstring Standards (Google Style)
+## Environment and execution
+- **Entrypoint script**: `./run_in_env.sh` — the only project-supported compute entrypoint
+- **Run commands**: `./run_in_env.sh <command>` (e.g., `./run_in_env.sh python -m hic_basic`)
+- **Install editable**: `./run_in_env.sh pip install -e .`
+- **Run tests**: `./run_in_env.sh pytest -q tests`
+- **Self-check**: `./run_in_env.sh --self-check` (verifies environment and container setup)
+- **Under the hood**: Runs commands in a Singularity container (`light_base_1_1.sif`) with the `hic_basic_v096` mamba environment
 
-All functions, classes, and modules **must** have docstrings following the **Google style** format. All documentation must be in **English**.
+## Repo layout
+- **Core library**: `hic_basic/`
+- **I/O and metadata**: `hic_basic/hicio.py` (`read_meta`), `hic_basic/data.py`
+- **Conversions**: `hic_basic/coolstuff.py` (`pairs2cool`, `pairs2scool`, `hic_pileup`)
+- **Plotting**: `hic_basic/plot/hic.py` (`plot_cool`, `plot_cool_track`, `plot_cools`)
+- **CLI**: `hic_basic/cli/` (e.g., `render.py`, `download.py`)
+- **Analysis modules**: `hic_basic/impute/`, `hic_basic/wet/`, `hic_basic/pseudotime/`
+- **Tests**: `tests/` (prefer `tests/data` for fixtures)
+- **Docs tooling**: `scripts/generate_api_reference.py`
 
-### 1.1 Basic Structure
+## Documentation workflow
+When adding or modifying public functions:
+1. Write clear docstrings with Parameters, Returns, and Examples (NumPy/SciPy style)
+2. Run `python scripts/generate_api_reference.py` to regenerate docs
+3. Commit both code changes AND updated documentation together:
+   ```bash
+   git add hic_basic/ docs/
+   git commit -m "Add feature with updated docs"
+   ```
 
-```python
-def function_name(param1: type, param2: type) -> return_type:
-    """One-line summary of the function.
+## Agent workflow (library-first)
+1. **Search existing APIs** in `hic_basic` before adding new code. Prefer extending a relevant module over creating a new one.
+2. **Keep changes backwards compatible** whenever possible. If a break is unavoidable:
+   - Add a deprecation path or migration note
+   - Update tests to cover both old and new behavior if feasible
+3. **Add tests with minimal data**:
+   - Use `tests/data` and tmp paths
+   - Avoid absolute paths and large files
+4. **Avoid project-specific logic** in this repo; put shared, general utilities only.
 
-    Extended description of the function's behavior, purpose, and usage.
+## Project conventions
+- **Metadata**: Prefer `read_meta()` from `hic_basic.hicio` over ad-hoc pandas reads
+- **File types**: Works with Cooler (.cool/.mcool), scool, and pairs files
+- **Plotting**: `plot_cool` is the common entrypoint; watch `binsize` and `vmax`
+- **Parallel patterns**: Reuse `mt_pairs2cool` and worker patterns from `coolstuff.py`
+- **Tests**: Use `request.fspath` fixtures or `tests/data`; avoid hard-coded absolute paths
 
-    Args:
-        param1 (type): Description of parameter 1.
-        param2 (type): Description of parameter 2.
-
-    Returns:
-        return_type: Description of return value.
-
-    Raises:
-        ValueError: When invalid input is provided.
-
-    Example:
-        >>> function_name(5, 10)
-        15
-    """
-    pass
-```
-
-### 1.2 Key Rules
-
-- Always use triple quotes `"""` for docstrings
-- Always include:
-  - One-line summary
-  - Extended description
-  - `Args` section (with types)
-  - `Returns` section
-  - `Raises` section (if applicable)
-  - `Example` section (with doctest)
-- Never omit type hints in docstrings
-- Always end docstring with a period
-- Never use `#` comments inside docstrings
-
-## 2. Code Organization
-
-### 2.1 File Structure
-
-- Group related functions by logical functionality
-- Label each block with `### --- Block Title --- ###`
-- Add two blank lines above and below each block title.
-
-```python
-### --- Data Processing Functions --- ###
-
-def clean_data(raw_data: list) -> list:
-    ...
-
-def transform_data(data: list) -> list:
-    ...
-
-
-### --- Mathematical Operations --- ###
-
-
-def calculate_mean(values: list) -> float:
-    ...
-
-def calculate_variance(values: list) -> float:
-    ...
-```
-
-### 2.2 Function Internal Structure
-
-- Group related logic within a function
-- Separate logic blocks with one blank line
-- Label each block with `# --- Block Title --- #`
-
-```python
-def process_data(data: list) -> dict:
-    """Process raw data into structured format."""
-    
-    # --- Validate Input Data ---
-    if not data:
-        raise ValueError("Input data cannot be empty")
-    
-    # --- Filter Valid Entries ---
-    valid_entries = [item for item in data if item['value'] > 0]
-    
-    # --- Calculate Statistics ---
-    total = sum(item['value'] for item in valid_entries)
-    count = len(valid_entries)
-    
-    # --- Generate Report ---
-    return {
-        'total': total,
-        'count': count,
-        'average': total / count if count else 0
-    }
-```
-## 3. Inline Comments
-
-### 3.1 When to Add Comments
-
-- **Complex algorithms**  
-  (e.g., mathematical formulas, state machines)
-
-- **Non-obvious logic**  
-  (e.g., edge cases, optimizations)
-
-- **Critical calculations**  
-  (e.g., financial formulas, physics models)
-
-### 3.2 Comment Style
-
-- Always explain **why** the code exists, not just **what** it does
-- Include examples when possible
-- Keep comments concise (2-3 lines max)
-
-```python
-# Calculate BMI using formula: weight(kg) / (height(m) ** 2)
-# Example: 70kg person with 1.75m height -> 70 / (1.75**2) = 22.86
-bmi = weight / (height ** 2)
-
-# Handle edge case: height must be > 0 (prevents division by zero)
-if height <= 0:
-    raise ValueError("Height must be greater than 0")
-```
-
-## 4. Commit Guidelines
-
-All commits **must** follow a consistent format to ensure clear change tracking and review. Each commit message should:
-
-- List modified functions **one per line**
-- Specify modification type (**bug fix**, **feature**, **refactor** or **documentation**) in the first line
-- Each function should be listed only once, with all changes related to it summarized in a single, concise sentence.
-
+## Common examples
 ```bash
-bug fix - calculate_discount: Fix edge case for discount_rate > 100
+# Run a command in the environment
+./run_in_env.sh python -m hic_basic --help
+
+# Install the package in editable mode
+./run_in_env.sh pip install -e .
+
+# Run tests
+./run_in_env.sh pytest -q tests
+
+# Self-check to verify environment
+./run_in_env.sh --self-check
 ```
+
+```python
+# Read metadata
+from hic_basic.hicio import read_meta
+meta = read_meta("xx.meta.csv.gz")
+
+# Convert pairs to scool
+from hic_basic.coolstuff import pairs2scool
+pairs2scool(meta["pairs_c12"].to_dict(), "xx.scool", "mm10.len.tsv", 20000)
+
+# Plot a cool file
+from hic_basic.plot.hic import plot_cool
+fig = plot_cool("xx.cool", "title", region="chr1", vmax=500)
+```
+
+## Fragile areas to watch
+- Hard-coded file paths in tests — use fixtures or `tests/data`
+- Plotting/I/O functions assume cooler-backed arrays; avoid heavy in-memory copies
+- Notebooks may mutate `sys.path` to include `hires_utils`
+
+## External dependencies
+- **Core**: cooler, cooler-tools ecosystems (.cool, .mcool)
+- **Bioinformatics**: pairs format
+- **Package list**: See `envs/*.yaml` for exact dependencies

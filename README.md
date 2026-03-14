@@ -5,7 +5,7 @@ A Python library for processing Hi-C and 3D genome data.
 ## 📚 Documentation
 
 **Complete API Reference**: [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
-- 528 public functions across 76 modules
+- 530 public functions across 77 modules
 - Auto-generated from source code
 - Searchable with `python docs/search_api.py`
 

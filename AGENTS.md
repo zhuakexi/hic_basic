@@ -20,10 +20,12 @@ This repository is a Python library and CLI for Hi-C / 3D genome data processing
 - Docs tooling: `scripts/generate_api_reference.py`
 
 ## Environment and execution
-- Conda environment definition: `envs/hic_basic.yaml` (name: `hic_basic`, Python 3.10)
-- Install editable for local use: `pip install -e .`
-- Run tests: `pytest -q tests`
-- If you need a one-liner with micromamba: `micromamba run -n hic_basic pytest -q tests`
+- **Entrypoint script**: `./run_in_env.sh` — the only project-supported compute entrypoint
+- **Run commands**: `./run_in_env.sh <command>` (e.g., `./run_in_env.sh python -m hic_basic`)
+- **Install editable**: `./run_in_env.sh pip install -e .`
+- **Run tests**: `./run_in_env.sh pytest -q tests`
+- **Self-check**: `./run_in_env.sh --self-check` (verifies environment and container setup)
+- **Under the hood**: Runs commands in a Singularity container (`light_base_1_1.sif`) with the `hic_basic_v096` mamba environment
 
 ## Documentation workflow
 - Public functions are auto-indexed; keep docstrings accurate.
