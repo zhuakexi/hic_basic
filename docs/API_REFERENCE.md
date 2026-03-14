@@ -2,7 +2,7 @@
 
 *Auto-generated API documentation for public functions*
 
-Total modules with public functions: 76
+Total modules with public functions: 77
 
 ---
 
@@ -41,7 +41,7 @@ Total modules with public functions: 76
 - [metrics](#metrics) (4 functions)
 - [nagano_cycle_phasing](#nagano_cycle_phasing) (6 functions)
 - [paracalc](#paracalc) (2 functions)
-- [phasing](#phasing) (22 functions)
+- [phasing](#phasing) (11 functions)
 - [pileup](#pileup) (6 functions)
 - [pipeline.rule](#pipeline-rule) (8 functions)
 - [plot.bar](#plot-bar) (1 functions)
@@ -63,6 +63,7 @@ Total modules with public functions: 76
 - [pymol.sele_cent](#pymol-sele_cent) (2 functions)
 - [pymol.sele_telo](#pymol-sele_telo) (2 functions)
 - [pymol.utils](#pymol-utils) (2 functions)
+- [sam](#sam) (12 functions)
 - [scAB_embedding](#scab_embedding) (9 functions)
 - [scripts.downsra](#scripts-downsra) (1 functions)
 - [scripts.rescue_jupyter](#scripts-rescue_jupyter) (2 functions)
@@ -76,7 +77,7 @@ Total modules with public functions: 76
 - [territory](#territory) (3 functions)
 - [utils](#utils) (8 functions)
 - [wet.adtools](#wet-adtools) (7 functions)
-- [wet.afbb](#wet-afbb) (18 functions)
+- [wet.afbb](#wet-afbb) (19 functions)
 - [wet.exp_record](#wet-exp_record) (10 functions)
 - [wet.gam](#wet-gam) (1 functions)
 - [wet.meta_trick](#wet-meta_trick) (3 functions)
@@ -4270,6 +4271,7 @@ anndata.AnnData
 
 **Source:** Line 183 in [interpolate.py](interpolate.py#L183)
 
+
 ---
 
 
@@ -4692,7 +4694,7 @@ No documentation available.
 
 **File:** `phasing.py`
 
-**Public functions:** 22
+**Public functions:** 11
 
 
 ### `check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0)`
@@ -4717,25 +4719,7 @@ Returns:
                   otherwise None.
 
 
-**Source:** Line 406 in [phasing.py](phasing.py#L406)
-
-
----
-
-
-### `convert_alignment_to_entry(alignment)`
-
-
-Convert a pysam.AlignedSegment object to a list in the same format as a SAM entry.
-
-Args:
-    alignment (pysam.AlignedSegment): An alignment object from pysam.
-
-Returns:
-    list: A list representing the alignment in the same format as a SAM entry.
-
-
-**Source:** Line 474 in [phasing.py](phasing.py#L474)
+**Source:** Line 68 in [phasing.py](phasing.py#L68)
 
 
 ---
@@ -4753,25 +4737,7 @@ Output:
     A pandas Series with multi-index (chromosome, phasing) and counts.
 
 
-**Source:** Line 874 in [phasing.py](phasing.py#L874)
-
-
----
-
-
-### `count_lines_in_file(file_path)`
-
-
-Count the number of lines in a file efficiently.
-
-Args:
-    file_path (str): Path to the file.
-
-Returns:
-    int: Number of lines in the file.
-
-
-**Source:** Line 505 in [phasing.py](phasing.py#L505)
+**Source:** Line 492 in [phasing.py](phasing.py#L492)
 
 
 ---
@@ -4789,7 +4755,7 @@ Output:
     pandas DataFrame with columns: "chrom", "start", "phase", "count"
 
 
-**Source:** Line 892 in [phasing.py](phasing.py#L892)
+**Source:** Line 510 in [phasing.py](phasing.py#L510)
 
 
 ---
@@ -4816,75 +4782,7 @@ Note:
     plus allele count fields and genotype (e.g., input_ref/input_alt, ref/alt/other, gt).
 
 
-**Source:** Line 793 in [phasing.py](phasing.py#L793)
-
-
----
-
-
-### `entry_align_pos(entry)`
-
-
-Calculate reference and query start/end positions based on CIGAR string.
-
-Args:
-    entry (list): A list representing a SAM format entry where:
-                  entry[1] is the FLAG field,
-                  entry[3] is the reference start position,
-                  entry[5] is the CIGAR string.
-
-Returns:
-    tuple: A tuple containing (rs, re, qs, qe) where:
-           rs: Reference start position (0-based)
-           re: Reference end position
-           qs: Query start position
-           qe: Query end position
-
-
-**Source:** Line 334 in [phasing.py](phasing.py#L334)
-
-
----
-
-
-### `find_intv(a: List, x: int)`
-
-**Returns:** `int`
-
-
-Find the interval containing a given value using binary search.
-
-Args:
-    a: List of intervals
-    x: Value to search for
-    
-Returns:
-    Index of the interval containing x, or -1 if not found
-
-
-**Source:** Line 105 in [phasing.py](phasing.py#L105)
-
-
----
-
-
-### `find_ovlp(a: List, st: int, en: int)`
-
-**Returns:** `List`
-
-
-Find intervals overlapping with a given range.
-
-Args:
-    a: List of intervals [start, end, ...]
-    st: Start of the query range
-    en: End of the query range
-    
-Returns:
-    List of overlapping intervals
-
-
-**Source:** Line 146 in [phasing.py](phasing.py#L146)
+**Source:** Line 411 in [phasing.py](phasing.py#L411)
 
 
 ---
@@ -4900,25 +4798,7 @@ Output:
     pd.Series
 
 
-**Source:** Line 857 in [phasing.py](phasing.py#L857)
-
-
----
-
-
-### `get_file_type(file_path)`
-
-
-Determine the file type by reading the file content.
-
-Args:
-    file_path (str): Path to the file to check.
-
-Returns:
-    str: The file type ('SAM', 'BAM', 'SAMgz', or 'unknown').
-
-
-**Source:** Line 233 in [phasing.py](phasing.py#L233)
+**Source:** Line 475 in [phasing.py](phasing.py#L475)
 
 
 ---
@@ -4930,62 +4810,7 @@ Returns:
 No documentation available.
 
 
-**Source:** Line 854 in [phasing.py](phasing.py#L854)
-
-
----
-
-
-### `index_end(a: List, sorted: bool=True)`
-
-**Returns:** `None`
-
-
-Add index information for efficient overlap finding.
-
-Args:
-    a: List of intervals [start, end, ...]
-    sorted: Whether the intervals are already sorted
-
-
-**Source:** Line 71 in [phasing.py](phasing.py#L71)
-
-
----
-
-
-### `is_sam_content(text, max_lines=20)`
-
-
-检查文本内容是否符合 SAM 格式特征
-
-Args:
-    text (str): 要检查的文本内容
-    max_lines (int): 最多检查的行数
-
-Returns:
-    bool: 如果是 SAM 格式返回 True，否则返回 False
-
-
-**Source:** Line 300 in [phasing.py](phasing.py#L300)
-
-
----
-
-
-### `merge(a: List, sorted: bool=True)`
-
-**Returns:** `None`
-
-
-Merge overlapping intervals.
-
-Args:
-    a: List of intervals to merge, each interval is [start, end]
-    sorted: Whether the intervals are already sorted
-
-
-**Source:** Line 42 in [phasing.py](phasing.py#L42)
+**Source:** Line 472 in [phasing.py](phasing.py#L472)
 
 
 ---
@@ -4999,27 +4824,7 @@ Args:
 No documentation available.
 
 
-**Source:** Line 889 in [phasing.py](phasing.py#L889)
-
-
----
-
-
-### `parse_cigar(cigar: str)`
-
-**Returns:** `List[Tuple[int, str]]`
-
-
-Parse CIGAR string into operations and lengths.
-
-Args:
-    cigar: CIGAR string (e.g., "100M5D10I")
-    
-Returns:
-    List of (length, operation) tuples (e.g., [(100, 'M'), (5, 'D'), (10, 'I')])
-
-
-**Source:** Line 219 in [phasing.py](phasing.py#L219)
+**Source:** Line 507 in [phasing.py](phasing.py#L507)
 
 
 ---
@@ -5037,11 +4842,11 @@ Args:
                           or parquet format (.parquet). Expected columns: chrom, pos, ref_allele, alt_allele.
 
 Returns:
-    dict: A dictionary where keys are chromosome names and values are lists of 
+    dict: A dictionary where keys are chromosome names and values are lists of
           [start, end, ref_allele, alt_allele, index] intervals for efficient overlap finding.
 
 
-**Source:** Line 172 in [phasing.py](phasing.py#L172)
+**Source:** Line 21 in [phasing.py](phasing.py#L21)
 
 
 ---
@@ -5060,7 +4865,7 @@ Returns:
     pandas.DataFrame: A DataFrame with columns 'chrom', 'pos', 'input_ref', 'input_alt'.
 
 
-**Source:** Line 670 in [phasing.py](phasing.py#L670)
+**Source:** Line 288 in [phasing.py](phasing.py#L288)
 
 
 ---
@@ -5081,7 +4886,7 @@ Args:
                            'input_ref', and 'input_alt'. Each row represents
                            an allele observation at a specific genomic location.
     ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited or parquet format.
-    gt_strategy (str): Strategy for generating the GT column. 
+    gt_strategy (str): Strategy for generating the GT column.
                       "max_allele": Choose the allele with the highest count (ref or alt) and convert to ATGC
                       "no_conflict": Choose the non-zero allele if one is 0 and the other > 0, otherwise NA
 
@@ -5092,7 +4897,7 @@ Returns:
                       other alleles ('other'), and the genotype ('gt').
 
 
-**Source:** Line 698 in [phasing.py](phasing.py#L698)
+**Source:** Line 316 in [phasing.py](phasing.py#L316)
 
 
 ---
@@ -5118,24 +4923,7 @@ Returns:
     str or pandas.DataFrame: Path to the output file if outfile is specified, otherwise a DataFrame containing marked alleles.
 
 
-**Source:** Line 518 in [phasing.py](phasing.py#L518)
-
-
----
-
-
-### `sort(a: List)`
-
-**Returns:** `None`
-
-
-Sort intervals based on their coordinates.
-
-Args:
-    a: List of intervals to sort. Each interval can be a number or [start, end] pair.
-
-
-**Source:** Line 25 in [phasing.py](phasing.py#L25)
+**Source:** Line 136 in [phasing.py](phasing.py#L136)
 
 
 ---
@@ -6669,7 +6457,7 @@ No documentation available.
 No documentation available.
 
 
-**Source:** Line 193 in [plot/scanpy.py](plot/scanpy.py#L193)
+**Source:** Line 258 in [plot/scanpy.py](plot/scanpy.py#L258)
 
 
 ---
@@ -6681,13 +6469,13 @@ No documentation available.
 No documentation available.
 
 
-**Source:** Line 150 in [plot/scanpy.py](plot/scanpy.py#L150)
+**Source:** Line 215 in [plot/scanpy.py](plot/scanpy.py#L215)
 
 
 ---
 
 
-### `plot_pca(adata, color: str, PCs: Optional[Union[List[int], List[List[int]]]]=None, ncols: int=2)`
+### `plot_pca(adata, color: str, PCs: Optional[Union[List[int], List[List[int]]]]=None, ncols: int=2, background: Optional[str]=None)`
 
 
 Plot PCA results from AnnData object with flexible subplot configurations.
@@ -6696,31 +6484,49 @@ This function creates scatter plots of PCA components from single-cell data.
 It can generate single plots or multiple subplots showing different combinations
 of principal components.
 
-Args:
-    adata: AnnData object containing PCA results in obsm['X_pca']
-    color: Column name in adata.obs to use for coloring points
-    PCs: Specification of which principal components to plot. Can be:
-        - None: plots first two PCs (PC1 vs PC2)
-        - List[int]: plots all pairwise combinations of the specified PCs
-        - List[List[int]]: plots specific pairs of PCs as subplots
-    ncols: Number of columns for subplot layout when multiple plots are generated
-    **kwargs: Additional arguments passed to px.scatter
-    
-Returns:
-    plotly.graph_objects.Figure: Figure object containing the PCA plot(s)
-    
-Examples:
-    >>> # Plot first two PCs
-    >>> fig = plot_pca(adata, color='cell_type')
-    
-    >>> # Plot all pairwise combinations of PCs 1-3
-    >>> fig = plot_pca(adata, color='cell_type', PCs=[0, 1, 2])
-    
-    >>> # Plot specific PC pairs in subplots
-    >>> fig = plot_pca(adata, color='cell_type', PCs=[[0, 1], [0, 2], [1, 3]])
-    
-    >>> # Customize subplot layout
-    >>> fig = plot_pca(adata, color='cell_type', PCs=[0, 1, 2, 3], ncols=3)
+Parameters
+----------
+adata : AnnData
+    AnnData object containing PCA results in ``obsm['X_pca']``.
+color : str
+    Column name in ``adata.obs`` to use for coloring foreground points.
+PCs : list of int or list of list of int, optional
+    Specification of which principal components to plot:
+
+    - ``None``: plots first two PCs (PC1 vs PC2).
+    - ``List[int]``: plots all pairwise combinations of the specified PCs.
+    - ``List[List[int]]``: plots specific pairs of PCs as subplots.
+ncols : int, optional
+    Number of columns for subplot layout when multiple plots are generated
+    (default 2).
+background : str, optional
+    A :meth:`pandas.DataFrame.query` expression (same syntax as
+    ``DataFrame.query``) that selects samples to treat as *background*.
+    Background samples are rendered in light grey and drawn behind the
+    foreground points.  Foreground samples (those **not** matching the
+    expression) are colored normally according to *color*.  Defaults to
+    ``None`` (all samples are foreground).
+**kwargs
+    Additional arguments passed to ``px.scatter`` for foreground traces.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    Figure object containing the PCA plot(s).
+
+Examples
+--------
+>>> # Plot first two PCs
+>>> fig = plot_pca(adata, color='cell_type')
+
+>>> # Plot first two PCs with a grey background group
+>>> fig = plot_pca(adata, color='cell_type', background="batch == 'B'")
+
+>>> # Plot all pairwise combinations of PCs 1-3
+>>> fig = plot_pca(adata, color='cell_type', PCs=[0, 1, 2])
+
+>>> # Plot specific PC pairs in subplots
+>>> fig = plot_pca(adata, color='cell_type', PCs=[[0, 1], [0, 2], [1, 3]])
 
 
 **Source:** Line 14 in [plot/scanpy.py](plot/scanpy.py#L14)
@@ -6735,7 +6541,7 @@ Examples:
 Plot scanpy tsne using plotly.
 
 
-**Source:** Line 177 in [plot/scanpy.py](plot/scanpy.py#L177)
+**Source:** Line 242 in [plot/scanpy.py](plot/scanpy.py#L242)
 
 
 ---
@@ -6747,7 +6553,7 @@ Plot scanpy tsne using plotly.
 Plot scanpy umap using plotly.
 
 
-**Source:** Line 159 in [plot/scanpy.py](plot/scanpy.py#L159)
+**Source:** Line 224 in [plot/scanpy.py](plot/scanpy.py#L224)
 
 
 ---
@@ -7597,6 +7403,286 @@ Return a path to src's ref
 ---
 
 
+## sam
+
+**File:** `sam.py`
+
+**Public functions:** 12
+
+
+### `convert_alignment_to_entry(alignment)`
+
+
+Convert a pysam.AlignedSegment object to a list in the same format as a SAM entry.
+
+Args:
+    alignment (pysam.AlignedSegment): An alignment object from pysam.
+
+Returns:
+    list: A list representing the alignment in the same format as a SAM entry.
+
+
+**Source:** Line 355 in [sam.py](sam.py#L355)
+
+
+---
+
+
+### `count_lines_in_file(file_path)`
+
+
+Count the number of lines in a file efficiently.
+
+Args:
+    file_path (str): Path to the file.
+
+Returns:
+    int: Number of lines in the file.
+
+
+**Source:** Line 387 in [sam.py](sam.py#L387)
+
+
+---
+
+
+### `count_reads_per_chrom(file_path: str, min_mapq: int=0, skip_unmapped: bool=True, skip_duplicates: bool=False, return_fraction: bool=False)`
+
+**Returns:** `pd.Series`
+
+
+Count reads per chromosome from a SAM or BAM file.
+
+This function efficiently counts the number of reads mapped to each chromosome
+in a SAM or BAM file, with optional filtering by mapping quality and read flags.
+
+Args:
+    file_path (str): Path to the SAM or BAM file.
+    min_mapq (int): Minimum mapping quality threshold. Reads with MAPQ < min_mapq
+                   will be excluded. Defaults to 0 (no filtering).
+    skip_unmapped (bool): If True, skip unmapped reads. Defaults to True.
+    skip_duplicates (bool): If True, skip PCR/optical duplicates. Defaults to False.
+    return_fraction (bool): If True, return fractions instead of raw counts.
+                           Defaults to False.
+
+Returns:
+    pandas.Series: A Series with chromosome names as index and read counts (or fractions)
+                  as values, sorted by chromosome name.
+
+Raises:
+    FileNotFoundError: If the file does not exist.
+    ValueError: If the file is not a valid SAM or BAM file.
+
+Examples:
+    Count reads per chromosome:
+
+    >>> counts = count_reads_per_chrom("sample.bam")
+    >>> print(counts)
+    chr1     1000000
+    chr2      900000
+    chrX       30000
+    chrY        3000
+    dtype: int64
+
+    Get fractions instead of counts:
+
+    >>> fractions = count_reads_per_chrom("sample.bam", return_fraction=True)
+    >>> print(fractions)
+    chr1    0.5128
+    chr2    0.4615
+    chrX    0.0154
+    chrY    0.0015
+    dtype: float64
+
+    Filter by mapping quality:
+
+    >>> counts = count_reads_per_chrom("sample.bam", min_mapq=30)
+
+
+**Source:** Line 401 in [sam.py](sam.py#L401)
+
+
+---
+
+
+### `entry_align_pos(entry)`
+
+
+Calculate reference and query start/end positions based on CIGAR string.
+
+Args:
+    entry (list): A list representing a SAM format entry where:
+                  entry[1] is the FLAG field,
+                  entry[3] is the reference start position,
+                  entry[5] is the CIGAR string.
+
+Returns:
+    tuple: A tuple containing (rs, re, qs, qe) where:
+           rs: Reference start position (0-based)
+           re: Reference end position
+           qs: Query start position
+           qe: Query end position
+
+
+**Source:** Line 283 in [sam.py](sam.py#L283)
+
+
+---
+
+
+### `find_intv(a: List, x: int)`
+
+**Returns:** `int`
+
+
+Find the interval containing a given value using binary search.
+
+Args:
+    a: List of intervals
+    x: Value to search for
+
+Returns:
+    Index of the interval containing x, or -1 if not found
+
+
+**Source:** Line 97 in [sam.py](sam.py#L97)
+
+
+---
+
+
+### `find_ovlp(a: List, st: int, en: int)`
+
+**Returns:** `List`
+
+
+Find intervals overlapping with a given range.
+
+Args:
+    a: List of intervals [start, end, ...]
+    st: Start of the query range
+    en: End of the query range
+
+Returns:
+    List of overlapping intervals
+
+
+**Source:** Line 138 in [sam.py](sam.py#L138)
+
+
+---
+
+
+### `get_file_type(file_path)`
+
+
+Determine the file type by reading the file content.
+
+Args:
+    file_path (str): Path to the file to check.
+
+Returns:
+    str: The file type ('SAM', 'BAM', 'SAMgz', or 'unknown').
+
+
+**Source:** Line 181 in [sam.py](sam.py#L181)
+
+
+---
+
+
+### `index_end(a: List, sorted: bool=True)`
+
+**Returns:** `None`
+
+
+Add index information for efficient overlap finding.
+
+Args:
+    a: List of intervals [start, end, ...]
+    sorted: Whether the intervals are already sorted
+
+
+**Source:** Line 63 in [sam.py](sam.py#L63)
+
+
+---
+
+
+### `is_sam_content(text, max_lines=20)`
+
+
+Check if text content matches SAM format characteristics.
+
+Args:
+    text (str): Text content to check
+    max_lines (int): Maximum number of lines to check
+
+Returns:
+    bool: True if SAM format, False otherwise
+
+
+**Source:** Line 248 in [sam.py](sam.py#L248)
+
+
+---
+
+
+### `merge(a: List, sorted: bool=True)`
+
+**Returns:** `None`
+
+
+Merge overlapping intervals.
+
+Args:
+    a: List of intervals to merge, each interval is [start, end]
+    sorted: Whether the intervals are already sorted
+
+
+**Source:** Line 34 in [sam.py](sam.py#L34)
+
+
+---
+
+
+### `parse_cigar(cigar: str)`
+
+**Returns:** `List[Tuple[int, str]]`
+
+
+Parse CIGAR string into operations and lengths.
+
+Args:
+    cigar: CIGAR string (e.g., "100M5D10I")
+
+Returns:
+    List of (length, operation) tuples (e.g., [(100, 'M'), (5, 'D'), (10, 'I')])
+
+
+**Source:** Line 166 in [sam.py](sam.py#L166)
+
+
+---
+
+
+### `sort(a: List)`
+
+**Returns:** `None`
+
+
+Sort intervals based on their coordinates.
+
+Args:
+    a: List of intervals to sort. Each interval can be a number or [start, end] pair.
+
+
+**Source:** Line 17 in [sam.py](sam.py#L17)
+
+
+---
+
+
 ## scAB_embedding
 
 **File:** `scAB_embedding.py`
@@ -8212,7 +8298,7 @@ Compute the difference between centromere and telomere.
 Use this to treat various centromere and telomere circumstances.
 
 
-**Source:** Line 449 in [structure/measure.py](structure/measure.py#L449)
+**Source:** Line 455 in [structure/measure.py](structure/measure.py#L455)
 
 
 ---
@@ -8230,7 +8316,7 @@ Output:
     angle_degrees (float): The angle between the two vectors in degrees.
 
 
-**Source:** Line 552 in [structure/measure.py](structure/measure.py#L552)
+**Source:** Line 558 in [structure/measure.py](structure/measure.py#L558)
 
 
 ---
@@ -8251,7 +8337,7 @@ Output:
     dat: data structure with centromere and telomere information
 
 
-**Source:** Line 408 in [structure/measure.py](structure/measure.py#L408)
+**Source:** Line 414 in [structure/measure.py](structure/measure.py#L414)
 
 
 ---
@@ -8268,7 +8354,7 @@ Output:
 TODO: A more general way to determine paternal/maternal rather than name matching
 
 
-**Source:** Line 521 in [structure/measure.py](structure/measure.py#L521)
+**Source:** Line 527 in [structure/measure.py](structure/measure.py#L527)
 
 
 ---
@@ -8316,7 +8402,7 @@ Usage:
     c2t_vec = cent2telo_vector(_3dg, genome="mm10", dis=2e6, p=False, q=True)
 
 
-**Source:** Line 471 in [structure/measure.py](structure/measure.py#L471)
+**Source:** Line 477 in [structure/measure.py](structure/measure.py#L477)
 
 
 ---
@@ -8336,7 +8422,7 @@ Output:
     strong_violates: DataFrame containing strong constraint violations.
 
 
-**Source:** Line 335 in [structure/measure.py](structure/measure.py#L335)
+**Source:** Line 341 in [structure/measure.py](structure/measure.py#L341)
 
 
 ---
@@ -8361,7 +8447,7 @@ Output:
     None. Results are saved directly to the specified outfile.
 
 
-**Source:** Line 360 in [structure/measure.py](structure/measure.py#L360)
+**Source:** Line 366 in [structure/measure.py](structure/measure.py#L366)
 
 
 ---
@@ -8398,7 +8484,7 @@ Output:
     C_normalized (np.array): Unit vector perpendicular to both A and B.
 
 
-**Source:** Line 585 in [structure/measure.py](structure/measure.py#L585)
+**Source:** Line 591 in [structure/measure.py](structure/measure.py#L591)
 
 
 ---
@@ -8415,7 +8501,7 @@ Output:
     pm_vector: paternal centroid point to maternal centroid point vector (mat - pat)
 
 
-**Source:** Line 535 in [structure/measure.py](structure/measure.py#L535)
+**Source:** Line 541 in [structure/measure.py](structure/measure.py#L541)
 
 
 ---
@@ -9258,7 +9344,7 @@ Generate compartment strength table from pre-computed files.
 
 **File:** `wet/afbb.py`
 
-**Public functions:** 18
+**Public functions:** 19
 
 
 ### `add_extra(annote)`
@@ -9270,7 +9356,7 @@ Output:
     new df with extra cols.
 
 
-**Source:** Line 347 in [wet/afbb.py](wet/afbb.py#L347)
+**Source:** Line 407 in [wet/afbb.py](wet/afbb.py#L407)
 
 
 ---
@@ -9289,7 +9375,7 @@ Returns:
     Combined DataFrame with original annotations and new sample information
 
 
-**Source:** Line 219 in [wet/afbb.py](wet/afbb.py#L219)
+**Source:** Line 279 in [wet/afbb.py](wet/afbb.py#L279)
 
 
 ---
@@ -9298,12 +9384,29 @@ Returns:
 ### `add_mapping(annote, threads=16)`
 
 
-Adding mapping and primary mapping rate of DNA library.
-Input:
-    old: sam version compatible to old pipeline. task_dirp/sam/xxx.aln.sam.gz
+Add DNA-library mapping and primary-mapping rate columns to annotation.
+
+BAM paths are resolved via ``bubble_flow_touched()["hic_mapped"]``.  Samples
+whose BAM file is missing are processed with ``mapping_rate(None)`` and
+receive zero rates.
+
+Parameters
+----------
+annote : pandas.DataFrame
+    Annotation DataFrame indexed by sample name; must include a
+    ``task_dirp`` column.
+threads : int, optional
+    Total worker threads (divided among parallel ``pysam.flagstat`` calls,
+    default 16).
+
+Returns
+-------
+pandas.DataFrame
+    Original DataFrame with two new columns appended: ``"primary mapped"``
+    and ``"mapped"``.
 
 
-**Source:** Line 382 in [wet/afbb.py](wet/afbb.py#L382)
+**Source:** Line 442 in [wet/afbb.py](wet/afbb.py#L442)
 
 
 ---
@@ -9325,7 +9428,7 @@ Output:
     anntoe with extra cols
 
 
-**Source:** Line 126 in [wet/afbb.py](wet/afbb.py#L126)
+**Source:** Line 186 in [wet/afbb.py](wet/afbb.py#L186)
 
 
 ---
@@ -9341,7 +9444,7 @@ Output:
     annote with extra cols, pairs_type + "_num" by default
 
 
-**Source:** Line 56 in [wet/afbb.py](wet/afbb.py#L56)
+**Source:** Line 87 in [wet/afbb.py](wet/afbb.py#L87)
 
 
 ---
@@ -9359,7 +9462,7 @@ Input:
     umip: umi count matrix path or iterable of paths
 
 
-**Source:** Line 233 in [wet/afbb.py](wet/afbb.py#L233)
+**Source:** Line 293 in [wet/afbb.py](wet/afbb.py#L293)
 
 
 ---
@@ -9368,10 +9471,19 @@ Input:
 ### `check_RNA(task_dirp)`
 
 
-No documentation available.
+Print RNA-seq QC statistics for a bubble_flow task directory.
+
+Reads STAR alignment summary (``star_mapped/Log.final.out``) and
+featureCounts assignment summary (``count_gene/gene_assigned.summary``)
+from *task_dirp*, then prints and returns the combined statistics.
+
+Parameters
+----------
+task_dirp : str
+    Root directory of a bubble_flow task.
 
 
-**Source:** Line 433 in [wet/afbb.py](wet/afbb.py#L433)
+**Source:** Line 510 in [wet/afbb.py](wet/afbb.py#L510)
 
 
 ---
@@ -9382,10 +9494,24 @@ No documentation available.
 **Returns:** `int`
 
 
-No documentation available.
+Count the number of contact records in a 4DN pairs file.
+
+Lines beginning with ``#`` are treated as header/comment lines and
+excluded from the count.
+
+Parameters
+----------
+filename : str
+    Path to a gzip-compressed ``.pairs.gz`` file.
+
+Returns
+-------
+int or None
+    Number of contact records, or ``None`` if *filename* is not a string
+    or the file does not exist.
 
 
-**Source:** Line 43 in [wet/afbb.py](wet/afbb.py#L43)
+**Source:** Line 58 in [wet/afbb.py](wet/afbb.py#L58)
 
 
 ---
@@ -9406,7 +9532,7 @@ Returns:
     DataFrame where columns are sample IDs and rows are attributes
 
 
-**Source:** Line 196 in [wet/afbb.py](wet/afbb.py#L196)
+**Source:** Line 256 in [wet/afbb.py](wet/afbb.py#L256)
 
 
 ---
@@ -9424,7 +9550,7 @@ Returns:
     List of full file paths sorted by modification time
 
 
-**Source:** Line 179 in [wet/afbb.py](wet/afbb.py#L179)
+**Source:** Line 239 in [wet/afbb.py](wet/afbb.py#L239)
 
 
 ---
@@ -9433,10 +9559,23 @@ Returns:
 ### `mapping_rate(bam, threads=4)`
 
 
-No documentation available.
+Compute the primary-mapped and overall mapped rates for a BAM file.
+
+Parameters
+----------
+bam : str or None
+    Path to the sorted BAM file. If ``None``, returns zeros.
+threads : int, optional
+    Number of threads for ``pysam.flagstat`` (default 4).
+
+Returns
+-------
+dict
+    Dictionary with keys ``"primary mapped"`` and ``"mapped"``, each
+    holding the corresponding fraction of QC-passed reads.
 
 
-**Source:** Line 76 in [wet/afbb.py](wet/afbb.py#L76)
+**Source:** Line 107 in [wet/afbb.py](wet/afbb.py#L107)
 
 
 ---
@@ -9455,7 +9594,7 @@ Output:
     searching result as dict.
 
 
-**Source:** Line 91 in [wet/afbb.py](wet/afbb.py#L91)
+**Source:** Line 151 in [wet/afbb.py](wet/afbb.py#L151)
 
 
 ---
@@ -9467,7 +9606,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 103 in [wet/afbb.py](wet/afbb.py#L103)
+**Source:** Line 163 in [wet/afbb.py](wet/afbb.py#L163)
 
 
 ---
@@ -9484,7 +9623,7 @@ Output:
     new df with useful cols.
 
 
-**Source:** Line 476 in [wet/afbb.py](wet/afbb.py#L476)
+**Source:** Line 629 in [wet/afbb.py](wet/afbb.py#L629)
 
 
 ---
@@ -9493,10 +9632,20 @@ Output:
 ### `real_file(i)`
 
 
-No documentation available.
+Return the path if it points to an existing file, otherwise ``None``.
+
+Parameters
+----------
+i : str or any
+    A file path string to validate. Non-string values are returned as-is.
+
+Returns
+-------
+str or None
+    The original path if the file exists; ``None`` otherwise.
 
 
-**Source:** Line 84 in [wet/afbb.py](wet/afbb.py#L84)
+**Source:** Line 131 in [wet/afbb.py](wet/afbb.py#L131)
 
 
 ---
@@ -9513,7 +9662,40 @@ TODO:
     make decent dtypes for every column step by step.
 
 
-**Source:** Line 440 in [wet/afbb.py](wet/afbb.py#L440)
+**Source:** Line 529 in [wet/afbb.py](wet/afbb.py#L529)
+
+
+---
+
+
+### `task_stat_rna_wgs(task_dirp: str, ref: str)`
+
+**Returns:** `pd.DataFrame`
+
+
+Build a QC summary DataFrame for a combined RNA + WGS bubble_flow task.
+
+Reads sample metadata from ``<task_dirp>/rd``, filters to a fixed set of
+QC columns (mapping rates, read counts, phasing scores, etc.), appends UMI
+and gene counts from the specified count matrix, and calculates derived
+metrics via :func:`add_extra`.
+
+Parameters
+----------
+task_dirp : str
+    Root directory of the bubble_flow task.
+ref : str
+    Reference genome tag used to locate the count matrix at
+    ``<task_dirp>/count_matrix_<ref>/counts.gene.tsv.gz``.
+
+Returns
+-------
+pandas.DataFrame
+    Per-sample QC DataFrame with columns for mapping rates, read counts,
+    phasing metrics, UMIs, genes, and derived ratios.
+
+
+**Source:** Line 564 in [wet/afbb.py](wet/afbb.py#L564)
 
 
 ---
@@ -9537,7 +9719,7 @@ Returns:
     Updated base dictionary
 
 
-**Source:** Line 156 in [wet/afbb.py](wet/afbb.py#L156)
+**Source:** Line 216 in [wet/afbb.py](wet/afbb.py#L216)
 
 
 ---
@@ -9548,10 +9730,22 @@ Returns:
 **Returns:** `int`
 
 
-No documentation available.
+Count the number of lines matching a target string in a gzip-compressed file.
+
+Parameters
+----------
+filename : str
+    Path to the gzip-compressed file.
+target : str
+    String pattern to search for (passed to ``zgrep -c``).
+
+Returns
+-------
+int
+    Number of matching lines; 0 if none found or file is absent.
 
 
-**Source:** Line 34 in [wet/afbb.py](wet/afbb.py#L34)
+**Source:** Line 35 in [wet/afbb.py](wet/afbb.py#L35)
 
 
 ---

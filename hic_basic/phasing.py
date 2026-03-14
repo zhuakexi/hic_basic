@@ -5,7 +5,6 @@ import gzip
 import os
 import re
 import sys
-import struct
 import pandas as pd
 import pysam
 from typing import List, Tuple
@@ -15,160 +14,10 @@ import numpy as np
 from .calculate import mt
 from .hicio import parse_seg, parse_sam_line
 from .genome import GenomeIdeograph
+from .sam import Interval, parse_cigar, get_file_type, is_sam_content, entry_align_pos, convert_alignment_to_entry, count_lines_in_file
 
 
 ### --- count alleles of vcf sites from sam --- ###
-class Interval:
-    """Interval operations for genomic data processing."""
-    
-    @staticmethod
-    def sort(a: List) -> None:
-        """
-        Sort intervals based on their coordinates.
-        
-        Args:
-            a: List of intervals to sort. Each interval can be a number or [start, end] pair.
-        """
-        if not a:
-            return
-        if isinstance(a[0], (int, float)):
-            # Sort by value if intervals are numbers
-            a.sort()
-        else:
-            # Sort by start position, then end position
-            a.sort(key=lambda x: (x[0], x[1]))
-
-    @staticmethod
-    def merge(a: List, sorted: bool = True) -> None:
-        """
-        Merge overlapping intervals.
-        
-        Args:
-            a: List of intervals to merge, each interval is [start, end]
-            sorted: Whether the intervals are already sorted
-        """
-        if not sorted:
-            Interval.sort(a)
-        
-        if not a:
-            return
-            
-        k = 0
-        for i in range(1, len(a)):
-            # If current interval overlaps with the last merged interval
-            if a[k][1] >= a[i][0]:
-                # Extend the end of the merged interval if needed
-                a[k][1] = max(a[k][1], a[i][1])
-            else:
-                # Move to next position and copy current interval
-                k += 1
-                a[k] = a[i][:]
-        
-        # Truncate list to contain only merged intervals
-        del a[k+1:]
-
-    @staticmethod
-    def index_end(a: List, sorted: bool = True) -> None:
-        """
-        Add index information for efficient overlap finding.
-        
-        Args:
-            a: List of intervals [start, end, ...]
-            sorted: Whether the intervals are already sorted
-        """
-        if not a:
-            return
-        if not sorted:
-            Interval.sort(a)
-        
-        # Initialize the first interval with index 0
-        a[0].append(0)
-        
-        k = 0
-        k_en = a[0][1]
-        
-        for i in range(1, len(a)):
-            # If current interval starts after the end of the indexed interval
-            if k_en <= a[i][0]:
-                # Find the next interval that overlaps with current interval
-                k += 1
-                while k < i:
-                    if a[k][1] > a[i][0]:
-                        break
-                    k += 1
-                k_en = a[k][1]
-            
-            # Add the index to the current interval
-            a[i].append(k)
-
-    @staticmethod
-    def find_intv(a: List, x: int) -> int:
-        """
-        Find the interval containing a given value using binary search.
-        
-        Args:
-            a: List of intervals
-            x: Value to search for
-            
-        Returns:
-            Index of the interval containing x, or -1 if not found
-        """
-        left = -1
-        right = len(a)
-        
-        if not a:
-            return -1
-            
-        if isinstance(a[0], (int, float)):
-            # Handle case where intervals are numbers
-            while right - left > 1:
-                mid = left + ((right - left) >> 1)  # Equivalent to (right - left) // 2
-                if a[mid] > x:
-                    right = mid
-                elif a[mid] < x:
-                    left = mid
-                else:
-                    return mid
-        else:
-            # Handle case where intervals are [start, end] pairs
-            while right - left > 1:
-                mid = left + ((right - left) >> 1)
-                if a[mid][0] > x:
-                    right = mid
-                elif a[mid][0] < x:
-                    left = mid
-                else:
-                    return mid
-        
-        return left
-
-    @staticmethod
-    def find_ovlp(a: List, st: int, en: int) -> List:
-        """
-        Find intervals overlapping with a given range.
-        
-        Args:
-            a: List of intervals [start, end, ...]
-            st: Start of the query range
-            en: End of the query range
-            
-        Returns:
-            List of overlapping intervals
-        """
-        if not a or st >= en:
-            return []
-        
-        l = Interval.find_intv(a, st)
-        k = 0 if l < 0 else a[l][-1]  # Get the index from the last element
-        b = []
-        
-        for i in range(k, len(a)):
-            if a[i][0] >= en:
-                break
-            elif st < a[i][1]:  # Check if intervals overlap
-                b.append(a[i])
-        
-        return b
 def parse_phased_snp(phased_snp_file: str) -> dict:
     """
     Parse a phased SNP file into a dictionary for interval-based lookups.
@@ -178,11 +27,11 @@ def parse_phased_snp(phased_snp_file: str) -> dict:
                               or parquet format (.parquet). Expected columns: chrom, pos, ref_allele, alt_allele.
 
     Returns:
-        dict: A dictionary where keys are chromosome names and values are lists of 
+        dict: A dictionary where keys are chromosome names and values are lists of
               [start, end, ref_allele, alt_allele, index] intervals for efficient overlap finding.
     """
     snp_dict = {}
-    
+
     if phased_snp_file.endswith('.parquet'):
         # Read parquet file
         df = pd.read_parquet(phased_snp_file)
@@ -190,7 +39,7 @@ def parse_phased_snp(phased_snp_file: str) -> dict:
             df = df.iloc[:, :4]
             df.columns = ['chrom', 'pos', 'ref', 'alt']
         df = df.astype({'chrom': str, 'pos': int, 'ref': str, 'alt': str})
-        
+
         for _, row in df.iterrows():
             # Skip if ref or alt alleles are not single characters
             if len(row['ref']) != 1 or len(row['alt']) != 1:
@@ -211,197 +60,10 @@ def parse_phased_snp(phased_snp_file: str) -> dict:
                     snp_dict[t[0]] = []
                 pos = int(t[1])
                 snp_dict[t[0]].append([pos - 1, pos, t[2], t[3]])
-    
+
     for c in snp_dict:
         Interval.index_end(snp_dict[c], True)
     return snp_dict
-
-def parse_cigar(cigar: str) -> List[Tuple[int, str]]:
-    """
-    Parse CIGAR string into operations and lengths.
-    
-    Args:
-        cigar: CIGAR string (e.g., "100M5D10I")
-        
-    Returns:
-        List of (length, operation) tuples (e.g., [(100, 'M'), (5, 'D'), (10, 'I')])
-    """
-    cigar_pattern = re.compile(r'(\d+)([MIDSH])')
-    matches = cigar_pattern.findall(cigar)
-    return [(int(length), op) for length, op in matches]
-
-def get_file_type(file_path):
-    """
-    Determine the file type by reading the file content.
-    
-    Args:
-        file_path (str): Path to the file to check.
-    
-    Returns:
-        str: The file type ('SAM', 'BAM', 'SAMgz', or 'unknown').
-    """
-    try:
-        # 首先检查文件扩展名（快速提示）
-        ext = os.path.splitext(file_path)[1].lower()
-        
-        with open(file_path, 'rb') as f:
-            # 读取文件开头的魔数
-            magic = f.read(4)
-            f.seek(0)
-            
-            # 1. 检查是否是 BAM 文件
-            # BAM 是 gzip 压缩的，并且解压后以 BAM\x01 开头
-            if magic[:2] == b'\x1f\x8b':
-                try:
-                    with gzip.open(file_path, 'rb') as gz:
-                        decompressed_header = gz.read(4)
-                        if decompressed_header == b'BAM\x01':
-                            return 'BAM'
-                except (gzip.BadGzipFile, OSError):
-                    # 不是有效的 gzip 文件或不是 BAM
-                    pass
-            
-            # 2. 检查是否是 gzip 压缩的 SAM 文件
-            if magic[:2] == b'\x1f\x8b':
-                try:
-                    with gzip.open(file_path, 'rb') as gz:
-                        # 读取足够的数据来检测 SAM 特征
-                        decompressed_data = gz.read(4096)
-                        
-                        # 尝试解码为文本
-                        try:
-                            text = decompressed_data.decode('utf-8', errors='ignore')
-                            if is_sam_content(text):
-                                return 'SAMgz'
-                        except UnicodeDecodeError:
-                            # 不是有效的文本
-                            pass
-                except (gzip.BadGzipFile, OSError):
-                    # 不是有效的 gzip 文件
-                    pass
-            
-            # 3. 检查是否是未压缩的 SAM 文件
-            # 读取文件内容进行检测
-            content = f.read(4096)
-            try:
-                text = content.decode('utf-8', errors='ignore')
-                if is_sam_content(text):
-                    return 'SAM'
-            except UnicodeDecodeError:
-                # 不是文本文件
-                pass
-                
-    except (IOError, OSError) as e:
-        print(f"Error reading file: {e}")
-    
-    return 'unknown'
-
-
-def is_sam_content(text, max_lines=20):
-    """
-    检查文本内容是否符合 SAM 格式特征
-    
-    Args:
-        text (str): 要检查的文本内容
-        max_lines (int): 最多检查的行数
-    
-    Returns:
-        bool: 如果是 SAM 格式返回 True，否则返回 False
-    """
-    lines = text.split('\n')
-    
-    # SAM 头行的有效前缀
-    sam_headers = ['@HD', '@SQ', '@RG', '@PG', '@CO']
-    
-    for line in lines[:max_lines]:
-        line = line.strip()
-        if not line:
-            continue
-        
-        # 检查是否是有效的 SAM 头行
-        if line.startswith('@'):
-            if any(line.startswith(h) for h in sam_headers):
-                return True
-        # 检查是否是有效的 SAM 数据行
-        elif '\t' in line:
-            fields = line.split('\t')
-            # SAM 数据行至少有11个字段
-            if len(fields) >= 11:
-                return True
-    
-    return False
-
-def entry_align_pos(entry):
-    """
-    Calculate reference and query start/end positions based on CIGAR string.
-
-    Args:
-        entry (list): A list representing a SAM format entry where:
-                      entry[1] is the FLAG field,
-                      entry[3] is the reference start position,
-                      entry[5] is the CIGAR string.
-
-    Returns:
-        tuple: A tuple containing (rs, re, qs, qe) where:
-               rs: Reference start position (0-based)
-               re: Reference end position
-               qs: Query start position
-               qe: Query end position
-    """
-    cigar_ops = parse_cigar(entry[5])
-    clip = [0, 0]  # [left_clip, right_clip]
-    x = 0  # Reference coordinate
-    y = 0  # Query coordinate
-    read_nums = 0  # Bitwise flag for read numbers
-    flag = int(entry[1])
-    
-    # Determine if on reverse strand
-    rev = bool(flag & 16)
-    
-    # Parse CIGAR to get ref and query positions
-    cigar_ops = parse_cigar(entry[5])
-    for length, op in cigar_ops:
-        # e.g.,
-        #   "100M" -> ref forward 100 bases, query forward 100 bases
-        #   "5I"  -> ref forward 0 bases, query forward 5 bases
-        if op == 'M':  # Match or mismatch
-            x += length
-            y += length
-        elif op == 'I':  # Insertion
-            y += length
-        elif op == 'D':  # Deletion
-            x += length
-        elif op in ['S', 'H']:  # Soft or hard clipping
-            # Record clipping lengths and forward query position
-            clip[0 if y == 0 else 1] = length  # Left clip if y==0, else right clip
-            y += length
-    
-    rs = int(entry[3]) - 1  # Reference start position (0-based), directly from SAM
-    re = rs + x  # Reference end position, calculated from CIGAR
-    
-    # Calculate query start/end based on strand
-    qlen = y  # Total aligned length
-    if not rev:
-        qs = clip[0]  # Query start
-        qe = qlen - clip[1]  # Query end
-    else:
-        qs = clip[1]
-        qe = qlen - clip[0]
-    
-    read_num = (flag >> 6) & 0x3  # Extract read number (1 or 2)
-    if read_num == 3:
-        raise ValueError(f"{t[0]}: incorrect read number flags")
-    
-    read_nums |= 1 << read_num
-    
-    if read_num == 2:  # Adjust for read 2
-        qs1 = qlen - qe
-        qe = qlen - qs
-        qs = qs1
-        rev = not rev
-
-    return rs, re, qs, qe
-
 
 def check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0):
     """
@@ -471,50 +133,6 @@ def check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0):
     return res
 
 
-def convert_alignment_to_entry(alignment):
-    """
-    Convert a pysam.AlignedSegment object to a list in the same format as a SAM entry.
-
-    Args:
-        alignment (pysam.AlignedSegment): An alignment object from pysam.
-
-    Returns:
-        list: A list representing the alignment in the same format as a SAM entry.
-    """
-    # Convert alignment to a list similar to SAM format
-    entry = [
-        alignment.query_name,  # QNAME (0)
-        str(alignment.flag),   # FLAG (1)
-        alignment.reference_name if alignment.reference_name else '*',  # RNAME (2)
-        str(alignment.reference_start + 1) if alignment.reference_start >= 0 else '0',  # POS (3)
-        str(alignment.mapping_quality),  # MAPQ (4)
-        alignment.cigarstring if alignment.cigarstring else '*',  # CIGAR (5)
-        alignment.next_reference_name if alignment.next_reference_name else '=',  # RNEXT (6)
-        str(alignment.next_reference_start + 1) if alignment.next_reference_start >= 0 else '0',  # PNEXT (7)
-        str(alignment.template_length) if alignment.template_length else '0',  # TLEN (8)
-        alignment.query_sequence if alignment.query_sequence else '*',  # SEQ (9)
-        alignment.qual if alignment.qual else '*'  # QUAL (10)
-    ]
-    
-    # Add optional fields if they exist
-    for tag, value in alignment.tags:
-        entry.append(f"{tag}:{value}")
-    
-    return entry
-
-def count_lines_in_file(file_path):
-    """
-    Count the number of lines in a file efficiently.
-
-    Args:
-        file_path (str): Path to the file.
-
-    Returns:
-        int: Number of lines in the file.
-    """
-    with open(file_path, 'r') as f:
-        return sum(1 for _ in f)
-
 def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=None, min_mapq=20, min_baseq=20, show_progress=False, verbose=0):
     """
     Mark alleles in SAM/BAM file based on phased SNP information.
@@ -537,11 +155,11 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
     file_type = get_file_type(sam_file)
     if verbose >= 1:
         print(f"Detected file type: {file_type}", file=sys.stderr)
-    
+
     snp_dict = parse_phased_snp(phased_snp_file)
     comments = []
     marked_reads = []
-    
+
     if file_type == 'BAM':
         # Count total alignments for progress bar
         if show_progress:
@@ -555,15 +173,15 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
                 alignment_iter = tqdm(bam_file, total=total_alignments, desc="Processing alignments")
             else:
                 alignment_iter = bam_file
-            
+
             for alignment in alignment_iter:
                 # Convert alignment to entry format
                 entry = convert_alignment_to_entry(alignment)
-                
+
                 # Skip unmapped reads
                 if alignment.is_unmapped:
                     continue
-                
+
                 mapq = int(entry[4])
                 if mapq < min_mapq:
                     continue
@@ -598,16 +216,16 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
         if show_progress:
             with open_func(sam_file, 'rt') as f:
                 total_lines = sum(1 for line in f)
-        
+
         with open_func(sam_file, 'rt') as f_in:
             # Process with progress bar if verbose > 0
             lines = f_in
             if show_progress:
                 lines = tqdm(lines, total=total_lines, desc="Processing SAM lines")
-            
+
             for i, line in enumerate(lines):
                 t = line.strip().split("\t")
-                
+
                 # Handle header lines
                 if t[0].startswith('@'):
                     if t[0] == '@SQ':
@@ -620,7 +238,7 @@ def sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=No
                                     sn = m.group(2)
                                 elif m.group(1) == 'LN':
                                     ln = int(m.group(2))
-                        
+
                         if sn is None or ln is None:
                             raise ValueError("missing SN or LN at an @SQ line")
                         # print(f"#chromosome: {sn} {ln}")
@@ -709,7 +327,7 @@ def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
                                'input_ref', and 'input_alt'. Each row represents
                                an allele observation at a specific genomic location.
         ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited or parquet format.
-        gt_strategy (str): Strategy for generating the GT column. 
+        gt_strategy (str): Strategy for generating the GT column.
                           "max_allele": Choose the allele with the highest count (ref or alt) and convert to ATGC
                           "no_conflict": Choose the non-zero allele if one is 0 and the other > 0, otherwise NA
 
@@ -730,23 +348,23 @@ def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
     df_copy = df.copy()
     # Create a new column to categorize each allele
     df_copy['allele_category'] = np.select(
-        [df_copy['allele'] == df_copy['input_ref'], 
+        [df_copy['allele'] == df_copy['input_ref'],
          df_copy['allele'] == df_copy['input_alt']],
         ['ref', 'alt'],
         default='other'
     )
-    
+
     # Group by chrom and pos, and count the occurrences of each allele category
     result = df_copy.groupby(['chrom', 'pos'])['allele_category'].value_counts().unstack(fill_value=0)
-    
+
     # Ensure all required columns exist (ref, alt, other)
     for col in ['ref', 'alt', 'other']:
         if col not in result.columns:
             result[col] = 0
-    
+
     # Select only the required columns
     result = result[['ref', 'alt', 'other']].reset_index()
-    
+
     # Ensure the correct column order
     result = result[['chrom', 'pos', 'ref', 'alt', 'other']]
 
@@ -755,7 +373,7 @@ def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
     # Get the ref and alt alleles for each chrom and pos from the original df
     allele_map = df[['chrom', 'pos', 'input_ref', 'input_alt']].drop_duplicates(subset=['chrom', 'pos']).reset_index(drop=True)
     result = result.merge(allele_map, on=['chrom', 'pos'], how='left')
-    
+
     # Add the GT column based on the specified strategy using vectorized operations
     if gt_strategy == "max_allele":
         # Vectorized operation:
@@ -767,36 +385,36 @@ def sam_count_alleles(allele_df, ref_snp_file, gt_strategy="max_allele"):
             [result['input_ref'], result['input_alt']],
             default=pd.NA
         )
-        
+
     elif gt_strategy == "no_conflict":
         # Vectorized operation: if one is 0 and other > 0, choose the > 0 allele; if both > 0, return NA
         condition1 = (result['ref'] > 0) & (result['alt'] == 0) & (result['other'] == 0) # ref > 0, alt = 0, other = 0
         condition2 = (result['ref'] == 0) & (result['alt'] > 0) & (result['other'] == 0)  # ref = 0, alt > 0, other = 0
         condition3 = (result['ref'] > 0) & (result['alt'] > 0)   # both > 0
-        
+
         result['gt'] = np.select(
             [condition1, condition2, condition3],
             [result['input_ref'], result['input_alt'], pd.NA],
             default=pd.NA
         )
-        
+
     else:
         raise ValueError(f"Invalid gt_strategy: {gt_strategy}. Valid options are 'max_allele' or 'no_conflict'.")
-    
+
     # Drop the temporary columns used for allele mapping
     result = result.drop(['input_ref', 'input_alt'], axis=1)
-    
+
     # Ensure the correct column order
     result = result[['chrom', 'pos', 'ref', 'alt', 'other', 'gt']]
-    
+
     return result
 def do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None, marked_allele_file=None, force=False):
     """
     Given a SAM file and a reference SNP file, generate a parquet file with allele counts at each SNP.
-    
+
     {pipeline}[Gamete SNP Phasing Pipeline][1.count alleles]:
         `do_sam2vcf_allele_count` for each gamete SAM file to get allele counts at each SNP position.
-    
+
     Parameters:
         sam_file (str): Path to the SAM file, can be sam.gz, bam, or sam.
         ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited (.tsv, .txt, etc.)
