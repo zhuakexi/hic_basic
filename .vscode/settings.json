@@ -10,6 +10,9 @@
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
     "chat.tools.terminal.autoApprove": {
-        "pytest": true
+        "pytest": true,
+        "git add": true,
+        "git commit": true,
+        "micromamba": true
     }
 }
