@@ -310,7 +310,13 @@ def restraint_violations(pairs, _3dg, genome, binsize, flavor="hickit"):
     Output:
         pairs with new column 'distance'
     """
-    pairs_e = GenomeIdeograph(genome).append_bins(pairs, binsize, flavor=flavor)
+    pairs_e = GenomeIdeograph(genome).append_bins(
+        pairs,
+        binsize,
+        chr2_col="chr2",
+        pos2_col="pos2",
+        flavor=flavor,
+    )
     # --- calculate distances --- #
     particles1 = pd.merge(
         pairs_e[["chr1","start1"]],
