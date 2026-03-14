@@ -1744,154 +1744,77 @@
       "signature": "parse_phased_snp(phased_snp_file: str)",
       "docstring": "Parse a phased SNP file into a dictionary for interval-based lookups.\n\nArgs:\n    phased_snp_file (str): Path to the phased SNP file. Can be tab-delimited (.tsv, .txt, etc.)\n                          o...",
       "return_type": "dict",
-      "lineno": 172
-    },
-    {
-      "name": "parse_cigar",
-      "signature": "parse_cigar(cigar: str)",
-      "docstring": "Parse CIGAR string into operations and lengths.\n\nArgs:\n    cigar: CIGAR string (e.g., \"100M5D10I\")\n    \nReturns:\n    List of (length, operation) tuples (e.g., [(100, 'M'), (5, 'D'), (10, 'I')])",
-      "return_type": "List[Tuple[int, str]]",
-      "lineno": 219
-    },
-    {
-      "name": "get_file_type",
-      "signature": "get_file_type(file_path)",
-      "docstring": "Determine the file type by reading the file content.\n\nArgs:\n    file_path (str): Path to the file to check.\n\nReturns:\n    str: The file type ('SAM', 'BAM', 'SAMgz', or 'unknown').",
-      "return_type": null,
-      "lineno": 233
-    },
-    {
-      "name": "is_sam_content",
-      "signature": "is_sam_content(text, max_lines=20)",
-      "docstring": "\u68c0\u67e5\u6587\u672c\u5185\u5bb9\u662f\u5426\u7b26\u5408 SAM \u683c\u5f0f\u7279\u5f81\n\nArgs:\n    text (str): \u8981\u68c0\u67e5\u7684\u6587\u672c\u5185\u5bb9\n    max_lines (int): \u6700\u591a\u68c0\u67e5\u7684\u884c\u6570\n\nReturns:\n    bool: \u5982\u679c\u662f SAM \u683c\u5f0f\u8fd4\u56de True\uff0c\u5426\u5219\u8fd4\u56de False",
-      "return_type": null,
-      "lineno": 300
-    },
-    {
-      "name": "entry_align_pos",
-      "signature": "entry_align_pos(entry)",
-      "docstring": "Calculate reference and query start/end positions based on CIGAR string.\n\nArgs:\n    entry (list): A list representing a SAM format entry where:\n                  entry[1] is the FLAG field,\n          ...",
-      "return_type": null,
-      "lineno": 334
+      "lineno": 21
     },
     {
       "name": "check_allele",
       "signature": "check_allele(entry, rs, v, append_features=None, min_baseq=20, verbose=0)",
       "docstring": "Check if a SAM entry contains a specific allele at a given position.\n\nArgs:\n    entry (list): A list representing a SAM format entry where:\n                  entry[2] is the reference sequence name,\n ...",
       "return_type": null,
-      "lineno": 406
-    },
-    {
-      "name": "convert_alignment_to_entry",
-      "signature": "convert_alignment_to_entry(alignment)",
-      "docstring": "Convert a pysam.AlignedSegment object to a list in the same format as a SAM entry.\n\nArgs:\n    alignment (pysam.AlignedSegment): An alignment object from pysam.\n\nReturns:\n    list: A list representing ...",
-      "return_type": null,
-      "lineno": 474
-    },
-    {
-      "name": "count_lines_in_file",
-      "signature": "count_lines_in_file(file_path)",
-      "docstring": "Count the number of lines in a file efficiently.\n\nArgs:\n    file_path (str): Path to the file.\n\nReturns:\n    int: Number of lines in the file.",
-      "return_type": null,
-      "lineno": 505
+      "lineno": 68
     },
     {
       "name": "sam_mark_alleles",
       "signature": "sam_mark_alleles(sam_file, phased_snp_file, outfile=None, append_features=None, min_mapq=20, min_baseq=20, show_progress=False, verbose=0)",
       "docstring": "Mark alleles in SAM/BAM file based on phased SNP information.\n\nArgs:\n    sam_file (str): Path to the input SAM or BAM file.\n    phased_snp_file (str): Path to the phased SNP file. Can be tab-delimited...",
       "return_type": null,
-      "lineno": 518
+      "lineno": 136
     },
     {
       "name": "read_ref_snp_file",
       "signature": "read_ref_snp_file(ref_snp_file)",
       "docstring": "Read a reference SNP file, supporting both TSV and parquet formats.\n\nArgs:\n    ref_snp_file (str): Path to the reference SNP file. Can be tab-delimited (.tsv, .txt, etc.)\n                       or par...",
       "return_type": null,
-      "lineno": 670
+      "lineno": 288
     },
     {
       "name": "sam_count_alleles",
       "signature": "sam_count_alleles(allele_df, ref_snp_file, gt_strategy='max_allele')",
       "docstring": "Count reference, alternative, and other alleles for each chromosome and site.\n\nThis function takes a DataFrame containing genetic data and calculates the count\nof reference alleles, alternative allele...",
       "return_type": null,
-      "lineno": 698
+      "lineno": 316
     },
     {
       "name": "do_sam2vcf_allele_count",
       "signature": "do_sam2vcf_allele_count(sam_file, output, ref_snp_file=None, marked_allele_file=None, force=False)",
       "docstring": "Given a SAM file and a reference SNP file, generate a parquet file with allele counts at each SNP.\n\n{pipeline}[Gamete SNP Phasing Pipeline][1.count alleles]:\n    `do_sam2vcf_allele_count` for each gam...",
       "return_type": null,
-      "lineno": 793
+      "lineno": 411
     },
     {
       "name": "hap_score_gb",
       "signature": "hap_score_gb(df)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 854
+      "lineno": 472
     },
     {
       "name": "get_chrom_hap_score",
       "signature": "get_chrom_hap_score(dump_dir)",
       "docstring": "Get chrom_hap_score of samples.\nInput:\n    dump_dir: rd/dump generated by hires_utils\nOutput:\n    pd.Series",
       "return_type": null,
-      "lineno": 857
+      "lineno": 475
     },
     {
       "name": "count_chrom_phased",
       "signature": "count_chrom_phased(filename: str)",
       "docstring": "Count number of phased (with separable SNP) segments per chromosome from a .seg.gz file.\nInput:\n    filename: Path to the .seg.gz file.\nOutput:\n    A pandas Series with multi-index (chromosome, phasin...",
       "return_type": "pd.Series",
-      "lineno": 874
+      "lineno": 492
     },
     {
       "name": "mt_count_chrom_phased",
       "signature": "mt_count_chrom_phased(filename: str)",
       "docstring": "No documentation available.",
       "return_type": "pd.Series",
-      "lineno": 889
+      "lineno": 507
     },
     {
       "name": "count_phased_seg_perbin",
       "signature": "count_phased_seg_perbin(filename, genome='mm10', binsize=1000000.0)",
       "docstring": "Count the number of phased segments per bin of a given genome.\nInput:\n    filename: str, path to the .seg file\n    genome: str, genome name (default: \"mm10\")\n    binsize: int, size of the bins (defaul...",
       "return_type": null,
-      "lineno": 892
-    },
-    {
-      "name": "sort",
-      "signature": "sort(a: List)",
-      "docstring": "Sort intervals based on their coordinates.\n\nArgs:\n    a: List of intervals to sort. Each interval can be a number or [start, end] pair.",
-      "return_type": "None",
-      "lineno": 25
-    },
-    {
-      "name": "merge",
-      "signature": "merge(a: List, sorted: bool=True)",
-      "docstring": "Merge overlapping intervals.\n\nArgs:\n    a: List of intervals to merge, each interval is [start, end]\n    sorted: Whether the intervals are already sorted",
-      "return_type": "None",
-      "lineno": 42
-    },
-    {
-      "name": "index_end",
-      "signature": "index_end(a: List, sorted: bool=True)",
-      "docstring": "Add index information for efficient overlap finding.\n\nArgs:\n    a: List of intervals [start, end, ...]\n    sorted: Whether the intervals are already sorted",
-      "return_type": "None",
-      "lineno": 71
-    },
-    {
-      "name": "find_intv",
-      "signature": "find_intv(a: List, x: int)",
-      "docstring": "Find the interval containing a given value using binary search.\n\nArgs:\n    a: List of intervals\n    x: Value to search for\n    \nReturns:\n    Index of the interval containing x, or -1 if not found",
-      "return_type": "int",
-      "lineno": 105
-    },
-    {
-      "name": "find_ovlp",
-      "signature": "find_ovlp(a: List, st: int, en: int)",
-      "docstring": "Find intervals overlapping with a given range.\n\nArgs:\n    a: List of intervals [start, end, ...]\n    st: Start of the query range\n    en: End of the query range\n    \nReturns:\n    List of overlapping i...",
-      "return_type": "List",
-      "lineno": 146
+      "lineno": 510
     }
   ],
   "pileup": [
@@ -2531,7 +2454,7 @@
   "plot.scanpy": [
     {
       "name": "plot_pca",
-      "signature": "plot_pca(adata, color: str, PCs: Optional[Union[List[int], List[List[int]]]]=None, ncols: int=2)",
+      "signature": "plot_pca(adata, color: str, PCs: Optional[Union[List[int], List[List[int]]]]=None, ncols: int=2, background: Optional[str]=None)",
       "docstring": "Plot PCA results from AnnData object with flexible subplot configurations.\n\nThis function creates scatter plots of PCA components from single-cell data.\nIt can generate single plots or multiple subplo...",
       "return_type": null,
       "lineno": 14
@@ -2541,28 +2464,28 @@
       "signature": "plot_elbow(adata)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 150
+      "lineno": 215
     },
     {
       "name": "plot_umap",
       "signature": "plot_umap(adata, color, key='X_umap')",
       "docstring": "Plot scanpy umap using plotly.",
       "return_type": null,
-      "lineno": 159
+      "lineno": 224
     },
     {
       "name": "plot_tsne",
       "signature": "plot_tsne(adata, color)",
       "docstring": "Plot scanpy tsne using plotly.",
       "return_type": null,
-      "lineno": 177
+      "lineno": 242
     },
     {
       "name": "plot_diffmap",
       "signature": "plot_diffmap(adata, color, title)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 193
+      "lineno": 258
     }
   ],
   "plot.scatter": [
@@ -2881,6 +2804,92 @@
       "lineno": 18
     }
   ],
+  "sam": [
+    {
+      "name": "parse_cigar",
+      "signature": "parse_cigar(cigar: str)",
+      "docstring": "Parse CIGAR string into operations and lengths.\n\nArgs:\n    cigar: CIGAR string (e.g., \"100M5D10I\")\n\nReturns:\n    List of (length, operation) tuples (e.g., [(100, 'M'), (5, 'D'), (10, 'I')])",
+      "return_type": "List[Tuple[int, str]]",
+      "lineno": 166
+    },
+    {
+      "name": "get_file_type",
+      "signature": "get_file_type(file_path)",
+      "docstring": "Determine the file type by reading the file content.\n\nArgs:\n    file_path (str): Path to the file to check.\n\nReturns:\n    str: The file type ('SAM', 'BAM', 'SAMgz', or 'unknown').",
+      "return_type": null,
+      "lineno": 181
+    },
+    {
+      "name": "is_sam_content",
+      "signature": "is_sam_content(text, max_lines=20)",
+      "docstring": "Check if text content matches SAM format characteristics.\n\nArgs:\n    text (str): Text content to check\n    max_lines (int): Maximum number of lines to check\n\nReturns:\n    bool: True if SAM format, Fal...",
+      "return_type": null,
+      "lineno": 248
+    },
+    {
+      "name": "entry_align_pos",
+      "signature": "entry_align_pos(entry)",
+      "docstring": "Calculate reference and query start/end positions based on CIGAR string.\n\nArgs:\n    entry (list): A list representing a SAM format entry where:\n                  entry[1] is the FLAG field,\n          ...",
+      "return_type": null,
+      "lineno": 283
+    },
+    {
+      "name": "convert_alignment_to_entry",
+      "signature": "convert_alignment_to_entry(alignment)",
+      "docstring": "Convert a pysam.AlignedSegment object to a list in the same format as a SAM entry.\n\nArgs:\n    alignment (pysam.AlignedSegment): An alignment object from pysam.\n\nReturns:\n    list: A list representing ...",
+      "return_type": null,
+      "lineno": 355
+    },
+    {
+      "name": "count_lines_in_file",
+      "signature": "count_lines_in_file(file_path)",
+      "docstring": "Count the number of lines in a file efficiently.\n\nArgs:\n    file_path (str): Path to the file.\n\nReturns:\n    int: Number of lines in the file.",
+      "return_type": null,
+      "lineno": 387
+    },
+    {
+      "name": "count_reads_per_chrom",
+      "signature": "count_reads_per_chrom(file_path: str, min_mapq: int=0, skip_unmapped: bool=True, skip_duplicates: bool=False, return_fraction: bool=False)",
+      "docstring": "Count reads per chromosome from a SAM or BAM file.\n\nThis function efficiently counts the number of reads mapped to each chromosome\nin a SAM or BAM file, with optional filtering by mapping quality and ...",
+      "return_type": "pd.Series",
+      "lineno": 401
+    },
+    {
+      "name": "sort",
+      "signature": "sort(a: List)",
+      "docstring": "Sort intervals based on their coordinates.\n\nArgs:\n    a: List of intervals to sort. Each interval can be a number or [start, end] pair.",
+      "return_type": "None",
+      "lineno": 17
+    },
+    {
+      "name": "merge",
+      "signature": "merge(a: List, sorted: bool=True)",
+      "docstring": "Merge overlapping intervals.\n\nArgs:\n    a: List of intervals to merge, each interval is [start, end]\n    sorted: Whether the intervals are already sorted",
+      "return_type": "None",
+      "lineno": 34
+    },
+    {
+      "name": "index_end",
+      "signature": "index_end(a: List, sorted: bool=True)",
+      "docstring": "Add index information for efficient overlap finding.\n\nArgs:\n    a: List of intervals [start, end, ...]\n    sorted: Whether the intervals are already sorted",
+      "return_type": "None",
+      "lineno": 63
+    },
+    {
+      "name": "find_intv",
+      "signature": "find_intv(a: List, x: int)",
+      "docstring": "Find the interval containing a given value using binary search.\n\nArgs:\n    a: List of intervals\n    x: Value to search for\n\nReturns:\n    Index of the interval containing x, or -1 if not found",
+      "return_type": "int",
+      "lineno": 97
+    },
+    {
+      "name": "find_ovlp",
+      "signature": "find_ovlp(a: List, st: int, en: int)",
+      "docstring": "Find intervals overlapping with a given range.\n\nArgs:\n    a: List of intervals [start, end, ...]\n    st: Start of the query range\n    en: End of the query range\n\nReturns:\n    List of overlapping inter...",
+      "return_type": "List",
+      "lineno": 138
+    }
+  ],
   "scAB_embedding": [
     {
       "name": "get_bin_locus",
@@ -3146,63 +3155,63 @@
       "signature": "fetch_strong_violates(_3dg_f, pairs_f, genome, binsize, d_thres=4)",
       "docstring": "Fetch strong constraint violations from pairs and _3dg data.\nInput:\n    _3dg_f: path to _3dg file\n    pairs_f: path to pairs file\n    genome: genome assembly identifier (e.g., 'mm10')\n    binsize: Chr...",
       "return_type": null,
-      "lineno": 335
+      "lineno": 341
     },
     {
       "name": "mt_strong_violation_ratio",
       "signature": "mt_strong_violation_ratio(sample_table, outfile, force=False, pairs_col='pairs_c12', _3dg_col='20k_g_struct1', genome=None, binsize=20000.0, d_thres=4, n_jobs=16)",
       "docstring": "Process multiple samples in parallel to calculate strong constraint violations.\nTODO: make explicit cache\n\nInput:\n    sample_table (pd.DataFrame): DataFrame containing sample metadata with columns \n  ...",
       "return_type": null,
-      "lineno": 360
+      "lineno": 366
     },
     {
       "name": "append_centelo_to_index",
       "signature": "append_centelo_to_index(df, genome='mm10', dis=2000000.0, p=False, q=True)",
       "docstring": "Append centromere and telomere information to the index.\nInput:\n    df: inner _3dg data structure (see parse_3dg in hires_utils)\n    genome: genome name, use this to determine centromere and telomere ...",
       "return_type": null,
-      "lineno": 408
+      "lineno": 414
     },
     {
       "name": "C2T_diff",
       "signature": "C2T_diff(chunk)",
       "docstring": "Compute the difference between centromere and telomere.\nUse this to treat various centromere and telomere circumstances.",
       "return_type": null,
-      "lineno": 449
+      "lineno": 455
     },
     {
       "name": "cent2telo_vector",
       "signature": "cent2telo_vector(_3dg, genome='mm10', dis=2000000.0, p=False, q=True, show_chroms=False)",
       "docstring": "Compute the C2T vector.\nInput:\n    _3dg: inner _3dg data structure (see parse_3dg in hires_utils)\n    genome: genome name, use this to determine centromere and telomere positions\n    dis: distance thr...",
       "return_type": null,
-      "lineno": 471
+      "lineno": 477
     },
     {
       "name": "append_pm_to_index",
       "signature": "append_pm_to_index(df)",
       "docstring": "Append paternal and maternal information to the index.\nInput:\n    df: inner _3dg data structure (see parse_3dg in hires_utils)\nOutput:\n    dat: data structure with paternal and maternal information\nTO...",
       "return_type": null,
-      "lineno": 521
+      "lineno": 527
     },
     {
       "name": "pm_vector",
       "signature": "pm_vector(_3dg)",
       "docstring": "Compute the paternal/maternal vector.\nAssume chromosome names are in the format of \"chr1(pat)/chr1(mat)\".\nInput:\n    _3dg: inner _3dg data structure (see parse_3dg in hires_utils)\nOutput:\n    pm_vecto...",
       "return_type": null,
-      "lineno": 535
+      "lineno": 541
     },
     {
       "name": "angle_between_vectors",
       "signature": "angle_between_vectors(vector_a, vector_b)",
       "docstring": "Calculate the angle between two 3D vectors.\n\nInput:\n    vector_a (np.array): First 3D vector.\n    vector_b (np.array): Second 3D vector.\nOutput:\n    angle_degrees (float): The angle between the two ve...",
       "return_type": null,
-      "lineno": 552
+      "lineno": 558
     },
     {
       "name": "perpendicular_unit_vector",
       "signature": "perpendicular_unit_vector(A, B)",
       "docstring": "Calculate a unit vector that is perpendicular to both A and B,\nensuring the resulting coordinate system (A, B, C) follows the right-hand rule.\n\nInput:\n    A (np.array): First 3D vector.\n    B (np.arra...",
       "return_type": null,
-      "lineno": 585
+      "lineno": 591
     }
   ],
   "structure.pileup": [
@@ -3499,128 +3508,135 @@
     {
       "name": "zcount",
       "signature": "zcount(filename: str, target: str)",
-      "docstring": "No documentation available.",
+      "docstring": "Count the number of lines matching a target string in a gzip-compressed file.\n\nParameters\n----------\nfilename : str\n    Path to the gzip-compressed file.\ntarget : str\n    String pattern to search for ...",
       "return_type": "int",
-      "lineno": 34
+      "lineno": 35
     },
     {
       "name": "count_pairs",
       "signature": "count_pairs(filename: str)",
-      "docstring": "No documentation available.",
+      "docstring": "Count the number of contact records in a 4DN pairs file.\n\nLines beginning with ``#`` are treated as header/comment lines and\nexcluded from the count.\n\nParameters\n----------\nfilename : str\n    Path to ...",
       "return_type": "int",
-      "lineno": 43
+      "lineno": 58
     },
     {
       "name": "add_pairs_num",
       "signature": "add_pairs_num(annote, threads, pairs_types=['pairs_c1', 'pairs_c12', 'pairs_c123', 'dip'])",
       "docstring": "count contact number of pairs file in parallel\nInput:\n    annote: must have all pairs_type cols\nOutput:\n    annote with extra cols, pairs_type + \"_num\" by default",
       "return_type": null,
-      "lineno": 56
+      "lineno": 87
     },
     {
       "name": "mapping_rate",
       "signature": "mapping_rate(bam, threads=4)",
-      "docstring": "No documentation available.",
+      "docstring": "Compute the primary-mapped and overall mapped rates for a BAM file.\n\nParameters\n----------\nbam : str or None\n    Path to the sorted BAM file. If ``None``, returns zeros.\nthreads : int, optional\n    Nu...",
       "return_type": null,
-      "lineno": 76
+      "lineno": 107
     },
     {
       "name": "real_file",
       "signature": "real_file(i)",
-      "docstring": "No documentation available.",
+      "docstring": "Return the path if it points to an existing file, otherwise ``None``.\n\nParameters\n----------\ni : str or any\n    A file path string to validate. Non-string values are returned as-is.\n\nReturns\n-------\ns...",
       "return_type": null,
-      "lineno": 84
+      "lineno": 131
     },
     {
       "name": "multi_re",
       "signature": "multi_re(key_array, re_array, base_array)",
       "docstring": "Search according to regular expressions. Used in log file info extraction.\nPrint finding result and return finding as dict.\nInput:\n    key_array: feature name of each re target.\n    re_s_array: re str...",
       "return_type": null,
-      "lineno": 91
+      "lineno": 151
     },
     {
       "name": "add_pairs",
       "signature": "add_pairs(annote, task_dirp)",
       "docstring": "try add pairs file path, by default using:\n    pairs_0/*sample*.pairs.gz\n    pairs_c1/*sample*.c1.pairs.gz\n    pairs_c12/*sample*.c12.pairs.gz\n    pairs_c123/*sample*.c123.pairs.gz\n    dip/*sample*.di...",
       "return_type": null,
-      "lineno": 126
+      "lineno": 186
     },
     {
       "name": "update_values",
       "signature": "update_values(base: dict, record: str)",
       "docstring": "Update a base dictionary with values from a JSON record file.\n\nFor each key in the record, if the key exists in base, update the nested dictionary.\nIf the key doesn't exist, add the entire record to b...",
       "return_type": "dict",
-      "lineno": 156
+      "lineno": 216
     },
     {
       "name": "listdir_bytime",
       "signature": "listdir_bytime(folder)",
       "docstring": "List all files in a directory sorted by modification time (oldest first).\n\nArgs:\n    folder: Path to directory to scan\n    \nReturns:\n    List of full file paths sorted by modification time",
       "return_type": null,
-      "lineno": 179
+      "lineno": 239
     },
     {
       "name": "get_info",
       "signature": "get_info(log_d)",
       "docstring": "Extract and combine information from all JSON files in a directory.\n\nProcesses JSON files in chronological order, merging their contents.\nEach JSON file should contain sample information as key-value ...",
       "return_type": null,
-      "lineno": 196
+      "lineno": 256
     },
     {
       "name": "add_info",
       "signature": "add_info(annote, rd)",
       "docstring": "Add sample information from JSON files to an existing annotation DataFrame.\n\nArgs:\n    annote: Existing annotation DataFrame\n    rd: Directory containing JSON files with additional sample information\n...",
       "return_type": null,
-      "lineno": 219
+      "lineno": 279
     },
     {
       "name": "add_umis",
       "signature": "add_umis(annote, umip)",
       "docstring": "Adding umi stat to annote.\nAccept a single umi count matrix path or an iterable (list/tuple) of umi count matrix paths.\nMissing files will be skipped with a warning. If no valid files are found, assig...",
       "return_type": null,
-      "lineno": 233
+      "lineno": 293
     },
     {
       "name": "add_extra",
       "signature": "add_extra(annote)",
       "docstring": "Calculate contact_per_reads, umis_per_reads, rna_ratio.\nHandling zero-division and NA values(and set to -1).\nOutput:\n    new df with extra cols.",
       "return_type": null,
-      "lineno": 347
+      "lineno": 407
     },
     {
       "name": "add_mapping",
       "signature": "add_mapping(annote, threads=16)",
-      "docstring": "Adding mapping and primary mapping rate of DNA library.\nInput:\n    old: sam version compatible to old pipeline. task_dirp/sam/xxx.aln.sam.gz",
+      "docstring": "Add DNA-library mapping and primary-mapping rate columns to annotation.\n\nBAM paths are resolved via ``bubble_flow_touched()[\"hic_mapped\"]``.  Samples\nwhose BAM file is missing are processed with ``map...",
       "return_type": null,
-      "lineno": 382
+      "lineno": 442
     },
     {
       "name": "check_RNA",
       "signature": "check_RNA(task_dirp)",
-      "docstring": "No documentation available.",
+      "docstring": "Print RNA-seq QC statistics for a bubble_flow task directory.\n\nReads STAR alignment summary (``star_mapped/Log.final.out``) and\nfeatureCounts assignment summary (``count_gene/gene_assigned.summary``)\n...",
       "return_type": null,
-      "lineno": 433
+      "lineno": 510
     },
     {
       "name": "task_stat",
       "signature": "task_stat(task_dirp, ref=None, threads=32)",
       "docstring": "Get all infomation about this bubble_flow task in the form of a dataframe.\nThe meta dataframe is constructed by adding additional columns to \"contacts_info.csv\" generated by bubble_flow.\nTODO:\n    mak...",
       "return_type": "pd.DataFrame",
-      "lineno": 440
+      "lineno": 529
+    },
+    {
+      "name": "task_stat_rna_wgs",
+      "signature": "task_stat_rna_wgs(task_dirp: str, ref: str)",
+      "docstring": "Build a QC summary DataFrame for a combined RNA + WGS bubble_flow task.\n\nReads sample metadata from ``<task_dirp>/rd``, filters to a fixed set of\nQC columns (mapping rates, read counts, phasing scores...",
+      "return_type": "pd.DataFrame",
+      "lineno": 564
     },
     {
       "name": "pick_useful",
       "signature": "pick_useful(annote, features=['basic'])",
       "docstring": "Pick useful cols from meta dataframe.\nInput:\n    annote: meta dataframe\n    features: list of features to pick, default words are \"DNA\" and \"DNA_RNA\"\nOutput:\n    new df with useful cols.",
       "return_type": null,
-      "lineno": 476
+      "lineno": 629
     },
     {
       "name": "multi_re_",
       "signature": "multi_re_(logfile)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 103
+      "lineno": 163
     }
   ],
   "wet.exp_record": [

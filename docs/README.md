@@ -4,7 +4,7 @@ This directory contains auto-generated API reference documentation for the `hic_
 
 ## 📚 Contents
 
-- **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API reference with all public functions (528 functions across 76 modules)
+- **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API reference with all public functions (530 functions across 77 modules)
 - **[api_index.json](api_index.json)** - Machine-readable JSON index for programmatic access
 - **[search_api.py](search_api.py)** - Command-line tool to search the API
 
@@ -74,8 +74,8 @@ This will:
 
 ## 📊 Statistics
 
-- **Total modules**: 76
-- **Total public functions**: 528
+- **Total modules**: 77
+- **Total public functions**: 530
 - **Documentation lines**: ~10,000
 
 ## 🔑 Key Modules
