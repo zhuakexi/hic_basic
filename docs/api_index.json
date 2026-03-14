@@ -1550,21 +1550,28 @@
       "signature": "gaussian_interpolate(adata, pseudotime_col, obs_using, winSz=0.1, numPts=200, inplace=True)",
       "docstring": "Interpolation of all concerned traits in adata.\nInput:\n    adata: AnnData object, must have adata.obs[pseudotime_col]\n    pseudotime_col: pseudotime column name\n    obs_using: list of obs column names...",
       "return_type": null,
-      "lineno": 63
+      "lineno": 66
+    },
+    {
+      "name": "gp_interpolate",
+      "signature": "gp_interpolate(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, alpha=1e-06, length_scale=0.1, length_scale_bounds=(0.01, 1.0), n_restarts_optimizer=5, normalize_y=True, result_key='gp_interpolate', inplace=True)",
+      "docstring": "Interpolate single-trajectory expression dynamics with Gaussian Processes.\n\nParameters\n----------\nadata : anndata.AnnData\n    AnnData object containing expression values and pseudotime annotations.\nps...",
+      "return_type": null,
+      "lineno": 183
     },
     {
       "name": "correct_pseudotime",
       "signature": "correct_pseudotime(adata, pseudotime_col, n_pcs=15, inplace=True)",
       "docstring": "Correct pseudotime of adata to make it linearly correlated with a distance metrix.\nInspired by Alpert et al. (2018)\nInput:\n    adata: AnnData object, must have adata.obs[pseudotime_col]\n    pseudotime...",
       "return_type": null,
-      "lineno": 90
+      "lineno": 298
     },
     {
       "name": "gaussian_weights",
       "signature": "gaussian_weights(x, y)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 20
+      "lineno": 23
     }
   ],
   "lap_embedding": [
