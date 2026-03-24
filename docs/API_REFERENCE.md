@@ -2,7 +2,7 @@
 
 *Auto-generated API documentation for public functions*
 
-Total modules with public functions: 77
+Total modules with public functions: 85
 
 ---
 
@@ -24,6 +24,10 @@ Total modules with public functions: 77
 - [compare_pixels](#compare_pixels) (5 functions)
 - [compartment](#compartment) (8 functions)
 - [coolstuff](#coolstuff) (32 functions)
+- [crossover.cache](#crossover-cache) (16 functions)
+- [crossover.detector](#crossover-detector) (5 functions)
+- [crossover.io](#crossover-io) (7 functions)
+- [crossover.pipeline](#crossover-pipeline) (4 functions)
 - [cycle_phasing](#cycle_phasing) (2 functions)
 - [data](#data) (18 functions)
 - [embedding](#embedding) (5 functions)
@@ -69,6 +73,10 @@ Total modules with public functions: 77
 - [scripts.rescue_jupyter](#scripts-rescue_jupyter) (2 functions)
 - [sequence](#sequence) (11 functions)
 - [shuffle](#shuffle) (4 functions)
+- [slingshot.lineage](#slingshot-lineage) (2 functions)
+- [slingshot.plotter](#slingshot-plotter) (4 functions)
+- [slingshot.slingshot](#slingshot-slingshot) (22 functions)
+- [slingshot.utils](#slingshot-utils) (5 functions)
 - [spectral_ordering](#spectral_ordering) (1 functions)
 - [structure.align](#structure-align) (1 functions)
 - [structure.measure](#structure-measure) (15 functions)
@@ -2271,6 +2279,781 @@ Output:
 ---
 
 
+## crossover.cache
+
+**File:** `crossover/cache.py`
+
+**Public functions:** 16
+
+
+### `cleanup(self)`
+
+**Returns:** `None`
+
+
+Clean up all shared memory files.
+
+
+**Source:** Line 616 in [crossover/cache.py](crossover/cache.py#L616)
+
+
+---
+
+
+### `clear(self, key: Optional[str]=None, step_name: Optional[str]=None)`
+
+**Returns:** `int`
+
+
+Clear cached data.
+
+Args:
+    key: Optional cache key to clear (clear all if None)
+    step_name: Optional step name to filter (clear all steps if None)
+
+Returns:
+    Number of entries cleared
+
+
+**Source:** Line 346 in [crossover/cache.py](crossover/cache.py#L346)
+
+
+---
+
+
+### `clear(self, key: Optional[str]=None)`
+
+**Returns:** `int`
+
+
+Clear shared memory.
+
+Args:
+    key: Optional key to clear (clear all if None)
+
+Returns:
+    Number of entries cleared
+
+
+**Source:** Line 588 in [crossover/cache.py](crossover/cache.py#L588)
+
+
+---
+
+
+### `clear_flag(self, key: str, step_name: str)`
+
+**Returns:** `None`
+
+
+Clear the completion flag for a step.
+
+Args:
+    key: Cache key
+    step_name: Pipeline step name
+
+
+**Source:** Line 207 in [crossover/cache.py](crossover/cache.py#L207)
+
+
+---
+
+
+### `compute_key(self, params: Dict[str, Any])`
+
+**Returns:** `str`
+
+
+Compute a unique key based on input parameters.
+
+Args:
+    params: Dictionary of input parameters
+
+Returns:
+    MD5 checksum as hex string
+
+
+**Source:** Line 125 in [crossover/cache.py](crossover/cache.py#L125)
+
+
+---
+
+
+### `exists(self, key: str, step_name: str)`
+
+**Returns:** `bool`
+
+
+Check if cached data exists for a given key and step.
+
+Args:
+    key: Cache key (MD5 checksum)
+    step_name: Name of the pipeline step
+
+Returns:
+    True if cache exists and is valid
+
+
+**Source:** Line 157 in [crossover/cache.py](crossover/cache.py#L157)
+
+
+---
+
+
+### `get(self, key: str)`
+
+**Returns:** `Optional[np.ndarray]`
+
+
+Retrieve a shared array.
+
+Args:
+    key: Array key
+
+Returns:
+    NumPy array or None if not found
+
+
+**Source:** Line 500 in [crossover/cache.py](crossover/cache.py#L500)
+
+
+---
+
+
+### `get_dataframe(self, key: str)`
+
+**Returns:** `Optional[pd.DataFrame]`
+
+
+Retrieve a shared DataFrame.
+
+Args:
+    key: DataFrame key
+
+Returns:
+    DataFrame or None if not found
+
+
+**Source:** Line 564 in [crossover/cache.py](crossover/cache.py#L564)
+
+
+---
+
+
+### `get_or_compute(self, key: str, step_name: str, compute_fn, params: Optional[Dict]=None)`
+
+
+Get cached data or compute it if not available.
+
+Args:
+    key: Cache key
+    step_name: Pipeline step name
+    compute_fn: Function to compute data if not cached
+    params: Parameters to pass to compute_fn and save as metadata
+
+Returns:
+    Cached or computed data
+
+
+**Source:** Line 315 in [crossover/cache.py](crossover/cache.py#L315)
+
+
+---
+
+
+### `get_stats(self)`
+
+**Returns:** `Dict`
+
+
+Get cache statistics.
+
+Returns:
+    Dictionary with cache statistics
+
+
+**Source:** Line 392 in [crossover/cache.py](crossover/cache.py#L392)
+
+
+---
+
+
+### `is_flagged(self, key: str, step_name: str)`
+
+**Returns:** `bool`
+
+
+Check if a step is marked as completed.
+
+Args:
+    key: Cache key
+    step_name: Pipeline step name
+
+Returns:
+    True if flag file exists
+
+
+**Source:** Line 171 in [crossover/cache.py](crossover/cache.py#L171)
+
+
+---
+
+
+### `load(self, key: str, step_name: str)`
+
+**Returns:** `Union[pd.DataFrame, np.ndarray, Dict, None]`
+
+
+Load data from cache.
+
+Args:
+    key: Cache key
+    step_name: Pipeline step name
+
+Returns:
+    Loaded data or None if not found
+
+
+**Source:** Line 274 in [crossover/cache.py](crossover/cache.py#L274)
+
+
+---
+
+
+### `save(self, data: Union[pd.DataFrame, np.ndarray, Dict], key: str, step_name: str, params: Optional[Dict]=None)`
+
+**Returns:** `str`
+
+
+Save data to cache.
+
+Args:
+    data: Data to cache (DataFrame, array, or dict)
+    key: Cache key
+    step_name: Pipeline step name
+    params: Optional parameters for metadata
+
+Returns:
+    Path to the cached file
+
+
+**Source:** Line 223 in [crossover/cache.py](crossover/cache.py#L223)
+
+
+---
+
+
+### `set_flag(self, key: str, step_name: str, params: Optional[Dict]=None)`
+
+**Returns:** `None`
+
+
+Mark a step as completed.
+
+Args:
+    key: Cache key
+    step_name: Pipeline step name
+    params: Optional parameters to save with the flag
+
+
+**Source:** Line 184 in [crossover/cache.py](crossover/cache.py#L184)
+
+
+---
+
+
+### `share(self, array: np.ndarray, name: str, sample_id: Optional[str]=None)`
+
+**Returns:** `str`
+
+
+Share an array via memory-mapped file.
+
+Args:
+    array: NumPy array to share
+    name: Name for the shared array
+    sample_id: Optional sample ID for namespacing
+
+Returns:
+    Key to retrieve the shared array
+
+
+**Source:** Line 462 in [crossover/cache.py](crossover/cache.py#L462)
+
+
+---
+
+
+### `share_dataframe(self, df: pd.DataFrame, name: str, sample_id: Optional[str]=None)`
+
+**Returns:** `str`
+
+
+Share a DataFrame via parquet memory-mapping.
+
+Args:
+    df: DataFrame to share
+    name: Name for the shared DataFrame
+    sample_id: Optional sample ID for namespacing
+
+Returns:
+    Key to retrieve the shared DataFrame
+
+
+**Source:** Line 528 in [crossover/cache.py](crossover/cache.py#L528)
+
+
+---
+
+
+## crossover.detector
+
+**File:** `crossover/detector.py`
+
+**Public functions:** 5
+
+
+### `detect(self, positions: np.ndarray, sperm_genotypes: List[str], haplotype_1: List[str], haplotype_2: List[str])`
+
+**Returns:** `Tuple[np.ndarray, List[int]]`
+
+
+Run complete crossover detection pipeline.
+
+Args:
+    positions: SNP positions (sorted)
+    sperm_genotypes: Sperm genotypes at each SNP
+    haplotype_1: Paternal haplotype alleles
+    haplotype_2: Maternal haplotype alleles
+
+Returns:
+    Tuple of (state_sequence, crossover_positions)
+
+
+**Source:** Line 331 in [crossover/detector.py](crossover/detector.py#L331)
+
+
+---
+
+
+### `detect_crossovers(self, sperm_id: str, chromosome: Optional[str]=None)`
+
+**Returns:** `CrossoverResults`
+
+
+Detect crossovers for a specific sperm sample.
+
+Args:
+    sperm_id: ID of sperm sample to analyze
+    chromosome: Optional chromosome to analyze (default: all)
+
+Returns:
+    CrossoverResults object
+
+Raises:
+    ValueError: If SNP data not loaded
+
+
+**Source:** Line 449 in [crossover/detector.py](crossover/detector.py#L449)
+
+
+---
+
+
+### `load_phasing_data(self, phasing_file: str)`
+
+**Returns:** `None`
+
+
+Load phasing information.
+
+Args:
+    phasing_file: Path to TSV file with haplotype phasing
+                  Expected columns: chromosome, position, snp_id, haplotype_1, haplotype_2
+
+
+**Source:** Line 437 in [crossover/detector.py](crossover/detector.py#L437)
+
+
+---
+
+
+### `load_snp_data(self, snp_file: str)`
+
+**Returns:** `None`
+
+
+Load SNP genotype data.
+
+Args:
+    snp_file: Path to TSV file with SNP genotypes
+              Expected columns: chromosome, position, snp_id, sperm_genotype, diploid_genotype
+
+
+**Source:** Line 425 in [crossover/detector.py](crossover/detector.py#L425)
+
+
+---
+
+
+### `save_results(self, output_dir: str, sperm_id: Optional[str]=None)`
+
+**Returns:** `None`
+
+
+Save detection results to files.
+
+Args:
+    output_dir: Output directory path
+    sperm_id: Optional specific sperm ID (default: all)
+
+
+**Source:** Line 612 in [crossover/detector.py](crossover/detector.py#L612)
+
+
+---
+
+
+## crossover.io
+
+**File:** `crossover/io.py`
+
+**Public functions:** 7
+
+
+### `extract_genotype_arrays(df: pd.DataFrame)`
+
+**Returns:** `Tuple[np.ndarray, List[str], List[str], List[str]]`
+
+
+Extract arrays needed for HMM from merged DataFrame.
+
+Args:
+    df: Merged DataFrame with sperm_genotype, haplotype_1, haplotype_2 columns
+
+Returns:
+    Tuple of (positions, sperm_genotypes, haplotype_1, haplotype_2)
+
+
+**Source:** Line 381 in [crossover/io.py](crossover/io.py#L381)
+
+
+---
+
+
+### `load_phased_snp_from_hic_basic(phased_snp_file: str, chromosome: Optional[str]=None)`
+
+**Returns:** `pd.DataFrame`
+
+
+Load phased SNP data from hic_basic.phasing module format.
+
+This function reads the output format from hic_basic.phasing.parse_phased_snp
+and converts it to a DataFrame suitable for crossover detection.
+
+Args:
+    phased_snp_file: Path to phased SNP file (TSV or parquet)
+    chromosome: Optional chromosome to filter
+
+Returns:
+    DataFrame with columns: chromosome, position, snp_id,
+                           haplotype_1, haplotype_2
+
+
+**Source:** Line 238 in [crossover/io.py](crossover/io.py#L238)
+
+
+---
+
+
+### `load_phasing_data(phasing_file: str, chromosome: Optional[str]=None)`
+
+**Returns:** `pd.DataFrame`
+
+
+Load phasing information from file.
+
+Supported formats:
+    - TSV/CSV: Tab or comma-separated
+    - Parquet: Columnar storage
+    - From hic_basic.phasing module output
+
+Args:
+    phasing_file: Path to phasing data file
+    chromosome: Optional chromosome to filter
+
+Returns:
+    DataFrame with columns: chromosome, position, snp_id,
+                           haplotype_1, haplotype_2
+
+Raises:
+    ValueError: If file format is not supported
+    FileNotFoundError: If file does not exist
+
+
+**Source:** Line 176 in [crossover/io.py](crossover/io.py#L176)
+
+
+---
+
+
+### `load_snp_data(snp_file: str, sample_id: Optional[str]=None, chromosome: Optional[str]=None)`
+
+**Returns:** `pd.DataFrame`
+
+
+Load SNP genotype data from various formats.
+
+Supported formats:
+    - TSV/CSV: Tab or comma-separated with columns
+    - VCF: Variant Call Format
+    - Parquet: Columnar storage format
+
+Args:
+    snp_file: Path to SNP data file
+    sample_id: Sample ID to extract (for VCF with multiple samples)
+    chromosome: Optional chromosome to filter
+
+Returns:
+    DataFrame with columns: chromosome, position, snp_id, ref_allele,
+                           alt_allele, sperm_genotype, diploid_genotype
+
+Raises:
+    ValueError: If file format is not supported
+    FileNotFoundError: If file does not exist
+
+
+**Source:** Line 24 in [crossover/io.py](crossover/io.py#L24)
+
+
+---
+
+
+### `merge_snp_with_phasing(snp_df: pd.DataFrame, phasing_df: pd.DataFrame, on_cols: Optional[List[str]]=None)`
+
+**Returns:** `pd.DataFrame`
+
+
+Merge SNP data with phasing information.
+
+Args:
+    snp_df: SNP genotype DataFrame
+    phasing_df: Phasing information DataFrame
+    on_cols: Columns to merge on (default: ['chromosome', 'position', 'snp_id'])
+
+Returns:
+    Merged DataFrame with both genotype and phasing information
+
+
+**Source:** Line 346 in [crossover/io.py](crossover/io.py#L346)
+
+
+---
+
+
+### `save_results(results: CrossoverResults, output_dir: str, prefix: Optional[str]=None)`
+
+**Returns:** `Dict[str, str]`
+
+
+Save crossover detection results to files.
+
+Args:
+    results: CrossoverResults object
+    output_dir: Output directory path
+    prefix: Optional prefix for output files
+
+Returns:
+    Dictionary mapping output type to file path
+
+
+**Source:** Line 274 in [crossover/io.py](crossover/io.py#L274)
+
+
+---
+
+
+### `validate_input_data(snp_df: pd.DataFrame, phasing_df: Optional[pd.DataFrame]=None)`
+
+**Returns:** `Tuple[bool, List[str]]`
+
+
+Validate input data for crossover detection.
+
+Args:
+    snp_df: SNP genotype DataFrame
+    phasing_df: Optional phasing DataFrame
+
+Returns:
+    Tuple of (is_valid, list of issues)
+
+
+**Source:** Line 401 in [crossover/io.py](crossover/io.py#L401)
+
+
+---
+
+
+## crossover.pipeline
+
+**File:** `crossover/pipeline.py`
+
+**Public functions:** 4
+
+
+### `detect_crossovers_end2end(sam_file: str, ref_snp_file: str, phasing_file: str, output_dir: str, sample_id: Optional[str]=None, n_jobs: int=1, cache_dir: Optional[str]=None, window_size: int=10, min_fragment_size: int=300000, error_rate: float=0.05, chromosomes: Optional[List[str]]=None)`
+
+**Returns:** `Union[CrossoverResults, Dict[str, CrossoverResults]]`
+
+
+End-to-end crossover detection from BAM/SAM file.
+
+This is the main entry point for the crossover detection pipeline.
+It processes BAM/SAM files through all steps:
+1. Extract alleles at SNP positions
+2. Aggregate allele counts
+3. Call genotypes
+4. Infer haplotype blocks using HMM
+5. Detect crossover positions
+
+The pipeline uses intermediate caching with flag files for fault tolerance.
+If interrupted, it can resume from the last completed step.
+
+Args:
+    sam_file: Path to input BAM/SAM file
+    ref_snp_file: Path to reference SNP file (TSV or parquet)
+                  Expected columns: chromosome, position, haplotype_1, haplotype_2
+    phasing_file: Path to phasing information file
+                  Expected columns: chromosome, position, haplotype_1, haplotype_2
+    output_dir: Output directory for results
+    sample_id: Sample ID (default: derived from sam_file name)
+    n_jobs: Number of parallel processes (default: 1)
+    cache_dir: Cache directory (default: output_dir/.cache)
+    window_size: SNP window size for rough estimation
+    min_fragment_size: Minimum fragment size in bp
+    error_rate: SNP calling error rate for HMM
+    chromosomes: Optional list of chromosomes to analyze (default: all)
+
+Returns:
+    CrossoverResults object (single sample) or dictionary of results (multiple samples)
+
+Raises:
+    FileNotFoundError: If input files don't exist
+    ValueError: If input data is invalid
+
+Example:
+    Single sample:
+    >>> results = detect_crossovers_end2end(
+    ...     sam_file="sperm01.bam",
+    ...     ref_snp_file="snps.tsv",
+    ...     phasing_file="phasing.tsv",
+    ...     output_dir="output/",
+    ...     n_jobs=4
+    ... )
+    >>> print(f"Detected {len(results.crossovers)} crossovers")
+
+    Multiple samples:
+    >>> sam_files = {
+    ...     "S01": "sperm01.bam",
+    ...     "S02": "sperm02.bam",
+    ... }
+    >>> all_results = detect_crossovers_end2end(
+    ...     sam_file=None,
+    ...     sam_files=sam_files,
+    ...     ref_snp_file="snps.tsv",
+    ...     phasing_file="phasing.tsv",
+    ...     output_dir="output/",
+    ...     n_jobs=4
+    ... )
+
+
+**Source:** Line 429 in [crossover/pipeline.py](crossover/pipeline.py#L429)
+
+
+---
+
+
+### `get_pipeline_status(sam_file: str, ref_snp_file: str, cache_dir: str, sample_id: Optional[str]=None, window_size: int=10, min_fragment_size: int=300000, error_rate: float=0.05)`
+
+**Returns:** `Dict[str, bool]`
+
+
+Get the completion status of pipeline steps.
+
+Args:
+    sam_file: Path to BAM/SAM file
+    ref_snp_file: Path to reference SNP file
+    cache_dir: Cache directory
+    sample_id: Sample ID
+    window_size: HMM window size
+    min_fragment_size: Minimum fragment size
+    error_rate: Error rate for HMM
+
+Returns:
+    Dictionary mapping step name to completion status
+
+
+**Source:** Line 693 in [crossover/pipeline.py](crossover/pipeline.py#L693)
+
+
+---
+
+
+### `process_sample_parallel(sample_ids: List[str], sam_files: Dict[str, str], ref_snp_file: str, phasing_file: str, output_dir: str, n_jobs: int=4, cache_dir: Optional[str]=None, window_size: int=10, min_fragment_size: int=300000, error_rate: float=0.05)`
+
+**Returns:** `Dict[str, Dict[str, Any]]`
+
+
+Process multiple samples in parallel.
+
+Args:
+    sample_ids: List of sample IDs to process
+    sam_files: Dictionary mapping sample_id to BAM/SAM file path
+    ref_snp_file: Path to reference SNP file
+    phasing_file: Path to phasing information file
+    output_dir: Output directory
+    n_jobs: Number of parallel processes
+    cache_dir: Cache directory (default: output_dir/.cache)
+    window_size: HMM window size
+    min_fragment_size: Minimum fragment size
+    error_rate: Error rate for HMM
+
+Returns:
+    Dictionary mapping sample_id to result dictionary
+
+
+**Source:** Line 353 in [crossover/pipeline.py](crossover/pipeline.py#L353)
+
+
+---
+
+
+### `resume_pipeline(sam_file: str, ref_snp_file: str, phasing_file: str, output_dir: str, sample_id: Optional[str]=None, cache_dir: Optional[str]=None)`
+
+**Returns:** `CrossoverResults`
+
+
+Resume an interrupted pipeline from the last completed step.
+
+Args:
+    sam_file: Path to BAM/SAM file
+    ref_snp_file: Path to reference SNP file
+    phasing_file: Path to phasing file
+    output_dir: Output directory
+    sample_id: Sample ID
+    cache_dir: Cache directory
+    **kwargs: Additional arguments passed to detect_crossovers_end2end
+
+Returns:
+    CrossoverResults object
+
+
+**Source:** Line 738 in [crossover/pipeline.py](crossover/pipeline.py#L738)
+
+
+---
+
+
 ## cycle_phasing
 
 **File:** `cycle_phasing.py`
@@ -4191,7 +4974,7 @@ Output:
     new adata object
 
 
-**Source:** Line 298 in [interpolate.py](interpolate.py#L298)
+**Source:** Line 473 in [interpolate.py](interpolate.py#L473)
 
 
 ---
@@ -4211,7 +4994,7 @@ Output:
     new adata object numPts * adata.shape[1]
 
 
-**Source:** Line 66 in [interpolate.py](interpolate.py#L66)
+**Source:** Line 214 in [interpolate.py](interpolate.py#L214)
 
 
 ---
@@ -4223,13 +5006,13 @@ Output:
 No documentation available.
 
 
-**Source:** Line 23 in [interpolate.py](interpolate.py#L23)
+**Source:** Line 171 in [interpolate.py](interpolate.py#L171)
 
 
 ---
 
 
-### `gp_interpolate(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, alpha=1e-06, length_scale=0.1, length_scale_bounds=(0.01, 1.0), n_restarts_optimizer=5, normalize_y=True, result_key='gp_interpolate', inplace=True)`
+### `gp_interpolate(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_method='linspace', grid_custom=None, endpoint_mode='half-interval', alpha=1e-06, length_scale=0.1, length_scale_bounds=(0.01, 1.0), n_restarts_optimizer=5, normalize_y=True, result_key='gp_interpolate', inplace=True)`
 
 
 Interpolate single-trajectory expression dynamics with Gaussian Processes.
@@ -4246,7 +5029,24 @@ layer : str, optional
 gene_mask_key : str, optional
     Boolean column in ``adata.var`` used to select genes for fitting.
 numPts : int, optional
-    Number of evenly spaced interpolation points on normalized pseudotime.
+    Number of interpolation points on normalized pseudotime. Default is 14.
+    Ignored when ``grid_method='optimal'`` (auto-determined) or
+    ``grid_method='custom'`` (uses ``grid_custom``).
+grid_method : str, optional
+    Strategy for constructing the interpolation time grid. Options:
+    - "linspace": evenly spaced points (default)
+    - "quantile": quantile-based spacing (equal cells per bin)
+    - "density": density-adaptive spacing (more points in dense regions)
+    - "optimal": use optimal binning to determine numPts automatically
+    - "custom": use user-provided grid (requires ``grid_custom``)
+grid_custom : array-like, optional
+    Custom grid values in range [0, 1], strictly increasing.
+    Only used when ``grid_method='custom'``.
+endpoint_mode : str, optional
+    How to handle endpoints. Default is "half-interval". Options:
+    - "half-interval": endpoints at [half_interval, 1-half_interval]
+      to avoid sparse cells at t=0 and t=1 (recommended)
+    - "full": endpoints at [0, 1] (legacy behavior)
 alpha : float, optional
     Fixed observation noise variance passed to the GP regressor.
 length_scale : float, optional
@@ -4269,7 +5069,7 @@ anndata.AnnData
     AnnData with GP interpolation results stored in ``adata.uns[result_key]``.
 
 
-**Source:** Line 183 in [interpolate.py](interpolate.py#L183)
+**Source:** Line 331 in [interpolate.py](interpolate.py#L331)
 
 
 ---
@@ -8212,6 +9012,483 @@ Output:
 
 
 **Source:** Line 10 in [shuffle.py](shuffle.py#L10)
+
+
+---
+
+
+## slingshot.lineage
+
+**File:** `slingshot/lineage.py`
+
+**Public functions:** 2
+
+
+### `end(self)`
+
+
+返回终止细胞类型
+
+
+**Source:** Line 39 in [slingshot/lineage.py](slingshot/lineage.py#L39)
+
+
+---
+
+
+### `start(self)`
+
+
+返回起始细胞类型
+
+
+**Source:** Line 34 in [slingshot/lineage.py](slingshot/lineage.py#L34)
+
+
+---
+
+
+## slingshot.plotter
+
+**File:** `slingshot/plotter.py`
+
+**Public functions:** 4
+
+
+### `clusters(self, ax, labels=None, s=8, alpha=1.0, color_mode='clusters')`
+
+
+绘制细胞聚类
+
+参数:
+    ax: matplotlib 轴
+    labels: 标签列表
+    s: 点大小
+    alpha: 透明度
+    color_mode: 颜色模式 ('clusters', 'pseudotime', 或 numpy 数组)
+
+
+**Source:** Line 82 in [slingshot/plotter.py](slingshot/plotter.py#L82)
+
+
+---
+
+
+### `curves(self, ax, curves)`
+
+
+绘制主曲线
+
+参数:
+    ax: matplotlib 轴
+    curves: 主曲线列表
+
+
+**Source:** Line 134 in [slingshot/plotter.py](slingshot/plotter.py#L134)
+
+
+---
+
+
+### `generate_colormap(number_of_distinct_colors: int=80)`
+
+
+生成自定义色轮
+
+参数:
+    number_of_distinct_colors: 不同颜色的数量
+
+返回:
+    ListedColormap 对象
+
+
+**Source:** Line 16 in [slingshot/plotter.py](slingshot/plotter.py#L16)
+
+
+---
+
+
+### `network(self, cluster_to_label, figsize=(8, 10))`
+
+
+绘制谱系网络图
+
+参数:
+    cluster_to_label: 聚类到标签的映射
+    figsize: 图形大小
+
+
+**Source:** Line 152 in [slingshot/plotter.py](slingshot/plotter.py#L152)
+
+
+---
+
+
+## slingshot.slingshot
+
+**File:** `slingshot/slingshot.py`
+
+**Public functions:** 22
+
+
+### `avg_branch_curves(self, branch_curves)`
+
+
+计算分支曲线的平均曲线
+
+
+**Source:** Line 615 in [slingshot/slingshot.py](slingshot/slingshot.py#L615)
+
+
+---
+
+
+### `avg_curves(self)`
+
+
+从叶子到根计算分支的平均曲线
+
+
+**Source:** Line 525 in [slingshot/slingshot.py](slingshot/slingshot.py#L525)
+
+
+---
+
+
+### `build_pruned_tree(current_node)`
+
+
+No documentation available.
+
+
+**Source:** Line 191 in [slingshot/slingshot.py](slingshot/slingshot.py#L191)
+
+
+---
+
+
+### `build_pruned_tree(current_node)`
+
+
+No documentation available.
+
+
+**Source:** Line 236 in [slingshot/slingshot.py](slingshot/slingshot.py#L236)
+
+
+---
+
+
+### `calculate_cell_weights(self)`
+
+
+计算细胞权重
+
+
+**Source:** Line 489 in [slingshot/slingshot.py](slingshot/slingshot.py#L489)
+
+
+---
+
+
+### `construct_initial_curves(self)`
+
+
+使用分段线性初始化构建谱系主曲线
+
+
+**Source:** Line 436 in [slingshot/slingshot.py](slingshot/slingshot.py#L436)
+
+
+---
+
+
+### `construct_mst(self, start_node)`
+
+
+构建最小生成树
+
+参数:
+    start_node: 起始节点
+返回:
+    children: 字典映射聚类到子节点
+
+
+**Source:** Line 301 in [slingshot/slingshot.py](slingshot/slingshot.py#L301)
+
+
+---
+
+
+### `construct_tree_from_predefined(self)`
+
+
+从预定义树结构构建，处理缺失节点
+
+
+**Source:** Line 181 in [slingshot/slingshot.py](slingshot/slingshot.py#L181)
+
+
+---
+
+
+### `fit(self, num_epochs=10, debug_axes=None)`
+
+
+拟合主曲线
+
+参数:
+    num_epochs: 迭代次数
+    debug_axes: 调试绘图轴
+
+
+**Source:** Line 401 in [slingshot/slingshot.py](slingshot/slingshot.py#L401)
+
+
+---
+
+
+### `fit_lineage_curves(self)`
+
+
+使用三次样条和数据投影更新曲线
+
+
+**Source:** Line 459 in [slingshot/slingshot.py](slingshot/slingshot.py#L459)
+
+
+---
+
+
+### `flatten(li)`
+
+
+No documentation available.
+
+
+**Source:** Line 381 in [slingshot/slingshot.py](slingshot/slingshot.py#L381)
+
+
+---
+
+
+### `get_lineages(self)`
+
+
+从 MST 提取谱系
+
+
+**Source:** Line 366 in [slingshot/slingshot.py](slingshot/slingshot.py#L366)
+
+
+---
+
+
+### `label_tree(self)`
+
+
+返回带字符串标签的树结构
+
+
+**Source:** Line 167 in [slingshot/slingshot.py](slingshot/slingshot.py#L167)
+
+
+---
+
+
+### `list_lineages(self, cluster_to_label=None)`
+
+
+列出谱系（支持字符串标签）
+
+
+**Source:** Line 650 in [slingshot/slingshot.py](slingshot/slingshot.py#L650)
+
+
+---
+
+
+### `load_params(self, filepath)`
+
+
+加载参数
+
+
+**Source:** Line 277 in [slingshot/slingshot.py](slingshot/slingshot.py#L277)
+
+
+---
+
+
+### `recurse_branches(path, v)`
+
+
+No documentation available.
+
+
+**Source:** Line 371 in [slingshot/slingshot.py](slingshot/slingshot.py#L371)
+
+
+---
+
+
+### `save_params(self, filepath)`
+
+
+保存参数
+
+
+**Source:** Line 286 in [slingshot/slingshot.py](slingshot/slingshot.py#L286)
+
+
+---
+
+
+### `shrink_branch_curves(self, branch_curves, avg_curve, shrinkage_percent)`
+
+
+收缩分支曲线到平均曲线
+
+
+**Source:** Line 583 in [slingshot/slingshot.py](slingshot/slingshot.py#L583)
+
+
+---
+
+
+### `shrink_curves(self, cluster_children, shrinkage_percentages, cluster_avg_curves)`
+
+
+从根到叶收缩曲线
+
+
+**Source:** Line 571 in [slingshot/slingshot.py](slingshot/slingshot.py#L571)
+
+
+---
+
+
+### `shrinkage_percent(self, curve, common_ind)`
+
+
+确定曲线收缩百分比
+
+
+**Source:** Line 598 in [slingshot/slingshot.py](slingshot/slingshot.py#L598)
+
+
+---
+
+
+### `tree(self)`
+
+
+获取树结构（MST 或预定义树）
+
+
+**Source:** Line 157 in [slingshot/slingshot.py](slingshot/slingshot.py#L157)
+
+
+---
+
+
+### `unified_pseudotime(self)`
+
+
+获取统一的伪时间
+
+
+**Source:** Line 663 in [slingshot/slingshot.py](slingshot/slingshot.py#L663)
+
+
+---
+
+
+## slingshot.utils
+
+**File:** `slingshot/utils.py`
+
+**Public functions:** 5
+
+
+### `infer_cluster_label_indices(cluster_labels)`
+
+
+推断聚类标签索引
+
+参数:
+    cluster_labels: 字符串标签列表或整数聚类分配列表
+
+返回:
+    聚类分配的 numpy 数组
+
+
+**Source:** Line 61 in [slingshot/utils.py](slingshot/utils.py#L61)
+
+
+---
+
+
+### `isint(x)`
+
+
+检查是否为整数
+
+
+**Source:** Line 26 in [slingshot/utils.py](slingshot/utils.py#L26)
+
+
+---
+
+
+### `isstr(x)`
+
+
+检查是否为字符串
+
+
+**Source:** Line 41 in [slingshot/utils.py](slingshot/utils.py#L41)
+
+
+---
+
+
+### `mahalanobis(X1, X2, S1, S2)`
+
+
+计算两个向量之间的马氏距离
+
+参数:
+    X1: 第一个向量 (n,)
+    X2: 第二个向量 (n,)
+    S1: 第一个协方差矩阵 (n, n)
+    S2: 第二个协方差矩阵 (n, n)
+
+返回:
+    马氏距离 (标量)
+
+
+**Source:** Line 8 in [slingshot/utils.py](slingshot/utils.py#L8)
+
+
+---
+
+
+### `scale_to_range(x, a=0, b=1)`
+
+
+将数组缩放到指定范围
+
+参数:
+    x: 输入数组
+    a: 目标最小值
+    b: 目标最大值
+
+返回:
+    缩放后的数组
+
+
+**Source:** Line 46 in [slingshot/utils.py](slingshot/utils.py#L46)
 
 
 ---

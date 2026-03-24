@@ -829,6 +829,238 @@
       "lineno": 1180
     }
   ],
+  "crossover.cache": [
+    {
+      "name": "compute_key",
+      "signature": "compute_key(self, params: Dict[str, Any])",
+      "docstring": "Compute a unique key based on input parameters.\n\nArgs:\n    params: Dictionary of input parameters\n\nReturns:\n    MD5 checksum as hex string",
+      "return_type": "str",
+      "lineno": 125
+    },
+    {
+      "name": "exists",
+      "signature": "exists(self, key: str, step_name: str)",
+      "docstring": "Check if cached data exists for a given key and step.\n\nArgs:\n    key: Cache key (MD5 checksum)\n    step_name: Name of the pipeline step\n\nReturns:\n    True if cache exists and is valid",
+      "return_type": "bool",
+      "lineno": 157
+    },
+    {
+      "name": "is_flagged",
+      "signature": "is_flagged(self, key: str, step_name: str)",
+      "docstring": "Check if a step is marked as completed.\n\nArgs:\n    key: Cache key\n    step_name: Pipeline step name\n\nReturns:\n    True if flag file exists",
+      "return_type": "bool",
+      "lineno": 171
+    },
+    {
+      "name": "set_flag",
+      "signature": "set_flag(self, key: str, step_name: str, params: Optional[Dict]=None)",
+      "docstring": "Mark a step as completed.\n\nArgs:\n    key: Cache key\n    step_name: Pipeline step name\n    params: Optional parameters to save with the flag",
+      "return_type": "None",
+      "lineno": 184
+    },
+    {
+      "name": "clear_flag",
+      "signature": "clear_flag(self, key: str, step_name: str)",
+      "docstring": "Clear the completion flag for a step.\n\nArgs:\n    key: Cache key\n    step_name: Pipeline step name",
+      "return_type": "None",
+      "lineno": 207
+    },
+    {
+      "name": "save",
+      "signature": "save(self, data: Union[pd.DataFrame, np.ndarray, Dict], key: str, step_name: str, params: Optional[Dict]=None)",
+      "docstring": "Save data to cache.\n\nArgs:\n    data: Data to cache (DataFrame, array, or dict)\n    key: Cache key\n    step_name: Pipeline step name\n    params: Optional parameters for metadata\n\nReturns:\n    Path to t...",
+      "return_type": "str",
+      "lineno": 223
+    },
+    {
+      "name": "load",
+      "signature": "load(self, key: str, step_name: str)",
+      "docstring": "Load data from cache.\n\nArgs:\n    key: Cache key\n    step_name: Pipeline step name\n\nReturns:\n    Loaded data or None if not found",
+      "return_type": "Union[pd.DataFrame, np.ndarray, Dict, None]",
+      "lineno": 274
+    },
+    {
+      "name": "get_or_compute",
+      "signature": "get_or_compute(self, key: str, step_name: str, compute_fn, params: Optional[Dict]=None)",
+      "docstring": "Get cached data or compute it if not available.\n\nArgs:\n    key: Cache key\n    step_name: Pipeline step name\n    compute_fn: Function to compute data if not cached\n    params: Parameters to pass to com...",
+      "return_type": null,
+      "lineno": 315
+    },
+    {
+      "name": "clear",
+      "signature": "clear(self, key: Optional[str]=None, step_name: Optional[str]=None)",
+      "docstring": "Clear cached data.\n\nArgs:\n    key: Optional cache key to clear (clear all if None)\n    step_name: Optional step name to filter (clear all steps if None)\n\nReturns:\n    Number of entries cleared",
+      "return_type": "int",
+      "lineno": 346
+    },
+    {
+      "name": "get_stats",
+      "signature": "get_stats(self)",
+      "docstring": "Get cache statistics.\n\nReturns:\n    Dictionary with cache statistics",
+      "return_type": "Dict",
+      "lineno": 392
+    },
+    {
+      "name": "share",
+      "signature": "share(self, array: np.ndarray, name: str, sample_id: Optional[str]=None)",
+      "docstring": "Share an array via memory-mapped file.\n\nArgs:\n    array: NumPy array to share\n    name: Name for the shared array\n    sample_id: Optional sample ID for namespacing\n\nReturns:\n    Key to retrieve the sh...",
+      "return_type": "str",
+      "lineno": 462
+    },
+    {
+      "name": "get",
+      "signature": "get(self, key: str)",
+      "docstring": "Retrieve a shared array.\n\nArgs:\n    key: Array key\n\nReturns:\n    NumPy array or None if not found",
+      "return_type": "Optional[np.ndarray]",
+      "lineno": 500
+    },
+    {
+      "name": "share_dataframe",
+      "signature": "share_dataframe(self, df: pd.DataFrame, name: str, sample_id: Optional[str]=None)",
+      "docstring": "Share a DataFrame via parquet memory-mapping.\n\nArgs:\n    df: DataFrame to share\n    name: Name for the shared DataFrame\n    sample_id: Optional sample ID for namespacing\n\nReturns:\n    Key to retrieve ...",
+      "return_type": "str",
+      "lineno": 528
+    },
+    {
+      "name": "get_dataframe",
+      "signature": "get_dataframe(self, key: str)",
+      "docstring": "Retrieve a shared DataFrame.\n\nArgs:\n    key: DataFrame key\n\nReturns:\n    DataFrame or None if not found",
+      "return_type": "Optional[pd.DataFrame]",
+      "lineno": 564
+    },
+    {
+      "name": "clear",
+      "signature": "clear(self, key: Optional[str]=None)",
+      "docstring": "Clear shared memory.\n\nArgs:\n    key: Optional key to clear (clear all if None)\n\nReturns:\n    Number of entries cleared",
+      "return_type": "int",
+      "lineno": 588
+    },
+    {
+      "name": "cleanup",
+      "signature": "cleanup(self)",
+      "docstring": "Clean up all shared memory files.",
+      "return_type": "None",
+      "lineno": 616
+    }
+  ],
+  "crossover.detector": [
+    {
+      "name": "detect",
+      "signature": "detect(self, positions: np.ndarray, sperm_genotypes: List[str], haplotype_1: List[str], haplotype_2: List[str])",
+      "docstring": "Run complete crossover detection pipeline.\n\nArgs:\n    positions: SNP positions (sorted)\n    sperm_genotypes: Sperm genotypes at each SNP\n    haplotype_1: Paternal haplotype alleles\n    haplotype_2: Ma...",
+      "return_type": "Tuple[np.ndarray, List[int]]",
+      "lineno": 331
+    },
+    {
+      "name": "load_snp_data",
+      "signature": "load_snp_data(self, snp_file: str)",
+      "docstring": "Load SNP genotype data.\n\nArgs:\n    snp_file: Path to TSV file with SNP genotypes\n              Expected columns: chromosome, position, snp_id, sperm_genotype, diploid_genotype",
+      "return_type": "None",
+      "lineno": 425
+    },
+    {
+      "name": "load_phasing_data",
+      "signature": "load_phasing_data(self, phasing_file: str)",
+      "docstring": "Load phasing information.\n\nArgs:\n    phasing_file: Path to TSV file with haplotype phasing\n                  Expected columns: chromosome, position, snp_id, haplotype_1, haplotype_2",
+      "return_type": "None",
+      "lineno": 437
+    },
+    {
+      "name": "detect_crossovers",
+      "signature": "detect_crossovers(self, sperm_id: str, chromosome: Optional[str]=None)",
+      "docstring": "Detect crossovers for a specific sperm sample.\n\nArgs:\n    sperm_id: ID of sperm sample to analyze\n    chromosome: Optional chromosome to analyze (default: all)\n\nReturns:\n    CrossoverResults object\n\nR...",
+      "return_type": "CrossoverResults",
+      "lineno": 449
+    },
+    {
+      "name": "save_results",
+      "signature": "save_results(self, output_dir: str, sperm_id: Optional[str]=None)",
+      "docstring": "Save detection results to files.\n\nArgs:\n    output_dir: Output directory path\n    sperm_id: Optional specific sperm ID (default: all)",
+      "return_type": "None",
+      "lineno": 612
+    }
+  ],
+  "crossover.io": [
+    {
+      "name": "load_snp_data",
+      "signature": "load_snp_data(snp_file: str, sample_id: Optional[str]=None, chromosome: Optional[str]=None)",
+      "docstring": "Load SNP genotype data from various formats.\n\nSupported formats:\n    - TSV/CSV: Tab or comma-separated with columns\n    - VCF: Variant Call Format\n    - Parquet: Columnar storage format\n\nArgs:\n    snp...",
+      "return_type": "pd.DataFrame",
+      "lineno": 24
+    },
+    {
+      "name": "load_phasing_data",
+      "signature": "load_phasing_data(phasing_file: str, chromosome: Optional[str]=None)",
+      "docstring": "Load phasing information from file.\n\nSupported formats:\n    - TSV/CSV: Tab or comma-separated\n    - Parquet: Columnar storage\n    - From hic_basic.phasing module output\n\nArgs:\n    phasing_file: Path t...",
+      "return_type": "pd.DataFrame",
+      "lineno": 176
+    },
+    {
+      "name": "load_phased_snp_from_hic_basic",
+      "signature": "load_phased_snp_from_hic_basic(phased_snp_file: str, chromosome: Optional[str]=None)",
+      "docstring": "Load phased SNP data from hic_basic.phasing module format.\n\nThis function reads the output format from hic_basic.phasing.parse_phased_snp\nand converts it to a DataFrame suitable for crossover detectio...",
+      "return_type": "pd.DataFrame",
+      "lineno": 238
+    },
+    {
+      "name": "save_results",
+      "signature": "save_results(results: CrossoverResults, output_dir: str, prefix: Optional[str]=None)",
+      "docstring": "Save crossover detection results to files.\n\nArgs:\n    results: CrossoverResults object\n    output_dir: Output directory path\n    prefix: Optional prefix for output files\n\nReturns:\n    Dictionary mappi...",
+      "return_type": "Dict[str, str]",
+      "lineno": 274
+    },
+    {
+      "name": "merge_snp_with_phasing",
+      "signature": "merge_snp_with_phasing(snp_df: pd.DataFrame, phasing_df: pd.DataFrame, on_cols: Optional[List[str]]=None)",
+      "docstring": "Merge SNP data with phasing information.\n\nArgs:\n    snp_df: SNP genotype DataFrame\n    phasing_df: Phasing information DataFrame\n    on_cols: Columns to merge on (default: ['chromosome', 'position', '...",
+      "return_type": "pd.DataFrame",
+      "lineno": 346
+    },
+    {
+      "name": "extract_genotype_arrays",
+      "signature": "extract_genotype_arrays(df: pd.DataFrame)",
+      "docstring": "Extract arrays needed for HMM from merged DataFrame.\n\nArgs:\n    df: Merged DataFrame with sperm_genotype, haplotype_1, haplotype_2 columns\n\nReturns:\n    Tuple of (positions, sperm_genotypes, haplotype...",
+      "return_type": "Tuple[np.ndarray, List[str], List[str], List[str]]",
+      "lineno": 381
+    },
+    {
+      "name": "validate_input_data",
+      "signature": "validate_input_data(snp_df: pd.DataFrame, phasing_df: Optional[pd.DataFrame]=None)",
+      "docstring": "Validate input data for crossover detection.\n\nArgs:\n    snp_df: SNP genotype DataFrame\n    phasing_df: Optional phasing DataFrame\n\nReturns:\n    Tuple of (is_valid, list of issues)",
+      "return_type": "Tuple[bool, List[str]]",
+      "lineno": 401
+    }
+  ],
+  "crossover.pipeline": [
+    {
+      "name": "process_sample_parallel",
+      "signature": "process_sample_parallel(sample_ids: List[str], sam_files: Dict[str, str], ref_snp_file: str, phasing_file: str, output_dir: str, n_jobs: int=4, cache_dir: Optional[str]=None, window_size: int=10, min_fragment_size: int=300000, error_rate: float=0.05)",
+      "docstring": "Process multiple samples in parallel.\n\nArgs:\n    sample_ids: List of sample IDs to process\n    sam_files: Dictionary mapping sample_id to BAM/SAM file path\n    ref_snp_file: Path to reference SNP file...",
+      "return_type": "Dict[str, Dict[str, Any]]",
+      "lineno": 353
+    },
+    {
+      "name": "detect_crossovers_end2end",
+      "signature": "detect_crossovers_end2end(sam_file: str, ref_snp_file: str, phasing_file: str, output_dir: str, sample_id: Optional[str]=None, n_jobs: int=1, cache_dir: Optional[str]=None, window_size: int=10, min_fragment_size: int=300000, error_rate: float=0.05, chromosomes: Optional[List[str]]=None)",
+      "docstring": "End-to-end crossover detection from BAM/SAM file.\n\nThis is the main entry point for the crossover detection pipeline.\nIt processes BAM/SAM files through all steps:\n1. Extract alleles at SNP positions\n...",
+      "return_type": "Union[CrossoverResults, Dict[str, CrossoverResults]]",
+      "lineno": 429
+    },
+    {
+      "name": "get_pipeline_status",
+      "signature": "get_pipeline_status(sam_file: str, ref_snp_file: str, cache_dir: str, sample_id: Optional[str]=None, window_size: int=10, min_fragment_size: int=300000, error_rate: float=0.05)",
+      "docstring": "Get the completion status of pipeline steps.\n\nArgs:\n    sam_file: Path to BAM/SAM file\n    ref_snp_file: Path to reference SNP file\n    cache_dir: Cache directory\n    sample_id: Sample ID\n    window_s...",
+      "return_type": "Dict[str, bool]",
+      "lineno": 693
+    },
+    {
+      "name": "resume_pipeline",
+      "signature": "resume_pipeline(sam_file: str, ref_snp_file: str, phasing_file: str, output_dir: str, sample_id: Optional[str]=None, cache_dir: Optional[str]=None)",
+      "docstring": "Resume an interrupted pipeline from the last completed step.\n\nArgs:\n    sam_file: Path to BAM/SAM file\n    ref_snp_file: Path to reference SNP file\n    phasing_file: Path to phasing file\n    output_di...",
+      "return_type": "CrossoverResults",
+      "lineno": 738
+    }
+  ],
   "cycle_phasing": [
     {
       "name": "window_count",
@@ -1550,28 +1782,28 @@
       "signature": "gaussian_interpolate(adata, pseudotime_col, obs_using, winSz=0.1, numPts=200, inplace=True)",
       "docstring": "Interpolation of all concerned traits in adata.\nInput:\n    adata: AnnData object, must have adata.obs[pseudotime_col]\n    pseudotime_col: pseudotime column name\n    obs_using: list of obs column names...",
       "return_type": null,
-      "lineno": 66
+      "lineno": 214
     },
     {
       "name": "gp_interpolate",
-      "signature": "gp_interpolate(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, alpha=1e-06, length_scale=0.1, length_scale_bounds=(0.01, 1.0), n_restarts_optimizer=5, normalize_y=True, result_key='gp_interpolate', inplace=True)",
+      "signature": "gp_interpolate(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_method='linspace', grid_custom=None, endpoint_mode='half-interval', alpha=1e-06, length_scale=0.1, length_scale_bounds=(0.01, 1.0), n_restarts_optimizer=5, normalize_y=True, result_key='gp_interpolate', inplace=True)",
       "docstring": "Interpolate single-trajectory expression dynamics with Gaussian Processes.\n\nParameters\n----------\nadata : anndata.AnnData\n    AnnData object containing expression values and pseudotime annotations.\nps...",
       "return_type": null,
-      "lineno": 183
+      "lineno": 331
     },
     {
       "name": "correct_pseudotime",
       "signature": "correct_pseudotime(adata, pseudotime_col, n_pcs=15, inplace=True)",
       "docstring": "Correct pseudotime of adata to make it linearly correlated with a distance metrix.\nInspired by Alpert et al. (2018)\nInput:\n    adata: AnnData object, must have adata.obs[pseudotime_col]\n    pseudotime...",
       "return_type": null,
-      "lineno": 298
+      "lineno": 473
     },
     {
       "name": "gaussian_weights",
       "signature": "gaussian_weights(x, y)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 23
+      "lineno": 171
     }
   ],
   "lap_embedding": [
@@ -3087,6 +3319,245 @@
       "docstring": "Shuffle two groups. Will first random sample each group N times, then exchange fraction of elements for each pair.\nBoth group-pair and mix-pair are returned, all pairs are non-overlapping.\nThis is use...",
       "return_type": null,
       "lineno": 48
+    }
+  ],
+  "slingshot.lineage": [
+    {
+      "name": "start",
+      "signature": "start(self)",
+      "docstring": "\u8fd4\u56de\u8d77\u59cb\u7ec6\u80de\u7c7b\u578b",
+      "return_type": null,
+      "lineno": 34
+    },
+    {
+      "name": "end",
+      "signature": "end(self)",
+      "docstring": "\u8fd4\u56de\u7ec8\u6b62\u7ec6\u80de\u7c7b\u578b",
+      "return_type": null,
+      "lineno": 39
+    }
+  ],
+  "slingshot.plotter": [
+    {
+      "name": "generate_colormap",
+      "signature": "generate_colormap(number_of_distinct_colors: int=80)",
+      "docstring": "\u751f\u6210\u81ea\u5b9a\u4e49\u8272\u8f6e\n\n\u53c2\u6570:\n    number_of_distinct_colors: \u4e0d\u540c\u989c\u8272\u7684\u6570\u91cf\n\n\u8fd4\u56de:\n    ListedColormap \u5bf9\u8c61",
+      "return_type": null,
+      "lineno": 16
+    },
+    {
+      "name": "clusters",
+      "signature": "clusters(self, ax, labels=None, s=8, alpha=1.0, color_mode='clusters')",
+      "docstring": "\u7ed8\u5236\u7ec6\u80de\u805a\u7c7b\n\n\u53c2\u6570:\n    ax: matplotlib \u8f74\n    labels: \u6807\u7b7e\u5217\u8868\n    s: \u70b9\u5927\u5c0f\n    alpha: \u900f\u660e\u5ea6\n    color_mode: \u989c\u8272\u6a21\u5f0f ('clusters', 'pseudotime', \u6216 numpy \u6570\u7ec4)",
+      "return_type": null,
+      "lineno": 82
+    },
+    {
+      "name": "curves",
+      "signature": "curves(self, ax, curves)",
+      "docstring": "\u7ed8\u5236\u4e3b\u66f2\u7ebf\n\n\u53c2\u6570:\n    ax: matplotlib \u8f74\n    curves: \u4e3b\u66f2\u7ebf\u5217\u8868",
+      "return_type": null,
+      "lineno": 134
+    },
+    {
+      "name": "network",
+      "signature": "network(self, cluster_to_label, figsize=(8, 10))",
+      "docstring": "\u7ed8\u5236\u8c31\u7cfb\u7f51\u7edc\u56fe\n\n\u53c2\u6570:\n    cluster_to_label: \u805a\u7c7b\u5230\u6807\u7b7e\u7684\u6620\u5c04\n    figsize: \u56fe\u5f62\u5927\u5c0f",
+      "return_type": null,
+      "lineno": 152
+    }
+  ],
+  "slingshot.slingshot": [
+    {
+      "name": "tree",
+      "signature": "tree(self)",
+      "docstring": "\u83b7\u53d6\u6811\u7ed3\u6784\uff08MST \u6216\u9884\u5b9a\u4e49\u6811\uff09",
+      "return_type": null,
+      "lineno": 157
+    },
+    {
+      "name": "label_tree",
+      "signature": "label_tree(self)",
+      "docstring": "\u8fd4\u56de\u5e26\u5b57\u7b26\u4e32\u6807\u7b7e\u7684\u6811\u7ed3\u6784",
+      "return_type": null,
+      "lineno": 167
+    },
+    {
+      "name": "construct_tree_from_predefined",
+      "signature": "construct_tree_from_predefined(self)",
+      "docstring": "\u4ece\u9884\u5b9a\u4e49\u6811\u7ed3\u6784\u6784\u5efa\uff0c\u5904\u7406\u7f3a\u5931\u8282\u70b9",
+      "return_type": null,
+      "lineno": 181
+    },
+    {
+      "name": "load_params",
+      "signature": "load_params(self, filepath)",
+      "docstring": "\u52a0\u8f7d\u53c2\u6570",
+      "return_type": null,
+      "lineno": 277
+    },
+    {
+      "name": "save_params",
+      "signature": "save_params(self, filepath)",
+      "docstring": "\u4fdd\u5b58\u53c2\u6570",
+      "return_type": null,
+      "lineno": 286
+    },
+    {
+      "name": "construct_mst",
+      "signature": "construct_mst(self, start_node)",
+      "docstring": "\u6784\u5efa\u6700\u5c0f\u751f\u6210\u6811\n\n\u53c2\u6570:\n    start_node: \u8d77\u59cb\u8282\u70b9\n\u8fd4\u56de:\n    children: \u5b57\u5178\u6620\u5c04\u805a\u7c7b\u5230\u5b50\u8282\u70b9",
+      "return_type": null,
+      "lineno": 301
+    },
+    {
+      "name": "get_lineages",
+      "signature": "get_lineages(self)",
+      "docstring": "\u4ece MST \u63d0\u53d6\u8c31\u7cfb",
+      "return_type": null,
+      "lineno": 366
+    },
+    {
+      "name": "fit",
+      "signature": "fit(self, num_epochs=10, debug_axes=None)",
+      "docstring": "\u62df\u5408\u4e3b\u66f2\u7ebf\n\n\u53c2\u6570:\n    num_epochs: \u8fed\u4ee3\u6b21\u6570\n    debug_axes: \u8c03\u8bd5\u7ed8\u56fe\u8f74",
+      "return_type": null,
+      "lineno": 401
+    },
+    {
+      "name": "construct_initial_curves",
+      "signature": "construct_initial_curves(self)",
+      "docstring": "\u4f7f\u7528\u5206\u6bb5\u7ebf\u6027\u521d\u59cb\u5316\u6784\u5efa\u8c31\u7cfb\u4e3b\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 436
+    },
+    {
+      "name": "fit_lineage_curves",
+      "signature": "fit_lineage_curves(self)",
+      "docstring": "\u4f7f\u7528\u4e09\u6b21\u6837\u6761\u548c\u6570\u636e\u6295\u5f71\u66f4\u65b0\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 459
+    },
+    {
+      "name": "calculate_cell_weights",
+      "signature": "calculate_cell_weights(self)",
+      "docstring": "\u8ba1\u7b97\u7ec6\u80de\u6743\u91cd",
+      "return_type": null,
+      "lineno": 489
+    },
+    {
+      "name": "avg_curves",
+      "signature": "avg_curves(self)",
+      "docstring": "\u4ece\u53f6\u5b50\u5230\u6839\u8ba1\u7b97\u5206\u652f\u7684\u5e73\u5747\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 525
+    },
+    {
+      "name": "shrink_curves",
+      "signature": "shrink_curves(self, cluster_children, shrinkage_percentages, cluster_avg_curves)",
+      "docstring": "\u4ece\u6839\u5230\u53f6\u6536\u7f29\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 571
+    },
+    {
+      "name": "shrink_branch_curves",
+      "signature": "shrink_branch_curves(self, branch_curves, avg_curve, shrinkage_percent)",
+      "docstring": "\u6536\u7f29\u5206\u652f\u66f2\u7ebf\u5230\u5e73\u5747\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 583
+    },
+    {
+      "name": "shrinkage_percent",
+      "signature": "shrinkage_percent(self, curve, common_ind)",
+      "docstring": "\u786e\u5b9a\u66f2\u7ebf\u6536\u7f29\u767e\u5206\u6bd4",
+      "return_type": null,
+      "lineno": 598
+    },
+    {
+      "name": "avg_branch_curves",
+      "signature": "avg_branch_curves(self, branch_curves)",
+      "docstring": "\u8ba1\u7b97\u5206\u652f\u66f2\u7ebf\u7684\u5e73\u5747\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 615
+    },
+    {
+      "name": "list_lineages",
+      "signature": "list_lineages(self, cluster_to_label=None)",
+      "docstring": "\u5217\u51fa\u8c31\u7cfb\uff08\u652f\u6301\u5b57\u7b26\u4e32\u6807\u7b7e\uff09",
+      "return_type": null,
+      "lineno": 650
+    },
+    {
+      "name": "unified_pseudotime",
+      "signature": "unified_pseudotime(self)",
+      "docstring": "\u83b7\u53d6\u7edf\u4e00\u7684\u4f2a\u65f6\u95f4",
+      "return_type": null,
+      "lineno": 663
+    },
+    {
+      "name": "recurse_branches",
+      "signature": "recurse_branches(path, v)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 371
+    },
+    {
+      "name": "flatten",
+      "signature": "flatten(li)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 381
+    },
+    {
+      "name": "build_pruned_tree",
+      "signature": "build_pruned_tree(current_node)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 191
+    },
+    {
+      "name": "build_pruned_tree",
+      "signature": "build_pruned_tree(current_node)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 236
+    }
+  ],
+  "slingshot.utils": [
+    {
+      "name": "mahalanobis",
+      "signature": "mahalanobis(X1, X2, S1, S2)",
+      "docstring": "\u8ba1\u7b97\u4e24\u4e2a\u5411\u91cf\u4e4b\u95f4\u7684\u9a6c\u6c0f\u8ddd\u79bb\n\n\u53c2\u6570:\n    X1: \u7b2c\u4e00\u4e2a\u5411\u91cf (n,)\n    X2: \u7b2c\u4e8c\u4e2a\u5411\u91cf (n,)\n    S1: \u7b2c\u4e00\u4e2a\u534f\u65b9\u5dee\u77e9\u9635 (n, n)\n    S2: \u7b2c\u4e8c\u4e2a\u534f\u65b9\u5dee\u77e9\u9635 (n, n)\n\n\u8fd4\u56de:\n    \u9a6c\u6c0f\u8ddd\u79bb (\u6807\u91cf)",
+      "return_type": null,
+      "lineno": 8
+    },
+    {
+      "name": "isint",
+      "signature": "isint(x)",
+      "docstring": "\u68c0\u67e5\u662f\u5426\u4e3a\u6574\u6570",
+      "return_type": null,
+      "lineno": 26
+    },
+    {
+      "name": "isstr",
+      "signature": "isstr(x)",
+      "docstring": "\u68c0\u67e5\u662f\u5426\u4e3a\u5b57\u7b26\u4e32",
+      "return_type": null,
+      "lineno": 41
+    },
+    {
+      "name": "scale_to_range",
+      "signature": "scale_to_range(x, a=0, b=1)",
+      "docstring": "\u5c06\u6570\u7ec4\u7f29\u653e\u5230\u6307\u5b9a\u8303\u56f4\n\n\u53c2\u6570:\n    x: \u8f93\u5165\u6570\u7ec4\n    a: \u76ee\u6807\u6700\u5c0f\u503c\n    b: \u76ee\u6807\u6700\u5927\u503c\n\n\u8fd4\u56de:\n    \u7f29\u653e\u540e\u7684\u6570\u7ec4",
+      "return_type": null,
+      "lineno": 46
+    },
+    {
+      "name": "infer_cluster_label_indices",
+      "signature": "infer_cluster_label_indices(cluster_labels)",
+      "docstring": "\u63a8\u65ad\u805a\u7c7b\u6807\u7b7e\u7d22\u5f15\n\n\u53c2\u6570:\n    cluster_labels: \u5b57\u7b26\u4e32\u6807\u7b7e\u5217\u8868\u6216\u6574\u6570\u805a\u7c7b\u5206\u914d\u5217\u8868\n\n\u8fd4\u56de:\n    \u805a\u7c7b\u5206\u914d\u7684 numpy \u6570\u7ec4",
+      "return_type": null,
+      "lineno": 61
     }
   ],
   "spectral_ordering": [
