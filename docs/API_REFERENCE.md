@@ -5544,7 +5544,7 @@ Output:
     new adata object
 
 
-**Source:** Line 735 in [interpolate.py](interpolate.py#L735)
+**Source:** Line 739 in [interpolate.py](interpolate.py#L739)
 
 
 ---
@@ -5564,7 +5564,7 @@ Output:
     new adata object numPts * adata.shape[1]
 
 
-**Source:** Line 476 in [interpolate.py](interpolate.py#L476)
+**Source:** Line 480 in [interpolate.py](interpolate.py#L480)
 
 
 ---
@@ -5576,7 +5576,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 433 in [interpolate.py](interpolate.py#L433)
+**Source:** Line 437 in [interpolate.py](interpolate.py#L437)
 
 
 ---
@@ -5639,7 +5639,7 @@ anndata.AnnData
     AnnData with GP interpolation results stored in ``adata.uns[result_key]``.
 
 
-**Source:** Line 593 in [interpolate.py](interpolate.py#L593)
+**Source:** Line 597 in [interpolate.py](interpolate.py#L597)
 
 
 ---
@@ -5681,7 +5681,7 @@ fig : matplotlib.figure.Figure
     The matplotlib figure object.
 
 
-**Source:** Line 209 in [interpolate.py](interpolate.py#L209)
+**Source:** Line 213 in [interpolate.py](interpolate.py#L213)
 
 
 ---

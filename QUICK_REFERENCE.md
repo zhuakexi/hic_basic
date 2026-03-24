@@ -46,6 +46,7 @@ python scripts/generate_api_reference.py
 | **TI.slingshot.plot** | 3 | Plotly visualization (PNG) |
 | **TI.circle** | 1 | Pseudotime baseline (circular) |
 | **plot.plotly_template** | 1 | Plotly style template |
+| **interpolate** | 8 | GP interpolation & grid methods |
 
 ## 💻 Code Snippets
 
@@ -131,6 +132,53 @@ from hic_basic.TI.circle import angle_pseudotime
 # Simple circular ordering from 2D embedding
 pseudotime_df = angle_pseudotime(root=0, embedding=df_2d)
 ```
+
+### GP Interpolation with Grid Methods
+```python
+from hic_basic.interpolate import gp_interpolate, plot_grid_methods_comparison
+
+# Run GP interpolation with different grid methods
+result = gp_interpolate(
+    adata,
+    pseudotime_col='pt',
+    numPts=14,
+    grid_method='linspace',      # or 'quantile', 'density', 'optimal', 'custom'
+    endpoint_mode='half-interval',  # avoid sparse cells at endpoints
+    inplace=False
+)
+
+# Access results
+grid_data = result.uns['gp_interpolate']
+mean_expr = grid_data['mean']      # genes x grid_points
+variance = grid_data['variance']
+time_grid = grid_data['time_grid']
+
+# Visualize and compare multiple grid methods
+fig = plot_grid_methods_comparison(
+    adata,
+    pseudotime_col='pt',
+    numPts=12,
+    grid_methods=['linspace', 'quantile', 'density'],
+    endpoint_mode='half-interval',  # recommended
+    scaling='z_score',              # or 'zero_one'
+    figsize=(10, 10),
+    save_path='grid_comparison.png'
+)
+```
+
+### Grid Methods Comparison
+| Method | Use Case | Endpoint Handling |
+|--------|----------|-------------------|
+| `linspace` | Uniform sampling | half-interval avoids t=0, t=1 |
+| `quantile` | Equal cells per bin | Automatically handles endpoints |
+| `density` | Dense regions | half-interval truncation |
+| `optimal` | Data-driven (needs optbinning) | Automatic |
+| `custom` | User-defined grid | User responsibility |
+
+### endpoint_mode Options
+- `"half-interval"` (default): Endpoints at [half_interval, 1-half_interval]
+  - Avoids GP extrapolation at t=0 and t=1 where only 1 cell exists
+- `"full"`: Legacy behavior, endpoints at [0, 1]
 
 ### Plotly Template (Custom Style)
 ```python
