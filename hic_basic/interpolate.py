@@ -133,10 +133,12 @@ def _plot_grid_comparison(
             vmax=vmax,
         )
 
-        # Add grid lines
-        pseudotime_sorted_for_grid = np.sort(pseudotime)
-        for grid_t in grid:
-            rank_pos = np.searchsorted(pseudotime_sorted_for_grid, grid_t) / (n_cells - 1)
+        # Add grid lines at uniform positions based on grid point index
+        # For visualization, grid points should be evenly spaced in rank space
+        n_grid = len(grid)
+        for i in range(n_grid):
+            # Uniform spacing in rank space: i / (n_grid - 1)
+            rank_pos = i / (n_grid - 1) if n_grid > 1 else 0.5
             ax.axvline(x=rank_pos, color="black", linestyle="--", linewidth=0.8, alpha=0.7)
 
         ax.set_title(f"{method}: Raw (grid lines)", fontsize=10, fontweight="bold")

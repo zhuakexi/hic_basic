@@ -23,26 +23,41 @@ from hic_basic.interpolate import (
 
 
 def create_test_adata(n_cells=200, n_genes=50, seed=42):
-    """Create a simple test AnnData object."""
+    """Create a simple test AnnData object with clear expression patterns."""
     np.random.seed(seed)
 
-    # Create pseudotime with some structure
-    pseudotime = np.sort(np.random.beta(2, 2, n_cells))
-    pseudotime = (pseudotime - pseudotime.min()) / (pseudotime.max() - pseudotime.min())
+    # Create pseudotime with uniform distribution for clearer visualization
+    pseudotime = np.sort(np.random.uniform(0, 1, n_cells))
 
-    # Create expression data with pseudotime-dependent patterns
+    # Create expression data with clear pseudotime-dependent patterns
     X = np.zeros((n_cells, n_genes))
     for i in range(n_genes):
-        # Different genes have different expression patterns
-        if i % 3 == 0:
-            # Increasing pattern
-            X[:, i] = pseudotime * np.random.randn(n_cells) * 0.1 + np.random.randn(n_cells) * 0.3
-        elif i % 3 == 1:
-            # Decreasing pattern
-            X[:, i] = (1 - pseudotime) * np.random.randn(n_cells) * 0.1 + np.random.randn(n_cells) * 0.3
+        # Different genes have different expression patterns with less noise
+        base_pattern = np.zeros(n_cells)
+        
+        if i % 5 == 0:
+            # Increasing pattern (monotonic)
+            base_pattern = pseudotime ** 2
+            noise_scale = 0.15
+        elif i % 5 == 1:
+            # Decreasing pattern (monotonic)
+            base_pattern = (1 - pseudotime) ** 2
+            noise_scale = 0.15
+        elif i % 5 == 2:
+            # Peak in early pseudotime
+            base_pattern = np.exp(-((pseudotime - 0.25) ** 2) / 0.05)
+            noise_scale = 0.2
+        elif i % 5 == 3:
+            # Peak in middle pseudotime
+            base_pattern = np.exp(-((pseudotime - 0.5) ** 2) / 0.05)
+            noise_scale = 0.2
         else:
-            # Peak in middle
-            X[:, i] = np.exp(-((pseudotime - 0.5) ** 2) / 0.1) * np.random.randn(n_cells) * 0.2 + np.random.randn(n_cells) * 0.3
+            # Peak in late pseudotime
+            base_pattern = np.exp(-((pseudotime - 0.75) ** 2) / 0.05)
+            noise_scale = 0.2
+        
+        # Add moderate noise (not too much to blur the pattern)
+        X[:, i] = base_pattern + np.random.randn(n_cells) * noise_scale
 
     adata = ad.AnnData(
         X=X,
