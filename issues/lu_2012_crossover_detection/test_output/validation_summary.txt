@@ -1,0 +1,25 @@
+Crossover Detection Validation Summary
+==================================================
+
+Input:
+  Number of SNPs: 1,000
+  Error rate: 0.05
+
+Results:
+  True crossovers: 3
+  Detected crossovers: 3
+  Correctly detected: 3
+
+Metrics:
+  Precision: 100.00%
+  Recall: 100.00%
+
+True crossover positions:
+  chr1:217,160
+  chr1:488,708
+  chr1:751,168
+
+Detected crossover positions:
+  chr1:216,348
+  chr1:488,588
+  chr1:750,909

@@ -1,0 +1,154 @@
+# Example Input Data for Crossover Detection
+# Based on Lu et al. (2012) Science supplementary data format
+
+# ==============================================================================
+# File 1: sperm_snps.tsv
+# ==============================================================================
+# SNP genotype data from single sperm sequencing
+# 
+# Columns:
+#   chromosome     - Chromosome name (e.g., chr1, chr2, ..., chrX, chrY)
+#   position       - Genomic position (hg19/GRCh37)
+#   snp_id         - SNP identifier (e.g., rsID)
+#   ref_allele     - Reference allele
+#   alt_allele     - Alternative allele
+#   sperm_genotype - Sperm genotype at this position (A/C/G/T or N for missing)
+#   diploid_genotype - Diploid (blood) genotype at this position
+#   sperm_id       - Sperm sample identifier
+#
+# Example data (first 20 SNPs for sperm S01 on chr1):
+
+chromosome	position	snp_id	ref_allele	alt_allele	sperm_genotype	diploid_genotype	sperm_id
+chr1	10023456	rs1234567	A	G	A	A/G	S01
+chr1	10156789	rs2345678	C	T	C	C/T	S01
+chr1	10298765	rs3456789	G	A	G	G/A	S01
+chr1	10445678	rs4567890	T	C	T	T/C	S01
+chr1	10567890	rs5678901	A	G	A	A/G	S01
+chr1	10698765	rs6789012	C	T	C	C/T	S01
+chr1	10823456	rs7890123	G	A	G	G/A	S01
+chr1	10956789	rs8901234	T	C	T	T/C	S01
+chr1	11089012	rs9012345	A	G	A	A/G	S01
+chr1	11223456	rs0123456	C	T	T	C/T	S01
+chr1	11356789	rs1234567	G	A	A	G/A	S01
+chr1	11489012	rs2345678	T	C	C	T/C	S01
+chr1	11623456	rs3456789	A	G	G	A/G	S01
+chr1	11756789	rs4567890	C	T	T	C/T	S01
+chr1	11889012	rs5678901	G	A	A	G/A	S01
+chr1	12023456	rs6789012	T	C	C	T/C	S01
+chr1	12156789	rs7890123	A	G	A	A/G	S01
+chr1	12289012	rs8901234	C	T	C	C/T	S01
+chr1	12423456	rs9012345	G	A	G	G/A	S01
+chr1	12556789	rs0123456	T	C	T	T/C	S01
+
+# Note: In real data, you would have ~100,000-500,000 SNPs per sperm genome
+# The crossover points are where the sperm genotype switches from matching
+# one parental haplotype to the other.
+
+
+# ==============================================================================
+# File 2: phasing_info.tsv (Optional)
+# ==============================================================================
+# Haplotype phasing information from parental/trio data
+#
+# Columns:
+#   chromosome     - Chromosome name
+#   position       - Genomic position (hg19/GRCh37)
+#   snp_id         - SNP identifier
+#   haplotype_1    - Paternal haplotype allele (from father)
+#   haplotype_2    - Maternal haplotype allele (from mother)
+#
+# Example data:
+
+chromosome	position	snp_id	haplotype_1	haplotype_2
+chr1	10023456	rs1234567	A	G
+chr1	10156789	rs2345678	C	T
+chr1	10298765	rs3456789	G	A
+chr1	10445678	rs4567890	T	C
+chr1	10567890	rs5678901	A	G
+chr1	10698765	rs6789012	C	T
+chr1	10823456	rs7890123	G	A
+chr1	10956789	rs8901234	T	C
+chr1	11089012	rs9012345	A	G
+chr1	11223456	rs0123456	C	T
+chr1	11356789	rs1234567	G	A
+chr1	11489012	rs2345678	T	C
+chr1	11623456	rs3456789	A	G
+chr1	11756789	rs4567890	C	T
+chr1	11889012	rs5678901	G	A
+chr1	12023456	rs6789012	T	C
+chr1	12156789	rs7890123	A	G
+chr1	12289012	rs8901234	C	T
+chr1	12423456	rs9012345	G	A
+chr1	12556789	rs0123456	T	C
+
+
+# ==============================================================================
+# File 3: expected_output_crossovers.tsv
+# ==============================================================================
+# Expected output format for crossover detection results
+#
+# Columns:
+#   sperm_id        - Sperm sample identifier
+#   chromosome      - Chromosome name
+#   position        - Crossover position (bp)
+#   start_pos       - Start position of haplotype block
+#   end_pos         - End position of haplotype block
+#   from_haplotype  - Haplotype before crossover (P=paternal, M=maternal)
+#   to_haplotype    - Haplotype after crossover
+#   confidence      - Confidence score (0-1)
+#   resolution_kb   - Resolution in kilobases
+#
+# Example output for sperm S01:
+
+sperm_id	chromosome	position	start_pos	end_pos	from_haplotype	to_haplotype	confidence	resolution_kb
+S01	chr1	11200000	10023456	11200000	P	P	0.95	0.0
+S01	chr1	11200000	11200000	11800000	P	M	0.93	580.0
+S01	chr1	11800000	11800000	12556789	M	M	0.91	0.0
+
+
+# ==============================================================================
+# File 4: expected_output_statistics.tsv
+# ==============================================================================
+# Expected output format for crossover statistics
+#
+# Columns:
+#   sperm_id            - Sperm sample identifier
+#   total_crossovers    - Total number of crossovers detected
+#   total_blocks        - Total number of haplotype blocks
+#   chromosomes_analyzed - Number of chromosomes analyzed
+#   mean_resolution_kb  - Mean crossover resolution in kilobases
+#   mean_confidence     - Mean confidence score across all crossovers
+#
+# Example statistics:
+
+sperm_id	total_crossovers	total_blocks	chromosomes_analyzed	mean_resolution_kb	mean_confidence
+S01	26	27	23	30.5	0.92
+S02	24	25	23	28.3	0.91
+S03	28	29	23	32.1	0.93
+
+
+# ==============================================================================
+# Notes on Data Format
+# ==============================================================================
+#
+# 1. SNP Density:
+#    - Lu et al. (2012) used MALBAC amplification followed by Illumina sequencing
+#    - Average coverage: ~0.5-1x per sperm cell
+#    - Total SNPs per sperm: ~100,000-500,000 heterozygous sites from diploid genome
+#
+# 2. Crossover Characteristics (from Lu et al. 2012):
+#    - Average autosomal crossovers per sperm: ~26
+#    - Crossover resolution: ~30 kb (after HMM refinement)
+#    - Minimum fragment size filter: 300 kb
+#
+# 3. Quality Control:
+#    - Filter SNPs with quality score < Q20
+#    - Filter SNPs with coverage < 3x in diploid genome
+#    - Remove SNPs in repetitive regions
+#
+# 4. Chromosome-Specific Notes:
+#    - chrX/chrY: Only one copy in haploid sperm, analyze separately
+#    - PAR (Pseudo-autosomal region): Recombines between X and Y
+#    - Centromeric regions: Low SNP density, lower confidence
+#
+# ==============================================================================

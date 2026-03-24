@@ -1,0 +1,5 @@
+chromosome	start_pos	end_pos	haplotype	confidence	num_snps
+chr1	78	215537	P	1.0	250
+chr1	217160	488469	M	1.0	250
+chr1	488708	750650	P	1.0	250
+chr1	751168	999592	M	1.0	250

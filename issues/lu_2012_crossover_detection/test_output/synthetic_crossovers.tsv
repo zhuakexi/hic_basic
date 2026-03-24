@@ -1,0 +1,4 @@
+sperm_id	chromosome	position	start_pos	end_pos	from_haplotype	to_haplotype	confidence	resolution_kb
+synthetic	chr1	216348	215537	217160	P	M	1.0	1.623
+synthetic	chr1	488588	488469	488708	M	P	1.0	0.239
+synthetic	chr1	750909	750650	751168	P	M	1.0	0.518

@@ -128,7 +128,7 @@ def NN_spectral_embedding(symdist, k_nn=7): # this is clean version, orig can be
     eg:
         from hic_basic.metrics import distance_pca_euclid
         from hic_basic.embedding import NN_spectral_embedding
-        from hic_basic.pseudotime.TI import angle_pseudotime
+        from hic_basic.TI.circle import angle_pseudotime
 
         dm = distance_pca_euclid(df.values, 6)
         dm = pd.DataFrame(
