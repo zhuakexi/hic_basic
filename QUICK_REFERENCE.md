@@ -43,7 +43,9 @@ python scripts/generate_api_reference.py
 | **plot.hic** | 18 | Hi-C heatmap plotting |
 | **data** | 18 | Data structures |
 | **TI.slingshot** | 22 | Trajectory inference (Slingshot) |
+| **TI.slingshot.plot** | 3 | Plotly visualization (PNG) |
 | **TI.circle** | 1 | Pseudotime baseline (circular) |
+| **plot.plotly_template** | 1 | Plotly style template |
 
 ## 💻 Code Snippets
 
@@ -101,6 +103,46 @@ python docs/search_api.py --keyword "plot"
 python docs/search_api.py --keyword "matrix"
 ```
 
+### Slingshot Trajectory Inference
+```python
+from hic_basic.TI.slingshot import Slingshot
+from hic_basic.TI.slingshot.plot import plot_slingshot
+
+# Fit Slingshot
+slingshot = Slingshot(data=adata, celltype_key='celltype', start_node='SSC')
+slingshot.fit(num_epochs=10)
+
+# Visualize (PNG output)
+plot_slingshot(slingshot, save_path="trajectory.png")
+
+# Plot clusters by cell type
+from hic_basic.TI.slingshot.plot import plot_clusters
+plot_clusters(slingshot, save_path="clusters.png")
+
+# Plot principal curves only
+from hic_basic.TI.slingshot.plot import plot_curves
+plot_curves(slingshot, save_path="curves.png")
+```
+
+### Circular Pseudotime (Baseline)
+```python
+from hic_basic.TI.circle import angle_pseudotime
+
+# Simple circular ordering from 2D embedding
+pseudotime_df = angle_pseudotime(root=0, embedding=df_2d)
+```
+
+### Plotly Template (Custom Style)
+```python
+from hic_basic.plot.plotly_template import apply_template, template
+
+# Apply hic_basic style to any plotly figure
+fig = go.Figure()
+# ... add traces ...
+fig = apply_template(fig, title="My Plot", width=800, height=600)
+fig.write_image("output.png")
+```
+
 ### Update Documentation
 ```bash
 # 1. Edit code and docstrings
@@ -148,9 +190,9 @@ def example_function(param1: str, param2: int = 10) -> pd.DataFrame:
 
 ## 📊 Statistics
 
-- **76** modules documented
-- **528** public functions  
-- **~10,000** lines of documentation
+- **85** modules documented
+- **600+** public functions
+- **~12,000** lines of documentation
 - **Auto-generated** from source
 
 ## 🎓 Learning Path

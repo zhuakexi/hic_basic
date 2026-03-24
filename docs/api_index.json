@@ -263,34 +263,27 @@
       "lineno": 39
     }
   ],
-  "TI.slingshot.plotter": [
+  "TI.slingshot.plot": [
     {
-      "name": "generate_colormap",
-      "signature": "generate_colormap(number_of_distinct_colors: int=80)",
-      "docstring": "\u751f\u6210\u81ea\u5b9a\u4e49\u8272\u8f6e\n\n\u53c2\u6570:\n    number_of_distinct_colors: \u4e0d\u540c\u989c\u8272\u7684\u6570\u91cf\n\n\u8fd4\u56de:\n    ListedColormap \u5bf9\u8c61",
+      "name": "plot_slingshot",
+      "signature": "plot_slingshot(slingshot_obj, title: str='Slingshot Trajectory', width: int=700, height: int=600, point_size: int=5, point_opacity: float=0.6, curve_width: int=4, curve_opacity: float=0.8, colorscale: str='Viridis', show_legend: bool=True, save_path: Optional[str]=None, show: bool=True)",
+      "docstring": "\u7ed8\u5236 Slingshot \u8f68\u8ff9\u63a8\u65ad\u7ed3\u679c\n\n\u4e3b\u7ed8\u56fe\u51fd\u6570\uff1a\u7ed8\u5236\u7ec6\u80de\u6563\u70b9\u56fe\uff08\u6309 pseudotime \u7740\u8272\uff09\u5e76\u53e0\u52a0\u6240\u6709\u4e3b\u66f2\u7ebf\n\nParameters\n----------\nslingshot_obj : Slingshot\n    Slingshot \u5bf9\u8c61\uff08\u9700\u5df2\u8c03\u7528 fit()\uff09\ntitle : str, optional\n    \u56fe\u5f62\u6807\u9898\nwidth : int, optional\n    \u56fe\u5f62\u5bbd\u5ea6\uff08...",
       "return_type": null,
-      "lineno": 16
+      "lineno": 42
     },
     {
-      "name": "clusters",
-      "signature": "clusters(self, ax, labels=None, s=8, alpha=1.0, color_mode='clusters')",
-      "docstring": "\u7ed8\u5236\u7ec6\u80de\u805a\u7c7b\n\n\u53c2\u6570:\n    ax: matplotlib \u8f74\n    labels: \u6807\u7b7e\u5217\u8868\n    s: \u70b9\u5927\u5c0f\n    alpha: \u900f\u660e\u5ea6\n    color_mode: \u989c\u8272\u6a21\u5f0f ('clusters', 'pseudotime', \u6216 numpy \u6570\u7ec4)",
+      "name": "plot_clusters",
+      "signature": "plot_clusters(slingshot_obj, title: str='Slingshot Clusters', width: int=600, height: int=600, point_size: int=6, point_opacity: float=0.8, save_path: Optional[str]=None, show: bool=True)",
+      "docstring": "\u7ed8\u5236\u7ec6\u80de\u805a\u7c7b\uff08\u6309\u7ec6\u80de\u7c7b\u578b\u7740\u8272\uff09\n\nParameters\n----------\nslingshot_obj : Slingshot\n    Slingshot \u5bf9\u8c61\ntitle : str, optional\n    \u56fe\u5f62\u6807\u9898\nwidth : int, optional\n    \u56fe\u5f62\u5bbd\u5ea6\nheight : int, optional\n    \u56fe\u5f62\u9ad8\u5ea6\npoint_size : int, option...",
       "return_type": null,
-      "lineno": 82
+      "lineno": 210
     },
     {
-      "name": "curves",
-      "signature": "curves(self, ax, curves)",
-      "docstring": "\u7ed8\u5236\u4e3b\u66f2\u7ebf\n\n\u53c2\u6570:\n    ax: matplotlib \u8f74\n    curves: \u4e3b\u66f2\u7ebf\u5217\u8868",
+      "name": "plot_curves",
+      "signature": "plot_curves(slingshot_obj, title: str='Slingshot Principal Curves', width: int=700, height: int=600, curve_width: int=4, curve_opacity: float=0.9, show_cells: bool=True, save_path: Optional[str]=None, show: bool=True)",
+      "docstring": "\u7ed8\u5236\u4e3b\u66f2\u7ebf\uff08\u53ef\u9009\u663e\u793a\u7ec6\u80de\u6563\u70b9\uff09\n\nParameters\n----------\nslingshot_obj : Slingshot\n    Slingshot \u5bf9\u8c61\ntitle : str, optional\n    \u56fe\u5f62\u6807\u9898\nwidth : int, optional\n    \u56fe\u5f62\u5bbd\u5ea6\nheight : int, optional\n    \u56fe\u5f62\u9ad8\u5ea6\ncurve_width : int, optio...",
       "return_type": null,
-      "lineno": 134
-    },
-    {
-      "name": "network",
-      "signature": "network(self, cluster_to_label, figsize=(8, 10))",
-      "docstring": "\u7ed8\u5236\u8c31\u7cfb\u7f51\u7edc\u56fe\n\n\u53c2\u6570:\n    cluster_to_label: \u805a\u7c7b\u5230\u6807\u7b7e\u7684\u6620\u5c04\n    figsize: \u56fe\u5f62\u5927\u5c0f",
-      "return_type": null,
-      "lineno": 152
+      "lineno": 306
     }
   ],
   "TI.slingshot.slingshot": [
@@ -299,154 +292,154 @@
       "signature": "tree(self)",
       "docstring": "\u83b7\u53d6\u6811\u7ed3\u6784\uff08MST \u6216\u9884\u5b9a\u4e49\u6811\uff09",
       "return_type": null,
-      "lineno": 157
+      "lineno": 155
     },
     {
       "name": "label_tree",
       "signature": "label_tree(self)",
       "docstring": "\u8fd4\u56de\u5e26\u5b57\u7b26\u4e32\u6807\u7b7e\u7684\u6811\u7ed3\u6784",
       "return_type": null,
-      "lineno": 167
+      "lineno": 165
     },
     {
       "name": "construct_tree_from_predefined",
       "signature": "construct_tree_from_predefined(self)",
       "docstring": "\u4ece\u9884\u5b9a\u4e49\u6811\u7ed3\u6784\u6784\u5efa\uff0c\u5904\u7406\u7f3a\u5931\u8282\u70b9",
       "return_type": null,
-      "lineno": 181
+      "lineno": 179
     },
     {
       "name": "load_params",
       "signature": "load_params(self, filepath)",
       "docstring": "\u52a0\u8f7d\u53c2\u6570",
       "return_type": null,
-      "lineno": 277
+      "lineno": 275
     },
     {
       "name": "save_params",
       "signature": "save_params(self, filepath)",
       "docstring": "\u4fdd\u5b58\u53c2\u6570",
       "return_type": null,
-      "lineno": 286
+      "lineno": 284
     },
     {
       "name": "construct_mst",
       "signature": "construct_mst(self, start_node)",
       "docstring": "\u6784\u5efa\u6700\u5c0f\u751f\u6210\u6811\n\n\u53c2\u6570:\n    start_node: \u8d77\u59cb\u8282\u70b9\n\u8fd4\u56de:\n    children: \u5b57\u5178\u6620\u5c04\u805a\u7c7b\u5230\u5b50\u8282\u70b9",
       "return_type": null,
-      "lineno": 301
+      "lineno": 299
     },
     {
       "name": "get_lineages",
       "signature": "get_lineages(self)",
       "docstring": "\u4ece MST \u63d0\u53d6\u8c31\u7cfb",
       "return_type": null,
-      "lineno": 366
+      "lineno": 359
     },
     {
       "name": "fit",
       "signature": "fit(self, num_epochs=10, debug_axes=None)",
       "docstring": "\u62df\u5408\u4e3b\u66f2\u7ebf\n\n\u53c2\u6570:\n    num_epochs: \u8fed\u4ee3\u6b21\u6570\n    debug_axes: \u8c03\u8bd5\u7ed8\u56fe\u8f74",
       "return_type": null,
-      "lineno": 401
+      "lineno": 394
     },
     {
       "name": "construct_initial_curves",
       "signature": "construct_initial_curves(self)",
       "docstring": "\u4f7f\u7528\u5206\u6bb5\u7ebf\u6027\u521d\u59cb\u5316\u6784\u5efa\u8c31\u7cfb\u4e3b\u66f2\u7ebf",
       "return_type": null,
-      "lineno": 436
+      "lineno": 427
     },
     {
       "name": "fit_lineage_curves",
       "signature": "fit_lineage_curves(self)",
       "docstring": "\u4f7f\u7528\u4e09\u6b21\u6837\u6761\u548c\u6570\u636e\u6295\u5f71\u66f4\u65b0\u66f2\u7ebf",
       "return_type": null,
-      "lineno": 459
+      "lineno": 450
     },
     {
       "name": "calculate_cell_weights",
       "signature": "calculate_cell_weights(self)",
       "docstring": "\u8ba1\u7b97\u7ec6\u80de\u6743\u91cd",
       "return_type": null,
-      "lineno": 489
+      "lineno": 480
     },
     {
       "name": "avg_curves",
       "signature": "avg_curves(self)",
       "docstring": "\u4ece\u53f6\u5b50\u5230\u6839\u8ba1\u7b97\u5206\u652f\u7684\u5e73\u5747\u66f2\u7ebf",
       "return_type": null,
-      "lineno": 525
+      "lineno": 516
     },
     {
       "name": "shrink_curves",
       "signature": "shrink_curves(self, cluster_children, shrinkage_percentages, cluster_avg_curves)",
       "docstring": "\u4ece\u6839\u5230\u53f6\u6536\u7f29\u66f2\u7ebf",
       "return_type": null,
-      "lineno": 571
+      "lineno": 561
     },
     {
       "name": "shrink_branch_curves",
       "signature": "shrink_branch_curves(self, branch_curves, avg_curve, shrinkage_percent)",
       "docstring": "\u6536\u7f29\u5206\u652f\u66f2\u7ebf\u5230\u5e73\u5747\u66f2\u7ebf",
       "return_type": null,
-      "lineno": 583
+      "lineno": 573
     },
     {
       "name": "shrinkage_percent",
       "signature": "shrinkage_percent(self, curve, common_ind)",
       "docstring": "\u786e\u5b9a\u66f2\u7ebf\u6536\u7f29\u767e\u5206\u6bd4",
       "return_type": null,
-      "lineno": 598
+      "lineno": 588
     },
     {
       "name": "avg_branch_curves",
       "signature": "avg_branch_curves(self, branch_curves)",
       "docstring": "\u8ba1\u7b97\u5206\u652f\u66f2\u7ebf\u7684\u5e73\u5747\u66f2\u7ebf",
       "return_type": null,
-      "lineno": 615
+      "lineno": 605
     },
     {
       "name": "list_lineages",
       "signature": "list_lineages(self, cluster_to_label=None)",
       "docstring": "\u5217\u51fa\u8c31\u7cfb\uff08\u652f\u6301\u5b57\u7b26\u4e32\u6807\u7b7e\uff09",
       "return_type": null,
-      "lineno": 650
+      "lineno": 640
     },
     {
       "name": "unified_pseudotime",
       "signature": "unified_pseudotime(self)",
       "docstring": "\u83b7\u53d6\u7edf\u4e00\u7684\u4f2a\u65f6\u95f4",
       "return_type": null,
-      "lineno": 663
+      "lineno": 653
     },
     {
       "name": "recurse_branches",
       "signature": "recurse_branches(path, v)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 371
+      "lineno": 364
     },
     {
       "name": "flatten",
       "signature": "flatten(li)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 381
+      "lineno": 374
     },
     {
       "name": "build_pruned_tree",
       "signature": "build_pruned_tree(current_node)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 191
+      "lineno": 189
     },
     {
       "name": "build_pruned_tree",
       "signature": "build_pruned_tree(current_node)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 236
+      "lineno": 234
     }
   ],
   "TI.slingshot.utils": [
@@ -2026,32 +2019,39 @@
   ],
   "interpolate": [
     {
+      "name": "plot_grid_methods_comparison",
+      "signature": "plot_grid_methods_comparison(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_methods=None, endpoint_mode='half-interval', scaling='z_score', figsize=(10, 12), dpi=100, save_path=None)",
+      "docstring": "Plot comparison of different grid methods for GP interpolation.\n\nParameters\n----------\nadata : anndata.AnnData\n    AnnData object with expression data and pseudotime.\npseudotime_col : str\n    Column n...",
+      "return_type": null,
+      "lineno": 209
+    },
+    {
       "name": "gaussian_interpolate",
       "signature": "gaussian_interpolate(adata, pseudotime_col, obs_using, winSz=0.1, numPts=200, inplace=True)",
       "docstring": "Interpolation of all concerned traits in adata.\nInput:\n    adata: AnnData object, must have adata.obs[pseudotime_col]\n    pseudotime_col: pseudotime column name\n    obs_using: list of obs column names...",
       "return_type": null,
-      "lineno": 214
+      "lineno": 476
     },
     {
       "name": "gp_interpolate",
       "signature": "gp_interpolate(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_method='linspace', grid_custom=None, endpoint_mode='half-interval', alpha=1e-06, length_scale=0.1, length_scale_bounds=(0.01, 1.0), n_restarts_optimizer=5, normalize_y=True, result_key='gp_interpolate', inplace=True)",
       "docstring": "Interpolate single-trajectory expression dynamics with Gaussian Processes.\n\nParameters\n----------\nadata : anndata.AnnData\n    AnnData object containing expression values and pseudotime annotations.\nps...",
       "return_type": null,
-      "lineno": 331
+      "lineno": 593
     },
     {
       "name": "correct_pseudotime",
       "signature": "correct_pseudotime(adata, pseudotime_col, n_pcs=15, inplace=True)",
       "docstring": "Correct pseudotime of adata to make it linearly correlated with a distance metrix.\nInspired by Alpert et al. (2018)\nInput:\n    adata: AnnData object, must have adata.obs[pseudotime_col]\n    pseudotime...",
       "return_type": null,
-      "lineno": 473
+      "lineno": 735
     },
     {
       "name": "gaussian_weights",
       "signature": "gaussian_weights(x, y)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 171
+      "lineno": 433
     }
   ],
   "lap_embedding": [
@@ -2715,6 +2715,15 @@
       "docstring": "Input:\n    index: index of features\n    m: number of gaps\n    k: width of gaps\nOutput:\n    iterator of NA dataframes",
       "return_type": null,
       "lineno": 332
+    }
+  ],
+  "plot.plotly_template": [
+    {
+      "name": "apply_template",
+      "signature": "apply_template(fig, title=None, width=None, height=None)",
+      "docstring": "\u5e94\u7528 hic_basic \u6a21\u677f\u5230\u56fe\u5f62\n\nParameters\n----------\nfig : plotly.graph_objects.Figure\n    Plotly \u56fe\u5f62\u5bf9\u8c61\ntitle : str, optional\n    \u6807\u9898\uff08\u53ef\u9009\u8986\u76d6\uff09\nwidth : int, optional\n    \u5bbd\u5ea6\uff08\u53ef\u9009\u8986\u76d6\uff09\nheight : int, optional\n    \u9ad8\u5ea6\uff08\u53ef\u9009\u8986\u76d6\uff09\n\nR...",
+      "return_type": null,
+      "lineno": 102
     }
   ],
   "plot.render": [

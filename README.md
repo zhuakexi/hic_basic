@@ -5,7 +5,7 @@ A Python library for processing Hi-C and 3D genome data.
 ## 📚 Documentation
 
 **Complete API Reference**: [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
-- 530 public functions across 77 modules
+- 600+ public functions across 85 modules
 - Auto-generated from source code
 - Searchable with `python docs/search_api.py`
 
@@ -16,7 +16,7 @@ Quick examples:
 # Search for a function
 python docs/search_api.py cool2mat
 
-# List module functions  
+# List module functions
 python docs/search_api.py --module coolstuff
 
 # Interactive mode
@@ -24,6 +24,27 @@ python docs/search_api.py --interactive
 ```
 
 See [docs/README.md](docs/README.md) for detailed usage.
+
+### Trajectory Inference (Single-cell Analysis)
+
+```python
+from hic_basic.TI.slingshot import Slingshot
+from hic_basic.TI.slingshot.plot import plot_slingshot, plot_clusters
+
+# Initialize and fit Slingshot
+slingshot = Slingshot(
+    data=adata,  # AnnData with obsm['X_umap']
+    celltype_key='celltype',
+    start_node='SSC'
+)
+slingshot.fit(num_epochs=10)
+
+# Visualize trajectory (PNG output)
+plot_slingshot(slingshot, save_path="trajectory.png")
+plot_clusters(slingshot, save_path="clusters.png")
+```
+
+See `TI.slingshot` and `TI.slingshot.plot` modules for details.
 
 ## Installation
 

@@ -2,7 +2,7 @@
 
 *Auto-generated API documentation for public functions*
 
-Total modules with public functions: 85
+Total modules with public functions: 86
 
 ---
 
@@ -14,7 +14,7 @@ Total modules with public functions: 85
 - [TAD.tad](#tad-tad) (8 functions)
 - [TI.circle](#ti-circle) (1 functions)
 - [TI.slingshot.lineage](#ti-slingshot-lineage) (2 functions)
-- [TI.slingshot.plotter](#ti-slingshot-plotter) (4 functions)
+- [TI.slingshot.plot](#ti-slingshot-plot) (3 functions)
 - [TI.slingshot.slingshot](#ti-slingshot-slingshot) (22 functions)
 - [TI.slingshot.utils](#ti-slingshot-utils) (5 functions)
 - [ana](#ana) (12 functions)
@@ -44,7 +44,7 @@ Total modules with public functions: 85
 - [impute.schicluster](#impute-schicluster) (3 functions)
 - [impute.simpute](#impute-simpute) (9 functions)
 - [inter_contact](#inter_contact) (3 functions)
-- [interpolate](#interpolate) (4 functions)
+- [interpolate](#interpolate) (5 functions)
 - [lap_embedding](#lap_embedding) (3 functions)
 - [mchr](#mchr) (7 functions)
 - [metrics](#metrics) (4 functions)
@@ -58,6 +58,7 @@ Total modules with public functions: 85
 - [plot.hic](#plot-hic) (18 functions)
 - [plot.pca](#plot-pca) (2 functions)
 - [plot.plot](#plot-plot) (15 functions)
+- [plot.plotly_template](#plot-plotly_template) (1 functions)
 - [plot.render](#plot-render) (27 functions)
 - [plot.rna](#plot-rna) (3 functions)
 - [plot.scanpy](#plot-scanpy) (5 functions)
@@ -689,77 +690,141 @@ Output:
 ---
 
 
-## TI.slingshot.plotter
+## TI.slingshot.plot
 
-**File:** `TI/slingshot/plotter.py`
+**File:** `TI/slingshot/plot.py`
 
-**Public functions:** 4
-
-
-### `clusters(self, ax, labels=None, s=8, alpha=1.0, color_mode='clusters')`
+**Public functions:** 3
 
 
-绘制细胞聚类
-
-参数:
-    ax: matplotlib 轴
-    labels: 标签列表
-    s: 点大小
-    alpha: 透明度
-    color_mode: 颜色模式 ('clusters', 'pseudotime', 或 numpy 数组)
+### `plot_clusters(slingshot_obj, title: str='Slingshot Clusters', width: int=600, height: int=600, point_size: int=6, point_opacity: float=0.8, save_path: Optional[str]=None, show: bool=True)`
 
 
-**Source:** Line 82 in [TI/slingshot/plotter.py](TI/slingshot/plotter.py#L82)
+绘制细胞聚类（按细胞类型着色）
+
+Parameters
+----------
+slingshot_obj : Slingshot
+    Slingshot 对象
+title : str, optional
+    图形标题
+width : int, optional
+    图形宽度
+height : int, optional
+    图形高度
+point_size : int, optional
+    散点大小
+point_opacity : float, optional
+    散点透明度
+save_path : str, optional
+    保存路径
+show : bool, optional
+    是否显示图形
+
+Returns
+-------
+fig : plotly.graph_objects.Figure
+    Plotly 图形对象
 
 
----
-
-
-### `curves(self, ax, curves)`
-
-
-绘制主曲线
-
-参数:
-    ax: matplotlib 轴
-    curves: 主曲线列表
-
-
-**Source:** Line 134 in [TI/slingshot/plotter.py](TI/slingshot/plotter.py#L134)
-
-
----
-
-
-### `generate_colormap(number_of_distinct_colors: int=80)`
-
-
-生成自定义色轮
-
-参数:
-    number_of_distinct_colors: 不同颜色的数量
-
-返回:
-    ListedColormap 对象
-
-
-**Source:** Line 16 in [TI/slingshot/plotter.py](TI/slingshot/plotter.py#L16)
+**Source:** Line 210 in [TI/slingshot/plot.py](TI/slingshot/plot.py#L210)
 
 
 ---
 
 
-### `network(self, cluster_to_label, figsize=(8, 10))`
+### `plot_curves(slingshot_obj, title: str='Slingshot Principal Curves', width: int=700, height: int=600, curve_width: int=4, curve_opacity: float=0.9, show_cells: bool=True, save_path: Optional[str]=None, show: bool=True)`
 
 
-绘制谱系网络图
+绘制主曲线（可选显示细胞散点）
 
-参数:
-    cluster_to_label: 聚类到标签的映射
-    figsize: 图形大小
+Parameters
+----------
+slingshot_obj : Slingshot
+    Slingshot 对象
+title : str, optional
+    图形标题
+width : int, optional
+    图形宽度
+height : int, optional
+    图形高度
+curve_width : int, optional
+    曲线线宽
+curve_opacity : float, optional
+    曲线透明度
+show_cells : bool, optional
+    是否显示细胞散点
+save_path : str, optional
+    保存路径
+show : bool, optional
+    是否显示图形
+
+Returns
+-------
+fig : plotly.graph_objects.Figure
+    Plotly 图形对象
 
 
-**Source:** Line 152 in [TI/slingshot/plotter.py](TI/slingshot/plotter.py#L152)
+**Source:** Line 306 in [TI/slingshot/plot.py](TI/slingshot/plot.py#L306)
+
+
+---
+
+
+### `plot_slingshot(slingshot_obj, title: str='Slingshot Trajectory', width: int=700, height: int=600, point_size: int=5, point_opacity: float=0.6, curve_width: int=4, curve_opacity: float=0.8, colorscale: str='Viridis', show_legend: bool=True, save_path: Optional[str]=None, show: bool=True)`
+
+
+绘制 Slingshot 轨迹推断结果
+
+主绘图函数：绘制细胞散点图（按 pseudotime 着色）并叠加所有主曲线
+
+Parameters
+----------
+slingshot_obj : Slingshot
+    Slingshot 对象（需已调用 fit()）
+title : str, optional
+    图形标题
+width : int, optional
+    图形宽度（像素）
+height : int, optional
+    图形高度（像素）
+point_size : int, optional
+    散点大小
+point_opacity : float, optional
+    散点透明度
+curve_width : int, optional
+    曲线线宽
+curve_opacity : float, optional
+    曲线透明度
+colorscale : str, optional
+    颜色映射名称（plotly 支持的颜色映射）
+show_legend : bool, optional
+    是否显示图例
+save_path : str, optional
+    保存路径（如 "output.png"）
+show : bool, optional
+    是否显示图形
+
+Returns
+-------
+fig : plotly.graph_objects.Figure
+    Plotly 图形对象
+
+Examples
+--------
+>>> from hic_basic.TI.slingshot import Slingshot
+>>> from hic_basic.TI.slingshot.plot import plot_slingshot
+>>> 
+>>> # 初始化并拟合
+>>> slingshot = Slingshot(data=adata, celltype_key='celltype', start_node='SSC')
+>>> slingshot.fit(num_epochs=10)
+>>> 
+>>> # 绘图
+>>> fig = plot_slingshot(slingshot, title="Cell Trajectory")
+>>> fig.show()
+
+
+**Source:** Line 42 in [TI/slingshot/plot.py](TI/slingshot/plot.py#L42)
 
 
 ---
@@ -778,7 +843,7 @@ Output:
 计算分支曲线的平均曲线
 
 
-**Source:** Line 615 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L615)
+**Source:** Line 605 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L605)
 
 
 ---
@@ -790,7 +855,7 @@ Output:
 从叶子到根计算分支的平均曲线
 
 
-**Source:** Line 525 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L525)
+**Source:** Line 516 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L516)
 
 
 ---
@@ -802,7 +867,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 191 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L191)
+**Source:** Line 189 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L189)
 
 
 ---
@@ -814,7 +879,7 @@ No documentation available.
 No documentation available.
 
 
-**Source:** Line 236 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L236)
+**Source:** Line 234 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L234)
 
 
 ---
@@ -826,7 +891,7 @@ No documentation available.
 计算细胞权重
 
 
-**Source:** Line 489 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L489)
+**Source:** Line 480 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L480)
 
 
 ---
@@ -838,7 +903,7 @@ No documentation available.
 使用分段线性初始化构建谱系主曲线
 
 
-**Source:** Line 436 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L436)
+**Source:** Line 427 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L427)
 
 
 ---
@@ -855,7 +920,7 @@ No documentation available.
     children: 字典映射聚类到子节点
 
 
-**Source:** Line 301 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L301)
+**Source:** Line 299 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L299)
 
 
 ---
@@ -867,7 +932,7 @@ No documentation available.
 从预定义树结构构建，处理缺失节点
 
 
-**Source:** Line 181 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L181)
+**Source:** Line 179 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L179)
 
 
 ---
@@ -883,7 +948,7 @@ No documentation available.
     debug_axes: 调试绘图轴
 
 
-**Source:** Line 401 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L401)
+**Source:** Line 394 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L394)
 
 
 ---
@@ -895,7 +960,7 @@ No documentation available.
 使用三次样条和数据投影更新曲线
 
 
-**Source:** Line 459 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L459)
+**Source:** Line 450 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L450)
 
 
 ---
@@ -907,7 +972,7 @@ No documentation available.
 No documentation available.
 
 
-**Source:** Line 381 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L381)
+**Source:** Line 374 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L374)
 
 
 ---
@@ -919,7 +984,7 @@ No documentation available.
 从 MST 提取谱系
 
 
-**Source:** Line 366 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L366)
+**Source:** Line 359 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L359)
 
 
 ---
@@ -931,7 +996,7 @@ No documentation available.
 返回带字符串标签的树结构
 
 
-**Source:** Line 167 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L167)
+**Source:** Line 165 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L165)
 
 
 ---
@@ -943,7 +1008,7 @@ No documentation available.
 列出谱系（支持字符串标签）
 
 
-**Source:** Line 650 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L650)
+**Source:** Line 640 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L640)
 
 
 ---
@@ -955,7 +1020,7 @@ No documentation available.
 加载参数
 
 
-**Source:** Line 277 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L277)
+**Source:** Line 275 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L275)
 
 
 ---
@@ -967,7 +1032,7 @@ No documentation available.
 No documentation available.
 
 
-**Source:** Line 371 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L371)
+**Source:** Line 364 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L364)
 
 
 ---
@@ -979,7 +1044,7 @@ No documentation available.
 保存参数
 
 
-**Source:** Line 286 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L286)
+**Source:** Line 284 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L284)
 
 
 ---
@@ -991,7 +1056,7 @@ No documentation available.
 收缩分支曲线到平均曲线
 
 
-**Source:** Line 583 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L583)
+**Source:** Line 573 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L573)
 
 
 ---
@@ -1003,7 +1068,7 @@ No documentation available.
 从根到叶收缩曲线
 
 
-**Source:** Line 571 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L571)
+**Source:** Line 561 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L561)
 
 
 ---
@@ -1015,7 +1080,7 @@ No documentation available.
 确定曲线收缩百分比
 
 
-**Source:** Line 598 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L598)
+**Source:** Line 588 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L588)
 
 
 ---
@@ -1027,7 +1092,7 @@ No documentation available.
 获取树结构（MST 或预定义树）
 
 
-**Source:** Line 157 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L157)
+**Source:** Line 155 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L155)
 
 
 ---
@@ -1039,7 +1104,7 @@ No documentation available.
 获取统一的伪时间
 
 
-**Source:** Line 663 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L663)
+**Source:** Line 653 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L653)
 
 
 ---
@@ -5464,7 +5529,7 @@ No documentation available.
 
 **File:** `interpolate.py`
 
-**Public functions:** 4
+**Public functions:** 5
 
 
 ### `correct_pseudotime(adata, pseudotime_col, n_pcs=15, inplace=True)`
@@ -5479,7 +5544,7 @@ Output:
     new adata object
 
 
-**Source:** Line 473 in [interpolate.py](interpolate.py#L473)
+**Source:** Line 735 in [interpolate.py](interpolate.py#L735)
 
 
 ---
@@ -5499,7 +5564,7 @@ Output:
     new adata object numPts * adata.shape[1]
 
 
-**Source:** Line 214 in [interpolate.py](interpolate.py#L214)
+**Source:** Line 476 in [interpolate.py](interpolate.py#L476)
 
 
 ---
@@ -5511,7 +5576,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 171 in [interpolate.py](interpolate.py#L171)
+**Source:** Line 433 in [interpolate.py](interpolate.py#L433)
 
 
 ---
@@ -5574,7 +5639,49 @@ anndata.AnnData
     AnnData with GP interpolation results stored in ``adata.uns[result_key]``.
 
 
-**Source:** Line 331 in [interpolate.py](interpolate.py#L331)
+**Source:** Line 593 in [interpolate.py](interpolate.py#L593)
+
+
+---
+
+
+### `plot_grid_methods_comparison(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_methods=None, endpoint_mode='half-interval', scaling='z_score', figsize=(10, 12), dpi=100, save_path=None)`
+
+
+Plot comparison of different grid methods for GP interpolation.
+
+Parameters
+----------
+adata : anndata.AnnData
+    AnnData object with expression data and pseudotime.
+pseudotime_col : str
+    Column name in adata.obs containing pseudotime values.
+layer : str, optional
+    Expression layer to use. Default is "X".
+gene_mask_key : str, optional
+    Boolean column in adata.var for gene selection.
+numPts : int, optional
+    Number of grid points. Default is 14.
+grid_methods : list, optional
+    List of grid methods to compare. Default is ["linspace", "quantile", "density"].
+endpoint_mode : str, optional
+    Endpoint handling mode. Default is "half-interval".
+scaling : str, optional
+    Color scaling: "z_score" or "zero_one". Default is "z_score".
+figsize : tuple, optional
+    Figure size (width, height) in inches. Default is (10, 12).
+dpi : int, optional
+    Figure DPI. Default is 100.
+save_path : str, optional
+    Path to save the figure. If None, figure is not saved.
+
+Returns
+-------
+fig : matplotlib.figure.Figure
+    The matplotlib figure object.
+
+
+**Source:** Line 209 in [interpolate.py](interpolate.py#L209)
 
 
 ---
@@ -7206,6 +7313,41 @@ Input:
 
 
 **Source:** Line 272 in [plot/plot.py](plot/plot.py#L272)
+
+
+---
+
+
+## plot.plotly_template
+
+**File:** `plot/plotly_template.py`
+
+**Public functions:** 1
+
+
+### `apply_template(fig, title=None, width=None, height=None)`
+
+
+应用 hic_basic 模板到图形
+
+Parameters
+----------
+fig : plotly.graph_objects.Figure
+    Plotly 图形对象
+title : str, optional
+    标题（可选覆盖）
+width : int, optional
+    宽度（可选覆盖）
+height : int, optional
+    高度（可选覆盖）
+
+Returns
+-------
+fig : plotly.graph_objects.Figure
+    应用模板后的图形
+
+
+**Source:** Line 102 in [plot/plotly_template.py](plot/plotly_template.py#L102)
 
 
 ---
