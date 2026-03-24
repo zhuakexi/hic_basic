@@ -4,8 +4,156 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import ConstantKernel, RBF
 import anndata as ad
 from scipy import sparse
+from scipy.stats import gaussian_kde
 
 from .metrics import euclidean_distances
+
+
+def _build_time_grid(pseudotime, numPts=14, method="linspace", grid_custom=None,
+                     endpoint_mode="half-interval"):
+    """
+    Build interpolation time grid using various strategies.
+
+    Parameters
+    ----------
+    pseudotime : pd.Series
+        Normalized pseudotime values (range [0, 1]).
+    numPts : int, optional
+        Number of interpolation points. Default is 14.
+    method : str, optional
+        Grid construction method. Options:
+        - "linspace": evenly spaced points (default)
+        - "quantile": quantile-based spacing (equal cells per bin)
+        - "density": density-adaptive spacing (more points in dense regions)
+        - "optimal": use optimal binning to determine numPts automatically
+        - "custom": use user-provided grid (requires grid_custom)
+    grid_custom : array-like, optional
+        Custom grid values (only used when method="custom").
+    endpoint_mode : str, optional
+        How to handle endpoints. Options:
+        - "half-interval" (default): endpoints at [half_interval, 1-half_interval]
+          to avoid sparse cells at t=0 and t=1
+        - "full": endpoints at [0, 1] (legacy behavior)
+
+    Returns
+    -------
+    grid_values : np.ndarray
+        Interpolation time grid.
+    grid_index : list of str
+        Index labels for the grid points.
+    """
+    if method == "custom":
+        if grid_custom is None:
+            raise ValueError("grid_custom must be provided when method='custom'.")
+        grid_values = np.asarray(grid_custom)
+        if not np.all((grid_values >= 0) & (grid_values <= 1)):
+            raise ValueError("Custom grid values must be in range [0, 1].")
+        if not np.all(np.diff(grid_values) > 0):
+            raise ValueError("Custom grid values must be strictly increasing.")
+        numPts = len(grid_values)
+        grid_index = [f"Gp_{i}" for i in range(numPts)]
+        # Warn about endpoint sparsity
+        if grid_values[0] < 0.05 or grid_values[-1] > 0.95:
+            import warnings
+            warnings.warn(
+                f"Custom grid endpoints ({grid_values[0]:.3f}, {grid_values[-1]:.3f}) "
+                f"may have sparse cells. Consider using endpoint_mode='half-interval' "
+                f"or adjusting grid to avoid t=0 and t=1."
+            )
+        return grid_values, grid_index
+
+    if numPts < 2:
+        raise ValueError("numPts must be at least 2.")
+
+    # Calculate half-interval for endpoint truncation
+    interval = 1.0 / (numPts - 1)
+    half_interval = interval / 2
+    
+    # Determine endpoint range based on endpoint_mode
+    if endpoint_mode == "half-interval":
+        t_min = half_interval
+        t_max = 1.0 - half_interval
+    elif endpoint_mode == "full":
+        t_min = 0.0
+        t_max = 1.0
+    else:
+        raise ValueError(
+            f"Unknown endpoint_mode='{endpoint_mode}'. "
+            f"Options: 'half-interval', 'full'."
+        )
+
+    if method == "linspace":
+        grid_values = np.linspace(t_min, t_max, numPts)
+
+    elif method == "quantile":
+        # Find quantiles corresponding to t_min and t_max
+        pt_sorted = np.sort(pseudotime.values)
+        n = len(pt_sorted)
+        # Convert t_min/t_max to quantile indices
+        q_min_idx = int(np.searchsorted(pt_sorted, t_min * pt_sorted.max()))
+        q_max_idx = int(np.searchsorted(pt_sorted, t_max * pt_sorted.max()))
+        q_min = max(0.0, q_min_idx / (n - 1))
+        q_max = min(1.0, q_max_idx / (n - 1))
+        quantiles = np.linspace(q_min, q_max, numPts)
+        grid_values = np.quantile(pseudotime, quantiles)
+
+    elif method == "density":
+        # Density-adaptive grid: more points in dense regions
+        # Use KDE to estimate density, then sample based on CDF
+        pt_sorted = np.sort(pseudotime.values)
+        kde = gaussian_kde(pt_sorted)
+        # Evaluate density on fine grid
+        x_fine = np.linspace(0, 1, 1000)
+        density = kde(x_fine)
+        # Compute CDF of density
+        cdf = np.cumsum(density)
+        cdf = cdf / cdf[-1]
+        # Find CDF values corresponding to t_min and t_max
+        cdf_min_idx = np.searchsorted(x_fine, t_min)
+        cdf_max_idx = np.searchsorted(x_fine, t_max)
+        cdf_min = cdf[cdf_min_idx] if cdf_min_idx < len(cdf) else 0
+        cdf_max = cdf[cdf_max_idx] if cdf_max_idx < len(cdf) else 1
+        # Inverse CDF sampling for quantiles
+        quantiles = np.linspace(cdf_min, cdf_max, numPts)
+        grid_values = np.interp(quantiles, cdf, x_fine)
+
+    elif method == "optimal":
+        # Use optimal binning to determine the number of points
+        try:
+            from optbinning import ContinuousOptimalBinning
+        except ImportError:
+            raise ImportError(
+                "optbinning is required for method='optimal'. "
+                "Install with: pip install optbinning"
+            ) from None
+
+        binning = ContinuousOptimalBinning(
+            n_bins=20,
+            min_bin_size=0.05,
+            monotonic_trend=None
+        )
+        binning.fit(pseudotime.values)
+        m = binning.n_bins
+        # Use the bin boundaries as grid
+        grid_values = binning.splits
+        # Apply endpoint truncation
+        grid_values = grid_values[(grid_values >= t_min) & (grid_values <= t_max)]
+        # Ensure we have enough points
+        if len(grid_values) < numPts:
+            # Fall back to linspace with truncation
+            grid_values = np.linspace(t_min, t_max, numPts)
+        numPts = len(grid_values)
+
+    else:
+        raise ValueError(
+            f"Unknown grid_method='{method}'. "
+            f"Options: 'linspace', 'quantile', 'density', 'optimal', 'custom'."
+        )
+
+    grid_index = [f"Gp_{i}" for i in range(numPts)]
+    return grid_values, grid_index
+
+
 def _gaussian_interpolate(expr, traj, winSz=0.1, numPts=200):
     """
     Interpolation of the expression data along one trajectory.
@@ -181,7 +329,9 @@ def _fit_gp_gene(y_train, x_train, x_grid, alpha=1e-6, length_scale=0.1,
     }
     return mean_pred, std_pred ** 2, hyperparameters
 def gp_interpolate(adata, pseudotime_col, layer="X", gene_mask_key=None,
-                   numPts=14, alpha=1e-6, length_scale=0.1,
+                   numPts=14, grid_method="linspace", grid_custom=None,
+                   endpoint_mode="half-interval",
+                   alpha=1e-6, length_scale=0.1,
                    length_scale_bounds=(1e-2, 1.0), n_restarts_optimizer=5,
                    normalize_y=True, result_key="gp_interpolate", inplace=True):
     """
@@ -199,7 +349,24 @@ def gp_interpolate(adata, pseudotime_col, layer="X", gene_mask_key=None,
     gene_mask_key : str, optional
         Boolean column in ``adata.var`` used to select genes for fitting.
     numPts : int, optional
-        Number of evenly spaced interpolation points on normalized pseudotime.
+        Number of interpolation points on normalized pseudotime. Default is 14.
+        Ignored when ``grid_method='optimal'`` (auto-determined) or
+        ``grid_method='custom'`` (uses ``grid_custom``).
+    grid_method : str, optional
+        Strategy for constructing the interpolation time grid. Options:
+        - "linspace": evenly spaced points (default)
+        - "quantile": quantile-based spacing (equal cells per bin)
+        - "density": density-adaptive spacing (more points in dense regions)
+        - "optimal": use optimal binning to determine numPts automatically
+        - "custom": use user-provided grid (requires ``grid_custom``)
+    grid_custom : array-like, optional
+        Custom grid values in range [0, 1], strictly increasing.
+        Only used when ``grid_method='custom'``.
+    endpoint_mode : str, optional
+        How to handle endpoints. Default is "half-interval". Options:
+        - "half-interval": endpoints at [half_interval, 1-half_interval]
+          to avoid sparse cells at t=0 and t=1 (recommended)
+        - "full": endpoints at [0, 1] (legacy behavior)
     alpha : float, optional
         Fixed observation noise variance passed to the GP regressor.
     length_scale : float, optional
@@ -221,8 +388,6 @@ def gp_interpolate(adata, pseudotime_col, layer="X", gene_mask_key=None,
     anndata.AnnData
         AnnData with GP interpolation results stored in ``adata.uns[result_key]``.
     """
-    if numPts < 2:
-        raise ValueError("numPts must be at least 2.")
     if alpha <= 0:
         raise ValueError("alpha must be positive.")
     if length_scale <= 0:
@@ -231,6 +396,11 @@ def gp_interpolate(adata, pseudotime_col, layer="X", gene_mask_key=None,
         raise ValueError("n_restarts_optimizer must be non-negative.")
     if len(length_scale_bounds) != 2 or length_scale_bounds[0] <= 0 or length_scale_bounds[0] >= length_scale_bounds[1]:
         raise ValueError("length_scale_bounds must be a positive (min, max) tuple with min < max.")
+    if endpoint_mode not in ("half-interval", "full"):
+        raise ValueError(
+            f"Unknown endpoint_mode='{endpoint_mode}'. "
+            f"Options: 'half-interval', 'full'."
+        )
 
     target = adata if inplace else adata.copy()
     expr, pseudotime, num_cells_dropped = _prepare_gp_inputs(
@@ -240,8 +410,11 @@ def gp_interpolate(adata, pseudotime_col, layer="X", gene_mask_key=None,
         gene_mask_key=gene_mask_key
     )
 
-    grid_values = np.linspace(0.0, 1.0, numPts)
-    grid_index = [f"Gp_{i}" for i in range(numPts)]
+    grid_values, grid_index = _build_time_grid(
+        pseudotime, numPts=numPts, method=grid_method, grid_custom=grid_custom,
+        endpoint_mode=endpoint_mode
+    )
+    numPts = len(grid_values)
     x_train = pseudotime.to_numpy(dtype=float).reshape(-1, 1)
     x_grid = grid_values.reshape(-1, 1)
 
@@ -286,6 +459,8 @@ def gp_interpolate(adata, pseudotime_col, layer="X", gene_mask_key=None,
             "pseudotime_col": pseudotime_col,
             "layer": layer,
             "gene_mask_key": gene_mask_key,
+            "grid_method": grid_method,
+            "endpoint_mode": endpoint_mode,
             "num_cells_used": int(pseudotime.shape[0]),
             "num_cells_dropped": num_cells_dropped,
             "num_genes_fit": int(expr.shape[1]),

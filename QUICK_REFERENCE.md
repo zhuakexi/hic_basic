@@ -42,6 +42,8 @@ python scripts/generate_api_reference.py
 | **plot.utils** | 20 | Plotting utilities |
 | **plot.hic** | 18 | Hi-C heatmap plotting |
 | **data** | 18 | Data structures |
+| **TI.slingshot** | 22 | Trajectory inference (Slingshot) |
+| **TI.circle** | 1 | Pseudotime baseline (circular) |
 
 ## 💻 Code Snippets
 

@@ -238,6 +238,254 @@
       "lineno": 167
     }
   ],
+  "TI.circle": [
+    {
+      "name": "angle_pseudotime",
+      "signature": "angle_pseudotime(root, embedding, direction=1, colname='pseudotime')",
+      "docstring": "Transform 2D embedding to pseudotime by naive circular ordering.\nInput:\n    root: set what sample/angle to 0.\n        str: name of sample, must be in data.index; float: angle value\n    df: 2d embeddin...",
+      "return_type": "pd.DataFrame",
+      "lineno": 33
+    }
+  ],
+  "TI.slingshot.lineage": [
+    {
+      "name": "start",
+      "signature": "start(self)",
+      "docstring": "\u8fd4\u56de\u8d77\u59cb\u7ec6\u80de\u7c7b\u578b",
+      "return_type": null,
+      "lineno": 34
+    },
+    {
+      "name": "end",
+      "signature": "end(self)",
+      "docstring": "\u8fd4\u56de\u7ec8\u6b62\u7ec6\u80de\u7c7b\u578b",
+      "return_type": null,
+      "lineno": 39
+    }
+  ],
+  "TI.slingshot.plotter": [
+    {
+      "name": "generate_colormap",
+      "signature": "generate_colormap(number_of_distinct_colors: int=80)",
+      "docstring": "\u751f\u6210\u81ea\u5b9a\u4e49\u8272\u8f6e\n\n\u53c2\u6570:\n    number_of_distinct_colors: \u4e0d\u540c\u989c\u8272\u7684\u6570\u91cf\n\n\u8fd4\u56de:\n    ListedColormap \u5bf9\u8c61",
+      "return_type": null,
+      "lineno": 16
+    },
+    {
+      "name": "clusters",
+      "signature": "clusters(self, ax, labels=None, s=8, alpha=1.0, color_mode='clusters')",
+      "docstring": "\u7ed8\u5236\u7ec6\u80de\u805a\u7c7b\n\n\u53c2\u6570:\n    ax: matplotlib \u8f74\n    labels: \u6807\u7b7e\u5217\u8868\n    s: \u70b9\u5927\u5c0f\n    alpha: \u900f\u660e\u5ea6\n    color_mode: \u989c\u8272\u6a21\u5f0f ('clusters', 'pseudotime', \u6216 numpy \u6570\u7ec4)",
+      "return_type": null,
+      "lineno": 82
+    },
+    {
+      "name": "curves",
+      "signature": "curves(self, ax, curves)",
+      "docstring": "\u7ed8\u5236\u4e3b\u66f2\u7ebf\n\n\u53c2\u6570:\n    ax: matplotlib \u8f74\n    curves: \u4e3b\u66f2\u7ebf\u5217\u8868",
+      "return_type": null,
+      "lineno": 134
+    },
+    {
+      "name": "network",
+      "signature": "network(self, cluster_to_label, figsize=(8, 10))",
+      "docstring": "\u7ed8\u5236\u8c31\u7cfb\u7f51\u7edc\u56fe\n\n\u53c2\u6570:\n    cluster_to_label: \u805a\u7c7b\u5230\u6807\u7b7e\u7684\u6620\u5c04\n    figsize: \u56fe\u5f62\u5927\u5c0f",
+      "return_type": null,
+      "lineno": 152
+    }
+  ],
+  "TI.slingshot.slingshot": [
+    {
+      "name": "tree",
+      "signature": "tree(self)",
+      "docstring": "\u83b7\u53d6\u6811\u7ed3\u6784\uff08MST \u6216\u9884\u5b9a\u4e49\u6811\uff09",
+      "return_type": null,
+      "lineno": 157
+    },
+    {
+      "name": "label_tree",
+      "signature": "label_tree(self)",
+      "docstring": "\u8fd4\u56de\u5e26\u5b57\u7b26\u4e32\u6807\u7b7e\u7684\u6811\u7ed3\u6784",
+      "return_type": null,
+      "lineno": 167
+    },
+    {
+      "name": "construct_tree_from_predefined",
+      "signature": "construct_tree_from_predefined(self)",
+      "docstring": "\u4ece\u9884\u5b9a\u4e49\u6811\u7ed3\u6784\u6784\u5efa\uff0c\u5904\u7406\u7f3a\u5931\u8282\u70b9",
+      "return_type": null,
+      "lineno": 181
+    },
+    {
+      "name": "load_params",
+      "signature": "load_params(self, filepath)",
+      "docstring": "\u52a0\u8f7d\u53c2\u6570",
+      "return_type": null,
+      "lineno": 277
+    },
+    {
+      "name": "save_params",
+      "signature": "save_params(self, filepath)",
+      "docstring": "\u4fdd\u5b58\u53c2\u6570",
+      "return_type": null,
+      "lineno": 286
+    },
+    {
+      "name": "construct_mst",
+      "signature": "construct_mst(self, start_node)",
+      "docstring": "\u6784\u5efa\u6700\u5c0f\u751f\u6210\u6811\n\n\u53c2\u6570:\n    start_node: \u8d77\u59cb\u8282\u70b9\n\u8fd4\u56de:\n    children: \u5b57\u5178\u6620\u5c04\u805a\u7c7b\u5230\u5b50\u8282\u70b9",
+      "return_type": null,
+      "lineno": 301
+    },
+    {
+      "name": "get_lineages",
+      "signature": "get_lineages(self)",
+      "docstring": "\u4ece MST \u63d0\u53d6\u8c31\u7cfb",
+      "return_type": null,
+      "lineno": 366
+    },
+    {
+      "name": "fit",
+      "signature": "fit(self, num_epochs=10, debug_axes=None)",
+      "docstring": "\u62df\u5408\u4e3b\u66f2\u7ebf\n\n\u53c2\u6570:\n    num_epochs: \u8fed\u4ee3\u6b21\u6570\n    debug_axes: \u8c03\u8bd5\u7ed8\u56fe\u8f74",
+      "return_type": null,
+      "lineno": 401
+    },
+    {
+      "name": "construct_initial_curves",
+      "signature": "construct_initial_curves(self)",
+      "docstring": "\u4f7f\u7528\u5206\u6bb5\u7ebf\u6027\u521d\u59cb\u5316\u6784\u5efa\u8c31\u7cfb\u4e3b\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 436
+    },
+    {
+      "name": "fit_lineage_curves",
+      "signature": "fit_lineage_curves(self)",
+      "docstring": "\u4f7f\u7528\u4e09\u6b21\u6837\u6761\u548c\u6570\u636e\u6295\u5f71\u66f4\u65b0\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 459
+    },
+    {
+      "name": "calculate_cell_weights",
+      "signature": "calculate_cell_weights(self)",
+      "docstring": "\u8ba1\u7b97\u7ec6\u80de\u6743\u91cd",
+      "return_type": null,
+      "lineno": 489
+    },
+    {
+      "name": "avg_curves",
+      "signature": "avg_curves(self)",
+      "docstring": "\u4ece\u53f6\u5b50\u5230\u6839\u8ba1\u7b97\u5206\u652f\u7684\u5e73\u5747\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 525
+    },
+    {
+      "name": "shrink_curves",
+      "signature": "shrink_curves(self, cluster_children, shrinkage_percentages, cluster_avg_curves)",
+      "docstring": "\u4ece\u6839\u5230\u53f6\u6536\u7f29\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 571
+    },
+    {
+      "name": "shrink_branch_curves",
+      "signature": "shrink_branch_curves(self, branch_curves, avg_curve, shrinkage_percent)",
+      "docstring": "\u6536\u7f29\u5206\u652f\u66f2\u7ebf\u5230\u5e73\u5747\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 583
+    },
+    {
+      "name": "shrinkage_percent",
+      "signature": "shrinkage_percent(self, curve, common_ind)",
+      "docstring": "\u786e\u5b9a\u66f2\u7ebf\u6536\u7f29\u767e\u5206\u6bd4",
+      "return_type": null,
+      "lineno": 598
+    },
+    {
+      "name": "avg_branch_curves",
+      "signature": "avg_branch_curves(self, branch_curves)",
+      "docstring": "\u8ba1\u7b97\u5206\u652f\u66f2\u7ebf\u7684\u5e73\u5747\u66f2\u7ebf",
+      "return_type": null,
+      "lineno": 615
+    },
+    {
+      "name": "list_lineages",
+      "signature": "list_lineages(self, cluster_to_label=None)",
+      "docstring": "\u5217\u51fa\u8c31\u7cfb\uff08\u652f\u6301\u5b57\u7b26\u4e32\u6807\u7b7e\uff09",
+      "return_type": null,
+      "lineno": 650
+    },
+    {
+      "name": "unified_pseudotime",
+      "signature": "unified_pseudotime(self)",
+      "docstring": "\u83b7\u53d6\u7edf\u4e00\u7684\u4f2a\u65f6\u95f4",
+      "return_type": null,
+      "lineno": 663
+    },
+    {
+      "name": "recurse_branches",
+      "signature": "recurse_branches(path, v)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 371
+    },
+    {
+      "name": "flatten",
+      "signature": "flatten(li)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 381
+    },
+    {
+      "name": "build_pruned_tree",
+      "signature": "build_pruned_tree(current_node)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 191
+    },
+    {
+      "name": "build_pruned_tree",
+      "signature": "build_pruned_tree(current_node)",
+      "docstring": "No documentation available.",
+      "return_type": null,
+      "lineno": 236
+    }
+  ],
+  "TI.slingshot.utils": [
+    {
+      "name": "mahalanobis",
+      "signature": "mahalanobis(X1, X2, S1, S2)",
+      "docstring": "\u8ba1\u7b97\u4e24\u4e2a\u5411\u91cf\u4e4b\u95f4\u7684\u9a6c\u6c0f\u8ddd\u79bb\n\n\u53c2\u6570:\n    X1: \u7b2c\u4e00\u4e2a\u5411\u91cf (n,)\n    X2: \u7b2c\u4e8c\u4e2a\u5411\u91cf (n,)\n    S1: \u7b2c\u4e00\u4e2a\u534f\u65b9\u5dee\u77e9\u9635 (n, n)\n    S2: \u7b2c\u4e8c\u4e2a\u534f\u65b9\u5dee\u77e9\u9635 (n, n)\n\n\u8fd4\u56de:\n    \u9a6c\u6c0f\u8ddd\u79bb (\u6807\u91cf)",
+      "return_type": null,
+      "lineno": 8
+    },
+    {
+      "name": "isint",
+      "signature": "isint(x)",
+      "docstring": "\u68c0\u67e5\u662f\u5426\u4e3a\u6574\u6570",
+      "return_type": null,
+      "lineno": 26
+    },
+    {
+      "name": "isstr",
+      "signature": "isstr(x)",
+      "docstring": "\u68c0\u67e5\u662f\u5426\u4e3a\u5b57\u7b26\u4e32",
+      "return_type": null,
+      "lineno": 41
+    },
+    {
+      "name": "scale_to_range",
+      "signature": "scale_to_range(x, a=0, b=1)",
+      "docstring": "\u5c06\u6570\u7ec4\u7f29\u653e\u5230\u6307\u5b9a\u8303\u56f4\n\n\u53c2\u6570:\n    x: \u8f93\u5165\u6570\u7ec4\n    a: \u76ee\u6807\u6700\u5c0f\u503c\n    b: \u76ee\u6807\u6700\u5927\u503c\n\n\u8fd4\u56de:\n    \u7f29\u653e\u540e\u7684\u6570\u7ec4",
+      "return_type": null,
+      "lineno": 46
+    },
+    {
+      "name": "infer_cluster_label_indices",
+      "signature": "infer_cluster_label_indices(cluster_labels)",
+      "docstring": "\u63a8\u65ad\u805a\u7c7b\u6807\u7b7e\u7d22\u5f15\n\n\u53c2\u6570:\n    cluster_labels: \u5b57\u7b26\u4e32\u6807\u7b7e\u5217\u8868\u6216\u6574\u6570\u805a\u7c7b\u5206\u914d\u5217\u8868\n\n\u8fd4\u56de:\n    \u805a\u7c7b\u5206\u914d\u7684 numpy \u6570\u7ec4",
+      "return_type": null,
+      "lineno": 61
+    }
+  ],
   "ana": [
     {
       "name": "create_empty_json_file",
@@ -2954,15 +3202,6 @@
       "lineno": 77
     }
   ],
-  "pseudotime.TI": [
-    {
-      "name": "angle_pseudotime",
-      "signature": "angle_pseudotime(root, embedding, direction=1, colname='pseudotime')",
-      "docstring": "Transform 2D embedding to pseudotime by naive circular ordering.\nInput:\n    root: set what sample/angle to 0.\n        str: name of sample, must be in data.index; float: angle value\n    df: 2d embeddin...",
-      "return_type": "pd.DataFrame",
-      "lineno": 33
-    }
-  ],
   "pymol.color_centelo": [
     {
       "name": "fetch_cent_chromlen",
@@ -3319,245 +3558,6 @@
       "docstring": "Shuffle two groups. Will first random sample each group N times, then exchange fraction of elements for each pair.\nBoth group-pair and mix-pair are returned, all pairs are non-overlapping.\nThis is use...",
       "return_type": null,
       "lineno": 48
-    }
-  ],
-  "slingshot.lineage": [
-    {
-      "name": "start",
-      "signature": "start(self)",
-      "docstring": "\u8fd4\u56de\u8d77\u59cb\u7ec6\u80de\u7c7b\u578b",
-      "return_type": null,
-      "lineno": 34
-    },
-    {
-      "name": "end",
-      "signature": "end(self)",
-      "docstring": "\u8fd4\u56de\u7ec8\u6b62\u7ec6\u80de\u7c7b\u578b",
-      "return_type": null,
-      "lineno": 39
-    }
-  ],
-  "slingshot.plotter": [
-    {
-      "name": "generate_colormap",
-      "signature": "generate_colormap(number_of_distinct_colors: int=80)",
-      "docstring": "\u751f\u6210\u81ea\u5b9a\u4e49\u8272\u8f6e\n\n\u53c2\u6570:\n    number_of_distinct_colors: \u4e0d\u540c\u989c\u8272\u7684\u6570\u91cf\n\n\u8fd4\u56de:\n    ListedColormap \u5bf9\u8c61",
-      "return_type": null,
-      "lineno": 16
-    },
-    {
-      "name": "clusters",
-      "signature": "clusters(self, ax, labels=None, s=8, alpha=1.0, color_mode='clusters')",
-      "docstring": "\u7ed8\u5236\u7ec6\u80de\u805a\u7c7b\n\n\u53c2\u6570:\n    ax: matplotlib \u8f74\n    labels: \u6807\u7b7e\u5217\u8868\n    s: \u70b9\u5927\u5c0f\n    alpha: \u900f\u660e\u5ea6\n    color_mode: \u989c\u8272\u6a21\u5f0f ('clusters', 'pseudotime', \u6216 numpy \u6570\u7ec4)",
-      "return_type": null,
-      "lineno": 82
-    },
-    {
-      "name": "curves",
-      "signature": "curves(self, ax, curves)",
-      "docstring": "\u7ed8\u5236\u4e3b\u66f2\u7ebf\n\n\u53c2\u6570:\n    ax: matplotlib \u8f74\n    curves: \u4e3b\u66f2\u7ebf\u5217\u8868",
-      "return_type": null,
-      "lineno": 134
-    },
-    {
-      "name": "network",
-      "signature": "network(self, cluster_to_label, figsize=(8, 10))",
-      "docstring": "\u7ed8\u5236\u8c31\u7cfb\u7f51\u7edc\u56fe\n\n\u53c2\u6570:\n    cluster_to_label: \u805a\u7c7b\u5230\u6807\u7b7e\u7684\u6620\u5c04\n    figsize: \u56fe\u5f62\u5927\u5c0f",
-      "return_type": null,
-      "lineno": 152
-    }
-  ],
-  "slingshot.slingshot": [
-    {
-      "name": "tree",
-      "signature": "tree(self)",
-      "docstring": "\u83b7\u53d6\u6811\u7ed3\u6784\uff08MST \u6216\u9884\u5b9a\u4e49\u6811\uff09",
-      "return_type": null,
-      "lineno": 157
-    },
-    {
-      "name": "label_tree",
-      "signature": "label_tree(self)",
-      "docstring": "\u8fd4\u56de\u5e26\u5b57\u7b26\u4e32\u6807\u7b7e\u7684\u6811\u7ed3\u6784",
-      "return_type": null,
-      "lineno": 167
-    },
-    {
-      "name": "construct_tree_from_predefined",
-      "signature": "construct_tree_from_predefined(self)",
-      "docstring": "\u4ece\u9884\u5b9a\u4e49\u6811\u7ed3\u6784\u6784\u5efa\uff0c\u5904\u7406\u7f3a\u5931\u8282\u70b9",
-      "return_type": null,
-      "lineno": 181
-    },
-    {
-      "name": "load_params",
-      "signature": "load_params(self, filepath)",
-      "docstring": "\u52a0\u8f7d\u53c2\u6570",
-      "return_type": null,
-      "lineno": 277
-    },
-    {
-      "name": "save_params",
-      "signature": "save_params(self, filepath)",
-      "docstring": "\u4fdd\u5b58\u53c2\u6570",
-      "return_type": null,
-      "lineno": 286
-    },
-    {
-      "name": "construct_mst",
-      "signature": "construct_mst(self, start_node)",
-      "docstring": "\u6784\u5efa\u6700\u5c0f\u751f\u6210\u6811\n\n\u53c2\u6570:\n    start_node: \u8d77\u59cb\u8282\u70b9\n\u8fd4\u56de:\n    children: \u5b57\u5178\u6620\u5c04\u805a\u7c7b\u5230\u5b50\u8282\u70b9",
-      "return_type": null,
-      "lineno": 301
-    },
-    {
-      "name": "get_lineages",
-      "signature": "get_lineages(self)",
-      "docstring": "\u4ece MST \u63d0\u53d6\u8c31\u7cfb",
-      "return_type": null,
-      "lineno": 366
-    },
-    {
-      "name": "fit",
-      "signature": "fit(self, num_epochs=10, debug_axes=None)",
-      "docstring": "\u62df\u5408\u4e3b\u66f2\u7ebf\n\n\u53c2\u6570:\n    num_epochs: \u8fed\u4ee3\u6b21\u6570\n    debug_axes: \u8c03\u8bd5\u7ed8\u56fe\u8f74",
-      "return_type": null,
-      "lineno": 401
-    },
-    {
-      "name": "construct_initial_curves",
-      "signature": "construct_initial_curves(self)",
-      "docstring": "\u4f7f\u7528\u5206\u6bb5\u7ebf\u6027\u521d\u59cb\u5316\u6784\u5efa\u8c31\u7cfb\u4e3b\u66f2\u7ebf",
-      "return_type": null,
-      "lineno": 436
-    },
-    {
-      "name": "fit_lineage_curves",
-      "signature": "fit_lineage_curves(self)",
-      "docstring": "\u4f7f\u7528\u4e09\u6b21\u6837\u6761\u548c\u6570\u636e\u6295\u5f71\u66f4\u65b0\u66f2\u7ebf",
-      "return_type": null,
-      "lineno": 459
-    },
-    {
-      "name": "calculate_cell_weights",
-      "signature": "calculate_cell_weights(self)",
-      "docstring": "\u8ba1\u7b97\u7ec6\u80de\u6743\u91cd",
-      "return_type": null,
-      "lineno": 489
-    },
-    {
-      "name": "avg_curves",
-      "signature": "avg_curves(self)",
-      "docstring": "\u4ece\u53f6\u5b50\u5230\u6839\u8ba1\u7b97\u5206\u652f\u7684\u5e73\u5747\u66f2\u7ebf",
-      "return_type": null,
-      "lineno": 525
-    },
-    {
-      "name": "shrink_curves",
-      "signature": "shrink_curves(self, cluster_children, shrinkage_percentages, cluster_avg_curves)",
-      "docstring": "\u4ece\u6839\u5230\u53f6\u6536\u7f29\u66f2\u7ebf",
-      "return_type": null,
-      "lineno": 571
-    },
-    {
-      "name": "shrink_branch_curves",
-      "signature": "shrink_branch_curves(self, branch_curves, avg_curve, shrinkage_percent)",
-      "docstring": "\u6536\u7f29\u5206\u652f\u66f2\u7ebf\u5230\u5e73\u5747\u66f2\u7ebf",
-      "return_type": null,
-      "lineno": 583
-    },
-    {
-      "name": "shrinkage_percent",
-      "signature": "shrinkage_percent(self, curve, common_ind)",
-      "docstring": "\u786e\u5b9a\u66f2\u7ebf\u6536\u7f29\u767e\u5206\u6bd4",
-      "return_type": null,
-      "lineno": 598
-    },
-    {
-      "name": "avg_branch_curves",
-      "signature": "avg_branch_curves(self, branch_curves)",
-      "docstring": "\u8ba1\u7b97\u5206\u652f\u66f2\u7ebf\u7684\u5e73\u5747\u66f2\u7ebf",
-      "return_type": null,
-      "lineno": 615
-    },
-    {
-      "name": "list_lineages",
-      "signature": "list_lineages(self, cluster_to_label=None)",
-      "docstring": "\u5217\u51fa\u8c31\u7cfb\uff08\u652f\u6301\u5b57\u7b26\u4e32\u6807\u7b7e\uff09",
-      "return_type": null,
-      "lineno": 650
-    },
-    {
-      "name": "unified_pseudotime",
-      "signature": "unified_pseudotime(self)",
-      "docstring": "\u83b7\u53d6\u7edf\u4e00\u7684\u4f2a\u65f6\u95f4",
-      "return_type": null,
-      "lineno": 663
-    },
-    {
-      "name": "recurse_branches",
-      "signature": "recurse_branches(path, v)",
-      "docstring": "No documentation available.",
-      "return_type": null,
-      "lineno": 371
-    },
-    {
-      "name": "flatten",
-      "signature": "flatten(li)",
-      "docstring": "No documentation available.",
-      "return_type": null,
-      "lineno": 381
-    },
-    {
-      "name": "build_pruned_tree",
-      "signature": "build_pruned_tree(current_node)",
-      "docstring": "No documentation available.",
-      "return_type": null,
-      "lineno": 191
-    },
-    {
-      "name": "build_pruned_tree",
-      "signature": "build_pruned_tree(current_node)",
-      "docstring": "No documentation available.",
-      "return_type": null,
-      "lineno": 236
-    }
-  ],
-  "slingshot.utils": [
-    {
-      "name": "mahalanobis",
-      "signature": "mahalanobis(X1, X2, S1, S2)",
-      "docstring": "\u8ba1\u7b97\u4e24\u4e2a\u5411\u91cf\u4e4b\u95f4\u7684\u9a6c\u6c0f\u8ddd\u79bb\n\n\u53c2\u6570:\n    X1: \u7b2c\u4e00\u4e2a\u5411\u91cf (n,)\n    X2: \u7b2c\u4e8c\u4e2a\u5411\u91cf (n,)\n    S1: \u7b2c\u4e00\u4e2a\u534f\u65b9\u5dee\u77e9\u9635 (n, n)\n    S2: \u7b2c\u4e8c\u4e2a\u534f\u65b9\u5dee\u77e9\u9635 (n, n)\n\n\u8fd4\u56de:\n    \u9a6c\u6c0f\u8ddd\u79bb (\u6807\u91cf)",
-      "return_type": null,
-      "lineno": 8
-    },
-    {
-      "name": "isint",
-      "signature": "isint(x)",
-      "docstring": "\u68c0\u67e5\u662f\u5426\u4e3a\u6574\u6570",
-      "return_type": null,
-      "lineno": 26
-    },
-    {
-      "name": "isstr",
-      "signature": "isstr(x)",
-      "docstring": "\u68c0\u67e5\u662f\u5426\u4e3a\u5b57\u7b26\u4e32",
-      "return_type": null,
-      "lineno": 41
-    },
-    {
-      "name": "scale_to_range",
-      "signature": "scale_to_range(x, a=0, b=1)",
-      "docstring": "\u5c06\u6570\u7ec4\u7f29\u653e\u5230\u6307\u5b9a\u8303\u56f4\n\n\u53c2\u6570:\n    x: \u8f93\u5165\u6570\u7ec4\n    a: \u76ee\u6807\u6700\u5c0f\u503c\n    b: \u76ee\u6807\u6700\u5927\u503c\n\n\u8fd4\u56de:\n    \u7f29\u653e\u540e\u7684\u6570\u7ec4",
-      "return_type": null,
-      "lineno": 46
-    },
-    {
-      "name": "infer_cluster_label_indices",
-      "signature": "infer_cluster_label_indices(cluster_labels)",
-      "docstring": "\u63a8\u65ad\u805a\u7c7b\u6807\u7b7e\u7d22\u5f15\n\n\u53c2\u6570:\n    cluster_labels: \u5b57\u7b26\u4e32\u6807\u7b7e\u5217\u8868\u6216\u6574\u6570\u805a\u7c7b\u5206\u914d\u5217\u8868\n\n\u8fd4\u56de:\n    \u805a\u7c7b\u5206\u914d\u7684 numpy \u6570\u7ec4",
-      "return_type": null,
-      "lineno": 61
     }
   ],
   "spectral_ordering": [

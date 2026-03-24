@@ -12,6 +12,11 @@ Total modules with public functions: 85
 - [Ps](#ps) (5 functions)
 - [TAD.IS](#tad-is) (2 functions)
 - [TAD.tad](#tad-tad) (8 functions)
+- [TI.circle](#ti-circle) (1 functions)
+- [TI.slingshot.lineage](#ti-slingshot-lineage) (2 functions)
+- [TI.slingshot.plotter](#ti-slingshot-plotter) (4 functions)
+- [TI.slingshot.slingshot](#ti-slingshot-slingshot) (22 functions)
+- [TI.slingshot.utils](#ti-slingshot-utils) (5 functions)
 - [ana](#ana) (12 functions)
 - [atac](#atac) (6 functions)
 - [basic](#basic) (5 functions)
@@ -61,7 +66,6 @@ Total modules with public functions: 85
 - [plot.track](#plot-track) (4 functions)
 - [plot.utils](#plot-utils) (20 functions)
 - [pp](#pp) (1 functions)
-- [pseudotime.TI](#pseudotime-ti) (1 functions)
 - [pymol.color_centelo](#pymol-color_centelo) (2 functions)
 - [pymol.glow](#pymol-glow) (1 functions)
 - [pymol.sele_cent](#pymol-sele_cent) (2 functions)
@@ -73,10 +77,6 @@ Total modules with public functions: 85
 - [scripts.rescue_jupyter](#scripts-rescue_jupyter) (2 functions)
 - [sequence](#sequence) (11 functions)
 - [shuffle](#shuffle) (4 functions)
-- [slingshot.lineage](#slingshot-lineage) (2 functions)
-- [slingshot.plotter](#slingshot-plotter) (4 functions)
-- [slingshot.slingshot](#slingshot-slingshot) (22 functions)
-- [slingshot.utils](#slingshot-utils) (5 functions)
 - [spectral_ordering](#spectral_ordering) (1 functions)
 - [structure.align](#structure-align) (1 functions)
 - [structure.measure](#structure-measure) (15 functions)
@@ -625,6 +625,511 @@ No documentation available.
 
 
 **Source:** Line 101 in [TAD/tad.py](TAD/tad.py#L101)
+
+
+---
+
+
+## TI.circle
+
+**File:** `TI/circle.py`
+
+**Public functions:** 1
+
+
+### `angle_pseudotime(root, embedding, direction=1, colname='pseudotime')`
+
+**Returns:** `pd.DataFrame`
+
+
+Transform 2D embedding to pseudotime by naive circular ordering.
+Input:
+    root: set what sample/angle to 0.
+        str: name of sample, must be in data.index; float: angle value
+    df: 2d embedding of samples; dataframe
+    direction: 1 for clockwise, -1 for anticlockwise
+Output:
+    0 - 1 pseudotime, dataframe with new column
+
+
+**Source:** Line 33 in [TI/circle.py](TI/circle.py#L33)
+
+
+---
+
+
+## TI.slingshot.lineage
+
+**File:** `TI/slingshot/lineage.py`
+
+**Public functions:** 2
+
+
+### `end(self)`
+
+
+返回终止细胞类型
+
+
+**Source:** Line 39 in [TI/slingshot/lineage.py](TI/slingshot/lineage.py#L39)
+
+
+---
+
+
+### `start(self)`
+
+
+返回起始细胞类型
+
+
+**Source:** Line 34 in [TI/slingshot/lineage.py](TI/slingshot/lineage.py#L34)
+
+
+---
+
+
+## TI.slingshot.plotter
+
+**File:** `TI/slingshot/plotter.py`
+
+**Public functions:** 4
+
+
+### `clusters(self, ax, labels=None, s=8, alpha=1.0, color_mode='clusters')`
+
+
+绘制细胞聚类
+
+参数:
+    ax: matplotlib 轴
+    labels: 标签列表
+    s: 点大小
+    alpha: 透明度
+    color_mode: 颜色模式 ('clusters', 'pseudotime', 或 numpy 数组)
+
+
+**Source:** Line 82 in [TI/slingshot/plotter.py](TI/slingshot/plotter.py#L82)
+
+
+---
+
+
+### `curves(self, ax, curves)`
+
+
+绘制主曲线
+
+参数:
+    ax: matplotlib 轴
+    curves: 主曲线列表
+
+
+**Source:** Line 134 in [TI/slingshot/plotter.py](TI/slingshot/plotter.py#L134)
+
+
+---
+
+
+### `generate_colormap(number_of_distinct_colors: int=80)`
+
+
+生成自定义色轮
+
+参数:
+    number_of_distinct_colors: 不同颜色的数量
+
+返回:
+    ListedColormap 对象
+
+
+**Source:** Line 16 in [TI/slingshot/plotter.py](TI/slingshot/plotter.py#L16)
+
+
+---
+
+
+### `network(self, cluster_to_label, figsize=(8, 10))`
+
+
+绘制谱系网络图
+
+参数:
+    cluster_to_label: 聚类到标签的映射
+    figsize: 图形大小
+
+
+**Source:** Line 152 in [TI/slingshot/plotter.py](TI/slingshot/plotter.py#L152)
+
+
+---
+
+
+## TI.slingshot.slingshot
+
+**File:** `TI/slingshot/slingshot.py`
+
+**Public functions:** 22
+
+
+### `avg_branch_curves(self, branch_curves)`
+
+
+计算分支曲线的平均曲线
+
+
+**Source:** Line 615 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L615)
+
+
+---
+
+
+### `avg_curves(self)`
+
+
+从叶子到根计算分支的平均曲线
+
+
+**Source:** Line 525 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L525)
+
+
+---
+
+
+### `build_pruned_tree(current_node)`
+
+
+No documentation available.
+
+
+**Source:** Line 191 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L191)
+
+
+---
+
+
+### `build_pruned_tree(current_node)`
+
+
+No documentation available.
+
+
+**Source:** Line 236 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L236)
+
+
+---
+
+
+### `calculate_cell_weights(self)`
+
+
+计算细胞权重
+
+
+**Source:** Line 489 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L489)
+
+
+---
+
+
+### `construct_initial_curves(self)`
+
+
+使用分段线性初始化构建谱系主曲线
+
+
+**Source:** Line 436 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L436)
+
+
+---
+
+
+### `construct_mst(self, start_node)`
+
+
+构建最小生成树
+
+参数:
+    start_node: 起始节点
+返回:
+    children: 字典映射聚类到子节点
+
+
+**Source:** Line 301 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L301)
+
+
+---
+
+
+### `construct_tree_from_predefined(self)`
+
+
+从预定义树结构构建，处理缺失节点
+
+
+**Source:** Line 181 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L181)
+
+
+---
+
+
+### `fit(self, num_epochs=10, debug_axes=None)`
+
+
+拟合主曲线
+
+参数:
+    num_epochs: 迭代次数
+    debug_axes: 调试绘图轴
+
+
+**Source:** Line 401 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L401)
+
+
+---
+
+
+### `fit_lineage_curves(self)`
+
+
+使用三次样条和数据投影更新曲线
+
+
+**Source:** Line 459 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L459)
+
+
+---
+
+
+### `flatten(li)`
+
+
+No documentation available.
+
+
+**Source:** Line 381 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L381)
+
+
+---
+
+
+### `get_lineages(self)`
+
+
+从 MST 提取谱系
+
+
+**Source:** Line 366 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L366)
+
+
+---
+
+
+### `label_tree(self)`
+
+
+返回带字符串标签的树结构
+
+
+**Source:** Line 167 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L167)
+
+
+---
+
+
+### `list_lineages(self, cluster_to_label=None)`
+
+
+列出谱系（支持字符串标签）
+
+
+**Source:** Line 650 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L650)
+
+
+---
+
+
+### `load_params(self, filepath)`
+
+
+加载参数
+
+
+**Source:** Line 277 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L277)
+
+
+---
+
+
+### `recurse_branches(path, v)`
+
+
+No documentation available.
+
+
+**Source:** Line 371 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L371)
+
+
+---
+
+
+### `save_params(self, filepath)`
+
+
+保存参数
+
+
+**Source:** Line 286 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L286)
+
+
+---
+
+
+### `shrink_branch_curves(self, branch_curves, avg_curve, shrinkage_percent)`
+
+
+收缩分支曲线到平均曲线
+
+
+**Source:** Line 583 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L583)
+
+
+---
+
+
+### `shrink_curves(self, cluster_children, shrinkage_percentages, cluster_avg_curves)`
+
+
+从根到叶收缩曲线
+
+
+**Source:** Line 571 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L571)
+
+
+---
+
+
+### `shrinkage_percent(self, curve, common_ind)`
+
+
+确定曲线收缩百分比
+
+
+**Source:** Line 598 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L598)
+
+
+---
+
+
+### `tree(self)`
+
+
+获取树结构（MST 或预定义树）
+
+
+**Source:** Line 157 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L157)
+
+
+---
+
+
+### `unified_pseudotime(self)`
+
+
+获取统一的伪时间
+
+
+**Source:** Line 663 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L663)
+
+
+---
+
+
+## TI.slingshot.utils
+
+**File:** `TI/slingshot/utils.py`
+
+**Public functions:** 5
+
+
+### `infer_cluster_label_indices(cluster_labels)`
+
+
+推断聚类标签索引
+
+参数:
+    cluster_labels: 字符串标签列表或整数聚类分配列表
+
+返回:
+    聚类分配的 numpy 数组
+
+
+**Source:** Line 61 in [TI/slingshot/utils.py](TI/slingshot/utils.py#L61)
+
+
+---
+
+
+### `isint(x)`
+
+
+检查是否为整数
+
+
+**Source:** Line 26 in [TI/slingshot/utils.py](TI/slingshot/utils.py#L26)
+
+
+---
+
+
+### `isstr(x)`
+
+
+检查是否为字符串
+
+
+**Source:** Line 41 in [TI/slingshot/utils.py](TI/slingshot/utils.py#L41)
+
+
+---
+
+
+### `mahalanobis(X1, X2, S1, S2)`
+
+
+计算两个向量之间的马氏距离
+
+参数:
+    X1: 第一个向量 (n,)
+    X2: 第二个向量 (n,)
+    S1: 第一个协方差矩阵 (n, n)
+    S2: 第二个协方差矩阵 (n, n)
+
+返回:
+    马氏距离 (标量)
+
+
+**Source:** Line 8 in [TI/slingshot/utils.py](TI/slingshot/utils.py#L8)
+
+
+---
+
+
+### `scale_to_range(x, a=0, b=1)`
+
+
+将数组缩放到指定范围
+
+参数:
+    x: 输入数组
+    a: 目标最小值
+    b: 目标最大值
+
+返回:
+    缩放后的数组
+
+
+**Source:** Line 46 in [TI/slingshot/utils.py](TI/slingshot/utils.py#L46)
 
 
 ---
@@ -3457,7 +3962,7 @@ Output:
 eg:
     from hic_basic.metrics import distance_pca_euclid
     from hic_basic.embedding import NN_spectral_embedding
-    from hic_basic.pseudotime.TI import angle_pseudotime
+    from hic_basic.TI.circle import angle_pseudotime
 
     dm = distance_pca_euclid(df.values, 6)
     dm = pd.DataFrame(
@@ -8012,34 +8517,6 @@ Output:
 ---
 
 
-## pseudotime.TI
-
-**File:** `pseudotime/TI.py`
-
-**Public functions:** 1
-
-
-### `angle_pseudotime(root, embedding, direction=1, colname='pseudotime')`
-
-**Returns:** `pd.DataFrame`
-
-
-Transform 2D embedding to pseudotime by naive circular ordering.
-Input:
-    root: set what sample/angle to 0.
-        str: name of sample, must be in data.index; float: angle value
-    df: 2d embedding of samples; dataframe
-    direction: 1 for clockwise, -1 for anticlockwise
-Output:
-    0 - 1 pseudotime, dataframe with new column
-
-
-**Source:** Line 33 in [pseudotime/TI.py](pseudotime/TI.py#L33)
-
-
----
-
-
 ## pymol.color_centelo
 
 **File:** `pymol/color_centelo.py`
@@ -9012,483 +9489,6 @@ Output:
 
 
 **Source:** Line 10 in [shuffle.py](shuffle.py#L10)
-
-
----
-
-
-## slingshot.lineage
-
-**File:** `slingshot/lineage.py`
-
-**Public functions:** 2
-
-
-### `end(self)`
-
-
-返回终止细胞类型
-
-
-**Source:** Line 39 in [slingshot/lineage.py](slingshot/lineage.py#L39)
-
-
----
-
-
-### `start(self)`
-
-
-返回起始细胞类型
-
-
-**Source:** Line 34 in [slingshot/lineage.py](slingshot/lineage.py#L34)
-
-
----
-
-
-## slingshot.plotter
-
-**File:** `slingshot/plotter.py`
-
-**Public functions:** 4
-
-
-### `clusters(self, ax, labels=None, s=8, alpha=1.0, color_mode='clusters')`
-
-
-绘制细胞聚类
-
-参数:
-    ax: matplotlib 轴
-    labels: 标签列表
-    s: 点大小
-    alpha: 透明度
-    color_mode: 颜色模式 ('clusters', 'pseudotime', 或 numpy 数组)
-
-
-**Source:** Line 82 in [slingshot/plotter.py](slingshot/plotter.py#L82)
-
-
----
-
-
-### `curves(self, ax, curves)`
-
-
-绘制主曲线
-
-参数:
-    ax: matplotlib 轴
-    curves: 主曲线列表
-
-
-**Source:** Line 134 in [slingshot/plotter.py](slingshot/plotter.py#L134)
-
-
----
-
-
-### `generate_colormap(number_of_distinct_colors: int=80)`
-
-
-生成自定义色轮
-
-参数:
-    number_of_distinct_colors: 不同颜色的数量
-
-返回:
-    ListedColormap 对象
-
-
-**Source:** Line 16 in [slingshot/plotter.py](slingshot/plotter.py#L16)
-
-
----
-
-
-### `network(self, cluster_to_label, figsize=(8, 10))`
-
-
-绘制谱系网络图
-
-参数:
-    cluster_to_label: 聚类到标签的映射
-    figsize: 图形大小
-
-
-**Source:** Line 152 in [slingshot/plotter.py](slingshot/plotter.py#L152)
-
-
----
-
-
-## slingshot.slingshot
-
-**File:** `slingshot/slingshot.py`
-
-**Public functions:** 22
-
-
-### `avg_branch_curves(self, branch_curves)`
-
-
-计算分支曲线的平均曲线
-
-
-**Source:** Line 615 in [slingshot/slingshot.py](slingshot/slingshot.py#L615)
-
-
----
-
-
-### `avg_curves(self)`
-
-
-从叶子到根计算分支的平均曲线
-
-
-**Source:** Line 525 in [slingshot/slingshot.py](slingshot/slingshot.py#L525)
-
-
----
-
-
-### `build_pruned_tree(current_node)`
-
-
-No documentation available.
-
-
-**Source:** Line 191 in [slingshot/slingshot.py](slingshot/slingshot.py#L191)
-
-
----
-
-
-### `build_pruned_tree(current_node)`
-
-
-No documentation available.
-
-
-**Source:** Line 236 in [slingshot/slingshot.py](slingshot/slingshot.py#L236)
-
-
----
-
-
-### `calculate_cell_weights(self)`
-
-
-计算细胞权重
-
-
-**Source:** Line 489 in [slingshot/slingshot.py](slingshot/slingshot.py#L489)
-
-
----
-
-
-### `construct_initial_curves(self)`
-
-
-使用分段线性初始化构建谱系主曲线
-
-
-**Source:** Line 436 in [slingshot/slingshot.py](slingshot/slingshot.py#L436)
-
-
----
-
-
-### `construct_mst(self, start_node)`
-
-
-构建最小生成树
-
-参数:
-    start_node: 起始节点
-返回:
-    children: 字典映射聚类到子节点
-
-
-**Source:** Line 301 in [slingshot/slingshot.py](slingshot/slingshot.py#L301)
-
-
----
-
-
-### `construct_tree_from_predefined(self)`
-
-
-从预定义树结构构建，处理缺失节点
-
-
-**Source:** Line 181 in [slingshot/slingshot.py](slingshot/slingshot.py#L181)
-
-
----
-
-
-### `fit(self, num_epochs=10, debug_axes=None)`
-
-
-拟合主曲线
-
-参数:
-    num_epochs: 迭代次数
-    debug_axes: 调试绘图轴
-
-
-**Source:** Line 401 in [slingshot/slingshot.py](slingshot/slingshot.py#L401)
-
-
----
-
-
-### `fit_lineage_curves(self)`
-
-
-使用三次样条和数据投影更新曲线
-
-
-**Source:** Line 459 in [slingshot/slingshot.py](slingshot/slingshot.py#L459)
-
-
----
-
-
-### `flatten(li)`
-
-
-No documentation available.
-
-
-**Source:** Line 381 in [slingshot/slingshot.py](slingshot/slingshot.py#L381)
-
-
----
-
-
-### `get_lineages(self)`
-
-
-从 MST 提取谱系
-
-
-**Source:** Line 366 in [slingshot/slingshot.py](slingshot/slingshot.py#L366)
-
-
----
-
-
-### `label_tree(self)`
-
-
-返回带字符串标签的树结构
-
-
-**Source:** Line 167 in [slingshot/slingshot.py](slingshot/slingshot.py#L167)
-
-
----
-
-
-### `list_lineages(self, cluster_to_label=None)`
-
-
-列出谱系（支持字符串标签）
-
-
-**Source:** Line 650 in [slingshot/slingshot.py](slingshot/slingshot.py#L650)
-
-
----
-
-
-### `load_params(self, filepath)`
-
-
-加载参数
-
-
-**Source:** Line 277 in [slingshot/slingshot.py](slingshot/slingshot.py#L277)
-
-
----
-
-
-### `recurse_branches(path, v)`
-
-
-No documentation available.
-
-
-**Source:** Line 371 in [slingshot/slingshot.py](slingshot/slingshot.py#L371)
-
-
----
-
-
-### `save_params(self, filepath)`
-
-
-保存参数
-
-
-**Source:** Line 286 in [slingshot/slingshot.py](slingshot/slingshot.py#L286)
-
-
----
-
-
-### `shrink_branch_curves(self, branch_curves, avg_curve, shrinkage_percent)`
-
-
-收缩分支曲线到平均曲线
-
-
-**Source:** Line 583 in [slingshot/slingshot.py](slingshot/slingshot.py#L583)
-
-
----
-
-
-### `shrink_curves(self, cluster_children, shrinkage_percentages, cluster_avg_curves)`
-
-
-从根到叶收缩曲线
-
-
-**Source:** Line 571 in [slingshot/slingshot.py](slingshot/slingshot.py#L571)
-
-
----
-
-
-### `shrinkage_percent(self, curve, common_ind)`
-
-
-确定曲线收缩百分比
-
-
-**Source:** Line 598 in [slingshot/slingshot.py](slingshot/slingshot.py#L598)
-
-
----
-
-
-### `tree(self)`
-
-
-获取树结构（MST 或预定义树）
-
-
-**Source:** Line 157 in [slingshot/slingshot.py](slingshot/slingshot.py#L157)
-
-
----
-
-
-### `unified_pseudotime(self)`
-
-
-获取统一的伪时间
-
-
-**Source:** Line 663 in [slingshot/slingshot.py](slingshot/slingshot.py#L663)
-
-
----
-
-
-## slingshot.utils
-
-**File:** `slingshot/utils.py`
-
-**Public functions:** 5
-
-
-### `infer_cluster_label_indices(cluster_labels)`
-
-
-推断聚类标签索引
-
-参数:
-    cluster_labels: 字符串标签列表或整数聚类分配列表
-
-返回:
-    聚类分配的 numpy 数组
-
-
-**Source:** Line 61 in [slingshot/utils.py](slingshot/utils.py#L61)
-
-
----
-
-
-### `isint(x)`
-
-
-检查是否为整数
-
-
-**Source:** Line 26 in [slingshot/utils.py](slingshot/utils.py#L26)
-
-
----
-
-
-### `isstr(x)`
-
-
-检查是否为字符串
-
-
-**Source:** Line 41 in [slingshot/utils.py](slingshot/utils.py#L41)
-
-
----
-
-
-### `mahalanobis(X1, X2, S1, S2)`
-
-
-计算两个向量之间的马氏距离
-
-参数:
-    X1: 第一个向量 (n,)
-    X2: 第二个向量 (n,)
-    S1: 第一个协方差矩阵 (n, n)
-    S2: 第二个协方差矩阵 (n, n)
-
-返回:
-    马氏距离 (标量)
-
-
-**Source:** Line 8 in [slingshot/utils.py](slingshot/utils.py#L8)
-
-
----
-
-
-### `scale_to_range(x, a=0, b=1)`
-
-
-将数组缩放到指定范围
-
-参数:
-    x: 输入数组
-    a: 目标最小值
-    b: 目标最大值
-
-返回:
-    缩放后的数组
-
-
-**Source:** Line 46 in [slingshot/utils.py](slingshot/utils.py#L46)
 
 
 ---
