@@ -5544,7 +5544,7 @@ Output:
     new adata object
 
 
-**Source:** Line 739 in [interpolate.py](interpolate.py#L739)
+**Source:** Line 943 in [interpolate.py](interpolate.py#L943)
 
 
 ---
@@ -5564,7 +5564,7 @@ Output:
     new adata object numPts * adata.shape[1]
 
 
-**Source:** Line 480 in [interpolate.py](interpolate.py#L480)
+**Source:** Line 684 in [interpolate.py](interpolate.py#L684)
 
 
 ---
@@ -5576,7 +5576,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 437 in [interpolate.py](interpolate.py#L437)
+**Source:** Line 641 in [interpolate.py](interpolate.py#L641)
 
 
 ---
@@ -5639,16 +5639,19 @@ anndata.AnnData
     AnnData with GP interpolation results stored in ``adata.uns[result_key]``.
 
 
-**Source:** Line 597 in [interpolate.py](interpolate.py#L597)
+**Source:** Line 801 in [interpolate.py](interpolate.py#L801)
 
 
 ---
 
 
-### `plot_grid_methods_comparison(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_methods=None, endpoint_mode='half-interval', scaling='z_score', figsize=(10, 12), dpi=100, save_path=None)`
+### `plot_gp_heatmap(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_method='linspace', endpoint_mode='half-interval', scaling='z_score', figsize=(8, 6), dpi=100, save_path=None, show_grid=True, show_colorbar=True)`
 
 
-Plot comparison of different grid methods for GP interpolation.
+Plot a single heatmap for GP interpolation results.
+
+Shows raw expression (sorted by pseudotime) with grid point positions
+and GP-smoothed expression side-by-side.
 
 Parameters
 ----------
@@ -5662,18 +5665,25 @@ gene_mask_key : str, optional
     Boolean column in adata.var for gene selection.
 numPts : int, optional
     Number of grid points. Default is 14.
-grid_methods : list, optional
-    List of grid methods to compare. Default is ["linspace", "quantile", "density"].
+grid_method : str, optional
+    Grid construction method. Default is "linspace".
+    Options: "linspace", "quantile", "density", "optimal", "custom".
 endpoint_mode : str, optional
     Endpoint handling mode. Default is "half-interval".
+    Options: "half-interval", "full".
 scaling : str, optional
-    Color scaling: "z_score" or "zero_one". Default is "z_score".
+    Color scaling. Default is "z_score".
+    Options: "z_score", "zero_one".
 figsize : tuple, optional
-    Figure size (width, height) in inches. Default is (10, 12).
+    Figure size (width, height) in inches. Default is (8, 6).
 dpi : int, optional
     Figure DPI. Default is 100.
 save_path : str, optional
     Path to save the figure. If None, figure is not saved.
+show_grid : bool, optional
+    Show vertical lines at grid point positions. Default is True.
+show_colorbar : bool, optional
+    Show colorbar. Default is True.
 
 Returns
 -------
@@ -5681,7 +5691,7 @@ fig : matplotlib.figure.Figure
     The matplotlib figure object.
 
 
-**Source:** Line 213 in [interpolate.py](interpolate.py#L213)
+**Source:** Line 284 in [interpolate.py](interpolate.py#L284)
 
 
 ---

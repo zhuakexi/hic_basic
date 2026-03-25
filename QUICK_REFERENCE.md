@@ -135,7 +135,7 @@ pseudotime_df = angle_pseudotime(root=0, embedding=df_2d)
 
 ### GP Interpolation with Grid Methods
 ```python
-from hic_basic.interpolate import gp_interpolate, plot_grid_methods_comparison
+from hic_basic.interpolate import gp_interpolate, plot_gp_heatmap
 
 # Run GP interpolation with different grid methods
 result = gp_interpolate(
@@ -153,20 +153,22 @@ mean_expr = grid_data['mean']      # genes x grid_points
 variance = grid_data['variance']
 time_grid = grid_data['time_grid']
 
-# Visualize and compare multiple grid methods
-fig = plot_grid_methods_comparison(
+# Visualize single method result (publication-ready)
+fig = plot_gp_heatmap(
     adata,
     pseudotime_col='pt',
     numPts=12,
-    grid_methods=['linspace', 'quantile', 'density'],
-    endpoint_mode='half-interval',  # recommended
-    scaling='z_score',              # or 'zero_one'
-    figsize=(10, 10),
-    save_path='grid_comparison.png'
+    grid_method='linspace',        # single method
+    endpoint_mode='half-interval',
+    scaling='z_score',             # or 'zero_one'
+    figsize=(8, 6),
+    show_grid=True,                # show grid point positions (default)
+    save_path='gp_heatmap.png'
 )
 ```
 
 ### Grid Methods Comparison
+
 | Method | Use Case | Endpoint Handling |
 |--------|----------|-------------------|
 | `linspace` | Uniform sampling | half-interval avoids t=0, t=1 |
@@ -174,6 +176,8 @@ fig = plot_grid_methods_comparison(
 | `density` | Dense regions | half-interval truncation |
 | `optimal` | Data-driven (needs optbinning) | Automatic |
 | `custom` | User-defined grid | User responsibility |
+
+**Note**: For comparing multiple grid methods during debugging, use the internal function `_plot_grid_methods_comparison()` (not documented, for development use only).
 
 ### endpoint_mode Options
 - `"half-interval"` (default): Endpoints at [half_interval, 1-half_interval]

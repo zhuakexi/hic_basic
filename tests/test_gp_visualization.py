@@ -17,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from hic_basic.interpolate import (
     gp_interpolate,
-    plot_grid_methods_comparison,
+    plot_gp_heatmap,
+    _plot_grid_comparison,
     _build_time_grid,
 )
 
@@ -68,10 +69,10 @@ def create_test_adata(n_cells=200, n_genes=50, seed=42):
     return adata
 
 
-def test_plot_grid_methods_comparison():
-    """Test the plot_grid_methods_comparison function."""
+def test_plot_gp_heatmap():
+    """Test the plot_gp_heatmap function."""
     print("=" * 70)
-    print("Testing plot_grid_methods_comparison")
+    print("Testing plot_gp_heatmap")
     print("=" * 70)
 
     # Create test data
@@ -82,79 +83,112 @@ def test_plot_grid_methods_comparison():
     output_dir = Path(__file__).parent / "test_output"
     output_dir.mkdir(exist_ok=True)
 
-    # Test 1: Default methods with half-interval endpoint mode
-    print("\nTest 1: Default methods (linspace, quantile, density) with half-interval")
-    fig = plot_grid_methods_comparison(
+    # Test 1: Default settings with half-interval endpoint mode
+    print("\nTest 1: Default settings (linspace, half-interval)")
+    fig = plot_gp_heatmap(
         adata,
         pseudotime_col="pseudotime",
         numPts=12,
-        grid_methods=["linspace", "quantile", "density"],
+        grid_method="linspace",
         endpoint_mode="half-interval",
         scaling="z_score",
-        figsize=(10, 10),
-        save_path=output_dir / "test1_default_half_interval.png",
+        figsize=(8, 6),
+        save_path=output_dir / "test1_gp_heatmap_default.png",
     )
-    print(f"  Saved: {output_dir / 'test1_default_half_interval.png'}")
+    print(f"  Saved: {output_dir / 'test1_gp_heatmap_default.png'}")
 
-    # Test 2: Default methods with full endpoint mode
-    print("\nTest 2: Default methods with full endpoint mode")
-    fig = plot_grid_methods_comparison(
+    # Test 2: Different grid method (quantile)
+    print("\nTest 2: Quantile grid method")
+    fig = plot_gp_heatmap(
         adata,
         pseudotime_col="pseudotime",
         numPts=12,
-        grid_methods=["linspace", "quantile", "density"],
-        endpoint_mode="full",
-        scaling="z_score",
-        figsize=(10, 10),
-        save_path=output_dir / "test2_default_full.png",
-    )
-    print(f"  Saved: {output_dir / 'test2_default_full.png'}")
-
-    # Test 3: Single method
-    print("\nTest 3: Single method (linspace only)")
-    fig = plot_grid_methods_comparison(
-        adata,
-        pseudotime_col="pseudotime",
-        numPts=12,
-        grid_methods=["linspace"],
+        grid_method="quantile",
         endpoint_mode="half-interval",
         scaling="z_score",
-        figsize=(8, 4),
-        save_path=output_dir / "test3_single_method.png",
+        figsize=(8, 6),
+        save_path=output_dir / "test2_gp_heatmap_quantile.png",
     )
-    print(f"  Saved: {output_dir / 'test3_single_method.png'}")
+    print(f"  Saved: {output_dir / 'test2_gp_heatmap_quantile.png'}")
+
+    # Test 3: Density grid method
+    print("\nTest 3: Density grid method")
+    fig = plot_gp_heatmap(
+        adata,
+        pseudotime_col="pseudotime",
+        numPts=12,
+        grid_method="density",
+        endpoint_mode="half-interval",
+        scaling="z_score",
+        figsize=(8, 6),
+        save_path=output_dir / "test3_gp_heatmap_density.png",
+    )
+    print(f"  Saved: {output_dir / 'test3_gp_heatmap_density.png'}")
 
     # Test 4: Zero-one scaling
     print("\nTest 4: Zero-one scaling")
-    fig = plot_grid_methods_comparison(
+    fig = plot_gp_heatmap(
         adata,
         pseudotime_col="pseudotime",
         numPts=12,
-        grid_methods=["linspace", "quantile"],
+        grid_method="linspace",
         endpoint_mode="half-interval",
         scaling="zero_one",
-        figsize=(10, 7),
-        save_path=output_dir / "test4_zero_one_scaling.png",
+        figsize=(8, 6),
+        save_path=output_dir / "test4_gp_heatmap_zero_one.png",
     )
-    print(f"  Saved: {output_dir / 'test4_zero_one_scaling.png'}")
+    print(f"  Saved: {output_dir / 'test4_gp_heatmap_zero_one.png'}")
 
-    # Test 5: All methods including custom
-    print("\nTest 5: All methods including custom")
-    fig = plot_grid_methods_comparison(
+    # Test 5: Hide grid lines
+    print("\nTest 5: Hide grid lines")
+    fig = plot_gp_heatmap(
         adata,
         pseudotime_col="pseudotime",
-        numPts=10,
+        numPts=12,
+        grid_method="linspace",
+        endpoint_mode="half-interval",
+        scaling="z_score",
+        figsize=(8, 6),
+        show_grid=False,
+        save_path=output_dir / "test5_gp_heatmap_no_grid.png",
+    )
+    print(f"  Saved: {output_dir / 'test5_gp_heatmap_no_grid.png'}")
+
+    print("\n" + "=" * 70)
+    print("All plot_gp_heatmap tests completed!")
+    print(f"Output directory: {output_dir}")
+    print("=" * 70)
+
+
+def test_plot_grid_methods_comparison_internal():
+    """Test the internal _plot_grid_comparison function."""
+    print("\n" + "=" * 70)
+    print("Testing _plot_grid_comparison (internal debug function)")
+    print("=" * 70)
+
+    # Create test data
+    adata = create_test_adata(n_cells=200, n_genes=50)
+    print(f"Created test AnnData: {adata.shape[0]} cells, {adata.shape[1]} genes")
+
+    output_dir = Path(__file__).parent / "test_output"
+    output_dir.mkdir(exist_ok=True)
+
+    # Test internal comparison function
+    print("\nTesting _plot_grid_comparison...")
+    fig, _ = _plot_grid_comparison(
+        adata,
+        pseudotime_col="pseudotime",
+        numPts=12,
         grid_methods=["linspace", "quantile", "density"],
         endpoint_mode="half-interval",
         scaling="z_score",
-        figsize=(10, 12),
-        save_path=output_dir / "test5_all_methods.png",
+        figsize=(10, 10),
     )
-    print(f"  Saved: {output_dir / 'test5_all_methods.png'}")
+    fig.savefig(output_dir / "debug_grid_comparison.png", dpi=100, bbox_inches="tight")
+    print(f"  Saved: {output_dir / 'debug_grid_comparison.png'}")
 
     print("\n" + "=" * 70)
-    print("All visualization tests completed!")
-    print(f"Output directory: {output_dir}")
+    print("Internal comparison function test completed!")
     print("=" * 70)
 
 
@@ -191,19 +225,20 @@ def test_gp_interpolate_with_visualization():
         print(f"  Mean shape: {grid_data['mean'].shape}")
         print(f"  Endpoint mode: {grid_data['metadata']['endpoint_mode']}")
 
-    # Create comparison plot
-    print("\nCreating comparison plot...")
-    fig = plot_grid_methods_comparison(
-        adata,
-        pseudotime_col="pseudotime",
-        numPts=12,
-        grid_methods=methods,
-        endpoint_mode="half-interval",
-        scaling="z_score",
-        figsize=(10, 10),
-        save_path=output_dir / "gp_interpolate_comparison.png",
-    )
-    print(f"  Saved: {output_dir / 'gp_interpolate_comparison.png'}")
+    # Create heatmap for each method using the new public function
+    print("\nCreating heatmaps with plot_gp_heatmap...")
+    for method in methods:
+        fig = plot_gp_heatmap(
+            adata,
+            pseudotime_col="pseudotime",
+            numPts=12,
+            grid_method=method,
+            endpoint_mode="half-interval",
+            scaling="z_score",
+            figsize=(8, 6),
+            save_path=output_dir / f"gp_heatmap_{method}.png",
+        )
+        print(f"  Saved: {output_dir / f'gp_heatmap_{method}.png'}")
 
     print("\n" + "=" * 70)
     print("gp_interpolate visualization test completed!")
@@ -213,7 +248,8 @@ def test_gp_interpolate_with_visualization():
 def main():
     """Run all tests."""
     try:
-        test_plot_grid_methods_comparison()
+        test_plot_gp_heatmap()
+        test_plot_grid_methods_comparison_internal()
         test_gp_interpolate_with_visualization()
 
         print("\n" + "=" * 70)

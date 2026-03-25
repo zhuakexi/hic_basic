@@ -22,7 +22,10 @@ def _plot_grid_comparison(
     dpi=100,
 ):
     """
-    Visualize and compare multiple grid methods side-by-side.
+    Internal function: Visualize and compare multiple grid methods side-by-side.
+
+    This is a debugging utility, not intended for production use.
+    Use plot_gp_heatmap() for single-method visualization.
 
     Parameters
     ----------
@@ -210,7 +213,7 @@ def _plot_grid_comparison(
     return fig, axes
 
 
-def plot_grid_methods_comparison(
+def _plot_grid_methods_comparison(
     adata,
     pseudotime_col,
     layer="X",
@@ -224,7 +227,10 @@ def plot_grid_methods_comparison(
     save_path=None,
 ):
     """
-    Plot comparison of different grid methods for GP interpolation.
+    Internal function: Plot comparison of different grid methods for GP interpolation.
+
+    This is a debugging utility, not intended for production use.
+    Use plot_gp_heatmap() for single-method visualization.
 
     Parameters
     ----------
@@ -267,6 +273,204 @@ def plot_grid_methods_comparison(
         scaling=scaling,
         figsize=figsize,
         dpi=dpi,
+    )
+
+    if save_path is not None:
+        fig.savefig(save_path, dpi=dpi, bbox_inches="tight")
+
+    return fig
+
+
+def plot_gp_heatmap(
+    adata,
+    pseudotime_col,
+    layer="X",
+    gene_mask_key=None,
+    numPts=14,
+    grid_method="linspace",
+    endpoint_mode="half-interval",
+    scaling="z_score",
+    figsize=(8, 6),
+    dpi=100,
+    save_path=None,
+    show_grid=True,
+    show_colorbar=True,
+):
+    """
+    Plot a single heatmap for GP interpolation results.
+
+    Shows raw expression (sorted by pseudotime) with grid point positions
+    and GP-smoothed expression side-by-side.
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        AnnData object with expression data and pseudotime.
+    pseudotime_col : str
+        Column name in adata.obs containing pseudotime values.
+    layer : str, optional
+        Expression layer to use. Default is "X".
+    gene_mask_key : str, optional
+        Boolean column in adata.var for gene selection.
+    numPts : int, optional
+        Number of grid points. Default is 14.
+    grid_method : str, optional
+        Grid construction method. Default is "linspace".
+        Options: "linspace", "quantile", "density", "optimal", "custom".
+    endpoint_mode : str, optional
+        Endpoint handling mode. Default is "half-interval".
+        Options: "half-interval", "full".
+    scaling : str, optional
+        Color scaling. Default is "z_score".
+        Options: "z_score", "zero_one".
+    figsize : tuple, optional
+        Figure size (width, height) in inches. Default is (8, 6).
+    dpi : int, optional
+        Figure DPI. Default is 100.
+    save_path : str, optional
+        Path to save the figure. If None, figure is not saved.
+    show_grid : bool, optional
+        Show vertical lines at grid point positions. Default is True.
+    show_colorbar : bool, optional
+        Show colorbar. Default is True.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The matplotlib figure object.
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import TwoSlopeNorm
+
+    # Get expression and pseudotime
+    if layer == "X":
+        expr = adata.X.T
+    else:
+        expr = adata.layers[layer].T
+    if sparse.issparse(expr):
+        expr = expr.toarray()
+
+    pseudotime = adata.obs[pseudotime_col].values
+    cell_order = np.argsort(pseudotime)
+    expr_sorted = expr[:, cell_order]
+    n_genes, n_cells = expr_sorted.shape
+
+    # Apply gene mask if provided
+    if gene_mask_key is not None:
+        gene_mask = adata.var[gene_mask_key].values
+        expr_sorted = expr_sorted[gene_mask, :]
+        n_genes = expr_sorted.shape[0]
+
+    # Normalize expression
+    if scaling == "z_score":
+        expr_mean = expr_sorted.mean(axis=1, keepdims=True)
+        expr_std = expr_sorted.std(axis=1, keepdims=True) + 1e-6
+        expr_norm = (expr_sorted - expr_mean) / expr_std
+        cmap = "RdBu_r"
+        vmin, vmax = -3, 3
+    else:
+        expr_min = expr_sorted.min(axis=1, keepdims=True)
+        expr_max = expr_sorted.max(axis=1, keepdims=True)
+        expr_norm = (expr_sorted - expr_min) / (expr_max - expr_min + 1e-6)
+        cmap = "inferno"
+        vmin, vmax = 0, 1
+
+    # Generate grid
+    grid, _ = _build_time_grid(
+        pd.Series(pseudotime),
+        numPts=numPts,
+        method=grid_method,
+        endpoint_mode=endpoint_mode
+    )
+
+    # Create figure
+    fig, axes = plt.subplots(
+        1, 2,
+        figsize=figsize,
+        dpi=dpi,
+        sharey=True,
+        gridspec_kw={"width_ratios": [3, 2], "hspace": 0.1, "wspace": 0.1}
+    )
+
+    cell_ranks = np.arange(n_cells) / (n_cells - 1)
+
+    # Left panel: Raw data with grid lines
+    ax = axes[0]
+    extent = [0, 1, 0, n_genes]
+    im = ax.imshow(
+        expr_norm,
+        aspect="auto",
+        origin="lower",
+        extent=extent,
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+    )
+
+    # Add grid lines
+    if show_grid:
+        pseudotime_sorted = np.sort(pseudotime)
+        for grid_t in grid:
+            rank_pos = np.searchsorted(pseudotime_sorted, grid_t) / (n_cells - 1)
+            ax.axvline(x=rank_pos, color="black", linestyle="--", linewidth=0.8, alpha=0.7)
+
+    ax.set_title(f"{grid_method}: Raw (grid lines)", fontsize=11, fontweight="bold")
+    ax.set_xlabel("Cell rank (sorted by pseudotime)")
+    ax.set_ylabel("Gene index")
+
+    # Right panel: GP-smoothed
+    ax = axes[1]
+    grid_indices = np.arange(len(grid))
+
+    # Create smoothed schematic
+    smooth_schematic = np.zeros((n_genes, len(grid)))
+    for i in range(n_genes):
+        raw_gene = expr_sorted[i, :]
+        smooth_schematic[i, :] = np.interp(
+            grid,
+            cell_ranks,
+            np.convolve(raw_gene, np.ones(5) / 5, mode="same")
+        )
+
+    # Normalize smooth data
+    if scaling == "z_score":
+        smooth_mean = smooth_schematic.mean(axis=1, keepdims=True)
+        smooth_std = smooth_schematic.std(axis=1, keepdims=True) + 1e-6
+        smooth_norm = (smooth_schematic - smooth_mean) / smooth_std
+    else:
+        smooth_min = smooth_schematic.min(axis=1, keepdims=True)
+        smooth_max = smooth_schematic.max(axis=1, keepdims=True)
+        smooth_norm = (smooth_schematic - smooth_min) / (smooth_max - smooth_min + 1e-6)
+
+    extent = [-0.5, len(grid) - 0.5, 0, n_genes]
+    im = ax.imshow(
+        smooth_norm,
+        aspect="auto",
+        origin="lower",
+        extent=extent,
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+    )
+
+    ax.set_title(f"{grid_method}: GP-smoothed ({len(grid)} pts)", fontsize=11, fontweight="bold")
+    ax.set_xlabel("Grid point index")
+    ax.set_xticks(grid_indices)
+    ax.set_xticklabels(grid_indices.astype(str))
+
+    # Add colorbar
+    if show_colorbar:
+        cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax) if scaling == "z_score" else None
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        fig.colorbar(sm, cax=cbar_ax, label="Z-score" if scaling == "z_score" else "Scaled [0, 1]")
+
+    fig.suptitle(
+        f"GP Interpolation: {grid_method} (endpoint_mode='{endpoint_mode}')",
+        y=0.995,
+        fontsize=12,
+        fontweight="bold"
     )
 
     if save_path is not None:
