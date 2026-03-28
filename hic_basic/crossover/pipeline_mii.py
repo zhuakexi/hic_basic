@@ -23,6 +23,7 @@ import pandas as pd
 
 from .cache import CacheManager
 from .detector_mii import (
+    SisterChromatidBlock,
     SisterChromatidHMM,
     SisterChromatidResults,
     estimate_emissions_from_counts,
@@ -38,34 +39,38 @@ def bin_by_snp(read_counts_df: pd.DataFrame, n_snps: int = 10) -> pd.DataFrame:
     Merge adjacent SNPs into units based on SNP count.
     
     Args:
-        read_counts_df: DataFrame with columns [chromosome, position, ref, alt, other]
+        read_counts_df: DataFrame with columns [chromosome or chrom, pos or position, ref, alt, other]
         n_snps: Number of SNPs per unit (default: 10)
     
     Returns:
-        DataFrame with aggregated units, columns: [chromosome, start_pos, end_pos, ref, alt, other, n_snps]
+        DataFrame with aggregated units, columns: [chromosome, start_pos, end_pos, ref, alt, other, n_snps, position]
     """
     if len(read_counts_df) == 0:
         return read_counts_df
     
-    # Create unit IDs
-    unit_ids = np.arange(len(read_counts_df)) // n_snps
+    # Normalize column names
+    df = read_counts_df.copy()
+    if 'chrom' in df.columns and 'chromosome' not in df.columns:
+        df['chromosome'] = df['chrom']
+    if 'pos' in df.columns and 'position' not in df.columns:
+        df['position'] = df['pos']
     
-    # Group by unit
-    read_counts_df = read_counts_df.copy()
-    read_counts_df['unit_id'] = unit_ids
+    # Create unit IDs
+    unit_ids = np.arange(len(df)) // n_snps
+    df['unit_id'] = unit_ids
     
     # Aggregate
-    aggregated = read_counts_df.groupby('unit_id').agg({
+    aggregated = df.groupby('unit_id').agg({
         'chromosome': 'first',
         'position': ['first', 'last'],
         'ref': 'sum',
         'alt': 'sum',
         'other': 'sum',
-        'n_snps': 'count' if 'n_snps' not in read_counts_df.columns else 'sum'
     }).reset_index()
     
     # Flatten column names
-    aggregated.columns = ['unit_id', 'chromosome', 'start_pos', 'end_pos', 'ref', 'alt', 'other', 'n_snps']
+    aggregated.columns = ['unit_id', 'chromosome', 'start_pos', 'end_pos', 'ref', 'alt', 'other']
+    aggregated['n_snps'] = n_snps
     
     # Use start_pos as position for HMM
     aggregated['position'] = aggregated['start_pos']
@@ -87,6 +92,11 @@ def convert_unit_coordinates_to_snp(unit_results: SisterChromatidResults,
     Returns:
         SisterChromatidResults with SNP-level states
     """
+    # Normalize column names
+    if 'pos' in original_read_counts.columns and 'position' not in original_read_counts.columns:
+        original_read_counts = original_read_counts.copy()
+        original_read_counts['position'] = original_read_counts['pos']
+    
     # Expand states from units to SNPs
     snp_states = []
     snp_positions = []
@@ -101,21 +111,40 @@ def convert_unit_coordinates_to_snp(unit_results: SisterChromatidResults,
                 snp_states.append(state)
                 snp_positions.append(original_read_counts.iloc[j]['position'])
     
+    # Recalculate blocks at SNP level
+    snp_blocks = []
+    n_snps_total = len(snp_states)
+    if n_snps_total > 0:
+        i = 0
+        while i < n_snps_total:
+            current_state = snp_states[i]
+            start_pos = snp_positions[i]
+            start_idx = i
+            
+            while i < n_snps_total and snp_states[i] == current_state:
+                i += 1
+            
+            end_pos = snp_positions[i - 1]
+            num_snps = i - start_idx
+            
+            block = SisterChromatidBlock(
+                chromosome=unit_results.chromosome,
+                start_pos=start_pos,
+                end_pos=end_pos,
+                state=current_state,
+                confidence=1.0,
+                num_snps=num_snps
+            )
+            snp_blocks.append(block)
+    
     # Create new results object
     snp_results = SisterChromatidResults(
         sample_id=unit_results.sample_id,
         chromosome=unit_results.chromosome,
         states=snp_states,
         positions=snp_positions,
-        blocks=[],  # Will be recalculated
+        blocks=snp_blocks,
         statistics=unit_results.statistics
-    )
-    
-    # Recalculate blocks at SNP level
-    snp_results.blocks = unit_results._states_to_blocks(
-        chromosome=unit_results.chromosome,
-        positions=np.array(snp_positions),
-        states=snp_states
     )
     
     return snp_results
