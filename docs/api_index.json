@@ -1221,6 +1221,43 @@
       "lineno": 612
     }
   ],
+  "crossover.detector_mii": [
+    {
+      "name": "estimate_emissions_from_counts",
+      "signature": "estimate_emissions_from_counts(read_counts: pd.DataFrame, rough_labels: pd.Series)",
+      "docstring": "Estimate emission probabilities from read counts and rough labels.\n\nArgs:\n    read_counts: DataFrame with columns 'ref', 'alt', 'other'\n    rough_labels: Series with rough state labels ('PP', 'PM', 'M...",
+      "return_type": "Dict[str, Tuple[float, float, float]]",
+      "lineno": 429
+    },
+    {
+      "name": "estimate_transitions_rough",
+      "signature": "estimate_transitions_rough(rough_labels: pd.Series, pseudocount: float=1.0)",
+      "docstring": "Estimate transition probabilities from rough labels.\n\nArgs:\n    rough_labels: Series with rough state labels\n    pseudocount: Pseudocount for smoothing\n\nReturns:\n    Tuple of (alpha, beta, gamma, rho)",
+      "return_type": "Tuple[float, float, float, float]",
+      "lineno": 478
+    },
+    {
+      "name": "rough_classification",
+      "signature": "rough_classification(read_counts: pd.DataFrame, depth_threshold: int=5, other_threshold: float=0.3, balance_threshold: float=0.3)",
+      "docstring": "Perform rough classification of SNPs based on read counts.\n\nArgs:\n    read_counts: DataFrame with columns 'ref', 'alt', 'other'\n    depth_threshold: Minimum total depth for confident call\n    other_th...",
+      "return_type": "pd.Series",
+      "lineno": 536
+    },
+    {
+      "name": "decode",
+      "signature": "decode(self, read_counts: pd.DataFrame)",
+      "docstring": "Decode the most likely state sequence from read counts.\n\nArgs:\n    read_counts: DataFrame with columns 'ref', 'alt', 'other'\n                or 'r', 'a', 'x'\n\nReturns:\n    Tuple of (state_names, log_p...",
+      "return_type": "Tuple[List[str], float]",
+      "lineno": 293
+    },
+    {
+      "name": "decode_with_blocks",
+      "signature": "decode_with_blocks(self, read_counts: pd.DataFrame, chromosome: str, positions: np.ndarray, sample_id: str='unknown')",
+      "docstring": "Decode states and group into contiguous blocks.\n\nArgs:\n    read_counts: DataFrame with read counts\n    chromosome: Chromosome name\n    positions: SNP positions\n    sample_id: Sample identifier\n\nReturn...",
+      "return_type": "SisterChromatidResults",
+      "lineno": 327
+    }
+  ],
   "crossover.io": [
     {
       "name": "load_snp_data",
@@ -1300,6 +1337,29 @@
       "docstring": "Resume an interrupted pipeline from the last completed step.\n\nArgs:\n    sam_file: Path to BAM/SAM file\n    ref_snp_file: Path to reference SNP file\n    phasing_file: Path to phasing file\n    output_di...",
       "return_type": "CrossoverResults",
       "lineno": 738
+    }
+  ],
+  "crossover.pipeline_mii": [
+    {
+      "name": "extract_read_counts",
+      "signature": "extract_read_counts(bam_file: str, snp_file: str, output_file: Optional[str]=None, min_mapq: int=20, min_baseq: int=20)",
+      "docstring": "Extract read counts at SNP positions from BAM file.\n\nArgs:\n    bam_file: Path to BAM/BCF file\n    snp_file: Path to SNP file (VCF or TSV with positions)\n    output_file: Optional output file path\n    ...",
+      "return_type": "pd.DataFrame",
+      "lineno": 34
+    },
+    {
+      "name": "detect_sister_chromatid_states_end2end",
+      "signature": "detect_sister_chromatid_states_end2end(bam_file: str, snp_file: str, output_dir: str, sample_id: Optional[str]=None, chromosomes: Optional[List[str]]=None, cache_dir: Optional[str]=None, alpha: float=0.01, beta: float=0.02, gamma: float=0.001, rho: float=0.1, depth_threshold: int=5, other_threshold: float=0.3, balance_threshold: float=0.3)",
+      "docstring": "End-to-end sister chromatid state inference from BAM file.\n\nThis is the main entry point for the mII crossover detection pipeline.\nIt processes BAM files through all steps:\n1. Extract read counts at S...",
+      "return_type": "Union[SisterChromatidResults, Dict[str, SisterChromatidResults]]",
+      "lineno": 341
+    },
+    {
+      "name": "save_results_mii",
+      "signature": "save_results_mii(results: Union[SisterChromatidResults, Dict[str, SisterChromatidResults]], output_dir: str, sample_id: str)",
+      "docstring": "Save sister chromatid inference results to files.\n\nArgs:\n    results: Results object or dictionary\n    output_dir: Output directory\n    sample_id: Sample identifier\n\nReturns:\n    Dictionary mapping ou...",
+      "return_type": "Dict[str, str]",
+      "lineno": 463
     }
   ],
   "cycle_phasing": [

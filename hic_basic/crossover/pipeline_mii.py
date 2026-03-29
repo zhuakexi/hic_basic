@@ -259,15 +259,16 @@ def _process_sample_mii(
     output_dir: str,
     cache_dir: str,
     chromosome: Optional[str] = None,
+    transition_params: str = "default",  # "default" | "estimated"
     alpha: float = 0.01,
     beta: float = 0.02,
     gamma: float = 0.001,
     rho: float = 0.1,
-    depth_threshold: int = 5,
-    other_threshold: float = 0.3,
-    balance_threshold: float = 0.3,
+    depth_threshold: int = 2,
+    other_threshold: float = 0.4,
+    balance_threshold: float = 0.25,
     binning_method: Optional[str] = None,
-    binning_snp_number: int = 10,
+    binning_snp_number: int = 250,
 ) -> Dict[str, Any]:
     """
     Process a single sample for sister chromatid inference.
@@ -279,10 +280,14 @@ def _process_sample_mii(
         output_dir: Output directory
         cache_dir: Cache directory
         chromosome: Optional chromosome to analyze
-        alpha, beta, gamma, rho: Transition parameters
-        depth_threshold, other_threshold, balance_threshold: Classification thresholds
+        transition_params: Transition parameter source ("default" | "estimated")
+        alpha, beta, gamma, rho: Transition parameters (used when transition_params="default")
+        depth_threshold: Minimum depth for confident call (default: 2)
+        other_threshold: Maximum other fraction for confident call (default: 0.4)
+        balance_threshold: Threshold for classifying as balanced (default: 0.25)
+                          PP: ref_frac > 0.75, MM: alt_frac > 0.75
         binning_method: Binning method (None for single-SNP, "by_snp" for merging by SNP count)
-        binning_snp_number: Number of SNPs per unit (used when binning_method="by_snp")
+        binning_snp_number: Number of SNPs per unit (default: 250)
 
     Returns:
         Dictionary with results and statistics
@@ -370,7 +375,14 @@ def _process_sample_mii(
         if not cache.exists(key, "estimate_params"):
             logger.info("Step 3/4: Estimating HMM parameters")
             emission_params = estimate_emissions_from_counts(counts_df, rough_labels)
-            alpha_est, beta_est, gamma_est, rho_est = estimate_transitions_rough(rough_labels)
+            
+            # Use default or estimated transition parameters
+            if transition_params == "estimated":
+                logger.info("  Using estimated transition parameters from rough classification")
+                alpha_est, beta_est, gamma_est, rho_est = estimate_transitions_rough(rough_labels)
+            else:
+                logger.info(f"  Using default transition parameters: alpha={alpha}, beta={beta}, gamma={gamma}, rho={rho}")
+                alpha_est, beta_est, gamma_est, rho_est = alpha, beta, gamma, rho
 
             params_dict = {
                 "emission_params": emission_params,
@@ -378,6 +390,7 @@ def _process_sample_mii(
                 "beta": beta_est,
                 "gamma": gamma_est,
                 "rho": rho_est,
+                "transition_params_source": transition_params,
             }
             cache.save(params_dict, key, "estimate_params")
             cache.set_flag(key, "estimate_params", params_dict)
@@ -489,15 +502,16 @@ def detect_sister_chromatid_states_end2end(
     sample_id: Optional[str] = None,
     chromosomes: Optional[List[str]] = None,
     cache_dir: Optional[str] = None,
+    transition_params: str = "default",  # "default" | "estimated"
     alpha: float = 0.01,
     beta: float = 0.02,
     gamma: float = 0.001,
     rho: float = 0.1,
-    depth_threshold: int = 5,
-    other_threshold: float = 0.3,
-    balance_threshold: float = 0.3,
+    depth_threshold: int = 2,
+    other_threshold: float = 0.4,
+    balance_threshold: float = 0.25,
     binning_method: Optional[str] = None,
-    binning_snp_number: int = 10,
+    binning_snp_number: int = 250,
 ) -> Union[SisterChromatidResults, Dict[str, SisterChromatidResults]]:
     """
     End-to-end sister chromatid state inference from BAM file.
@@ -519,34 +533,44 @@ def detect_sister_chromatid_states_end2end(
         sample_id: Sample ID (default: derived from bam_file name)
         chromosomes: Optional list of chromosomes to analyze (default: all)
         cache_dir: Cache directory (default: output_dir/.cache)
-        alpha: PP<->PM transition probability
-        beta: PM->PP/MM transition probability
-        gamma: probability of entering U state
-        rho: probability of leaving U state
-        depth_threshold: Minimum depth for confident call
-        other_threshold: Maximum other fraction for confident call
-        balance_threshold: Threshold for classifying as balanced (PM)
+        transition_params: Transition parameter source ("default" | "estimated")
+        alpha: PP<->PM transition probability (default: 0.01, used when transition_params="default")
+        beta: PM->PP/MM transition probability (default: 0.02, used when transition_params="default")
+        gamma: probability of entering U state (default: 0.001, used when transition_params="default")
+        rho: probability of leaving U state (default: 0.1, used when transition_params="default")
+        depth_threshold: Minimum depth for confident call (default: 2)
+        other_threshold: Maximum other fraction for confident call (default: 0.4)
+        balance_threshold: Threshold for classifying as balanced (default: 0.25)
+                          PP: ref_frac > 0.75, MM: alt_frac > 0.75
         binning_method: Binning method (None for single-SNP mode, "by_snp" for merging by SNP count)
-        binning_snp_number: Number of SNPs per unit (used when binning_method="by_snp")
+        binning_snp_number: Number of SNPs per unit (default: 250)
 
     Returns:
         SisterChromatidResults object (single chromosome) or dictionary (multiple chromosomes)
 
     Example:
-        >>> # Single-SNP mode (default)
+        >>> # Default parameters (fixed transition matrix)
         >>> results = detect_sister_chromatid_states_end2end(
         ...     bam_file="mII_cell.bam",
         ...     snp_file="snps.vcf",
         ...     output_dir="output/"
         ... )
-        
-        >>> # Binning mode: merge 10 SNPs per unit
+
+        >>> # Estimated transition parameters from data
+        >>> results = detect_sister_chromatid_states_end2end(
+        ...     bam_file="mII_cell.bam",
+        ...     snp_file="snps.vcf",
+        ...     output_dir="output/",
+        ...     transition_params="estimated"
+        ... )
+
+        >>> # Custom binning (250 SNPs per unit)
         >>> results = detect_sister_chromatid_states_end2end(
         ...     bam_file="mII_cell.bam",
         ...     snp_file="snps.vcf",
         ...     output_dir="output/",
         ...     binning_method="by_snp",
-        ...     binning_snp_number=10
+        ...     binning_snp_number=250
         ... )
     """
     if sample_id is None:
@@ -575,6 +599,7 @@ def detect_sister_chromatid_states_end2end(
             output_dir=output_dir,
             cache_dir=cache_dir,
             chromosome=None,
+            transition_params=transition_params,
             alpha=alpha,
             beta=beta,
             gamma=gamma,
@@ -603,6 +628,7 @@ def detect_sister_chromatid_states_end2end(
                 output_dir=output_dir,
                 cache_dir=cache_dir,
                 chromosome=chrom,
+                transition_params=transition_params,
                 alpha=alpha,
                 beta=beta,
                 gamma=gamma,

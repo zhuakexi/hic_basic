@@ -2,7 +2,7 @@
 
 *Auto-generated API documentation for public functions*
 
-Total modules with public functions: 86
+Total modules with public functions: 88
 
 ---
 
@@ -31,8 +31,10 @@ Total modules with public functions: 86
 - [coolstuff](#coolstuff) (32 functions)
 - [crossover.cache](#crossover-cache) (16 functions)
 - [crossover.detector](#crossover-detector) (5 functions)
+- [crossover.detector_mii](#crossover-detector_mii) (5 functions)
 - [crossover.io](#crossover-io) (7 functions)
 - [crossover.pipeline](#crossover-pipeline) (4 functions)
+- [crossover.pipeline_mii](#crossover-pipeline_mii) (3 functions)
 - [cycle_phasing](#cycle_phasing) (2 functions)
 - [data](#data) (18 functions)
 - [embedding](#embedding) (5 functions)
@@ -3284,6 +3286,122 @@ Args:
 ---
 
 
+## crossover.detector_mii
+
+**File:** `crossover/detector_mii.py`
+
+**Public functions:** 5
+
+
+### `decode(self, read_counts: pd.DataFrame)`
+
+**Returns:** `Tuple[List[str], float]`
+
+
+Decode the most likely state sequence from read counts.
+
+Args:
+    read_counts: DataFrame with columns 'ref', 'alt', 'other'
+                or 'r', 'a', 'x'
+
+Returns:
+    Tuple of (state_names, log_probability)
+
+
+**Source:** Line 293 in [crossover/detector_mii.py](crossover/detector_mii.py#L293)
+
+
+---
+
+
+### `decode_with_blocks(self, read_counts: pd.DataFrame, chromosome: str, positions: np.ndarray, sample_id: str='unknown')`
+
+**Returns:** `SisterChromatidResults`
+
+
+Decode states and group into contiguous blocks.
+
+Args:
+    read_counts: DataFrame with read counts
+    chromosome: Chromosome name
+    positions: SNP positions
+    sample_id: Sample identifier
+
+Returns:
+    SisterChromatidResults object
+
+
+**Source:** Line 327 in [crossover/detector_mii.py](crossover/detector_mii.py#L327)
+
+
+---
+
+
+### `estimate_emissions_from_counts(read_counts: pd.DataFrame, rough_labels: pd.Series)`
+
+**Returns:** `Dict[str, Tuple[float, float, float]]`
+
+
+Estimate emission probabilities from read counts and rough labels.
+
+Args:
+    read_counts: DataFrame with columns 'ref', 'alt', 'other'
+    rough_labels: Series with rough state labels ('PP', 'PM', 'MM', 'U')
+
+Returns:
+    Dictionary mapping state name to (p_ref, p_alt, p_other)
+
+
+**Source:** Line 429 in [crossover/detector_mii.py](crossover/detector_mii.py#L429)
+
+
+---
+
+
+### `estimate_transitions_rough(rough_labels: pd.Series, pseudocount: float=1.0)`
+
+**Returns:** `Tuple[float, float, float, float]`
+
+
+Estimate transition probabilities from rough labels.
+
+Args:
+    rough_labels: Series with rough state labels
+    pseudocount: Pseudocount for smoothing
+
+Returns:
+    Tuple of (alpha, beta, gamma, rho)
+
+
+**Source:** Line 478 in [crossover/detector_mii.py](crossover/detector_mii.py#L478)
+
+
+---
+
+
+### `rough_classification(read_counts: pd.DataFrame, depth_threshold: int=5, other_threshold: float=0.3, balance_threshold: float=0.3)`
+
+**Returns:** `pd.Series`
+
+
+Perform rough classification of SNPs based on read counts.
+
+Args:
+    read_counts: DataFrame with columns 'ref', 'alt', 'other'
+    depth_threshold: Minimum total depth for confident call
+    other_threshold: Maximum other fraction for confident call
+    balance_threshold: Threshold for classifying as balanced (PM)
+
+Returns:
+    Series with rough state labels
+
+
+**Source:** Line 536 in [crossover/detector_mii.py](crossover/detector_mii.py#L536)
+
+
+---
+
+
 ## crossover.io
 
 **File:** `crossover/io.py`
@@ -3619,6 +3737,107 @@ Returns:
 
 
 **Source:** Line 738 in [crossover/pipeline.py](crossover/pipeline.py#L738)
+
+
+---
+
+
+## crossover.pipeline_mii
+
+**File:** `crossover/pipeline_mii.py`
+
+**Public functions:** 3
+
+
+### `detect_sister_chromatid_states_end2end(bam_file: str, snp_file: str, output_dir: str, sample_id: Optional[str]=None, chromosomes: Optional[List[str]]=None, cache_dir: Optional[str]=None, alpha: float=0.01, beta: float=0.02, gamma: float=0.001, rho: float=0.1, depth_threshold: int=5, other_threshold: float=0.3, balance_threshold: float=0.3)`
+
+**Returns:** `Union[SisterChromatidResults, Dict[str, SisterChromatidResults]]`
+
+
+End-to-end sister chromatid state inference from BAM file.
+
+This is the main entry point for the mII crossover detection pipeline.
+It processes BAM files through all steps:
+1. Extract read counts at SNP positions
+2. Rough classification for parameter initialization
+3. Estimate emission and transition parameters
+4. HMM inference with Viterbi decoding
+5. Group states into contiguous blocks
+
+Args:
+    bam_file: Path to input BAM file
+    snp_file: Path to SNP file (VCF or TSV)
+    output_dir: Output directory for results
+    sample_id: Sample ID (default: derived from bam_file name)
+    chromosomes: Optional list of chromosomes to analyze (default: all)
+    cache_dir: Cache directory (default: output_dir/.cache)
+    alpha: PP<->PM transition probability
+    beta: PM->PP/MM transition probability
+    gamma: probability of entering U state
+    rho: probability of leaving U state
+    depth_threshold: Minimum depth for confident call
+    other_threshold: Maximum other fraction for confident call
+    balance_threshold: Threshold for classifying as balanced (PM)
+
+Returns:
+    SisterChromatidResults object (single chromosome) or dictionary (multiple chromosomes)
+
+Example:
+    >>> results = detect_sister_chromatid_states_end2end(
+    ...     bam_file="mII_cell.bam",
+    ...     snp_file="snps.vcf",
+    ...     output_dir="output/",
+    ...     chromosomes=["chr1", "chr2"]
+    ... )
+
+
+**Source:** Line 341 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L341)
+
+
+---
+
+
+### `extract_read_counts(bam_file: str, snp_file: str, output_file: Optional[str]=None, min_mapq: int=20, min_baseq: int=20)`
+
+**Returns:** `pd.DataFrame`
+
+
+Extract read counts at SNP positions from BAM file.
+
+Args:
+    bam_file: Path to BAM/BCF file
+    snp_file: Path to SNP file (VCF or TSV with positions)
+    output_file: Optional output file path
+    min_mapq: Minimum mapping quality
+    min_baseq: Minimum base quality
+
+Returns:
+    DataFrame with columns: chromosome, position, ref, alt, other
+
+
+**Source:** Line 34 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L34)
+
+
+---
+
+
+### `save_results_mii(results: Union[SisterChromatidResults, Dict[str, SisterChromatidResults]], output_dir: str, sample_id: str)`
+
+**Returns:** `Dict[str, str]`
+
+
+Save sister chromatid inference results to files.
+
+Args:
+    results: Results object or dictionary
+    output_dir: Output directory
+    sample_id: Sample identifier
+
+Returns:
+    Dictionary mapping output type to file path
+
+
+**Source:** Line 463 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L463)
 
 
 ---

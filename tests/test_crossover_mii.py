@@ -258,25 +258,28 @@ class TestParameterEstimation:
 
         alpha, beta, gamma, rho = estimate_transitions_rough(rough_labels)
 
-        assert 0 < alpha < 1
-        assert 0 < beta < 1
-        assert 0 < gamma < 1
-        assert 0 < rho < 1
+        # Parameters should be in valid range [0, 1]
+        # Note: gamma can be 0 if no transitions to U state
+        assert 0 <= alpha <= 1
+        assert 0 <= beta <= 1
+        assert 0 <= gamma <= 1
+        assert 0 <= rho <= 0.32  # rho is clamped to max 0.32
 
     def test_estimate_transitions_with_pseudocount(self):
-        """Test transition estimation with pseudocount smoothing."""
-        # Single state - should still return valid parameters due to pseudocount
+        """Test transition estimation with no transitions (uses default values)."""
+        # Single state - should return default values
         rough_labels = pd.Series(['PP', 'PP', 'PP'])
 
         alpha, beta, gamma, rho = estimate_transitions_rough(
-            rough_labels, pseudocount=1.0
+            rough_labels, pseudocount=1.0  # pseudocount is deprecated but accepted
         )
 
-        # All parameters should be in valid range
-        assert 0.001 <= alpha <= 0.5
-        assert 0.001 <= beta <= 0.5
-        assert 0.0001 <= gamma <= 0.1
-        assert 0.01 <= rho <= 0.5
+        n = len(rough_labels)
+        # Default values: alpha=1/n, beta=1/n, gamma=0.01/n, rho=min(100/n, 0.32)
+        assert abs(alpha - 1.0 / n) < 1e-10
+        assert abs(beta - 1.0 / n) < 1e-10
+        assert abs(gamma - 0.01 / n) < 1e-10
+        assert abs(rho - min(100.0 / n, 0.32)) < 1e-10
 
 
 class TestDataClasses:

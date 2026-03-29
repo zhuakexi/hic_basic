@@ -49,6 +49,7 @@ from .detector_mii import (
     estimate_emissions_from_counts,
     estimate_transitions_rough,
     rough_classification,
+    get_default_transition_params,
 )
 from .pipeline import (
     detect_crossovers_end2end,
@@ -81,4 +82,5 @@ __all__ = [
     "estimate_emissions_from_counts",
     "estimate_transitions_rough",
     "rough_classification",
+    "get_default_transition_params",
 ]

@@ -30,6 +30,25 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+def get_default_transition_params() -> Dict[str, float]:
+    """
+    Get default transition matrix parameters.
+    
+    These parameters represent a conservative model with:
+    - Low transition rates between biological states (PP, PM, MM)
+    - Rare entry into U state
+    - Moderate exit from U state
+    
+    Returns:
+        Dictionary with keys: alpha, beta, gamma, rho
+    """
+    return {
+        'alpha': 0.01,   # PP↔PM, MM↔PM transition probability
+        'beta': 0.02,    # PM→PP, PM→MM transition probability
+        'gamma': 0.001,  # Biological state → U transition probability
+        'rho': 0.1,      # U → Biological state transition probability
+    }
+
 @dataclass
 class SisterChromatidBlock:
     """
@@ -484,11 +503,13 @@ def estimate_transitions_rough(
 
     Args:
         rough_labels: Series with rough state labels
-        pseudocount: Pseudocount for smoothing
+        pseudocount: Pseudocount for smoothing (deprecated, kept for API compatibility)
 
     Returns:
         Tuple of (alpha, beta, gamma, rho)
     """
+    n_units = len(rough_labels)
+    
     # Count transitions
     transitions = {
         ('PP', 'PM'): 0, ('PP', 'MM'): 0, ('PP', 'U'): 0,
@@ -504,30 +525,60 @@ def estimate_transitions_rough(
         if key in transitions:
             transitions[key] += 1
 
-    # Estimate parameters from transition counts
-    # alpha: from PP->PM and MM->PM
-    pp_total = transitions[('PP', 'PM')] + transitions[('PP', 'MM')] + transitions[('PP', 'U')] + pseudocount * 3
-    mm_total = transitions[('MM', 'PM')] + transitions[('MM', 'PP')] + transitions[('MM', 'U')] + pseudocount * 3
-    alpha = (transitions[('PP', 'PM')] + transitions[('MM', 'PM')] + pseudocount * 2) / (pp_total + mm_total)
+    # Check if there are any transitions
+    total_transitions = sum(transitions.values())
+    
+    if total_transitions == 0:
+        # No transition data, use default values
+        # These defaults ensure rho < 1/3 to keep 1-3*rho > 0
+        alpha = 1.0 / n_units
+        beta = 1.0 / n_units
+        gamma = 0.01 / n_units
+        rho = min(100.0 / n_units, 0.32)  # Larger rho for small n_units, capped at 0.32
+        
+        logger.info(f"Using default transition parameters: alpha={alpha:.4f}, beta={beta:.4f}, gamma={gamma:.4f}, rho={rho:.4f}")
+        return alpha, beta, gamma, rho
 
-    # beta: from PM->PP and PM->MM
-    pm_total = transitions[('PM', 'PP')] + transitions[('PM', 'MM')] + transitions[('PM', 'U')] + pseudocount * 3
-    beta = (transitions[('PM', 'PP')] + transitions[('PM', 'MM')] + pseudocount * 2) / pm_total
+    # Estimate parameters from transition counts (no pseudocounts)
+    
+    # alpha: from PP->PM and MM->PM (biological state transitions)
+    pp_trans = transitions[('PP', 'PM')] + transitions[('PP', 'U')]
+    mm_trans = transitions[('MM', 'PM')] + transitions[('MM', 'U')]
+    alpha_num = transitions[('PP', 'PM')] + transitions[('MM', 'PM')]
+    alpha = alpha_num / (pp_trans + mm_trans) if (pp_trans + mm_trans) > 0 else 0.0
 
-    # gamma: entering U from any state
-    total_from_biological = pp_total + pm_total + mm_total
-    total_to_u = transitions[('PP', 'U')] + transitions[('PM', 'U')] + transitions[('MM', 'U')] + pseudocount * 3
-    gamma = total_to_u / total_from_biological
+    # beta: from PM->PP and PM->MM (PM is unstable, transitions frequently)
+    pm_trans = transitions[('PM', 'PP')] + transitions[('PM', 'MM')] + transitions[('PM', 'U')]
+    beta_num = transitions[('PM', 'PP')] + transitions[('PM', 'MM')]
+    beta = beta_num / pm_trans if pm_trans > 0 else 0.0
 
-    # rho: leaving U
-    u_total = transitions[('U', 'PP')] + transitions[('U', 'PM')] + transitions[('U', 'MM')] + transitions[('U', 'U')] + pseudocount * 4
-    rho = (transitions[('U', 'PP')] + transitions[('U', 'PM')] + transitions[('U', 'MM')] + pseudocount * 3) / u_total
+    # gamma: entering U from biological states (should be rare)
+    bio_total = (transitions[('PP', 'PM')] + transitions[('PP', 'U')] +
+                 transitions[('PM', 'PP')] + transitions[('PM', 'MM')] + transitions[('PM', 'U')] +
+                 transitions[('MM', 'PM')] + transitions[('MM', 'U')])
+    u_enter = transitions[('PP', 'U')] + transitions[('PM', 'U')] + transitions[('MM', 'U')]
+    gamma = u_enter / bio_total if bio_total > 0 else 0.0
 
-    # Clip to valid range
-    alpha = np.clip(alpha, 0.001, 0.5)
-    beta = np.clip(beta, 0.001, 0.5)
-    gamma = np.clip(gamma, 0.0001, 0.1)
-    rho = np.clip(rho, 0.01, 0.5)
+    # rho: leaving U state (should be moderate, ensure 1-3*rho > 0)
+    u_total = transitions[('U', 'PP')] + transitions[('U', 'PM')] + transitions[('U', 'MM')] + transitions[('U', 'U')]
+    u_leave = transitions[('U', 'PP')] + transitions[('U', 'PM')] + transitions[('U', 'MM')]
+    rho = u_leave / u_total if u_total > 0 else 0.0
+    rho = min(rho, 0.32)  # Clamp to max 0.32 to ensure 1-3*rho > 0
+
+    # Ensure transition matrix elements are non-negative
+    # For PP and MM rows: alpha + gamma <= 1
+    # For PM row: beta + gamma <= 1
+    if alpha + gamma > 0.99:
+        # Normalize alpha and gamma proportionally
+        scale = 0.99 / (alpha + gamma)
+        alpha *= scale
+        gamma *= scale
+    
+    if beta + gamma > 0.99:
+        # Normalize beta and gamma proportionally
+        scale = 0.99 / (beta + gamma)
+        beta *= scale
+        gamma *= scale
 
     logger.info(f"Estimated transition parameters: alpha={alpha:.4f}, beta={beta:.4f}, gamma={gamma:.4f}, rho={rho:.4f}")
     return alpha, beta, gamma, rho
@@ -535,18 +586,19 @@ def estimate_transitions_rough(
 
 def rough_classification(
     read_counts: pd.DataFrame,
-    depth_threshold: int = 5,
-    other_threshold: float = 0.3,
-    balance_threshold: float = 0.3
+    depth_threshold: int = 2,
+    other_threshold: float = 0.4,
+    balance_threshold: float = 0.25
 ) -> pd.Series:
     """
     Perform rough classification of SNPs based on read counts.
 
     Args:
         read_counts: DataFrame with columns 'ref', 'alt', 'other'
-        depth_threshold: Minimum total depth for confident call
-        other_threshold: Maximum other fraction for confident call
-        balance_threshold: Threshold for classifying as balanced (PM)
+        depth_threshold: Minimum total depth for confident call (default: 2)
+        other_threshold: Maximum other fraction for confident call (default: 0.4)
+        balance_threshold: Threshold for classifying as balanced (PM) (default: 0.25)
+                          PP: ref_frac > 0.75, MM: alt_frac > 0.75, PM: |ref-alt| < 0.25
 
     Returns:
         Series with rough state labels
@@ -572,9 +624,10 @@ def rough_classification(
         alt_frac = alt / total
 
         # Classify based on allele balance
-        if ref_frac > 1 - balance_threshold:
+        # PP: ref_frac > 0.75, MM: alt_frac > 0.75, PM: |ref_frac - alt_frac| < 0.25
+        if ref_frac > 1 - balance_threshold:  # ref_frac > 0.75
             labels.append('PP')
-        elif alt_frac > 1 - balance_threshold:
+        elif alt_frac > 1 - balance_threshold:  # alt_frac > 0.75
             labels.append('MM')
         elif abs(ref_frac - alt_frac) < balance_threshold and ref_frac > 0.2 and alt_frac > 0.2:
             labels.append('PM')
