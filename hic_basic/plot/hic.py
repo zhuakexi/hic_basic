@@ -2019,8 +2019,9 @@ def plot_trapezoid_with_tracks(
         Relative height ratios for each track. If None, all tracks have
         equal height of 2.0.
     trapezoid_height : float, optional
-        Relative height of trapezoid row. If None and auto_scale=True,
-        will be calculated automatically to maintain square pixels.
+        Relative height of trapezoid row. If auto_scale=True, this parameter
+        is ignored and height is calculated automatically. Set auto_scale=False
+        to use a custom height. Default None (auto-calculated).
     strata : int, optional
         Number of rows to keep in the trapezoid. Default 20.
     title : str, optional
@@ -2102,7 +2103,8 @@ def plot_trapezoid_with_tracks(
         track_heights = [2.0] * n_tracks
     
     # Auto-calculate trapezoid height for square pixels
-    if auto_scale and trapezoid_height is None:
+    # When auto_scale=True, always calculate regardless of trapezoid_height parameter
+    if auto_scale:
         # Load matrix to get dimensions
         clr = Cooler(str(coolp))
         bin_s, bin_e = clr.extent(region)
@@ -2117,6 +2119,7 @@ def plot_trapezoid_with_tracks(
         else:
             trapezoid_height = (strata / n_bins) * 10
     
+    # Fallback if auto_scale=False and trapezoid_height is None
     if trapezoid_height is None:
         trapezoid_height = 6.0
 
