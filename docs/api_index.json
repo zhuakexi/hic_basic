@@ -1223,39 +1223,46 @@
   ],
   "crossover.detector_mii": [
     {
+      "name": "get_default_transition_params",
+      "signature": "get_default_transition_params()",
+      "docstring": "Get default transition matrix parameters.\n\nThese parameters represent a conservative model with:\n- Low transition rates between biological states (PP, PM, MM)\n- Rare entry into U state\n- Moderate exit...",
+      "return_type": "Dict[str, float]",
+      "lineno": 33
+    },
+    {
       "name": "estimate_emissions_from_counts",
       "signature": "estimate_emissions_from_counts(read_counts: pd.DataFrame, rough_labels: pd.Series)",
       "docstring": "Estimate emission probabilities from read counts and rough labels.\n\nArgs:\n    read_counts: DataFrame with columns 'ref', 'alt', 'other'\n    rough_labels: Series with rough state labels ('PP', 'PM', 'M...",
       "return_type": "Dict[str, Tuple[float, float, float]]",
-      "lineno": 429
+      "lineno": 448
     },
     {
       "name": "estimate_transitions_rough",
       "signature": "estimate_transitions_rough(rough_labels: pd.Series, pseudocount: float=1.0)",
-      "docstring": "Estimate transition probabilities from rough labels.\n\nArgs:\n    rough_labels: Series with rough state labels\n    pseudocount: Pseudocount for smoothing\n\nReturns:\n    Tuple of (alpha, beta, gamma, rho)",
+      "docstring": "Estimate transition probabilities from rough labels.\n\nArgs:\n    rough_labels: Series with rough state labels\n    pseudocount: Pseudocount for smoothing (deprecated, kept for API compatibility)\n\nReturn...",
       "return_type": "Tuple[float, float, float, float]",
-      "lineno": 478
+      "lineno": 497
     },
     {
       "name": "rough_classification",
-      "signature": "rough_classification(read_counts: pd.DataFrame, depth_threshold: int=5, other_threshold: float=0.3, balance_threshold: float=0.3)",
-      "docstring": "Perform rough classification of SNPs based on read counts.\n\nArgs:\n    read_counts: DataFrame with columns 'ref', 'alt', 'other'\n    depth_threshold: Minimum total depth for confident call\n    other_th...",
+      "signature": "rough_classification(read_counts: pd.DataFrame, depth_threshold: int=2, other_threshold: float=0.4, balance_threshold: float=0.25)",
+      "docstring": "Perform rough classification of SNPs based on read counts.\n\nArgs:\n    read_counts: DataFrame with columns 'ref', 'alt', 'other'\n    depth_threshold: Minimum total depth for confident call (default: 2)...",
       "return_type": "pd.Series",
-      "lineno": 536
+      "lineno": 587
     },
     {
       "name": "decode",
       "signature": "decode(self, read_counts: pd.DataFrame)",
       "docstring": "Decode the most likely state sequence from read counts.\n\nArgs:\n    read_counts: DataFrame with columns 'ref', 'alt', 'other'\n                or 'r', 'a', 'x'\n\nReturns:\n    Tuple of (state_names, log_p...",
       "return_type": "Tuple[List[str], float]",
-      "lineno": 293
+      "lineno": 312
     },
     {
       "name": "decode_with_blocks",
       "signature": "decode_with_blocks(self, read_counts: pd.DataFrame, chromosome: str, positions: np.ndarray, sample_id: str='unknown')",
       "docstring": "Decode states and group into contiguous blocks.\n\nArgs:\n    read_counts: DataFrame with read counts\n    chromosome: Chromosome name\n    positions: SNP positions\n    sample_id: Sample identifier\n\nReturn...",
       "return_type": "SisterChromatidResults",
-      "lineno": 327
+      "lineno": 346
     }
   ],
   "crossover.io": [
@@ -1341,25 +1348,39 @@
   ],
   "crossover.pipeline_mii": [
     {
+      "name": "bin_by_snp",
+      "signature": "bin_by_snp(read_counts_df: pd.DataFrame, n_snps: int=10)",
+      "docstring": "Merge adjacent SNPs into units based on SNP count.\n\nArgs:\n    read_counts_df: DataFrame with columns [chromosome or chrom, pos or position, ref, alt, other]\n    n_snps: Number of SNPs per unit (defaul...",
+      "return_type": "pd.DataFrame",
+      "lineno": 37
+    },
+    {
+      "name": "convert_unit_coordinates_to_snp",
+      "signature": "convert_unit_coordinates_to_snp(unit_results: SisterChromatidResults, original_read_counts: pd.DataFrame, n_snps: int=10)",
+      "docstring": "Convert unit-level state assignments back to original SNP coordinates.\n\nArgs:\n    unit_results: Results from HMM at unit level\n    original_read_counts: Original SNP-level read counts\n    n_snps: Numb...",
+      "return_type": "SisterChromatidResults",
+      "lineno": 81
+    },
+    {
       "name": "extract_read_counts",
       "signature": "extract_read_counts(bam_file: str, snp_file: str, output_file: Optional[str]=None, min_mapq: int=20, min_baseq: int=20)",
       "docstring": "Extract read counts at SNP positions from BAM file.\n\nArgs:\n    bam_file: Path to BAM/BCF file\n    snp_file: Path to SNP file (VCF or TSV with positions)\n    output_file: Optional output file path\n    ...",
       "return_type": "pd.DataFrame",
-      "lineno": 34
+      "lineno": 153
     },
     {
       "name": "detect_sister_chromatid_states_end2end",
-      "signature": "detect_sister_chromatid_states_end2end(bam_file: str, snp_file: str, output_dir: str, sample_id: Optional[str]=None, chromosomes: Optional[List[str]]=None, cache_dir: Optional[str]=None, alpha: float=0.01, beta: float=0.02, gamma: float=0.001, rho: float=0.1, depth_threshold: int=5, other_threshold: float=0.3, balance_threshold: float=0.3)",
+      "signature": "detect_sister_chromatid_states_end2end(bam_file: str, snp_file: str, output_dir: str, sample_id: Optional[str]=None, chromosomes: Optional[List[str]]=None, cache_dir: Optional[str]=None, transition_params: str='default', alpha: float=0.01, beta: float=0.02, gamma: float=0.001, rho: float=0.1, depth_threshold: int=2, other_threshold: float=0.4, balance_threshold: float=0.25, binning_method: Optional[str]=None, binning_snp_number: int=250)",
       "docstring": "End-to-end sister chromatid state inference from BAM file.\n\nThis is the main entry point for the mII crossover detection pipeline.\nIt processes BAM files through all steps:\n1. Extract read counts at S...",
       "return_type": "Union[SisterChromatidResults, Dict[str, SisterChromatidResults]]",
-      "lineno": 341
+      "lineno": 498
     },
     {
       "name": "save_results_mii",
       "signature": "save_results_mii(results: Union[SisterChromatidResults, Dict[str, SisterChromatidResults]], output_dir: str, sample_id: str)",
       "docstring": "Save sister chromatid inference results to files.\n\nArgs:\n    results: Results object or dictionary\n    output_dir: Output directory\n    sample_id: Sample identifier\n\nReturns:\n    Dictionary mapping ou...",
       "return_type": "Dict[str, str]",
-      "lineno": 463
+      "lineno": 652
     }
   ],
   "cycle_phasing": [
@@ -2468,6 +2489,50 @@
       "lineno": 8
     }
   ],
+  "plot.gene_track_parser": [
+    {
+      "name": "parse_annotation_file",
+      "signature": "parse_annotation_file(filepath: Union[str, Path])",
+      "docstring": "Parse GTF or GFF3 annotation file.\n\nParameters\n----------\nfilepath : str or Path\n    Path to annotation file.\n\nReturns\n-------\nDict[str, Gene]\n    Dictionary of gene_id -> Gene objects.",
+      "return_type": "Dict[str, Gene]",
+      "lineno": 353
+    },
+    {
+      "name": "filter_genes_in_region",
+      "signature": "filter_genes_in_region(genes: Dict[str, Gene], seqid: str, start: int, end: int, padding: int=0)",
+      "docstring": "Filter genes that overlap with a genomic region.\n\nParameters\n----------\ngenes : Dict[str, Gene]\n    Dictionary of genes.\nseqid : str\n    Chromosome/sequence ID.\nstart : int\n    Region start position.\n...",
+      "return_type": "Dict[str, Gene]",
+      "lineno": 392
+    },
+    {
+      "name": "get_label",
+      "signature": "get_label(self)",
+      "docstring": "Get transcript label for display.",
+      "return_type": "str",
+      "lineno": 40
+    },
+    {
+      "name": "get_label",
+      "signature": "get_label(self)",
+      "docstring": "Get gene label for display.",
+      "return_type": "str",
+      "lineno": 60
+    },
+    {
+      "name": "parse",
+      "signature": "parse(self)",
+      "docstring": "Parse GTF file and return genes dictionary.",
+      "return_type": "Dict[str, Gene]",
+      "lineno": 75
+    },
+    {
+      "name": "parse",
+      "signature": "parse(self)",
+      "docstring": "Parse GFF3 file and return genes dictionary.",
+      "return_type": "Dict[str, Gene]",
+      "lineno": 218
+    }
+  ],
   "plot.general": [
     {
       "name": "plot_colorbar",
@@ -2532,126 +2597,140 @@
       "signature": "plot_CM(cm, grid=True)",
       "docstring": "Plot contact matrix.\nInput:\n    cm: pd.DataFrame; contact matrix.\n    grid: whether to add chrom boundaries.",
       "return_type": null,
-      "lineno": 196
+      "lineno": 199
     },
     {
       "name": "plot_cool",
       "signature": "plot_cool(coolp, title='', region='chr1', vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False)",
       "docstring": "\"\nPlot heatmap of single cooler file.\nInput:\n    coolp: path to cooler file.\n    title: name of the plot.\n    region: genome region to plot.\n        \"chr1\" or \"chr1:1000000-2000000\" or [\"chr1:1,000,00...",
       "return_type": null,
-      "lineno": 235
+      "lineno": 238
     },
     {
       "name": "plot_cools",
       "signature": "plot_cools(cools, regions, ncols=3, subplot_titles=None, sub_height=100, sub_width=100, margin=None)",
       "docstring": "Plot multiple regions in multiple cooler files.\nIterate over regions first, then coolers. Will skip if either is None.\nInput:\n    cools: list of cooler file paths.\n    regions: list of genome regions ...",
       "return_type": null,
-      "lineno": 293
+      "lineno": 296
     },
     {
       "name": "merge_track_data",
       "signature": "merge_track_data(clr, track_file, region)",
       "docstring": "Pick out the track data that is in the region.\nInput:\n    clr: cooler obj.\n    track_file: path to track file\n    region: genome region to plot.\nOutput:\n    pd.Series; index: start of each bin, value:...",
       "return_type": null,
-      "lineno": 359
+      "lineno": 362
     },
     {
       "name": "plot_cool_track",
       "signature": "plot_cool_track(coolp, track_files, region, title, balance=False)",
       "docstring": "Plot cooler with additional track files.\nInput:\n    coolp: path to cooler file.\n    track_files: dict; key: track name, value: (path to track file, column name in track file)\n    region: genome region...",
       "return_type": null,
-      "lineno": 380
+      "lineno": 383
     },
     {
       "name": "plot_compare_cool_track_hor",
       "signature": "plot_compare_cool_track_hor(coolp1, coolp2, IS_file1, IS_file2, eigs_file1, eigs_file2, subplot_titles, region, title, balance=False, winSize=500000)",
       "docstring": "Plot cooler with additional track files",
       "return_type": null,
-      "lineno": 441
+      "lineno": 444
     },
     {
       "name": "plot_compare_cool_pixels",
       "signature": "plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels, subplot_titles=['A', 'B'])",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 574
+      "lineno": 577
     },
     {
       "name": "add_eig_track",
       "signature": "add_eig_track(fig, orig_data, eig_col=None, y_kwargs={}, row=None, col=None)",
       "docstring": "Add eigen vector track to a plotly figure or subplot.\nInput:\n    fig: figure to add trace.\n    orig_data: dataframe or series; [chrom, start, eig_col]\n    eig_col: column name of eigen vector.\n    y_k...",
       "return_type": null,
-      "lineno": 638
-    },
-    {
-      "name": "plot_tiling_compartment",
-      "signature": "plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=True, balance=False, cmap='RdBu', donorm=False, Enames=['E1', 'E1'], eig_y_kwargs={})",
-      "docstring": "Plot 2 coolers in a upper-lower manner with compartment track data.\nFirst cooler will be on the lower triangle, second cooler will be on the upper triangle.\nWill ignore diagonal because their values c...",
-      "return_type": null,
-      "lineno": 696
+      "lineno": 641
     },
     {
       "name": "plot_compartment",
       "signature": "plot_compartment(coolp, eigs_file, region, title, eigen_col='E1', strip=False, balance=False, mask_eig_na=True, give_mat=False, quant=0.005, minmax='min', cmap='RdBu_r', eq_hist=False)",
       "docstring": "Plot distance-normalized Hi-C correlation matrix with compartment track.\nInput:\n    coolp: path to cooler file.\n    eigs_file: path to eigen vector file.\n    region: genome region to plot.\n    title: ...",
       "return_type": null,
-      "lineno": 874
+      "lineno": 701
     },
     {
       "name": "plot_saddle_mpl",
       "signature": "plot_saddle_mpl(file, title, vmin=10 ** (-1), vmax=10 ** 1)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 1088
+      "lineno": 915
     },
     {
       "name": "plot_saddle",
       "signature": "plot_saddle(file, title, vmin=10 ** (-1), vmax=10 ** 1, strength_square_size=10)",
       "docstring": "Plot saddle plot.\nInput:\n    file: path to saddle file, usually ends with .saddledump.npz.\n    title: title of the plot.\n    vmin: min z value.\n    vmax: max z value.\n    strength_square_size: which s...",
       "return_type": null,
-      "lineno": 1102
+      "lineno": 929
     },
     {
       "name": "plot_IS",
       "signature": "plot_IS(IS_file)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 1176
+      "lineno": 1003
     },
     {
       "name": "pileup_IS",
       "signature": "pileup_IS(coolp, IS, genome='hg19', flank=800000)",
       "docstring": "Pileup TAD boundaries from a cool file.\nInput:\n    coolp: cooler path(adding resolutions when mcool)\n    IS: Insulation score; pd.Dataframe\n    genome: reference genome. eg. hg19\n    flank: flank size...",
       "return_type": null,
-      "lineno": 1244
+      "lineno": 1071
     },
     {
       "name": "format_ticks",
       "signature": "format_ticks(ax, x=True, y=True, rotate=True)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 1272
+      "lineno": 1099
     },
     {
       "name": "plot_IS",
       "signature": "plot_IS(clr, insulation_table, title, resolution=500000.0, window=1500000.0, balance=True, chrom='chr2', start=10500000, steps=90, vmin=0.001, vmax=0.1)",
       "docstring": "Plot insulation score together with Hi-C matrix strata.\nInput:\n    clr: cooler obj.\n    insulation_table: insulation score table.",
       "return_type": null,
-      "lineno": 1281
+      "lineno": 1108
     },
     {
       "name": "plot_cdps",
       "signature": "plot_cdps(adata, index_col='velocity_pseudotime', reverse=False)",
       "docstring": "Input:\n    index_col: wich adata.obs col to sort sample by\n    reverse: whether to reverse the order of the sample",
       "return_type": null,
-      "lineno": 1351
+      "lineno": 1178
     },
     {
       "name": "plot_compartment_strength",
       "signature": "plot_compartment_strength(adata, index_col='velocity_pseudotime')",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 1417
+      "lineno": 1244
+    },
+    {
+      "name": "plot_compartment_trapezoid",
+      "signature": "plot_compartment_trapezoid(coolp, vec_file, region, balance=True, strata=20, title='TITLE', quant=0.01, minmax='min', cmap='RdBu_r', eigen_col='E1', fillna=False, strip=False, mask_eig_na=True, add_track=False)",
+      "docstring": "Plot compartment heatmap as a trapezoid shape by rotating the square contact matrix 45 degrees.\n\nThis function extracts the compartment signal from a cooler file and eigenvector track,\nrotates the con...",
+      "return_type": null,
+      "lineno": 1297
+    },
+    {
+      "name": "plot_compartment_trapezoid_2tracks",
+      "signature": "plot_compartment_trapezoid_2tracks(coolp0: Union[str, Path], vec_file1: Union[str, Path], vec_file2: Union[str, Path], region: str, balance: bool=True, strata: int=20, title: str='TITLE', quant: float=0.01, minmax: str='min', cmap: str='RdBu_r', eigen_col: str='E1', fillna: bool=False, strip: bool=False, mask_eig_na: bool=True, vec_file0: Optional[Union[str, Path]]=None, coolp1: Optional[Union[str, Path]]=None, coolp2: Optional[Union[str, Path]]=None)",
+      "docstring": "Plot compartment trapezoid heatmap with two eigenvector tracks.\n\nThis function creates a 3-row subplot layout using the Track architecture:\n- Row 1: Trapezoid compartment heatmap\n- Row 2: Eigenvector ...",
+      "return_type": "go.Figure",
+      "lineno": 1487
+    },
+    {
+      "name": "plot_tiling_compartment",
+      "signature": "plot_tiling_compartment(coolps: List[Union[str, Path]], eigs_files: List[Union[str, Path]], region: str, title: str='', corr: bool=True, strip: bool=True, balance: bool=False, cmap: str='RdBu', donorm: bool=False, Enames: List[str]=None)",
+      "docstring": "Plot two contact matrices in a tiling layout with eigenvector tracks.\n\nThis function creates a 2x2 subplot layout where:\n- Top-left: Eigenvector track (vertical)\n- Top-right: Combined heatmap (upper t...",
+      "return_type": "go.Figure",
+      "lineno": 1661
     }
   ],
   "plot.pca": [
@@ -3096,28 +3175,177 @@
       "signature": "sort_index_chrom(df, chromosomes)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 8
+      "lineno": 525
     },
     {
       "name": "plot_genome_scatter",
       "signature": "plot_genome_scatter(genome_data, chromosomes=None, value_cols=None, shift_unit=0.05, shift_threshold=100, chorm_label_shift=0.05, y_extra_expansion=0.1, range_y=None)",
       "docstring": "Scatter genome wide data. Sepaarate chromosomes by vertical lines and add chromosome names.\nTODO: add real positions, now only add 1,2,3,4... as x axis.\nInput:\n    genome_data: pd.DataFrame, index is ...",
       "return_type": null,
-      "lineno": 26
+      "lineno": 543
     },
     {
       "name": "plot_genome_heatmap",
       "signature": "plot_genome_heatmap(genome_data, chromosomes=None)",
       "docstring": "Heatmap genome wide data. Sepaarate chromosomes by vertical lines and add chromosome names.\nInput:\n    genome_data: pd.DataFrame, index is multiindex with level 0 as chromosome names\n        columns a...",
       "return_type": null,
-      "lineno": 77
+      "lineno": 594
     },
     {
       "name": "add_chrom_grid",
       "signature": "add_chrom_grid(df, fig, fig_type='scatter', x_extra_expansion=0, y_extra_expansion=0.1, value_cols=None, range_y=None)",
       "docstring": "Add chromosome grid lines to an existing genome track figure.\nInput:\n    df: pd.DataFrame, the genome data used to plot the figure. Index is multiindex with level 0 as chromosome names \n        and le...",
       "return_type": null,
-      "lineno": 111
+      "lineno": 628
+    },
+    {
+      "name": "plot_gene_track",
+      "signature": "plot_gene_track(annotation_file: Union[str, Path], region: str, mode: str='all_transcripts', title: Optional[str]=None, height: int=400, width: int=1000, utr_height: float=0.3, exon_height: float=0.4, cds_height: float=0.6, row_spacing: float=0.2, show_labels: bool=True, label_font_size: int=10)",
+      "docstring": "Plot gene annotation track in genome browser style.\n\nThis function creates a Plotly figure showing gene structures including\nexons, introns, CDS, and UTRs with strand direction indicators.\n\nParameters...",
+      "return_type": "go.Figure",
+      "lineno": 1041
+    },
+    {
+      "name": "plot_gene_track_with_heatmap",
+      "signature": "plot_gene_track_with_heatmap(annotation_file: Union[str, Path], region: str, heatmap_data: Optional[pd.DataFrame]=None, heatmap_title: Optional[str]=None, gene_track_height: int=300, heatmap_height: int=400)",
+      "docstring": "Plot gene track below a heatmap (e.g., Hi-C contact matrix).\n\nParameters\n----------\nannotation_file : str or Path\n    Path to GTF or GFF3 annotation file.\nregion : str\n    Genomic region to display.\nh...",
+      "return_type": "go.Figure",
+      "lineno": 1242
+    },
+    {
+      "name": "load_data",
+      "signature": "load_data(self)",
+      "docstring": "Load and prepare data for the track.\n\nArgs:\n    **kwargs: Data loading parameters (e.g., cooler, region).\n\nReturns:\n    self: Returns self for method chaining.",
+      "return_type": null,
+      "lineno": 96
+    },
+    {
+      "name": "render",
+      "signature": "render(self, fig, row: int, col: int)",
+      "docstring": "Render the track onto a figure.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional rendering para...",
+      "return_type": null,
+      "lineno": 108
+    },
+    {
+      "name": "get_default_config",
+      "signature": "get_default_config(self)",
+      "docstring": "Get default configuration for this track type.\n\nReturns:\n    TrackConfig: Default configuration.",
+      "return_type": "TrackConfig",
+      "lineno": 122
+    },
+    {
+      "name": "data",
+      "signature": "data(self)",
+      "docstring": "Get the track's data.",
+      "return_type": "Optional[pd.DataFrame]",
+      "lineno": 131
+    },
+    {
+      "name": "load_data",
+      "signature": "load_data(self, clr: Cooler, region: str)",
+      "docstring": "Load eigenvector data aligned with cooler bins.\n\nArgs:\n    clr: Cooler object for bin information.\n    region: Genomic region (e.g., \"chr1:1000000-5000000\").\n\nReturns:\n    self: Returns self for metho...",
+      "return_type": "'EigenTrack'",
+      "lineno": 182
+    },
+    {
+      "name": "render",
+      "signature": "render(self, fig, row: int, col: int)",
+      "docstring": "Render eigenvector track as bar plot.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional paramete...",
+      "return_type": "go.Figure",
+      "lineno": 207
+    },
+    {
+      "name": "load_data",
+      "signature": "load_data(self, clr: Cooler, region: str)",
+      "docstring": "Load insulation score data aligned with cooler bins.\n\nArgs:\n    clr: Cooler object for bin information.\n    region: Genomic region.\n\nReturns:\n    self: Returns self for method chaining.",
+      "return_type": "'ISTrack'",
+      "lineno": 322
+    },
+    {
+      "name": "render",
+      "signature": "render(self, fig, row: int, col: int)",
+      "docstring": "Render insulation score track as line plot.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional pa...",
+      "return_type": "go.Figure",
+      "lineno": 345
+    },
+    {
+      "name": "load_data",
+      "signature": "load_data(self, region: str, clr: Optional[Cooler]=None)",
+      "docstring": "Load contact matrix from cooler file.\n\nArgs:\n    region: Genomic region.\n    clr: Optional Cooler object. If not provided, will create from cool_path.\n\nReturns:\n    self: Returns self for method chain...",
+      "return_type": "'HeatmapTrack'",
+      "lineno": 448
+    },
+    {
+      "name": "render",
+      "signature": "render(self, fig, row: int, col: int)",
+      "docstring": "Render contact matrix as heatmap.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional parameters f...",
+      "return_type": "go.Figure",
+      "lineno": 466
+    },
+    {
+      "name": "from_matrix",
+      "signature": "from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, config: Optional[TrackConfig]=None)",
+      "docstring": "Create HeatmapTrack from pre-computed matrix.\n\nArgs:\n    matrix: Contact matrix as numpy array.\n    bins: DataFrame with bin positions (chrom, start, end).\n    config: Optional TrackConfig.\n    **heat...",
+      "return_type": "'HeatmapTrack'",
+      "lineno": 492
+    }
+  ],
+  "plot.track_composer": [
+    {
+      "name": "add_track",
+      "signature": "add_track(self, track: 'Track', row: int, col: int, height_ratio: Optional[float]=None)",
+      "docstring": "Add a track to the composer at specified position.\n\nArgs:\n    track: Track instance to add.\n    row: Row position (1-indexed).\n    col: Column position (1-indexed).\n    height_ratio: Optional height r...",
+      "return_type": "'TrackComposer'",
+      "lineno": 100
+    },
+    {
+      "name": "build",
+      "signature": "build(self, region: str, title: str='', clr: Optional['Cooler']=None)",
+      "docstring": "Build the complete figure with all tracks.\n\nArgs:\n    region: Genomic region for all tracks (e.g., \"chr1:1000000-5000000\").\n    title: Figure title.\n    clr: Optional Cooler object shared across track...",
+      "return_type": "Figure",
+      "lineno": 131
+    },
+    {
+      "name": "for_tiling_compartment",
+      "signature": "for_tiling_compartment(cls, row_heights: Optional[List[float]]=None, col_widths: Optional[List[float]]=None)",
+      "docstring": "Create composer for tiling compartment layout.\n\nCreates a 2x2 grid optimized for displaying two triangular\ncontact matrices with eigenvector tracks on left and bottom.\n\nArgs:\n    row_heights: Optional...",
+      "return_type": "'TrackComposer'",
+      "lineno": 226
+    },
+    {
+      "name": "for_trapezoid_2tracks",
+      "signature": "for_trapezoid_2tracks(cls, row_heights: Optional[List[float]]=None)",
+      "docstring": "Create composer for trapezoid heatmap with two tracks.\n\nCreates a 3-row vertical layout for trapezoid compartment\nheatmap with two eigenvector tracks below.\n\nArgs:\n    row_heights: Optional override f...",
+      "return_type": "'TrackComposer'",
+      "lineno": 262
+    },
+    {
+      "name": "for_heatmap_with_tracks",
+      "signature": "for_heatmap_with_tracks(cls, n_tracks: int, heatmap_height: float=10, track_height: float=2)",
+      "docstring": "Create composer for heatmap with multiple tracks below.\n\nCreates a vertical layout with heatmap on top and specified\nnumber of tracks below.\n\nArgs:\n    n_tracks: Number of tracks below the heatmap.\n  ...",
+      "return_type": "'TrackComposer'",
+      "lineno": 296
+    },
+    {
+      "name": "fig",
+      "signature": "fig(self)",
+      "docstring": "Get the assembled figure.\n\nReturns:\n    The assembled plotly figure, or None if build() has not been called.",
+      "return_type": "Optional[Figure]",
+      "lineno": 335
+    },
+    {
+      "name": "get_track",
+      "signature": "get_track(self, row: int, col: int)",
+      "docstring": "Get track at specified position.\n\nArgs:\n    row: Row position.\n    col: Column position.\n\nReturns:\n    Track at position, or None if no track exists.",
+      "return_type": "Optional['Track']",
+      "lineno": 343
+    },
+    {
+      "name": "list_tracks",
+      "signature": "list_tracks(self)",
+      "docstring": "List all tracks with their positions.\n\nReturns:\n    List of (row, col, track_name) tuples.",
+      "return_type": "List[Tuple[int, int, str]]",
+      "lineno": 355
     }
   ],
   "plot.utils": [
@@ -3168,98 +3396,98 @@
       "signature": "sub_genome_mat(mat, keep_regions)",
       "docstring": "Keep only the regions in the keep_regions list.\nInput:\n    mat: index and columns are [chrom, start]\n    keep_regions: list of regions to keep\n        regions are tuples of (start, end)\nOutput:\n    ma...",
       "return_type": null,
-      "lineno": 216
+      "lineno": 224
     },
     {
       "name": "pcolormesh_45deg",
       "signature": "pcolormesh_45deg(ax, matrix_c, start=0, resolution=1)",
       "docstring": "Helper to plot a matrix with 45 degree angle.",
       "return_type": null,
-      "lineno": 241
+      "lineno": 249
     },
     {
       "name": "mat_coarsen",
       "signature": "mat_coarsen(mat, coarseness)",
       "docstring": "# coarsen matrix to lower resolution\n# Input:\n#    mat: matrix\n# Output:\n#    matrix",
       "return_type": null,
-      "lineno": 257
+      "lineno": 265
     },
     {
       "name": "spread_text",
       "signature": "spread_text(text_list, track_width=5, fold=2)",
       "docstring": "Spread text list to a several tracks.\nInput:\n    text_list: list of text to spread\n    track_width: width of each track\n    fold: number of tracks\nOutput:\n    list of position shift for each text\nTODO...",
       "return_type": null,
-      "lineno": 279
+      "lineno": 287
     },
     {
       "name": "plot_color_sequence",
       "signature": "plot_color_sequence(colors, output_file=None)",
       "docstring": "Plot a color sequence as a 1-row heatmap.\n\nArgs:\n    colors (List[str] or List[tuple]): List of colors in hex or RGB format.\n    output_file (str, optional): Path to save the plot as an image. If None...",
       "return_type": null,
-      "lineno": 299
+      "lineno": 307
     },
     {
       "name": "hex_to_rgb",
       "signature": "hex_to_rgb(hex_color)",
       "docstring": "\u5c06\u5341\u516d\u8fdb\u5236\u989c\u8272\u5b57\u7b26\u4e32\u8f6c\u6362\u4e3a RGB \u683c\u5f0f\u3002\n\n\u53c2\u6570:\n    hex_color (str): \u5341\u516d\u8fdb\u5236\u989c\u8272\u5b57\u7b26\u4e32\uff0c\u4f8b\u5982 \"#4C78A8\"\n\n\u8fd4\u56de:\n    tuple: \u4e09\u5143\u7ec4 (r, g, b)\uff0c\u5176\u4e2d r, g, b \u5206\u522b\u4e3a\u7ea2\u3001\u7eff\u3001\u84dd\u901a\u9053\u7684\u503c (0-255)",
       "return_type": null,
-      "lineno": 335
+      "lineno": 343
     },
     {
       "name": "rgb_to_hex",
       "signature": "rgb_to_hex(rgb_color)",
       "docstring": "\u5c06 RGB \u683c\u5f0f\u8f6c\u6362\u4e3a\u5341\u516d\u8fdb\u5236\u989c\u8272\u5b57\u7b26\u4e32\u3002\n\n\u53c2\u6570:\n    r (int): \u7ea2\u8272\u901a\u9053\u7684\u503c (0-255)\n    g (int): \u7eff\u8272\u901a\u9053\u7684\u503c (0-255)\n    b (int): \u84dd\u8272\u901a\u9053\u7684\u503c (0-255)\n\n\u8fd4\u56de:\n    str: \u5341\u516d\u8fdb\u5236\u989c\u8272\u5b57\u7b26\u4e32\uff0c\u4f8b\u5982 \"#4C78A8\"",
       "return_type": null,
-      "lineno": 349
+      "lineno": 357
     },
     {
       "name": "hex_split",
       "signature": "hex_split(hex_color)",
       "docstring": "\u89e3\u6790\u5341\u516d\u8fdb\u5236\u989c\u8272\u4ee3\u7801\uff0c\u5e76\u8fd4\u56de R\u3001G\u3001B \u548c A \u5206\u91cf\u3002\n\n:param hex_color: \u5341\u516d\u8fdb\u5236\u989c\u8272\u4ee3\u7801\uff0c\u53ef\u4ee5\u662f\u516d\u4f4d (#RRGGBB) \u6216\u516b\u4f4d (#RRGGBBAA)\n:return: \u4e00\u4e2a\u5143\u7ec4 (R, G, B, A)\uff0c\u5176\u4e2d A \u662f\u53ef\u9009\u7684\u900f\u660e\u5ea6\u5206\u91cf",
       "return_type": null,
-      "lineno": 369
+      "lineno": 377
     },
     {
       "name": "compute_hue_diff",
       "signature": "compute_hue_diff(h1_deg, h2_deg)",
       "docstring": "\u8ba1\u7b97\u4e24\u4e2a\u8272\u76f8\u4e4b\u95f4\u7684\u6700\u77ed\u5dee\u503c\uff08\u8003\u8651\u73af\u5f62\u7279\u6027\uff09",
       "return_type": null,
-      "lineno": 397
+      "lineno": 405
     },
     {
       "name": "interpolate_color_rgb_linear",
       "signature": "interpolate_color_rgb_linear(orig, target, n, cap=1)",
       "docstring": "Interpolate between two colors in RGB space.\nInput:\n    orig: original color (r, g, b)\n    target: target color (r, g, b)\n    n: number of colors to generate\n    cap: 0<cap<1, ensure the last interpol...",
       "return_type": null,
-      "lineno": 408
+      "lineno": 416
     },
     {
       "name": "expand_color_sequence",
       "signature": "expand_color_sequence(colors, n, cap=0.75)",
       "docstring": "Expand color sequence by create n interpolated colors for each original color.\nThe created colors are \"whiter\" version of the original colors.\nGroup the original colors (orig_colors) in pairs, and wit...",
       "return_type": null,
-      "lineno": 439
+      "lineno": 447
     },
     {
       "name": "expand_colors",
       "signature": "expand_colors(colors, n_interpolate=1)",
       "docstring": "\u5728\u76f8\u90bb\u989c\u8272\u4e4b\u95f4\u63d2\u5165 n_interpolate \u4e2a\u65b0\u989c\u8272\uff0c\u4f7f\u989c\u8272\u8fc7\u6e21\u81ea\u7136\u3002\n\n\u53c2\u6570:\n    colors (List[tuple]): \u8f93\u5165\u989c\u8272\u5e8f\u5217\uff0c\u6bcf\u4e2a\u989c\u8272\u662f (r, g, b) \u7684 RGB \u5143\u7ec4\uff0c\u8303\u56f4 0~1\u3002\n    n_interpolate (int): \u6bcf\u5bf9\u989c\u8272\u4e4b\u95f4\u63d2\u5165\u7684\u65b0\u989c\u8272\u6570\u91cf\u3002\n\n\u8fd4\u56de:\n    List[tuple]: \u6269\u5c55\u540e\u7684\u989c\u8272\u5e8f\u5217\uff0c\u6bcf\u4e2a\u989c\u8272\u4e3a (r, g, b) \u7684\u6574\u6570...",
       "return_type": null,
-      "lineno": 470
+      "lineno": 478
     },
     {
       "name": "plotly_fig2array",
       "signature": "plotly_fig2array(fig)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 540
+      "lineno": 548
     },
     {
       "name": "get_fig_outprefix",
       "signature": "get_fig_outprefix()",
       "docstring": "Get the output prefix for the current figure.\nChange directory name and this will get the right prefix.\nFig1a -> output/Fig.1a_\nFig1Sb -> output/Extended_Data_Fig.1b_",
       "return_type": "str",
-      "lineno": 550
+      "lineno": 558
     }
   ],
   "pp": [

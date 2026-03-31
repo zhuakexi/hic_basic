@@ -2,7 +2,7 @@
 
 *Auto-generated API documentation for public functions*
 
-Total modules with public functions: 88
+Total modules with public functions: 90
 
 ---
 
@@ -31,10 +31,10 @@ Total modules with public functions: 88
 - [coolstuff](#coolstuff) (32 functions)
 - [crossover.cache](#crossover-cache) (16 functions)
 - [crossover.detector](#crossover-detector) (5 functions)
-- [crossover.detector_mii](#crossover-detector_mii) (5 functions)
+- [crossover.detector_mii](#crossover-detector_mii) (6 functions)
 - [crossover.io](#crossover-io) (7 functions)
 - [crossover.pipeline](#crossover-pipeline) (4 functions)
-- [crossover.pipeline_mii](#crossover-pipeline_mii) (3 functions)
+- [crossover.pipeline_mii](#crossover-pipeline_mii) (5 functions)
 - [cycle_phasing](#cycle_phasing) (2 functions)
 - [data](#data) (18 functions)
 - [embedding](#embedding) (5 functions)
@@ -56,8 +56,9 @@ Total modules with public functions: 88
 - [pileup](#pileup) (6 functions)
 - [pipeline.rule](#pipeline-rule) (8 functions)
 - [plot.bar](#plot-bar) (1 functions)
+- [plot.gene_track_parser](#plot-gene_track_parser) (6 functions)
 - [plot.general](#plot-general) (8 functions)
-- [plot.hic](#plot-hic) (18 functions)
+- [plot.hic](#plot-hic) (20 functions)
 - [plot.pca](#plot-pca) (2 functions)
 - [plot.plot](#plot-plot) (15 functions)
 - [plot.plotly_template](#plot-plotly_template) (1 functions)
@@ -66,7 +67,8 @@ Total modules with public functions: 88
 - [plot.scanpy](#plot-scanpy) (5 functions)
 - [plot.scatter](#plot-scatter) (6 functions)
 - [plot.tech](#plot-tech) (1 functions)
-- [plot.track](#plot-track) (4 functions)
+- [plot.track](#plot-track) (17 functions)
+- [plot.track_composer](#plot-track_composer) (8 functions)
 - [plot.utils](#plot-utils) (20 functions)
 - [pp](#pp) (1 functions)
 - [pymol.color_centelo](#pymol-color_centelo) (2 functions)
@@ -3290,7 +3292,7 @@ Args:
 
 **File:** `crossover/detector_mii.py`
 
-**Public functions:** 5
+**Public functions:** 6
 
 
 ### `decode(self, read_counts: pd.DataFrame)`
@@ -3308,7 +3310,7 @@ Returns:
     Tuple of (state_names, log_probability)
 
 
-**Source:** Line 293 in [crossover/detector_mii.py](crossover/detector_mii.py#L293)
+**Source:** Line 312 in [crossover/detector_mii.py](crossover/detector_mii.py#L312)
 
 
 ---
@@ -3331,7 +3333,7 @@ Returns:
     SisterChromatidResults object
 
 
-**Source:** Line 327 in [crossover/detector_mii.py](crossover/detector_mii.py#L327)
+**Source:** Line 346 in [crossover/detector_mii.py](crossover/detector_mii.py#L346)
 
 
 ---
@@ -3352,7 +3354,7 @@ Returns:
     Dictionary mapping state name to (p_ref, p_alt, p_other)
 
 
-**Source:** Line 429 in [crossover/detector_mii.py](crossover/detector_mii.py#L429)
+**Source:** Line 448 in [crossover/detector_mii.py](crossover/detector_mii.py#L448)
 
 
 ---
@@ -3367,19 +3369,41 @@ Estimate transition probabilities from rough labels.
 
 Args:
     rough_labels: Series with rough state labels
-    pseudocount: Pseudocount for smoothing
+    pseudocount: Pseudocount for smoothing (deprecated, kept for API compatibility)
 
 Returns:
     Tuple of (alpha, beta, gamma, rho)
 
 
-**Source:** Line 478 in [crossover/detector_mii.py](crossover/detector_mii.py#L478)
+**Source:** Line 497 in [crossover/detector_mii.py](crossover/detector_mii.py#L497)
 
 
 ---
 
 
-### `rough_classification(read_counts: pd.DataFrame, depth_threshold: int=5, other_threshold: float=0.3, balance_threshold: float=0.3)`
+### `get_default_transition_params()`
+
+**Returns:** `Dict[str, float]`
+
+
+Get default transition matrix parameters.
+
+These parameters represent a conservative model with:
+- Low transition rates between biological states (PP, PM, MM)
+- Rare entry into U state
+- Moderate exit from U state
+
+Returns:
+    Dictionary with keys: alpha, beta, gamma, rho
+
+
+**Source:** Line 33 in [crossover/detector_mii.py](crossover/detector_mii.py#L33)
+
+
+---
+
+
+### `rough_classification(read_counts: pd.DataFrame, depth_threshold: int=2, other_threshold: float=0.4, balance_threshold: float=0.25)`
 
 **Returns:** `pd.Series`
 
@@ -3388,15 +3412,16 @@ Perform rough classification of SNPs based on read counts.
 
 Args:
     read_counts: DataFrame with columns 'ref', 'alt', 'other'
-    depth_threshold: Minimum total depth for confident call
-    other_threshold: Maximum other fraction for confident call
-    balance_threshold: Threshold for classifying as balanced (PM)
+    depth_threshold: Minimum total depth for confident call (default: 2)
+    other_threshold: Maximum other fraction for confident call (default: 0.4)
+    balance_threshold: Threshold for classifying as balanced (PM) (default: 0.25)
+                      PP: ref_frac > 0.75, MM: alt_frac > 0.75, PM: |ref-alt| < 0.25
 
 Returns:
     Series with rough state labels
 
 
-**Source:** Line 536 in [crossover/detector_mii.py](crossover/detector_mii.py#L536)
+**Source:** Line 587 in [crossover/detector_mii.py](crossover/detector_mii.py#L587)
 
 
 ---
@@ -3746,10 +3771,53 @@ Returns:
 
 **File:** `crossover/pipeline_mii.py`
 
-**Public functions:** 3
+**Public functions:** 5
 
 
-### `detect_sister_chromatid_states_end2end(bam_file: str, snp_file: str, output_dir: str, sample_id: Optional[str]=None, chromosomes: Optional[List[str]]=None, cache_dir: Optional[str]=None, alpha: float=0.01, beta: float=0.02, gamma: float=0.001, rho: float=0.1, depth_threshold: int=5, other_threshold: float=0.3, balance_threshold: float=0.3)`
+### `bin_by_snp(read_counts_df: pd.DataFrame, n_snps: int=10)`
+
+**Returns:** `pd.DataFrame`
+
+
+Merge adjacent SNPs into units based on SNP count.
+
+Args:
+    read_counts_df: DataFrame with columns [chromosome or chrom, pos or position, ref, alt, other]
+    n_snps: Number of SNPs per unit (default: 10)
+
+Returns:
+    DataFrame with aggregated units, columns: [chromosome, start_pos, end_pos, ref, alt, other, n_snps, position]
+
+
+**Source:** Line 37 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L37)
+
+
+---
+
+
+### `convert_unit_coordinates_to_snp(unit_results: SisterChromatidResults, original_read_counts: pd.DataFrame, n_snps: int=10)`
+
+**Returns:** `SisterChromatidResults`
+
+
+Convert unit-level state assignments back to original SNP coordinates.
+
+Args:
+    unit_results: Results from HMM at unit level
+    original_read_counts: Original SNP-level read counts
+    n_snps: Number of SNPs per unit
+
+Returns:
+    SisterChromatidResults with SNP-level states
+
+
+**Source:** Line 81 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L81)
+
+
+---
+
+
+### `detect_sister_chromatid_states_end2end(bam_file: str, snp_file: str, output_dir: str, sample_id: Optional[str]=None, chromosomes: Optional[List[str]]=None, cache_dir: Optional[str]=None, transition_params: str='default', alpha: float=0.01, beta: float=0.02, gamma: float=0.001, rho: float=0.1, depth_threshold: int=2, other_threshold: float=0.4, balance_threshold: float=0.25, binning_method: Optional[str]=None, binning_snp_number: int=250)`
 
 **Returns:** `Union[SisterChromatidResults, Dict[str, SisterChromatidResults]]`
 
@@ -3759,10 +3827,12 @@ End-to-end sister chromatid state inference from BAM file.
 This is the main entry point for the mII crossover detection pipeline.
 It processes BAM files through all steps:
 1. Extract read counts at SNP positions
-2. Rough classification for parameter initialization
-3. Estimate emission and transition parameters
-4. HMM inference with Viterbi decoding
-5. Group states into contiguous blocks
+2. Binning (optional): merge adjacent SNPs into units
+3. Rough classification for parameter initialization
+4. Estimate emission and transition parameters
+5. HMM inference with Viterbi decoding
+6. Group states into contiguous blocks
+7. Convert unit-level coordinates back to SNP coordinates (if binning was used)
 
 Args:
     bam_file: Path to input BAM file
@@ -3771,27 +3841,48 @@ Args:
     sample_id: Sample ID (default: derived from bam_file name)
     chromosomes: Optional list of chromosomes to analyze (default: all)
     cache_dir: Cache directory (default: output_dir/.cache)
-    alpha: PP<->PM transition probability
-    beta: PM->PP/MM transition probability
-    gamma: probability of entering U state
-    rho: probability of leaving U state
-    depth_threshold: Minimum depth for confident call
-    other_threshold: Maximum other fraction for confident call
-    balance_threshold: Threshold for classifying as balanced (PM)
+    transition_params: Transition parameter source ("default" | "estimated")
+    alpha: PP<->PM transition probability (default: 0.01, used when transition_params="default")
+    beta: PM->PP/MM transition probability (default: 0.02, used when transition_params="default")
+    gamma: probability of entering U state (default: 0.001, used when transition_params="default")
+    rho: probability of leaving U state (default: 0.1, used when transition_params="default")
+    depth_threshold: Minimum depth for confident call (default: 2)
+    other_threshold: Maximum other fraction for confident call (default: 0.4)
+    balance_threshold: Threshold for classifying as balanced (default: 0.25)
+                      PP: ref_frac > 0.75, MM: alt_frac > 0.75
+    binning_method: Binning method (None for single-SNP mode, "by_snp" for merging by SNP count)
+    binning_snp_number: Number of SNPs per unit (default: 250)
 
 Returns:
     SisterChromatidResults object (single chromosome) or dictionary (multiple chromosomes)
 
 Example:
+    >>> # Default parameters (fixed transition matrix)
+    >>> results = detect_sister_chromatid_states_end2end(
+    ...     bam_file="mII_cell.bam",
+    ...     snp_file="snps.vcf",
+    ...     output_dir="output/"
+    ... )
+
+    >>> # Estimated transition parameters from data
     >>> results = detect_sister_chromatid_states_end2end(
     ...     bam_file="mII_cell.bam",
     ...     snp_file="snps.vcf",
     ...     output_dir="output/",
-    ...     chromosomes=["chr1", "chr2"]
+    ...     transition_params="estimated"
+    ... )
+
+    >>> # Custom binning (250 SNPs per unit)
+    >>> results = detect_sister_chromatid_states_end2end(
+    ...     bam_file="mII_cell.bam",
+    ...     snp_file="snps.vcf",
+    ...     output_dir="output/",
+    ...     binning_method="by_snp",
+    ...     binning_snp_number=250
     ... )
 
 
-**Source:** Line 341 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L341)
+**Source:** Line 498 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L498)
 
 
 ---
@@ -3815,7 +3906,7 @@ Returns:
     DataFrame with columns: chromosome, position, ref, alt, other
 
 
-**Source:** Line 34 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L34)
+**Source:** Line 153 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L153)
 
 
 ---
@@ -3837,7 +3928,7 @@ Returns:
     Dictionary mapping output type to file path
 
 
-**Source:** Line 463 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L463)
+**Source:** Line 652 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L652)
 
 
 ---
@@ -6856,6 +6947,125 @@ Output:
 ---
 
 
+## plot.gene_track_parser
+
+**File:** `plot/gene_track_parser.py`
+
+**Public functions:** 6
+
+
+### `filter_genes_in_region(genes: Dict[str, Gene], seqid: str, start: int, end: int, padding: int=0)`
+
+**Returns:** `Dict[str, Gene]`
+
+
+Filter genes that overlap with a genomic region.
+
+Parameters
+----------
+genes : Dict[str, Gene]
+    Dictionary of genes.
+seqid : str
+    Chromosome/sequence ID.
+start : int
+    Region start position.
+end : int
+    Region end position.
+padding : int, optional
+    Padding to add to region boundaries. Default is 0.
+
+Returns
+-------
+Dict[str, Gene]
+    Filtered dictionary of genes.
+
+
+**Source:** Line 392 in [plot/gene_track_parser.py](plot/gene_track_parser.py#L392)
+
+
+---
+
+
+### `get_label(self)`
+
+**Returns:** `str`
+
+
+Get transcript label for display.
+
+
+**Source:** Line 40 in [plot/gene_track_parser.py](plot/gene_track_parser.py#L40)
+
+
+---
+
+
+### `get_label(self)`
+
+**Returns:** `str`
+
+
+Get gene label for display.
+
+
+**Source:** Line 60 in [plot/gene_track_parser.py](plot/gene_track_parser.py#L60)
+
+
+---
+
+
+### `parse(self)`
+
+**Returns:** `Dict[str, Gene]`
+
+
+Parse GTF file and return genes dictionary.
+
+
+**Source:** Line 75 in [plot/gene_track_parser.py](plot/gene_track_parser.py#L75)
+
+
+---
+
+
+### `parse(self)`
+
+**Returns:** `Dict[str, Gene]`
+
+
+Parse GFF3 file and return genes dictionary.
+
+
+**Source:** Line 218 in [plot/gene_track_parser.py](plot/gene_track_parser.py#L218)
+
+
+---
+
+
+### `parse_annotation_file(filepath: Union[str, Path])`
+
+**Returns:** `Dict[str, Gene]`
+
+
+Parse GTF or GFF3 annotation file.
+
+Parameters
+----------
+filepath : str or Path
+    Path to annotation file.
+
+Returns
+-------
+Dict[str, Gene]
+    Dictionary of gene_id -> Gene objects.
+
+
+**Source:** Line 353 in [plot/gene_track_parser.py](plot/gene_track_parser.py#L353)
+
+
+---
+
+
 ## plot.general
 
 **File:** `plot/general.py`
@@ -6991,7 +7201,7 @@ Output:
 
 **File:** `plot/hic.py`
 
-**Public functions:** 18
+**Public functions:** 20
 
 
 ### `add_eig_track(fig, orig_data, eig_col=None, y_kwargs={}, row=None, col=None)`
@@ -7009,7 +7219,7 @@ Output:
     fig: figure with eigen track added.
 
 
-**Source:** Line 638 in [plot/hic.py](plot/hic.py#L638)
+**Source:** Line 641 in [plot/hic.py](plot/hic.py#L641)
 
 
 ---
@@ -7021,7 +7231,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 1272 in [plot/hic.py](plot/hic.py#L1272)
+**Source:** Line 1099 in [plot/hic.py](plot/hic.py#L1099)
 
 
 ---
@@ -7039,7 +7249,7 @@ Output:
     pd.Series; index: start of each bin, value: track value.
 
 
-**Source:** Line 359 in [plot/hic.py](plot/hic.py#L359)
+**Source:** Line 362 in [plot/hic.py](plot/hic.py#L362)
 
 
 ---
@@ -7058,7 +7268,7 @@ Output:
     pd.Dataframe
 
 
-**Source:** Line 1244 in [plot/hic.py](plot/hic.py#L1244)
+**Source:** Line 1071 in [plot/hic.py](plot/hic.py#L1071)
 
 
 ---
@@ -7073,7 +7283,7 @@ Input:
     grid: whether to add chrom boundaries.
 
 
-**Source:** Line 196 in [plot/hic.py](plot/hic.py#L196)
+**Source:** Line 199 in [plot/hic.py](plot/hic.py#L199)
 
 
 ---
@@ -7085,7 +7295,7 @@ Input:
 No documentation available.
 
 
-**Source:** Line 1176 in [plot/hic.py](plot/hic.py#L1176)
+**Source:** Line 1003 in [plot/hic.py](plot/hic.py#L1003)
 
 
 ---
@@ -7100,7 +7310,7 @@ Input:
     insulation_table: insulation score table.
 
 
-**Source:** Line 1281 in [plot/hic.py](plot/hic.py#L1281)
+**Source:** Line 1108 in [plot/hic.py](plot/hic.py#L1108)
 
 
 ---
@@ -7114,7 +7324,7 @@ Input:
     reverse: whether to reverse the order of the sample
 
 
-**Source:** Line 1351 in [plot/hic.py](plot/hic.py#L1351)
+**Source:** Line 1178 in [plot/hic.py](plot/hic.py#L1178)
 
 
 ---
@@ -7126,7 +7336,7 @@ Input:
 No documentation available.
 
 
-**Source:** Line 574 in [plot/hic.py](plot/hic.py#L574)
+**Source:** Line 577 in [plot/hic.py](plot/hic.py#L577)
 
 
 ---
@@ -7138,7 +7348,7 @@ No documentation available.
 Plot cooler with additional track files
 
 
-**Source:** Line 441 in [plot/hic.py](plot/hic.py#L441)
+**Source:** Line 444 in [plot/hic.py](plot/hic.py#L444)
 
 
 ---
@@ -7167,7 +7377,7 @@ Input:
     eq_hist: whether to use equalized histogram.
 
 
-**Source:** Line 874 in [plot/hic.py](plot/hic.py#L874)
+**Source:** Line 701 in [plot/hic.py](plot/hic.py#L701)
 
 
 ---
@@ -7179,7 +7389,124 @@ Input:
 No documentation available.
 
 
-**Source:** Line 1417 in [plot/hic.py](plot/hic.py#L1417)
+**Source:** Line 1244 in [plot/hic.py](plot/hic.py#L1244)
+
+
+---
+
+
+### `plot_compartment_trapezoid(coolp, vec_file, region, balance=True, strata=20, title='TITLE', quant=0.01, minmax='min', cmap='RdBu_r', eigen_col='E1', fillna=False, strip=False, mask_eig_na=True, add_track=False)`
+
+
+Plot compartment heatmap as a trapezoid shape by rotating the square contact matrix 45 degrees.
+
+This function extracts the compartment signal from a cooler file and eigenvector track,
+rotates the contact matrix by 45 degrees, and displays a trapezoidal region showing the
+compartment pattern.
+
+Parameters
+----------
+coolp : str or Path
+    Path to cooler file.
+vec_file : str or Path
+    Path to eigenvector file (e.g., from cooltools compartment calling).
+region : str
+    Genome region to plot, e.g., "chr1" or "chr1:1000000-2000000".
+balance : bool, optional
+    Whether to use balanced cooler matrix. Default is True.
+strata : int, optional
+    Number of rows to keep in the trapezoid (height of the trapezoid). Default is 20.
+title : str, optional
+    Plot title. Default is "TITLE".
+quant : float, optional
+    Quantile for color scale clipping. Default is 0.01.
+minmax : str or None, optional
+    How to compute color limits. Default is "min".
+cmap : str, optional
+    Colormap name. Default is "RdBu_r".
+eigen_col : str, optional
+    Column name for eigenvector values. Default is "E1".
+fillna : bool, optional
+    Whether to fill NaN values in the matrix. Default is False.
+strip : bool, optional
+    Whether to strip consecutive zeros. Default is False.
+mask_eig_na : bool, optional
+    Whether to mask NaN eigenvalues. Default is True.
+add_track : bool, optional
+    Whether to add eigenvector track below the heatmap. Default is False.
+**kwargs : dict
+    Additional keyword arguments passed to go.Heatmap.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    Plotly figure with trapezoid compartment heatmap.
+
+Examples
+--------
+>>> fig = plot_compartment_trapezoid(
+...     coolp="sample.cool",
+...     vec_file="eigvec.bedgraph",
+...     region="chr1",
+...     strata=50,
+...     title="chr1 compartment"
+... )
+>>> fig.show()
+
+
+**Source:** Line 1297 in [plot/hic.py](plot/hic.py#L1297)
+
+
+---
+
+
+### `plot_compartment_trapezoid_2tracks(coolp0: Union[str, Path], vec_file1: Union[str, Path], vec_file2: Union[str, Path], region: str, balance: bool=True, strata: int=20, title: str='TITLE', quant: float=0.01, minmax: str='min', cmap: str='RdBu_r', eigen_col: str='E1', fillna: bool=False, strip: bool=False, mask_eig_na: bool=True, vec_file0: Optional[Union[str, Path]]=None, coolp1: Optional[Union[str, Path]]=None, coolp2: Optional[Union[str, Path]]=None)`
+
+**Returns:** `go.Figure`
+
+
+Plot compartment trapezoid heatmap with two eigenvector tracks.
+
+This function creates a 3-row subplot layout using the Track architecture:
+- Row 1: Trapezoid compartment heatmap
+- Row 2: Eigenvector track 1 (e.g., sample 1)
+- Row 3: Eigenvector track 2 (e.g., sample 2 or reference)
+
+Args:
+    coolp0: Path to primary cooler file.
+    vec_file1: Path to first eigenvector file.
+    vec_file2: Path to second eigenvector file.
+    region: Genome region to plot (e.g., "chr1").
+    balance: Whether to use balanced cooler matrix. Default True.
+    strata: Number of rows to keep in the trapezoid. Default 20.
+    title: Plot title. Default "TITLE".
+    quant: Quantile for color scale clipping. Default 0.01.
+    minmax: How to compute color limits. Default "min".
+    cmap: Colormap name. Default "RdBu_r".
+    eigen_col: Column name for eigenvector values. Default "E1".
+    fillna: Whether to fill NaN values in the matrix. Default False.
+    strip: Whether to strip consecutive zeros. Default False.
+    mask_eig_na: Whether to mask NaN eigenvalues. Default True.
+    vec_file0: Path to eigenvector file for primary cooler. Default None (uses vec_file1).
+    coolp1: Path to second cooler file for eigenvector 1. Default None (uses coolp0).
+    coolp2: Path to third cooler file for eigenvector 2. Default None (uses coolp0).
+
+Returns:
+    go.Figure: Plotly figure with trapezoid heatmap and two eigenvector tracks.
+
+Example:
+    >>> fig = plot_compartment_trapezoid_2tracks_v2(
+    ...     coolp0="sperm.cool",
+    ...     vec_file1="sperm_eigvec.bedgraph",
+    ...     vec_file2="esc_eigvec.bedgraph",
+    ...     region="chr1",
+    ...     strata=50,
+    ...     title="Sperm vs ESC compartment"
+    ... )
+    >>> fig.show()
+
+
+**Source:** Line 1487 in [plot/hic.py](plot/hic.py#L1487)
 
 
 ---
@@ -7202,7 +7529,7 @@ Input:
     norm: whether to use lognorm.
 
 
-**Source:** Line 235 in [plot/hic.py](plot/hic.py#L235)
+**Source:** Line 238 in [plot/hic.py](plot/hic.py#L238)
 
 
 ---
@@ -7220,7 +7547,7 @@ Input:
     balance: whether to load balanced cooler matrix.
 
 
-**Source:** Line 380 in [plot/hic.py](plot/hic.py#L380)
+**Source:** Line 383 in [plot/hic.py](plot/hic.py#L383)
 
 
 ---
@@ -7242,7 +7569,7 @@ Input:
     kwargs: kwargs for _plot_mat.
 
 
-**Source:** Line 293 in [plot/hic.py](plot/hic.py#L293)
+**Source:** Line 296 in [plot/hic.py](plot/hic.py#L296)
 
 
 ---
@@ -7263,7 +7590,7 @@ Output:
     plot
 
 
-**Source:** Line 1102 in [plot/hic.py](plot/hic.py#L1102)
+**Source:** Line 929 in [plot/hic.py](plot/hic.py#L929)
 
 
 ---
@@ -7275,35 +7602,51 @@ Output:
 No documentation available.
 
 
-**Source:** Line 1088 in [plot/hic.py](plot/hic.py#L1088)
+**Source:** Line 915 in [plot/hic.py](plot/hic.py#L915)
 
 
 ---
 
 
-### `plot_tiling_compartment(coolps, eigs_files, region, title, corr=True, strip=True, balance=False, cmap='RdBu', donorm=False, Enames=['E1', 'E1'], eig_y_kwargs={})`
+### `plot_tiling_compartment(coolps: List[Union[str, Path]], eigs_files: List[Union[str, Path]], region: str, title: str='', corr: bool=True, strip: bool=True, balance: bool=False, cmap: str='RdBu', donorm: bool=False, Enames: List[str]=None)`
+
+**Returns:** `go.Figure`
 
 
-Plot 2 coolers in a upper-lower manner with compartment track data.
-First cooler will be on the lower triangle, second cooler will be on the upper triangle.
-Will ignore diagonal because their values can't be determined.
-Input:
-    coolps: list of cooler file paths.
-    eigs_files: list of eigen vector files.
-    region: genome region to plot.
-    title: name of the plot.
-    corr: whether to plot correlation matrix.
-    strip: whether to strip the consecutive 0s in the matrix.
-    balance: whether to load balanced cooler matrix.
-    cmap: color map.
-    donorm: whether to use lognorm.
-    Enames: col names of eigen
-Output:
-    plotly figure.
-TODO: rewrite with add_eig_track
+Plot two contact matrices in a tiling layout with eigenvector tracks.
+
+This function creates a 2x2 subplot layout where:
+- Top-left: Eigenvector track (vertical)
+- Top-right: Combined heatmap (upper triangle from matrix 2, lower from matrix 1)
+- Bottom-right: Eigenvector track (horizontal)
+
+Args:
+    coolps: List of two cooler file paths.
+    eigs_files: List of two eigenvector file paths.
+    region: Genomic region to plot (e.g., "chr1:1000000-5000000").
+    title: Figure title.
+    corr: Whether to plot correlation matrix. Default True.
+    strip: Whether to strip consecutive zero rows/columns. Default True.
+    balance: Whether to use balanced cooler matrix. Default False.
+    cmap: Colormap name. Default "RdBu".
+    donorm: Whether to use log normalization. Default False.
+    Enames: Column names for eigenvector values. Default ["E1", "E1"].
+    **args: Additional arguments passed to _plot_mat.
+
+Returns:
+    go.Figure: Plotly figure with tiling compartment plot.
+
+Example:
+    >>> fig = plot_tiling_compartment(
+    ...     coolps=["sample1.cool", "sample2.cool"],
+    ...     eigs_files=["eigs1.bedgraph", "eigs2.bedgraph"],
+    ...     region="chr1:1000000-5000000",
+    ...     title="Compartment Comparison"
+    ... )
+    >>> fig.show()
 
 
-**Source:** Line 696 in [plot/hic.py](plot/hic.py#L696)
+**Source:** Line 1661 in [plot/hic.py](plot/hic.py#L1661)
 
 
 ---
@@ -8413,7 +8756,7 @@ TODO:
 
 **File:** `plot/track.py`
 
-**Public functions:** 4
+**Public functions:** 17
 
 
 ### `add_chrom_grid(df, fig, fig_type='scatter', x_extra_expansion=0, y_extra_expansion=0.1, value_cols=None, range_y=None)`
@@ -8435,7 +8778,249 @@ Output:
     fig: plotly.graph_objs._figure.Figure, the figure with added grid lines.
 
 
-**Source:** Line 111 in [plot/track.py](plot/track.py#L111)
+**Source:** Line 628 in [plot/track.py](plot/track.py#L628)
+
+
+---
+
+
+### `data(self)`
+
+**Returns:** `Optional[pd.DataFrame]`
+
+
+Get the track's data.
+
+
+**Source:** Line 131 in [plot/track.py](plot/track.py#L131)
+
+
+---
+
+
+### `from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, config: Optional[TrackConfig]=None)`
+
+**Returns:** `'HeatmapTrack'`
+
+
+Create HeatmapTrack from pre-computed matrix.
+
+Args:
+    matrix: Contact matrix as numpy array.
+    bins: DataFrame with bin positions (chrom, start, end).
+    config: Optional TrackConfig.
+    **heatmap_kwargs: Additional parameters for go.Heatmap.
+
+Returns:
+    HeatmapTrack: New instance with pre-computed data.
+
+
+**Source:** Line 492 in [plot/track.py](plot/track.py#L492)
+
+
+---
+
+
+### `get_default_config(self)`
+
+**Returns:** `TrackConfig`
+
+
+Get default configuration for this track type.
+
+Returns:
+    TrackConfig: Default configuration.
+
+
+**Source:** Line 122 in [plot/track.py](plot/track.py#L122)
+
+
+---
+
+
+### `load_data(self)`
+
+
+Load and prepare data for the track.
+
+Args:
+    **kwargs: Data loading parameters (e.g., cooler, region).
+
+Returns:
+    self: Returns self for method chaining.
+
+
+**Source:** Line 96 in [plot/track.py](plot/track.py#L96)
+
+
+---
+
+
+### `load_data(self, clr: Cooler, region: str)`
+
+**Returns:** `'EigenTrack'`
+
+
+Load eigenvector data aligned with cooler bins.
+
+Args:
+    clr: Cooler object for bin information.
+    region: Genomic region (e.g., "chr1:1000000-5000000").
+
+Returns:
+    self: Returns self for method chaining.
+
+
+**Source:** Line 182 in [plot/track.py](plot/track.py#L182)
+
+
+---
+
+
+### `load_data(self, clr: Cooler, region: str)`
+
+**Returns:** `'ISTrack'`
+
+
+Load insulation score data aligned with cooler bins.
+
+Args:
+    clr: Cooler object for bin information.
+    region: Genomic region.
+
+Returns:
+    self: Returns self for method chaining.
+
+
+**Source:** Line 322 in [plot/track.py](plot/track.py#L322)
+
+
+---
+
+
+### `load_data(self, region: str, clr: Optional[Cooler]=None)`
+
+**Returns:** `'HeatmapTrack'`
+
+
+Load contact matrix from cooler file.
+
+Args:
+    region: Genomic region.
+    clr: Optional Cooler object. If not provided, will create from cool_path.
+
+Returns:
+    self: Returns self for method chaining.
+
+
+**Source:** Line 448 in [plot/track.py](plot/track.py#L448)
+
+
+---
+
+
+### `plot_gene_track(annotation_file: Union[str, Path], region: str, mode: str='all_transcripts', title: Optional[str]=None, height: int=400, width: int=1000, utr_height: float=0.3, exon_height: float=0.4, cds_height: float=0.6, row_spacing: float=0.2, show_labels: bool=True, label_font_size: int=10)`
+
+**Returns:** `go.Figure`
+
+
+Plot gene annotation track in genome browser style.
+
+This function creates a Plotly figure showing gene structures including
+exons, introns, CDS, and UTRs with strand direction indicators.
+
+Parameters
+----------
+annotation_file : str or Path
+    Path to GTF or GFF3 annotation file.
+region : str
+    Genomic region to display, e.g., "chr1:1000000-2000000".
+mode : str, optional
+    Display mode. Options:
+    - "all_transcripts": Show all transcripts for each gene
+    - "canonical": Show only canonical/longest transcript per gene
+    - "gene_only": Show collapsed gene models (one row per gene)
+    Default is "all_transcripts".
+title : str, optional
+    Plot title. If None, uses region as title.
+height : int, optional
+    Figure height in pixels. Default is 400.
+width : int, optional
+    Figure width in pixels. Default is 1000.
+utr_height : float, optional
+    Relative height of UTR boxes (0-1). Default is 0.30.
+exon_height : float, optional
+    Relative height of exon boxes (0-1). Default is 0.40.
+cds_height : float, optional
+    Relative height of CDS boxes (0-1). Default is 0.60.
+row_spacing : float, optional
+    Spacing between transcript rows. Default is 0.2.
+show_labels : bool, optional
+    Whether to show gene/transcript labels. Default is True.
+label_font_size : int, optional
+    Font size for labels. Default is 10.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    Plotly figure with gene track visualization.
+
+Examples
+--------
+>>> fig = plot_gene_track(
+...     annotation_file="annotations.gtf",
+...     region="chr1:1000000-2000000",
+...     mode="all_transcripts",
+...     title="Gene Track Example"
+... )
+>>> fig.show()
+
+Notes
+-----
+TODO: Strand direction arrows are currently disabled pending improved
+implementation. Planned improvements include:
+- Fishbone-style arrows instead of solid triangles
+- Proper direction rendering for both + and - strands
+- Better visual integration with exon/intron structures
+
+
+**Source:** Line 1041 in [plot/track.py](plot/track.py#L1041)
+
+
+---
+
+
+### `plot_gene_track_with_heatmap(annotation_file: Union[str, Path], region: str, heatmap_data: Optional[pd.DataFrame]=None, heatmap_title: Optional[str]=None, gene_track_height: int=300, heatmap_height: int=400)`
+
+**Returns:** `go.Figure`
+
+
+Plot gene track below a heatmap (e.g., Hi-C contact matrix).
+
+Parameters
+----------
+annotation_file : str or Path
+    Path to GTF or GFF3 annotation file.
+region : str
+    Genomic region to display.
+heatmap_data : pd.DataFrame, optional
+    Heatmap data (e.g., contact matrix). If None, only gene track is shown.
+heatmap_title : str, optional
+    Title for heatmap subplot.
+gene_track_height : int, optional
+    Height of gene track subplot. Default is 300.
+heatmap_height : int, optional
+    Height of heatmap subplot. Default is 400.
+**kwargs
+    Additional arguments passed to plot_gene_track.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    Combined figure with heatmap and gene track.
+
+
+**Source:** Line 1242 in [plot/track.py](plot/track.py#L1242)
 
 
 ---
@@ -8453,7 +9038,7 @@ Output:
     fig: plotly.graph_objs._figure.Figure
 
 
-**Source:** Line 77 in [plot/track.py](plot/track.py#L77)
+**Source:** Line 594 in [plot/track.py](plot/track.py#L594)
 
 
 ---
@@ -8478,7 +9063,97 @@ Output:
     fig: plotly.graph_objs._figure.Figure
 
 
-**Source:** Line 26 in [plot/track.py](plot/track.py#L26)
+**Source:** Line 543 in [plot/track.py](plot/track.py#L543)
+
+
+---
+
+
+### `render(self, fig, row: int, col: int)`
+
+
+Render the track onto a figure.
+
+Args:
+    fig: Plotly figure to add traces to.
+    row: Row position in subplot grid.
+    col: Column position in subplot grid.
+    **kwargs: Additional rendering parameters.
+
+Returns:
+    fig: Modified figure with track added.
+
+
+**Source:** Line 108 in [plot/track.py](plot/track.py#L108)
+
+
+---
+
+
+### `render(self, fig, row: int, col: int)`
+
+**Returns:** `go.Figure`
+
+
+Render eigenvector track as bar plot.
+
+Args:
+    fig: Plotly figure to add traces to.
+    row: Row position in subplot grid.
+    col: Column position in subplot grid.
+    **kwargs: Additional parameters (width, showlegend, etc.).
+
+Returns:
+    fig: Modified figure with track added.
+
+
+**Source:** Line 207 in [plot/track.py](plot/track.py#L207)
+
+
+---
+
+
+### `render(self, fig, row: int, col: int)`
+
+**Returns:** `go.Figure`
+
+
+Render insulation score track as line plot.
+
+Args:
+    fig: Plotly figure to add traces to.
+    row: Row position in subplot grid.
+    col: Column position in subplot grid.
+    **kwargs: Additional parameters (line width, etc.).
+
+Returns:
+    fig: Modified figure with track added.
+
+
+**Source:** Line 345 in [plot/track.py](plot/track.py#L345)
+
+
+---
+
+
+### `render(self, fig, row: int, col: int)`
+
+**Returns:** `go.Figure`
+
+
+Render contact matrix as heatmap.
+
+Args:
+    fig: Plotly figure to add traces to.
+    row: Row position in subplot grid.
+    col: Column position in subplot grid.
+    **kwargs: Additional parameters for go.Heatmap.
+
+Returns:
+    fig: Modified figure with track added.
+
+
+**Source:** Line 466 in [plot/track.py](plot/track.py#L466)
 
 
 ---
@@ -8490,7 +9165,222 @@ Output:
 No documentation available.
 
 
-**Source:** Line 8 in [plot/track.py](plot/track.py#L8)
+**Source:** Line 525 in [plot/track.py](plot/track.py#L525)
+
+
+---
+
+
+## plot.track_composer
+
+**File:** `plot/track_composer.py`
+
+**Public functions:** 8
+
+
+### `add_track(self, track: 'Track', row: int, col: int, height_ratio: Optional[float]=None)`
+
+**Returns:** `'TrackComposer'`
+
+
+Add a track to the composer at specified position.
+
+Args:
+    track: Track instance to add.
+    row: Row position (1-indexed).
+    col: Column position (1-indexed).
+    height_ratio: Optional height ratio override for the track's row.
+
+Returns:
+    self: Returns self for method chaining.
+
+Example:
+    >>> eigen = EigenTrack("sample.vecs")
+    >>> composer.add_track(eigen, row=2, col=1)
+
+
+**Source:** Line 100 in [plot/track_composer.py](plot/track_composer.py#L100)
+
+
+---
+
+
+### `build(self, region: str, title: str='', clr: Optional['Cooler']=None)`
+
+**Returns:** `Figure`
+
+
+Build the complete figure with all tracks.
+
+Args:
+    region: Genomic region for all tracks (e.g., "chr1:1000000-5000000").
+    title: Figure title.
+    clr: Optional Cooler object shared across tracks.
+    **layout_kwargs: Additional layout parameters.
+
+Returns:
+    Figure: Assembled plotly figure.
+
+Raises:
+    ValueError: If no tracks have been added.
+
+Example:
+    >>> fig = composer.build(
+    ...     region="chr1:1000000-5000000",
+    ...     title="Hi-C Analysis"
+    ... )
+
+
+**Source:** Line 131 in [plot/track_composer.py](plot/track_composer.py#L131)
+
+
+---
+
+
+### `fig(self)`
+
+**Returns:** `Optional[Figure]`
+
+
+Get the assembled figure.
+
+Returns:
+    The assembled plotly figure, or None if build() has not been called.
+
+
+**Source:** Line 335 in [plot/track_composer.py](plot/track_composer.py#L335)
+
+
+---
+
+
+### `for_heatmap_with_tracks(cls, n_tracks: int, heatmap_height: float=10, track_height: float=2)`
+
+**Returns:** `'TrackComposer'`
+
+
+Create composer for heatmap with multiple tracks below.
+
+Creates a vertical layout with heatmap on top and specified
+number of tracks below.
+
+Args:
+    n_tracks: Number of tracks below the heatmap.
+    heatmap_height: Relative height of heatmap row. Default 10.
+    track_height: Relative height of each track row. Default 2.
+    **kwargs: Additional LayoutConfig parameters.
+
+Returns:
+    TrackComposer: Configured composer instance.
+
+Example:
+    >>> composer = TrackComposer.for_heatmap_with_tracks(n_tracks=3)
+    >>> composer.add_track(heatmap, row=1, col=1)
+    >>> composer.add_track(track1, row=2, col=1)
+    >>> composer.add_track(track2, row=3, col=1)
+    >>> composer.add_track(track3, row=4, col=1)
+
+
+**Source:** Line 296 in [plot/track_composer.py](plot/track_composer.py#L296)
+
+
+---
+
+
+### `for_tiling_compartment(cls, row_heights: Optional[List[float]]=None, col_widths: Optional[List[float]]=None)`
+
+**Returns:** `'TrackComposer'`
+
+
+Create composer for tiling compartment layout.
+
+Creates a 2x2 grid optimized for displaying two triangular
+contact matrices with eigenvector tracks on left and bottom.
+
+Args:
+    row_heights: Optional override for row heights. Default [10, 1].
+    col_widths: Optional override for column widths. Default [1, 10].
+    **kwargs: Additional LayoutConfig parameters.
+
+Returns:
+    TrackComposer: Configured composer instance.
+
+Example:
+    >>> composer = TrackComposer.for_tiling_compartment()
+    >>> composer.add_track(heatmap, row=1, col=2)
+    >>> composer.add_track(eigen_left, row=1, col=1)
+    >>> composer.add_track(eigen_bottom, row=2, col=2)
+
+
+**Source:** Line 226 in [plot/track_composer.py](plot/track_composer.py#L226)
+
+
+---
+
+
+### `for_trapezoid_2tracks(cls, row_heights: Optional[List[float]]=None)`
+
+**Returns:** `'TrackComposer'`
+
+
+Create composer for trapezoid heatmap with two tracks.
+
+Creates a 3-row vertical layout for trapezoid compartment
+heatmap with two eigenvector tracks below.
+
+Args:
+    row_heights: Optional override for row heights. Default [6, 2, 2].
+    **kwargs: Additional LayoutConfig parameters.
+
+Returns:
+    TrackComposer: Configured composer instance.
+
+Example:
+    >>> composer = TrackComposer.for_trapezoid_2tracks()
+    >>> composer.add_track(trapezoid, row=1, col=1)
+    >>> composer.add_track(eigen1, row=2, col=1)
+    >>> composer.add_track(eigen2, row=3, col=1)
+
+
+**Source:** Line 262 in [plot/track_composer.py](plot/track_composer.py#L262)
+
+
+---
+
+
+### `get_track(self, row: int, col: int)`
+
+**Returns:** `Optional['Track']`
+
+
+Get track at specified position.
+
+Args:
+    row: Row position.
+    col: Column position.
+
+Returns:
+    Track at position, or None if no track exists.
+
+
+**Source:** Line 343 in [plot/track_composer.py](plot/track_composer.py#L343)
+
+
+---
+
+
+### `list_tracks(self)`
+
+**Returns:** `List[Tuple[int, int, str]]`
+
+
+List all tracks with their positions.
+
+Returns:
+    List of (row, col, track_name) tuples.
+
+
+**Source:** Line 355 in [plot/track_composer.py](plot/track_composer.py#L355)
 
 
 ---
@@ -8570,7 +9460,7 @@ FROM: https://community.plotly.com/t/set-axis-range-to-match-data/93168/3
 计算两个色相之间的最短差值（考虑环形特性）
 
 
-**Source:** Line 397 in [plot/utils.py](plot/utils.py#L397)
+**Source:** Line 405 in [plot/utils.py](plot/utils.py#L405)
 
 
 ---
@@ -8591,7 +9481,7 @@ Output:
     list of expanded colors
 
 
-**Source:** Line 439 in [plot/utils.py](plot/utils.py#L439)
+**Source:** Line 447 in [plot/utils.py](plot/utils.py#L447)
 
 
 ---
@@ -8610,7 +9500,7 @@ Output:
     List[tuple]: 扩展后的颜色序列，每个颜色为 (r, g, b) 的整数元组，范围 0~255。
 
 
-**Source:** Line 470 in [plot/utils.py](plot/utils.py#L470)
+**Source:** Line 478 in [plot/utils.py](plot/utils.py#L478)
 
 
 ---
@@ -8655,7 +9545,7 @@ Fig1a -> output/Fig.1a_
 Fig1Sb -> output/Extended_Data_Fig.1b_
 
 
-**Source:** Line 550 in [plot/utils.py](plot/utils.py#L550)
+**Source:** Line 558 in [plot/utils.py](plot/utils.py#L558)
 
 
 ---
@@ -8670,7 +9560,7 @@ Fig1Sb -> output/Extended_Data_Fig.1b_
 :return: 一个元组 (R, G, B, A)，其中 A 是可选的透明度分量
 
 
-**Source:** Line 369 in [plot/utils.py](plot/utils.py#L369)
+**Source:** Line 377 in [plot/utils.py](plot/utils.py#L377)
 
 
 ---
@@ -8688,7 +9578,7 @@ Fig1Sb -> output/Extended_Data_Fig.1b_
     tuple: 三元组 (r, g, b)，其中 r, g, b 分别为红、绿、蓝通道的值 (0-255)
 
 
-**Source:** Line 335 in [plot/utils.py](plot/utils.py#L335)
+**Source:** Line 343 in [plot/utils.py](plot/utils.py#L343)
 
 
 ---
@@ -8709,7 +9599,7 @@ Output:
     list of n interpolated colors
 
 
-**Source:** Line 408 in [plot/utils.py](plot/utils.py#L408)
+**Source:** Line 416 in [plot/utils.py](plot/utils.py#L416)
 
 
 ---
@@ -8740,7 +9630,7 @@ TODO:
 #    matrix
 
 
-**Source:** Line 257 in [plot/utils.py](plot/utils.py#L257)
+**Source:** Line 265 in [plot/utils.py](plot/utils.py#L265)
 
 
 ---
@@ -8752,7 +9642,7 @@ TODO:
 Helper to plot a matrix with 45 degree angle.
 
 
-**Source:** Line 241 in [plot/utils.py](plot/utils.py#L241)
+**Source:** Line 249 in [plot/utils.py](plot/utils.py#L249)
 
 
 ---
@@ -8768,7 +9658,7 @@ Args:
     output_file (str, optional): Path to save the plot as an image. If None, the plot is shown.
 
 
-**Source:** Line 299 in [plot/utils.py](plot/utils.py#L299)
+**Source:** Line 307 in [plot/utils.py](plot/utils.py#L307)
 
 
 ---
@@ -8780,7 +9670,7 @@ Args:
 No documentation available.
 
 
-**Source:** Line 540 in [plot/utils.py](plot/utils.py#L540)
+**Source:** Line 548 in [plot/utils.py](plot/utils.py#L548)
 
 
 ---
@@ -8800,7 +9690,7 @@ No documentation available.
     str: 十六进制颜色字符串，例如 "#4C78A8"
 
 
-**Source:** Line 349 in [plot/utils.py](plot/utils.py#L349)
+**Source:** Line 357 in [plot/utils.py](plot/utils.py#L357)
 
 
 ---
@@ -8820,7 +9710,7 @@ TODO:
     add random shift
 
 
-**Source:** Line 279 in [plot/utils.py](plot/utils.py#L279)
+**Source:** Line 287 in [plot/utils.py](plot/utils.py#L287)
 
 
 ---
@@ -8838,7 +9728,7 @@ Output:
     mat: matrix with only the regions in keep_regions
 
 
-**Source:** Line 216 in [plot/utils.py](plot/utils.py#L216)
+**Source:** Line 224 in [plot/utils.py](plot/utils.py#L224)
 
 
 ---

@@ -39,14 +39,16 @@ python scripts/generate_api_reference.py
 | **hicio** | 31 | I/O and file parsing |
 | **plot.render** | 27 | Visualization rendering |
 | **phasing** | 21 | Cell cycle analysis |
+| **plot.hic** | 22 | Hi-C heatmap plotting |
+| **plot.track** | 17 | Track-based visualization (Heatmap, Eigen, IS, Gene) |
 | **plot.utils** | 20 | Plotting utilities |
-| **plot.hic** | 18 | Hi-C heatmap plotting |
 | **data** | 18 | Data structures |
 | **TI.slingshot** | 22 | Trajectory inference (Slingshot) |
 | **TI.slingshot.plot** | 3 | Plotly visualization (PNG) |
 | **TI.circle** | 1 | Pseudotime baseline (circular) |
 | **plot.plotly_template** | 1 | Plotly style template |
 | **interpolate** | 8 | GP interpolation & grid methods |
+| **plot.gene_track_parser** | 6 | GTF/GFF3 parsing for gene annotation |
 
 ## 💻 Code Snippets
 
@@ -195,6 +197,113 @@ fig = apply_template(fig, title="My Plot", width=800, height=600)
 fig.write_image("output.png")
 ```
 
+### Track Architecture (Modular Visualization)
+```python
+from hic_basic.plot.track import HeatmapTrack, EigenTrack, ISTrack, GeneTrack, TrackComposer
+
+# Create individual tracks
+heatmap = HeatmapTrack(cool_path="sample.cool", region="chr1:0-10000000")
+eigen = EigenTrack(eig_file="eigvec.bedgraph")
+is_track = ISTrack(insulation_file="IS.csv")
+gene = GeneTrack(gtf_file="annotation.gtf", region="chr1:0-10000000")
+
+# Compose multi-track figure
+composer = TrackComposer(tracks=[heatmap, eigen, gene])
+fig = composer.render(title="Multi-track View")
+fig.write_html("output.html")
+```
+
+### Compartment Trapezoid Plot (Rotated Heatmap)
+```python
+from hic_basic.plot.hic import plot_compartment_trapezoid, plot_compartment_trapezoid_2tracks
+
+# Single trapezoid heatmap
+fig = plot_compartment_trapezoid(
+    coolp="sample.cool",
+    vec_file="eigvec.bedgraph",
+    region="chr1",
+    strata=50,  # height of trapezoid
+    title="chr1 compartment"
+)
+fig.show()
+
+# Two-track comparison (trapezoid + 2 eigenvector tracks)
+fig = plot_compartment_trapezoid_2tracks(
+    coolp0="sperm.cool",
+    vec_file1="sperm_eigvec.bedgraph",
+    vec_file2="esc_eigvec.bedgraph",
+    region="chr1",
+    strata=50,
+    title="Sperm vs ESC compartment"
+)
+fig.write_html("compartment_comparison.html")
+```
+
+### Tiling Compartment Plot (Track Architecture v2)
+```python
+from hic_basic.plot.hic import plot_tiling_compartment
+
+# 2x2 tiling layout: eigen tracks + combined heatmap
+fig = plot_tiling_compartment(
+    coolps=["sample1.cool", "sample2.cool"],
+    eigs_files=["eigs1.bedgraph", "eigs2.bedgraph"],
+    region="chr1:1000000-5000000",
+    title="Compartment Comparison",
+    corr=True  # show correlation matrix
+)
+fig.write_html("tiling_compartment.html")
+```
+
+### Gene Track Visualization (GTF/GFF3)
+```python
+from hic_basic.plot.track import plot_gene_track, plot_gene_track_with_heatmap
+
+# Plot gene annotation track
+fig = plot_gene_track(
+    annotation_file="gencode.gtf",
+    region="chr1:100000-200000",
+    mode="all_transcripts",  # or "gene_only"
+    title="Gene Annotation",
+    height=400,
+    width=1000
+)
+fig.write_html("gene_track.html")
+
+# Combined gene track + heatmap
+fig = plot_gene_track_with_heatmap(
+    cool_path="sample.cool",
+    annotation_file="gencode.gtf",
+    region="chr1:100000-200000",
+    title="Hi-C + Gene Annotation"
+)
+fig.show()
+```
+
+### Parse GTF/GFF3 Files
+```python
+from hic_basic.plot.gene_track_parser import parse_annotation_file, filter_genes_in_region
+
+# Auto-detect format (GTF or GFF3)
+genes = parse_annotation_file("annotation.gtf")
+
+# Filter genes in specific region
+region_genes = filter_genes_in_region(
+    genes,
+    seqid="chr1",
+    start=100000,
+    end=200000,
+    padding=10000
+)
+
+# Access gene structure
+for gene_id, gene in region_genes.items():
+    print(f"{gene_id}: {gene.start}-{gene.end}")
+    for tx in gene.transcripts:
+        print(f"  Transcript: {tx.transcript_id}")
+        print(f"    Exons: {len(tx.exons)}")
+        print(f"    CDS: {len(tx.cds)}")
+```
+
 ### Update Documentation
 ```bash
 # 1. Edit code and docstrings
@@ -242,9 +351,9 @@ def example_function(param1: str, param2: int = 10) -> pd.DataFrame:
 
 ## 📊 Statistics
 
-- **85** modules documented
-- **600+** public functions
-- **~12,000** lines of documentation
+- **90** modules documented
+- **639** public functions
+- **~13,000** lines of documentation
 - **Auto-generated** from source
 
 ## 🎓 Learning Path
