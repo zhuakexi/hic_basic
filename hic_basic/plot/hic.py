@@ -1484,15 +1484,16 @@ def plot_compartment_trapezoid(
     fillna=False,
     strip=False,
     mask_eig_na=True,
+    add_track=False,
     **kwargs
 ):
     """
     Plot compartment heatmap as a trapezoid shape by rotating the square contact matrix 45 degrees.
-    
+
     This function extracts the compartment signal from a cooler file and eigenvector track,
     rotates the contact matrix by 45 degrees, and displays a trapezoidal region showing the
     compartment pattern.
-    
+
     Parameters
     ----------
     coolp : str or Path
@@ -1521,14 +1522,16 @@ def plot_compartment_trapezoid(
         Whether to strip consecutive zeros. Default is False.
     mask_eig_na : bool, optional
         Whether to mask NaN eigenvalues. Default is True.
+    add_track : bool, optional
+        Whether to add eigenvector track below the heatmap. Default is False.
     **kwargs : dict
         Additional keyword arguments passed to go.Heatmap.
-        
+
     Returns
     -------
     plotly.graph_objects.Figure
         Plotly figure with trapezoid compartment heatmap.
-        
+
     Examples
     --------
     >>> fig = plot_compartment_trapezoid(
@@ -1540,6 +1543,9 @@ def plot_compartment_trapezoid(
     ... )
     >>> fig.show()
     """
+    from plotly.subplots import make_subplots
+    import plotly.express as px
+
     square_fig, cmat, extent, eig_dat1 = plot_compartment(
         coolp,
         vec_file,
@@ -1567,7 +1573,7 @@ def plot_compartment_trapezoid(
         trapezoid = df.iloc[N // 2 : N // 2 + strata, :]
     else:
         trapezoid = df.iloc[N // 2 + 1 : N // 2 + strata, :]
-    
+
     default_kwargs = {}
     if isinstance(extent, tuple):
         default_kwargs["zmin"] = extent[0]
@@ -1576,21 +1582,81 @@ def plot_compartment_trapezoid(
         default_kwargs["zmin"] = -extent
         default_kwargs["zmax"] = extent
     kwargs = {**default_kwargs, **kwargs}
-    
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=trapezoid,
-            colorscale=cmap,
-            **kwargs
+
+    if add_track:
+        # Create subplot with track
+        fig = make_subplots(
+            rows=2,
+            cols=1,
+            row_heights=[0.7, 0.3],
+            vertical_spacing=0.05,
+            shared_xaxes=False
         )
-    )
-    fig.update_layout(
-        plot_bgcolor="white",
-        height=trapezoid.shape[0] * 5,
-        width=trapezoid.shape[1] * 5,
-        xaxis=dict(domain=[0.1, 0.9]),
-        yaxis=dict(domain=[0.1, 0.9])
-    )
+
+        # Add heatmap
+        fig.add_trace(
+            go.Heatmap(
+                z=trapezoid,
+                colorscale=cmap,
+                **kwargs
+            ),
+            row=1, col=1
+        )
+
+        # Add eigenvector track
+        bar_width = eig_dat1["start"].diff().mode()[0]
+        eig_dat1 = eig_dat1.assign(
+            AB=lambda df: np.where(df[eigen_col] < 0, "B", "A")
+        )
+        eig_fig = px.bar(
+            eig_dat1,
+            x="start",
+            y=eigen_col,
+            color="AB",
+            color_discrete_map={"B": 'rgb(33,102,172)', "A": 'rgb(178,24,43)'},
+        )
+        eig_fig.update_traces(
+            showlegend=False,
+            width=bar_width,
+            marker=dict(line=dict(width=0, color="purple"))
+        )
+        for trace in eig_fig.data:
+            fig.add_trace(trace, row=2, col=1)
+
+        # Update layout
+        fig.update_layout(
+            plot_bgcolor="white",
+            height=700,
+            width=trapezoid.shape[1] * 5,
+            title=title
+        )
+        fig.update_yaxes(
+            range=[-0.5, 0.5],
+            showline=True,
+            linecolor="black",
+            ticks="",
+            tickvals=[-0.5, 0.5],
+            row=2, col=1
+        )
+        fig.update_xaxes(visible=False, row=1, col=1)
+    else:
+        # Original single heatmap only
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=trapezoid,
+                colorscale=cmap,
+                **kwargs
+            )
+        )
+        fig.update_layout(
+            plot_bgcolor="white",
+            height=trapezoid.shape[0] * 5,
+            width=trapezoid.shape[1] * 5,
+            xaxis=dict(domain=[0.1, 0.9]),
+            yaxis=dict(domain=[0.1, 0.9]),
+            title=title
+        )
+
     return fig
 
 

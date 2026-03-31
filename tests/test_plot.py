@@ -289,7 +289,7 @@ class TestCompartmentTrapezoid(unittest.TestCase):
         Generates PNG output for manual inspection.
         """
         out_png = self.outdir / "plot_compartment_trapezoid.png"
-        
+
         fig = plot_compartment_trapezoid(
             coolp=str(self.synthetic_cool),
             vec_file=str(self.synthetic_eigs1),
@@ -298,9 +298,10 @@ class TestCompartmentTrapezoid(unittest.TestCase):
             title="Visual Test: Compartment Trapezoid",
             balance=False,
             cmap="RdBu_r",
+            add_track=True,  # Add eigenvector track
         )
-        
-        fig.write_image(str(out_png), width=800, height=600)
+
+        fig.write_image(str(out_png), width=800, height=800)
         self.assertTrue(out_png.exists())
         print(f"Visual test output: {out_png}")
 
