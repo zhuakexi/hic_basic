@@ -14,6 +14,7 @@ from cooler import Cooler
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from plotly.subplots import make_subplots
+from scipy.ndimage import rotate
 from skimage import exposure
 #import cooltools.lib.plotting
 
@@ -1462,3 +1463,315 @@ def _plot_ps_curve(cvd_merged, der, xlim=(1e3,1e8)):
 
     ax.grid(lw=0.5)
     return f, ax
+
+
+### --- compartment trapezoid plot --- ###
+
+
+def plot_compartment_trapezoid(
+    coolp,
+    vec_file,
+    region,
+    balance=True,
+    strata=20,
+    title="TITLE",
+    quant=0.01,
+    minmax="min",
+    cmap="RdBu_r",
+    eigen_col="E1",
+    fillna=False,
+    strip=False,
+    mask_eig_na=True,
+    **kwargs
+):
+    """
+    Plot compartment heatmap as a trapezoid shape by rotating the square contact matrix 45 degrees.
+    
+    This function extracts the compartment signal from a cooler file and eigenvector track,
+    rotates the contact matrix by 45 degrees, and displays a trapezoidal region showing the
+    compartment pattern.
+    
+    Parameters
+    ----------
+    coolp : str or Path
+        Path to cooler file.
+    vec_file : str or Path
+        Path to eigenvector file (e.g., from cooltools compartment calling).
+    region : str
+        Genome region to plot, e.g., "chr1" or "chr1:1000000-2000000".
+    balance : bool, optional
+        Whether to use balanced cooler matrix. Default is True.
+    strata : int, optional
+        Number of rows to keep in the trapezoid (height of the trapezoid). Default is 20.
+    title : str, optional
+        Plot title. Default is "TITLE".
+    quant : float, optional
+        Quantile for color scale clipping. Default is 0.01.
+    minmax : str or None, optional
+        How to compute color limits. Default is "min".
+    cmap : str, optional
+        Colormap name. Default is "RdBu_r".
+    eigen_col : str, optional
+        Column name for eigenvector values. Default is "E1".
+    fillna : bool, optional
+        Whether to fill NaN values in the matrix. Default is False.
+    strip : bool, optional
+        Whether to strip consecutive zeros. Default is False.
+    mask_eig_na : bool, optional
+        Whether to mask NaN eigenvalues. Default is True.
+    **kwargs : dict
+        Additional keyword arguments passed to go.Heatmap.
+        
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Plotly figure with trapezoid compartment heatmap.
+        
+    Examples
+    --------
+    >>> fig = plot_compartment_trapezoid(
+    ...     coolp="sample.cool",
+    ...     vec_file="eigvec.bedgraph",
+    ...     region="chr1",
+    ...     strata=50,
+    ...     title="chr1 compartment"
+    ... )
+    >>> fig.show()
+    """
+    square_fig, cmat, extent, eig_dat1 = plot_compartment(
+        coolp,
+        vec_file,
+        region=region,
+        eigen_col=eigen_col,
+        balance=balance,
+        title=title,
+        strip=strip,
+        mask_eig_na=mask_eig_na,
+        fillna=fillna,
+        give_mat=True,
+        quant=quant,
+        minmax=minmax,
+        eq_hist=False,
+        cmap=cmap,
+        ignore_diags=False
+    )
+    min_v = cmat.min().min()
+    cmat = cmat.fillna(min_v - 100)
+    r_cmat = rotate(cmat, 45, cval=np.nan, order=1)
+    r_cmat[r_cmat < min_v - 0.5] = np.nan
+    df = pd.DataFrame(r_cmat)
+    N = df.shape[0]
+    if N % 2 == 0:
+        trapezoid = df.iloc[N // 2 : N // 2 + strata, :]
+    else:
+        trapezoid = df.iloc[N // 2 + 1 : N // 2 + strata, :]
+    
+    default_kwargs = {}
+    if isinstance(extent, tuple):
+        default_kwargs["zmin"] = extent[0]
+        default_kwargs["zmax"] = extent[1]
+    else:
+        default_kwargs["zmin"] = -extent
+        default_kwargs["zmax"] = extent
+    kwargs = {**default_kwargs, **kwargs}
+    
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=trapezoid,
+            colorscale=cmap,
+            **kwargs
+        )
+    )
+    fig.update_layout(
+        plot_bgcolor="white",
+        height=trapezoid.shape[0] * 5,
+        width=trapezoid.shape[1] * 5,
+        xaxis=dict(domain=[0.1, 0.9]),
+        yaxis=dict(domain=[0.1, 0.9])
+    )
+    return fig
+
+
+def plot_compartment_trapezoid_2tracks(
+    coolp0,
+    vec_file1,
+    vec_file2,
+    region,
+    balance=True,
+    strata=20,
+    title="TITLE",
+    quant=0.01,
+    minmax="min",
+    cmap="RdBu_r",
+    eigen_col="E1",
+    fillna=False,
+    strip=False,
+    mask_eig_na=True,
+    vec_file0=None,
+    coolp1=None,
+    coolp2=None
+):
+    """
+    Plot compartment trapezoid heatmap with two eigenvector tracks below.
+    
+    This function creates a 3-row subplot:
+    - Row 1: Trapezoid compartment heatmap
+    - Row 2: Eigenvector track 1 (e.g., sample 1)
+    - Row 3: Eigenvector track 2 (e.g., sample 2 or reference)
+    
+    Parameters
+    ----------
+    coolp0 : str or Path
+        Path to primary cooler file.
+    vec_file1 : str or Path
+        Path to first eigenvector file.
+    vec_file2 : str or Path
+        Path to second eigenvector file.
+    region : str
+        Genome region to plot, e.g., "chr1".
+    balance : bool, optional
+        Whether to use balanced cooler matrix. Default is True.
+    strata : int, optional
+        Number of rows to keep in the trapezoid. Default is 20.
+    title : str, optional
+        Plot title. Default is "TITLE".
+    quant : float, optional
+        Quantile for color scale clipping. Default is 0.01.
+    minmax : str or None, optional
+        How to compute color limits. Default is "min".
+    cmap : str, optional
+        Colormap name. Default is "RdBu_r".
+    eigen_col : str, optional
+        Column name for eigenvector values. Default is "E1".
+    fillna : bool, optional
+        Whether to fill NaN values in the matrix. Default is False.
+    strip : bool, optional
+        Whether to strip consecutive zeros. Default is False.
+    mask_eig_na : bool, optional
+        Whether to mask NaN eigenvalues. Default is True.
+    vec_file0 : str or Path, optional
+        Path to eigenvector file for the primary cooler. If None, uses vec_file1.
+    coolp1 : str or Path, optional
+        Path to second cooler file for eigenvector 1. If None, uses coolp0.
+    coolp2 : str or Path, optional
+        Path to third cooler file for eigenvector 2. If None, uses coolp0.
+        
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Plotly figure with trapezoid heatmap and two eigenvector tracks.
+        
+    Examples
+    --------
+    >>> fig = plot_compartment_trapezoid_2tracks(
+    ...     coolp0="sperm.cool",
+    ...     vec_file1="sperm_eigvec.bedgraph",
+    ...     vec_file2="esc_eigvec.bedgraph",
+    ...     region="chr1",
+    ...     strata=50,
+    ...     title="Sperm vs ESC compartment"
+    ... )
+    >>> fig.show()
+    """
+    if vec_file0 is None:
+        vec_file0 = vec_file1
+    
+    eig_dats = []
+    for i, (vec_file, coolp) in enumerate(zip(
+        [vec_file0, vec_file1, vec_file2],
+        [coolp0, coolp1, coolp2]
+    )):
+        if coolp is None:
+            coolp = coolp0
+        _square_fig, _cmat, _extent, eig_dat = plot_compartment(
+            coolp,
+            vec_file,
+            region=region,
+            eigen_col=eigen_col,
+            balance=balance,
+            title=title,
+            strip=strip,
+            mask_eig_na=mask_eig_na,
+            fillna=fillna,
+            give_mat=True,
+            quant=quant,
+            minmax=minmax,
+            eq_hist=False,
+            cmap=cmap,
+            ignore_diags=False
+        )
+        if i == 0:
+            square_fig = _square_fig
+            cmat = _cmat.copy()
+            extent = _extent
+        else:
+            eig_dats.append(eig_dat)
+    
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=False,
+        shared_yaxes=False,
+        vertical_spacing=0.05,
+        row_heights=[0.6, 0.2, 0.2]
+    )
+    
+    # Add heatmap
+    heatmap = plot_compartment_trapezoid(
+        coolp0, vec_file0, region, balance, strata, title,
+        quant, minmax, cmap, eigen_col, fillna, strip, mask_eig_na
+    )
+    fig.add_trace(heatmap.data[0], row=1, col=1)
+    
+    # Add tracks
+    for i, eig_dat in enumerate(eig_dats):
+        eigs_fig = px.bar(
+            eig_dat,
+            x="start",
+            y=eigen_col,
+            color="AB",
+            color_discrete_map={"B": 'rgb(33,102,172)', "A": 'rgb(178,24,43)'},
+        )
+        bar_width = eig_dat["start"].diff().mode()[0]
+        eigs_fig.update_traces(
+            showlegend=False,
+            width=bar_width
+        )
+        for trace in eigs_fig.data:
+            fig.add_trace(trace, row=i + 2, col=1)
+    
+    # Update barplot styling
+    fig.update_traces(
+        selector=dict(type="bar"),
+        marker=dict(
+            line=dict(color="purple", width=0)
+        )
+    )
+    
+    # Update axes
+    for row in range(1, 4):
+        if row in [2, 3]:
+            fig.update_yaxes(range=[-0.5, 0.5], row=row, col=1)
+        if row != 3:
+            fig.update_xaxes(visible=False, row=row, col=1)
+        else:
+            fig.update_xaxes(title="Genomic Position", row=row, col=1)
+        if row == 1:
+            fig.update_yaxes(visible=False, row=row, col=1)
+        else:
+            fig.update_yaxes(
+                title="E1",
+                showline=True,
+                linewidth=1,
+                linecolor="black",
+                row=row,
+                col=1
+            )
+    
+    fig.update_layout(
+        title=title,
+        plot_bgcolor="white",
+        height=500,
+        width=700
+    )
+    return fig

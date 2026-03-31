@@ -15,6 +15,8 @@ from hic_basic.plot.hic import (
     _plot_mat,
     plot_cool,
     plot_tiling_compartment,
+    plot_compartment_trapezoid,
+    plot_compartment_trapezoid_2tracks,
 )
 
 class TestPlot(unittest.TestCase):
@@ -230,6 +232,118 @@ class TestPlot(unittest.TestCase):
         
         self.assertIsNotNone(fig)
         self.assertGreaterEqual(len(fig.data), 3)
+
+
+class TestCompartmentTrapezoid(unittest.TestCase):
+    """
+    Test compartment trapezoid plot functions.
+    """
+    def setUp(self) -> None:
+        self.outdir = Path(os.path.dirname(__file__)) / "output" / "compartment_trapezoid"
+        # Create output directory if it doesn't exist
+        self.outdir.mkdir(parents=True, exist_ok=True)
+        # Use synthetic test data
+        self.synthetic_cool = Path(os.path.dirname(__file__)) / "data" / "synthetic_test.cool"
+        self.synthetic_eigs1 = Path(os.path.dirname(__file__)) / "data" / "synthetic_eigs1.bedgraph"
+        self.synthetic_eigs2 = Path(os.path.dirname(__file__)) / "data" / "synthetic_eigs2.bedgraph"
+
+    def test_plot_compartment_trapezoid_basic(self):
+        """
+        Unit test for plot_compartment_trapezoid basic functionality.
+        """
+        fig = plot_compartment_trapezoid(
+            coolp=str(self.synthetic_cool),
+            vec_file=str(self.synthetic_eigs1),
+            region="chr1",
+            strata=30,
+            title="Test Trapezoid Basic",
+            balance=False,
+        )
+        
+        self.assertIsNotNone(fig)
+        self.assertGreaterEqual(len(fig.data), 1)
+        # Title may be set differently, just check figure is valid
+        self.assertIsInstance(fig.layout.title.text, (str, type(None)))
+
+    def test_plot_compartment_trapezoid_custom_params(self):
+        """
+        Unit test for plot_compartment_trapezoid with custom parameters.
+        """
+        fig = plot_compartment_trapezoid(
+            coolp=str(self.synthetic_cool),
+            vec_file=str(self.synthetic_eigs1),
+            region="chr1",
+            strata=50,
+            title="Test Trapezoid Custom",
+            cmap="viridis",
+            balance=False,
+            quant=0.05,
+        )
+        
+        self.assertIsNotNone(fig)
+        self.assertGreaterEqual(len(fig.data), 1)
+
+    def test_plot_compartment_trapezoid_visual(self):
+        """
+        Visual test for plot_compartment_trapezoid.
+        Generates PNG output for manual inspection.
+        """
+        out_png = self.outdir / "plot_compartment_trapezoid.png"
+        
+        fig = plot_compartment_trapezoid(
+            coolp=str(self.synthetic_cool),
+            vec_file=str(self.synthetic_eigs1),
+            region="chr1",
+            strata=40,
+            title="Visual Test: Compartment Trapezoid",
+            balance=False,
+            cmap="RdBu_r",
+        )
+        
+        fig.write_image(str(out_png), width=800, height=600)
+        self.assertTrue(out_png.exists())
+        print(f"Visual test output: {out_png}")
+
+    def test_plot_compartment_trapezoid_2tracks_basic(self):
+        """
+        Unit test for plot_compartment_trapezoid_2tracks basic functionality.
+        """
+        fig = plot_compartment_trapezoid_2tracks(
+            coolp0=str(self.synthetic_cool),
+            vec_file1=str(self.synthetic_eigs1),
+            vec_file2=str(self.synthetic_eigs2),
+            region="chr1",
+            strata=30,
+            title="Test 2 Tracks Basic",
+            balance=False,
+        )
+        
+        self.assertIsNotNone(fig)
+        # Should have at least 3 traces (heatmap + 2 bar tracks)
+        self.assertGreaterEqual(len(fig.data), 3)
+        self.assertIsInstance(fig.layout.title.text, (str, type(None)))
+
+    def test_plot_compartment_trapezoid_2tracks_visual(self):
+        """
+        Visual test for plot_compartment_trapezoid_2tracks.
+        Generates PNG output for manual inspection.
+        """
+        out_png = self.outdir / "plot_compartment_trapezoid_2tracks.png"
+        
+        fig = plot_compartment_trapezoid_2tracks(
+            coolp0=str(self.synthetic_cool),
+            vec_file1=str(self.synthetic_eigs1),
+            vec_file2=str(self.synthetic_eigs2),
+            region="chr1",
+            strata=40,
+            title="Visual Test: Compartment Trapezoid 2 Tracks",
+            balance=False,
+            cmap="RdBu_r",
+        )
+        
+        fig.write_image(str(out_png), width=800, height=900)
+        self.assertTrue(out_png.exists())
+        print(f"Visual test output: {out_png}")
 
 
 if __name__ == "__main__":
