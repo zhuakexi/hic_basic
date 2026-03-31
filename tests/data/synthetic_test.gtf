@@ -1,0 +1,44 @@
+# Synthetic GTF file for testing gene track visualization
+# This file contains a simulated gene model with multiple transcripts, exons, CDS, and UTRs
+
+chr1	synthetic	gene	1000	9000	.	+	.	gene_id "GENE001"; gene_name "TEST1"; gene_biotype "protein_coding";
+chr1	synthetic	transcript	1000	9000	.	+	.	gene_id "GENE001"; transcript_id "TXN001"; transcript_name "TEST1-001"; transcript_biotype "protein_coding";
+chr1	synthetic	exon	1000	1500	.	+	.	gene_id "GENE001"; transcript_id "TXN001";
+chr1	synthetic	exon	3000	3500	.	+	.	gene_id "GENE001"; transcript_id "TXN001";
+chr1	synthetic	exon	5000	5500	.	+	.	gene_id "GENE001"; transcript_id "TXN001";
+chr1	synthetic	exon	7000	9000	.	+	.	gene_id "GENE001"; transcript_id "TXN001";
+chr1	synthetic	five_prime_UTR	1000	1200	.	+	.	gene_id "GENE001"; transcript_id "TXN001";
+chr1	synthetic	CDS	1200	1500	.	+	0	gene_id "GENE001"; transcript_id "TXN001";
+chr1	synthetic	CDS	3000	3500	.	+	0	gene_id "GENE001"; transcript_id "TXN001";
+chr1	synthetic	CDS	5000	5300	.	+	0	gene_id "GENE001"; transcript_id "TXN001";
+chr1	synthetic	three_prime_UTR	5300	5500	.	+	.	gene_id "GENE001"; transcript_id "TXN001";
+chr1	synthetic	CDS	7000	7800	.	+	0	gene_id "GENE001"; transcript_id "TXN001";
+chr1	synthetic	three_prime_UTR	7800	9000	.	+	.	gene_id "GENE001"; transcript_id "TXN001";
+
+chr1	synthetic	transcript	1000	7500	.	+	.	gene_id "GENE001"; transcript_id "TXN002"; transcript_name "TEST1-002"; transcript_biotype "protein_coding";
+chr1	synthetic	exon	1000	1500	.	+	.	gene_id "GENE001"; transcript_id "TXN002";
+chr1	synthetic	exon	3000	3500	.	+	.	gene_id "GENE001"; transcript_id "TXN002";
+chr1	synthetic	exon	5000	5500	.	+	.	gene_id "GENE001"; transcript_id "TXN002";
+chr1	synthetic	exon	7000	7500	.	+	.	gene_id "GENE001"; transcript_id "TXN002";
+chr1	synthetic	five_prime_UTR	1000	1200	.	+	.	gene_id "GENE001"; transcript_id "TXN002";
+chr1	synthetic	CDS	1200	1500	.	+	0	gene_id "GENE001"; transcript_id "TXN002";
+chr1	synthetic	CDS	3000	3500	.	+	0	gene_id "GENE001"; transcript_id "TXN002";
+chr1	synthetic	CDS	5000	5500	.	+	0	gene_id "GENE001"; transcript_id "TXN002";
+chr1	synthetic	CDS	7000	7500	.	+	0	gene_id "GENE001"; transcript_id "TXN002";
+
+# Second gene on minus strand
+chr1	synthetic	gene	15000	20000	.	-	.	gene_id "GENE002"; gene_name "TEST2"; gene_biotype "protein_coding";
+chr1	synthetic	transcript	15000	20000	.	-	.	gene_id "GENE002"; transcript_id "TXN003"; transcript_name "TEST2-001"; transcript_biotype "protein_coding";
+chr1	synthetic	exon	15000	15800	.	-	.	gene_id "GENE002"; transcript_id "TXN003";
+chr1	synthetic	exon	17000	17500	.	-	.	gene_id "GENE002"; transcript_id "TXN003";
+chr1	synthetic	exon	19000	20000	.	-	.	gene_id "GENE002"; transcript_id "TXN003";
+chr1	synthetic	five_prime_UTR	19500	20000	.	-	.	gene_id "GENE002"; transcript_id "TXN003";
+chr1	synthetic	CDS	19000	19500	.	-	0	gene_id "GENE002"; transcript_id "TXN003";
+chr1	synthetic	CDS	17000	17500	.	-	0	gene_id "GENE002"; transcript_id "TXN003";
+chr1	synthetic	CDS	15000	15600	.	-	0	gene_id "GENE002"; transcript_id "TXN003";
+chr1	synthetic	three_prime_UTR	15600	15800	.	-	.	gene_id "GENE002"; transcript_id "TXN003";
+
+# Third gene - single exon, non-coding
+chr1	synthetic	gene	25000	26000	.	+	.	gene_id "GENE003"; gene_name "TEST3"; gene_biotype "lncRNA";
+chr1	synthetic	transcript	25000	26000	.	+	.	gene_id "GENE003"; transcript_id "TXN004"; transcript_name "TEST3-001"; transcript_biotype "lncRNA";
+chr1	synthetic	exon	25000	26000	.	+	.	gene_id "GENE003"; transcript_id "TXN004";
