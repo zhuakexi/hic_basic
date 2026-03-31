@@ -6,11 +6,11 @@ This module provides classes and functions for visualizing genomic data
 as tracks that can be composed into multi-panel figures.
 
 Example usage:
-    >>> from hic_basic.plot.track import EigenTrack, ISTrack, TrackComposer
-    >>> composer = TrackComposer.for_heatmap_with_tracks(n_tracks=2)
-    >>> composer.add_track(heatmap, row=1, col=1)
-    >>> composer.add_track(eigen, row=2, col=1)
-    >>> composer.add_track(is_track, row=3, col=1)
+    >>> from hic_basic.plot.track import EigenTrack, ISTrack, BigWigTrack, GeneTrack, TrackComposer
+    >>> composer = TrackComposer.for_trapezoid_with_tracks(n_tracks=3)
+    >>> composer.add_track(trapezoid, row=1, col=1)
+    >>> composer.add_track(bw_track, row=2, col=1)
+    >>> composer.add_track(gene_track, row=3, col=1)
     >>> fig = composer.build(region="chr1:1000000-5000000")
 """
 
@@ -275,6 +275,211 @@ class EigenTrack(Track):
 
 
 # =============================================================================
+# BigWigTrack - Continuous Signal Track from BigWig Files
+# =============================================================================
+
+
+class BigWigTrack(Track):
+    """BigWig signal track for continuous genomic data visualization.
+
+    Displays signal from bigWig files as a bar plot.
+
+    Attributes:
+        data_path: Path to bigWig file.
+        bin_size: Bin size for aggregating signal.
+        agg_method: Aggregation method ('mean', 'max', 'min', 'sum').
+        color: Bar color.
+        orientation: Bar orientation ('v' for vertical, 'h' for horizontal).
+
+    Example:
+        >>> bw_track = BigWigTrack("H3K27ac.bw", bin_size=1000)
+        >>> bw_track.load_data("chr1:1000000-5000000")
+        >>> bw_track.render(fig, row=2, col=1)
+    """
+
+    def __init__(
+        self,
+        data_path: Union[str, Path],
+        bin_size: int = 1000,
+        agg_method: str = "mean",
+        color: str = "#1f77b4",
+        orientation: str = "v",
+        config: Optional[TrackConfig] = None
+    ):
+        """Initialize BigWigTrack.
+
+        Args:
+            data_path: Path to bigWig file.
+            bin_size: Bin size in base pairs. Default 1000.
+            agg_method: Aggregation method. Default 'mean'.
+            color: Bar color. Default '#1f77b4'.
+            orientation: Bar orientation. 'v' for vertical, 'h' for horizontal.
+            config: Optional TrackConfig.
+        """
+        super().__init__(name="bigwig", config=config)
+        self.data_path = Path(data_path)
+        self.bin_size = bin_size
+        self.agg_method = agg_method
+        self.color = color
+        self.orientation = orientation
+
+    def load_data(self, region: str, chrom_sizes: Optional[Dict[str, int]] = None) -> "BigWigTrack":
+        """Load bigWig signal data for a genomic region.
+
+        Args:
+            region: Genomic region (e.g., "chr1:1000000-5000000").
+            chrom_sizes: Optional dict of chromosome sizes. If not provided,
+                will attempt to read from bigWig file.
+
+        Returns:
+            self: Returns self for method chaining.
+
+        Raises:
+            ImportError: If pyBigWig is not installed.
+        """
+        try:
+            import pyBigWig
+        except ImportError:
+            raise ImportError(
+                "pyBigWig is required for BigWigTrack. "
+                "Install with: pip install pyBigWig"
+            )
+
+        # Parse region
+        if ':' in region:
+            chrom, coords = region.split(':', 1)
+            if '-' in coords:
+                start, end = map(int, coords.replace(',', '').split('-'))
+            else:
+                start, end = 0, int(coords.replace(',', ''))
+        else:
+            raise ValueError("Region must be in format 'chrom:start-end'")
+
+        # Open bigWig file and read signal
+        with pyBigWig.open(str(self.data_path)) as bw:
+            # Get chromosome size if not provided
+            if chrom_sizes is None:
+                chrom_sizes = bw.chroms()
+
+            if chrom not in chrom_sizes:
+                raise ValueError(f"Chromosome {chrom} not found in bigWig file")
+
+            chrom_size = chrom_sizes[chrom]
+            end = min(end, chrom_size)
+
+            # Read signal in bins
+            bin_starts = list(range(start, end, self.bin_size))
+            bin_ends = [min(e, end) for e in range(start + self.bin_size, end + self.bin_size, self.bin_size)]
+
+            signals = []
+            positions = []
+
+            for bin_start, bin_end in zip(bin_starts, bin_ends):
+                try:
+                    values = bw.values(chrom, bin_start, bin_end)
+                    # Filter out NaN values
+                    values = [v for v in values if not np.isnan(v)]
+                    if values:
+                        if self.agg_method == "mean":
+                            sig = np.mean(values)
+                        elif self.agg_method == "max":
+                            sig = np.max(values)
+                        elif self.agg_method == "min":
+                            sig = np.min(values)
+                        elif self.agg_method == "sum":
+                            sig = np.sum(values)
+                        else:
+                            sig = np.mean(values)
+                        signals.append(sig)
+                        positions.append(bin_start)
+                except Exception:
+                    # Skip bins with no coverage
+                    signals.append(0)
+                    positions.append(bin_start)
+
+            self._data = pd.DataFrame({
+                "start": positions,
+                "signal": signals
+            })
+
+        return self
+
+    def render(self, fig, row: int, col: int, **kwargs) -> go.Figure:
+        """Render bigWig signal as bar plot.
+
+        Args:
+            fig: Plotly figure to add traces to.
+            row: Row position in subplot grid.
+            col: Column position in subplot grid.
+            **kwargs: Additional parameters (width, showlegend, etc.).
+
+        Returns:
+            fig: Modified figure with track added.
+        """
+        if self._data is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        bar_width = self.bin_size
+        default_kwargs = dict(
+            showlegend=False,
+            width=bar_width,
+            marker=dict(color=self.color, line=dict(width=0))
+        )
+        default_kwargs.update(kwargs)
+
+        if self.orientation == "h":
+            trace = go.Bar(
+                y=self._data["start"],
+                x=self._data["signal"],
+                orientation="h",
+                **default_kwargs
+            )
+        else:
+            trace = go.Bar(
+                x=self._data["start"],
+                y=self._data["signal"],
+                orientation="v",
+                **default_kwargs
+            )
+
+        fig.add_trace(trace, row=row, col=col)
+        self._update_axes(fig, row, col, **kwargs)
+        return fig
+
+    def _update_axes(self, fig, row: int, col: int, **kwargs):
+        """Update axis styling for bigWig track.
+
+        Args:
+            fig: Plotly figure.
+            row: Row position.
+            col: Column position.
+            **kwargs: Additional axis parameters.
+        """
+        y_range = kwargs.get("y_range", None)
+
+        if self.orientation == "h":
+            x_kwargs = dict(
+                showline=True,
+                linecolor="black",
+                title="Signal"
+            )
+            if y_range:
+                x_kwargs["range"] = y_range
+            fig.update_xaxes(**x_kwargs, row=row, col=col)
+            fig.update_yaxes(showline=False, row=row, col=col)
+        else:
+            y_kwargs = dict(
+                showline=True,
+                linecolor="black",
+                title="Signal"
+            )
+            if y_range:
+                y_kwargs["range"] = y_range
+            fig.update_yaxes(**y_kwargs, row=row, col=col)
+            fig.update_xaxes(showline=False, row=row, col=col)
+
+
+# =============================================================================
 # ISTrack - Insulation Score Track
 # =============================================================================
 
@@ -516,6 +721,202 @@ class HeatmapTrack(Track):
 
 
 # =============================================================================
+# TrapezoidHeatmapTrack - Rotated Hi-C Heatmap for Compartment Visualization
+# =============================================================================
+
+
+class TrapezoidHeatmapTrack(Track):
+    """Trapezoid heatmap track for compartment visualization.
+
+    Displays Hi-C contact matrix rotated 45 degrees to show compartment
+    patterns in a trapezoidal shape.
+
+    Attributes:
+        cool_path: Path to cooler file.
+        vec_file: Path to eigenvector file.
+        balance: Whether to use balanced matrix.
+        strata: Number of rows to keep in the trapezoid.
+        cmap: Colormap name.
+        quant: Quantile for color scale clipping.
+        fillna: Whether to fill NaN values.
+
+    Example:
+        >>> trapezoid = TrapezoidHeatmapTrack(
+        ...     "sample.cool", "eigvec.bedgraph", strata=30
+        ... )
+        >>> trapezoid.load_data("chr1:1000000-5000000")
+        >>> trapezoid.render(fig, row=1, col=1)
+    """
+
+    def __init__(
+        self,
+        cool_path: Union[str, Path],
+        vec_file: Union[str, Path],
+        balance: bool = True,
+        strata: int = 20,
+        cmap: str = "RdBu_r",
+        quant: float = 0.01,
+        minmax: str = "min",
+        eigen_col: str = "E1",
+        fillna: bool = False,
+        strip: bool = False,
+        mask_eig_na: bool = True,
+        config: Optional[TrackConfig] = None,
+        **heatmap_kwargs
+    ):
+        """Initialize TrapezoidHeatmapTrack.
+
+        Args:
+            cool_path: Path to cooler file.
+            vec_file: Path to eigenvector file.
+            balance: Whether to use balanced matrix. Default True.
+            strata: Number of rows in trapezoid. Default 20.
+            cmap: Colormap name. Default 'RdBu_r'.
+            quant: Quantile for color scale clipping. Default 0.01.
+            minmax: How to compute color limits. Default 'min'.
+            eigen_col: Column name for eigenvector values. Default 'E1'.
+            fillna: Whether to fill NaN values. Default False.
+            strip: Whether to strip consecutive zeros. Default False.
+            mask_eig_na: Whether to mask NaN eigenvalues. Default True.
+            config: Optional TrackConfig.
+            **heatmap_kwargs: Additional parameters for go.Heatmap.
+        """
+        super().__init__(name="trapezoid", config=config)
+        self.cool_path = Path(cool_path)
+        self.vec_file = Path(vec_file)
+        self.balance = balance
+        self.strata = strata
+        self.cmap = cmap
+        self.quant = quant
+        self.minmax = minmax
+        self.eigen_col = eigen_col
+        self.fillna = fillna
+        self.strip = strip
+        self.mask_eig_na = mask_eig_na
+        self.heatmap_kwargs = heatmap_kwargs
+        self._matrix: Optional[np.ndarray] = None
+        self._bins: Optional[pd.DataFrame] = None
+        self._extent: Optional[Union[float, Tuple[float, float]]] = None
+
+    def load_data(self, region: str, clr: Optional[Cooler] = None) -> "TrapezoidHeatmapTrack":
+        """Load and process trapezoid heatmap data.
+
+        Args:
+            region: Genomic region.
+            clr: Optional Cooler object. If not provided, will create from cool_path.
+
+        Returns:
+            self: Returns self for method chaining.
+        """
+        from scipy.ndimage import rotate
+        from hic_basic.compartment import compartments
+
+        # Always use cool_path to ensure fresh file handle
+        self._clr = Cooler(str(self.cool_path))
+
+        bin_s, bin_e = self._clr.extent(region)
+        bins = self._clr.bins()[bin_s:bin_e]
+
+        # Load contact matrix and compute compartment correlation matrix
+        mat = self._clr.matrix(balance=self.balance).fetch(region)
+        cmat = compartments(mat, matrixonly=True)
+
+        # Process matrix for trapezoid
+        min_v = np.nanmin(cmat)
+        cmat_filled = np.nan_to_num(cmat, nan=min_v - 100)
+        r_cmat = rotate(cmat_filled, 45, cval=np.nan, order=1)
+        r_cmat[r_cmat < min_v - 0.5] = np.nan
+
+        # Extract trapezoid region
+        df = pd.DataFrame(r_cmat)
+        N = df.shape[0]
+        if N % 2 == 0:
+            trapezoid = df.iloc[N // 2: N // 2 + self.strata, :].values
+        else:
+            trapezoid = df.iloc[N // 2 + 1: N // 2 + self.strata, :].values
+
+        # Compute extent for color scale
+        extent = np.nanpercentile(np.abs(trapezoid), (1 - self.quant) * 100)
+
+        self._matrix = trapezoid
+        self._bins = bins
+        self._extent = extent
+
+        return self
+
+    def render(self, fig, row: int, col: int, **kwargs) -> go.Figure:
+        """Render trapezoid heatmap.
+
+        Args:
+            fig: Plotly figure to add traces to.
+            row: Row position in subplot grid.
+            col: Column position in subplot grid.
+            **kwargs: Additional parameters for go.Heatmap.
+
+        Returns:
+            fig: Modified figure with track added.
+        """
+        if self._matrix is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        merged_kwargs = {**self.heatmap_kwargs, **kwargs}
+
+        # Set default zmin/zmax from extent
+        if isinstance(self._extent, tuple):
+            if "zmin" not in merged_kwargs:
+                merged_kwargs["zmin"] = self._extent[0]
+            if "zmax" not in merged_kwargs:
+                merged_kwargs["zmax"] = self._extent[1]
+        else:
+            if "zmin" not in merged_kwargs:
+                merged_kwargs["zmin"] = -self._extent
+            if "zmax" not in merged_kwargs:
+                merged_kwargs["zmax"] = self._extent
+
+        trace = go.Heatmap(
+            z=self._matrix,
+            x=self._bins["start"],
+            y=self._bins["start"],
+            colorscale=self.cmap,
+            **merged_kwargs
+        )
+        fig.add_trace(trace, row=row, col=col)
+        return fig
+
+    @classmethod
+    def from_matrix(
+        cls,
+        matrix: np.ndarray,
+        bins: pd.DataFrame,
+        extent: Union[float, Tuple[float, float]],
+        config: Optional[TrackConfig] = None,
+        cmap: str = "RdBu_r",
+        **heatmap_kwargs
+    ) -> "TrapezoidHeatmapTrack":
+        """Create TrapezoidHeatmapTrack from pre-computed matrix.
+
+        Args:
+            matrix: Trapezoid matrix as numpy array.
+            bins: DataFrame with bin positions.
+            extent: Color scale extent (single value or (min, max) tuple).
+            config: Optional TrackConfig.
+            cmap: Colormap name. Default 'RdBu_r'.
+            **heatmap_kwargs: Additional parameters for go.Heatmap.
+
+        Returns:
+            TrapezoidHeatmapTrack: New instance with pre-computed data.
+        """
+        track = cls.__new__(cls)
+        Track.__init__(track, name="trapezoid", config=config)
+        track._matrix = matrix
+        track._bins = bins
+        track._extent = extent
+        track.cmap = cmap
+        track.heatmap_kwargs = heatmap_kwargs
+        return track
+
+
+# =============================================================================
 # Genome-wide visualization functions
 # =============================================================================
 
@@ -725,7 +1126,203 @@ def add_chrom_grid(df, fig, fig_type="scatter", x_extra_expansion=0, y_extra_exp
     return fig
 
 
-### --- Gene track --- ###
+# =============================================================================
+# GeneTrack - Gene Annotation Track
+# =============================================================================
+
+
+class GeneTrack(Track):
+    """Gene annotation track for displaying gene structures from GTF/GFF3 files.
+
+    Displays gene models including exons, introns, CDS, and UTRs.
+
+    Attributes:
+        annotation_file: Path to GTF or GFF3 annotation file.
+        mode: Display mode ('all_transcripts', 'canonical', 'gene_only').
+        utr_height: Relative height of UTR boxes (0-1).
+        exon_height: Relative height of exon boxes (0-1).
+        cds_height: Relative height of CDS boxes (0-1).
+        row_spacing: Spacing between transcript rows.
+        show_labels: Whether to show gene/transcript labels.
+        label_font_size: Font size for labels.
+
+    Example:
+        >>> gene_track = GeneTrack("annotations.gtf", mode="all_transcripts")
+        >>> gene_track.load_data("chr1:1000000-5000000")
+        >>> gene_track.render(fig, row=3, col=1)
+    """
+
+    def __init__(
+        self,
+        annotation_file: Union[str, Path],
+        mode: str = "all_transcripts",
+        utr_height: float = 0.30,
+        exon_height: float = 0.40,
+        cds_height: float = 0.60,
+        row_spacing: float = 0.2,
+        show_labels: bool = True,
+        label_font_size: int = 10,
+        config: Optional[TrackConfig] = None
+    ):
+        """Initialize GeneTrack.
+
+        Args:
+            annotation_file: Path to GTF or GFF3 annotation file.
+            mode: Display mode. Default 'all_transcripts'.
+            utr_height: Relative height of UTR boxes. Default 0.30.
+            exon_height: Relative height of exon boxes. Default 0.40.
+            cds_height: Relative height of CDS boxes. Default 0.60.
+            row_spacing: Spacing between transcript rows. Default 0.2.
+            show_labels: Whether to show labels. Default True.
+            label_font_size: Font size for labels. Default 10.
+            config: Optional TrackConfig.
+        """
+        super().__init__(name="gene", config=config)
+        self.annotation_file = Path(annotation_file)
+        self.mode = mode
+        self.utr_height = utr_height
+        self.exon_height = exon_height
+        self.cds_height = cds_height
+        self.row_spacing = row_spacing
+        self.show_labels = show_labels
+        self.label_font_size = label_font_size
+        self._genes: Optional[Dict[str, Gene]] = None
+        self._shapes: List[dict] = []
+        self._annotations: List[dict] = []
+
+    def load_data(self, region: str) -> "GeneTrack":
+        """Load gene annotation data for a genomic region.
+
+        Args:
+            region: Genomic region (e.g., "chr1:1000000-5000000").
+
+        Returns:
+            self: Returns self for method chaining.
+        """
+        # Parse region
+        if ':' in region:
+            seqid, coords = region.split(':', 1)
+            if '-' in coords:
+                start, end = map(int, coords.replace(',', '').split('-'))
+            else:
+                start, end = 0, int(coords.replace(',', ''))
+        else:
+            seqid = region
+            start, end = 0, 1000000
+
+        # Parse annotation file
+        self._genes = parse_annotation_file(self.annotation_file)
+
+        # Filter genes in region
+        self._genes = filter_genes_in_region(self._genes, seqid, start, end)
+
+        # Generate shapes based on mode
+        self._shapes = []
+        self._annotations = []
+
+        if not self._genes:
+            return self
+
+        # Collect transcripts to display
+        transcripts_to_show = []
+        genes_to_label = []
+
+        for gene_id, gene in sorted(self._genes.items(), key=lambda x: x[1].start):
+            if self.mode == "gene_only":
+                # Select representative transcript (longest CDS)
+                if gene.transcripts:
+                    rep_tx = max(gene.transcripts, key=lambda t: sum(e.end - e.start for e in t.cds) if t.cds else 0)
+                    transcripts_to_show.append((gene, rep_tx))
+                    genes_to_label.append(gene)
+            elif self.mode == "canonical":
+                # Select longest transcript
+                if gene.transcripts:
+                    rep_tx = max(gene.transcripts, key=lambda t: sum(e.end - e.start for e in t.exons))
+                    transcripts_to_show.append((gene, rep_tx))
+                    genes_to_label.append(gene)
+            else:  # all_transcripts
+                for tx in gene.transcripts:
+                    transcripts_to_show.append((gene, tx))
+                genes_to_label.append(gene)
+
+        # Generate shapes for each transcript
+        y_positions = np.linspace(
+            1 - self.exon_height,
+            self.exon_height,
+            len(transcripts_to_show)
+        )
+
+        for i, (gene, tx) in enumerate(transcripts_to_show):
+            y = y_positions[i]
+            shapes = _get_transcript_row(
+                tx,
+                y_position=y,
+                utr_height=self.utr_height,
+                exon_height=self.exon_height,
+                cds_height=self.cds_height,
+                backbone_y=y
+            )
+            self._shapes.extend(shapes)
+
+            # Add gene label
+            if self.show_labels and gene in genes_to_label:
+                label = _get_gene_label(gene)
+                self._annotations.append(dict(
+                    x=tx.start,
+                    y=y + self.exon_height + 0.05,
+                    text=label,
+                    showarrow=False,
+                    font=dict(size=self.label_font_size),
+                    xref='x',
+                    yref='y'
+                ))
+
+        return self
+
+    def render(self, fig, row: int, col: int, **kwargs) -> go.Figure:
+        """Render gene track as shapes and annotations.
+
+        Args:
+            fig: Plotly figure to add traces to.
+            row: Row position in subplot grid.
+            col: Column position in subplot grid.
+            **kwargs: Additional parameters.
+
+        Returns:
+            fig: Modified figure with track added.
+        """
+        if self._genes is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        # Check if no genes found
+        if not self._genes:
+            fig.add_annotation(
+                text="No genes in region",
+                xref='x', yref='y',
+                x=0.5, y=0.5,
+                showarrow=False,
+                row=row, col=col
+            )
+            return fig
+
+        # Add shapes
+        for shape in self._shapes:
+            fig.add_shape(shape, row=row, col=col)
+
+        # Add annotations
+        for annotation in self._annotations:
+            fig.add_annotation(annotation, row=row, col=col)
+
+        # Update axes
+        fig.update_xaxes(showline=True, linecolor='black', row=row, col=col)
+        fig.update_yaxes(showticklabels=False, row=row, col=col)
+
+        return fig
+
+
+# =============================================================================
+# Helper functions for gene track visualization
+# =============================================================================
 
 
 def _split_exon_by_cds_utr(

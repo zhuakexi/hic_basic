@@ -6,14 +6,14 @@ into a single cohesive figure. It handles layout configuration and track
 orchestration.
 
 Example usage:
-    >>> from hic_basic.plot.track import EigenTrack, HeatmapTrack
+    >>> from hic_basic.plot.track import EigenTrack, HeatmapTrack, BigWigTrack, GeneTrack
     >>> from hic_basic.plot.track_composer import TrackComposer
-    >>> 
-    >>> composer = TrackComposer.for_tiling_compartment()
-    >>> composer.add_track(heatmap, row=1, col=2)
-    >>> composer.add_track(eigen1, row=1, col=1)
-    >>> composer.add_track(eigen2, row=2, col=2)
-    >>> fig = composer.build(region="chr1:1000000-5000000", title="My Figure")
+    >>>
+    >>> composer = TrackComposer.for_trapezoid_with_tracks(n_tracks=3)
+    >>> composer.add_track(trapezoid, row=1, col=1)
+    >>> composer.add_track(bw_track, row=2, col=1)
+    >>> composer.add_track(gene_track, row=3, col=1)
+    >>> fig = composer.build(region="chr1:1000000-5000000", title="Hi-C Analysis")
 """
 
 from dataclasses import dataclass, field
@@ -176,7 +176,7 @@ class TrackComposer:
         # Load data and render each track
         for (row, col), track in self.tracks.items():
             # Use delayed import to avoid circular dependency
-            from .track import EigenTrack, HeatmapTrack
+            from .track import EigenTrack, HeatmapTrack, BigWigTrack, GeneTrack, TrapezoidHeatmapTrack
 
             # Skip loading if data is already loaded (pre-loaded tracks)
             if track._data is not None or (hasattr(track, '_matrix') and track._matrix is not None):
@@ -200,6 +200,18 @@ class TrackComposer:
                     track.load_data(region=region, clr=clr)
                 else:
                     track.load_data(region=region)
+            elif isinstance(track, TrapezoidHeatmapTrack):
+                # TrapezoidHeatmapTrack can use clr or cool_path
+                if clr is not None:
+                    track.load_data(region=region, clr=clr)
+                else:
+                    track.load_data(region=region)
+            elif isinstance(track, BigWigTrack):
+                # BigWigTrack loads from region string
+                track.load_data(region=region)
+            elif isinstance(track, GeneTrack):
+                # GeneTrack loads from region string
+                track.load_data(region=region)
             elif clr is not None:
                 # Use shared cooler if provided
                 track.load_data(clr=clr, region=region)
@@ -288,6 +300,63 @@ class TrackComposer:
             row_heights=row_heights or [6, 2, 2],
             col_widths=[1],
             vertical_spacing=0.05,
+            shared_xaxes=False,
+            **kwargs
+        ))
+
+    @classmethod
+    def for_trapezoid_with_tracks(
+        cls,
+        n_tracks: int,
+        trapezoid_height: float = 6,
+        track_heights: Optional[List[float]] = None,
+        vertical_spacing: float = 0.05,
+        **kwargs
+    ) -> "TrackComposer":
+        """Create composer for trapezoid heatmap with arbitrary tracks.
+
+        Creates a vertical layout with:
+        - Row 1: Trapezoid compartment heatmap
+        - Rows 2 to n_tracks+1: Additional tracks (bigWig, gene, etc.)
+
+        Args:
+            n_tracks: Number of additional tracks below the trapezoid.
+            trapezoid_height: Height ratio for trapezoid row. Default 6.
+            track_heights: List of height ratios for each track.
+                If None, all tracks have equal height of 2.
+            vertical_spacing: Spacing between rows. Default 0.05.
+            **kwargs: Additional LayoutConfig parameters.
+
+        Returns:
+            TrackComposer: Configured composer instance.
+
+        Example:
+            >>> composer = TrackComposer.for_trapezoid_with_tracks(
+            ...     n_tracks=3,
+            ...     trapezoid_height=6,
+            ...     track_heights=[2, 2, 3]  # gene track taller
+            ... )
+            >>> composer.add_track(trapezoid, row=1, col=1)
+            >>> composer.add_track(bw_track1, row=2, col=1)
+            >>> composer.add_track(bw_track2, row=3, col=1)
+            >>> composer.add_track(gene_track, row=4, col=1)
+        """
+        if track_heights is None:
+            track_heights = [2.0] * n_tracks
+        elif len(track_heights) != n_tracks:
+            raise ValueError(
+                f"track_heights length ({len(track_heights)}) must match "
+                f"n_tracks ({n_tracks})"
+            )
+
+        row_heights = [trapezoid_height] + track_heights
+
+        return cls(LayoutConfig(
+            rows=1 + n_tracks,
+            cols=1,
+            row_heights=row_heights,
+            col_widths=[1],
+            vertical_spacing=vertical_spacing,
             shared_xaxes=False,
             **kwargs
         ))

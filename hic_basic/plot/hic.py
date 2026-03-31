@@ -235,7 +235,7 @@ def plot_CM(cm, grid=True, **kwargs):
         y_lower=True, y_upper=True
         )
     return fig
-def plot_cool(coolp, title="", region="chr1", vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False, **kwargs):
+def plot_cool(coolp, title="", region="chr1", vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False, return_data=False, **kwargs):
     """"
     Plot heatmap of single cooler file.
     Input:
@@ -248,9 +248,14 @@ def plot_cool(coolp, title="", region="chr1", vmax=100, balance=False, ignore_di
         vmax: max z value.
         balance: whether to load balanced cooler matrix.
         norm: whether to use lognorm.
+        return_data: if True, return (fig, matrix, bins) instead of just fig.
+            Default False.
+    Output:
+        If return_data=False: plotly figure
+        If return_data=True: (fig, matrix DataFrame, bins DataFrame)
     """
     mat = cool2mat(coolp, region, balance=balance)
-    return plot_CM(
+    fig = plot_CM(
         mat,
         grid = grid,
         title = title,
@@ -259,6 +264,13 @@ def plot_cool(coolp, title="", region="chr1", vmax=100, balance=False, ignore_di
         donorm = donorm,
         **kwargs
     )
+    
+    if return_data:
+        # Return figure and data
+        clr = Cooler(str(coolp))
+        bins = clr.bins().fetch(region)
+        return fig, mat, bins
+    return fig
 
 # def plot_cools(cools, region, titles, ncols=3, vmax=500, height=50, width=50):
 #     """
@@ -1957,4 +1969,163 @@ def _plot_compartment_trapezoid_2tracks_legacy(
             fig.add_trace(trace, row=i+2, col=1)
     fig.update_traces(selector=dict(type="bar"), marker=dict(line=dict(color="purple", width=0)))
     fig.update_layout(title=title, plot_bgcolor="white", height=800, width=700)
+    return fig
+
+
+# =============================================================================
+# Trapezoid Hi-C with Multi-Track Visualization
+# =============================================================================
+
+
+def plot_trapezoid_with_tracks(
+    coolp: Union[str, Path],
+    vec_file: Union[str, Path],
+    region: str,
+    tracks: List,
+    track_heights: Optional[List[float]] = None,
+    trapezoid_height: float = 6,
+    strata: int = 20,
+    title: str = "",
+    balance: bool = True,
+    cmap: str = "RdBu_r",
+    quant: float = 0.01,
+    minmax: str = "min",
+    eigen_col: str = "E1",
+    fillna: bool = False,
+    strip: bool = False,
+    mask_eig_na: bool = True,
+    total_height: int = 800,
+    width: int = 700,
+    **heatmap_kwargs
+) -> go.Figure:
+    """Plot trapezoid Hi-C heatmap with arbitrary tracks below.
+
+    This function creates a vertical layout with:
+    - Row 1: Trapezoid compartment heatmap (rotated 45 degrees)
+    - Rows 2 to N: Additional tracks (BigWig, Gene, Eigen, IS, etc.)
+
+    Parameters
+    ----------
+    coolp : str or Path
+        Path to cooler file.
+    vec_file : str or Path
+        Path to eigenvector file for compartment coloring.
+    region : str
+        Genome region to plot, e.g., "chr1:1000000-5000000".
+    tracks : list
+        List of Track objects (BigWigTrack, GeneTrack, EigenTrack, etc.).
+    track_heights : list of float, optional
+        Relative height ratios for each track. If None, all tracks have
+        equal height of 2.0.
+    trapezoid_height : float, optional
+        Relative height of trapezoid row. Default 6.
+    strata : int, optional
+        Number of rows to keep in the trapezoid. Default 20.
+    title : str, optional
+        Plot title. Default "".
+    balance : bool, optional
+        Whether to use balanced cooler matrix. Default True.
+    cmap : str, optional
+        Colormap name. Default "RdBu_r".
+    quant : float, optional
+        Quantile for color scale clipping. Default 0.01.
+    minmax : str, optional
+        How to compute color limits. Default "min".
+    eigen_col : str, optional
+        Column name for eigenvector values. Default "E1".
+    fillna : bool, optional
+        Whether to fill NaN values in the matrix. Default False.
+    strip : bool, optional
+        Whether to strip consecutive zeros. Default False.
+    mask_eig_na : bool, optional
+        Whether to mask NaN eigenvalues. Default True.
+    total_height : int, optional
+        Total figure height in pixels. Default 800.
+    width : int, optional
+        Figure width in pixels. Default 700.
+    **heatmap_kwargs
+        Additional keyword arguments passed to go.Heatmap.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Plotly figure with trapezoid heatmap and tracks.
+
+    Examples
+    --------
+    >>> from hic_basic.plot.track import BigWigTrack, GeneTrack
+    >>> from hic_basic.plot.hic import plot_trapezoid_with_tracks
+    >>>
+    >>> tracks = [
+    ...     BigWigTrack("H3K27ac.bw", bin_size=1000, color="#1f77b4"),
+    ...     BigWigTrack("H3K4me3.bw", bin_size=1000, color="#ff7f0e"),
+    ...     GeneTrack("annotations.gtf", mode="all_transcripts")
+    ... ]
+    >>> fig = plot_trapezoid_with_tracks(
+    ...     coolp="sample.cool",
+    ...     vec_file="eigvec.bedgraph",
+    ...     region="chr1:1000000-5000000",
+    ...     tracks=tracks,
+    ...     track_heights=[2, 2, 3],  # gene track taller
+    ...     title="Hi-C + Multi-omics"
+    ... )
+    >>> fig.show()
+
+    Notes
+    -----
+    The function uses Track architecture for modular composition.
+    Track types supported:
+    - BigWigTrack: Continuous signal from bigWig files
+    - GeneTrack: Gene annotation from GTF/GFF3 files
+    - EigenTrack: Eigenvector compartment signal
+    - ISTrack: Insulation score track
+    - HeatmapTrack: Standard Hi-C heatmap
+    """
+    from .track import TrapezoidHeatmapTrack, TrackConfig
+    from .track_composer import TrackComposer
+
+    n_tracks = len(tracks)
+
+    # Create composer with appropriate layout
+    composer = TrackComposer.for_trapezoid_with_tracks(
+        n_tracks=n_tracks,
+        trapezoid_height=trapezoid_height,
+        track_heights=track_heights,
+        vertical_spacing=0.05
+    )
+
+    # Create trapezoid heatmap track
+    trapezoid = TrapezoidHeatmapTrack(
+        cool_path=coolp,
+        vec_file=vec_file,
+        balance=balance,
+        strata=strata,
+        cmap=cmap,
+        quant=quant,
+        minmax=minmax,
+        eigen_col=eigen_col,
+        fillna=fillna,
+        strip=strip,
+        mask_eig_na=mask_eig_na,
+        config=TrackConfig(row=1, col=1),
+        **heatmap_kwargs
+    )
+    composer.add_track(trapezoid, row=1, col=1)
+
+    # Add additional tracks
+    for i, track in enumerate(tracks, start=2):
+        composer.add_track(track, row=i, col=1)
+
+    # Build the figure
+    clr = Cooler(str(coolp))
+    fig = composer.build(region=region, clr=clr, title=title)
+
+    # Update layout
+    fig.update_layout(
+        title=title,
+        plot_bgcolor="white",
+        height=total_height,
+        width=width
+    )
+
     return fig

@@ -5,7 +5,19 @@ setup(
     version='0.1',
     packages=find_packages(),
     install_requires=[
-        # 列出所有依赖
+        # Core dependencies
+        'numpy',
+        'pandas',
+        'scipy',
+        'matplotlib',
+        'plotly',
+        'kaleido',
+        'cooler',
+        'cooltools',
+        'scikit-learn',
+        'seaborn',
+        # BigWig support
+        'pyBigWig',
     ],
     entry_points={
         'console_scripts': [
