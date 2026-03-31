@@ -8,7 +8,14 @@ from pathlib import Path
 
 import pandas as pd
 from cooler import Cooler
-from hic_basic.plot.hic import plot_compartment, plot_cool_track, merge_track_data, _plot_mat, plot_cool
+from hic_basic.plot.hic import (
+    plot_compartment,
+    plot_cool_track,
+    merge_track_data,
+    _plot_mat,
+    plot_cool,
+    plot_tiling_compartment,
+)
 
 class TestPlot(unittest.TestCase):
     """
@@ -19,6 +26,10 @@ class TestPlot(unittest.TestCase):
         self.coolp = "/share/Data/ychi/raw/Bonev2017/ES.mcool::resolutions/20000"
         self.coolp_1M = "/share/Data/ychi/raw/Bonev2017/ES.mcool::resolutions/1000000"
         self.IS = "/shareb/ychi/repo/sperm_struct/notebooks/data/mESC.20k.IS.tsv"
+        # Synthetic test data for plot_tiling_compartment
+        self.synthetic_cool = Path(os.path.dirname(__file__)) / "data" / "synthetic_test.cool"
+        self.synthetic_eigs1 = Path(os.path.dirname(__file__)) / "data" / "synthetic_eigs1.bedgraph"
+        self.synthetic_eigs2 = Path(os.path.dirname(__file__)) / "data" / "synthetic_eigs2.bedgraph"
     def test_plot_cool_large_scale_grid(self):
         """
         Test the plot_cool_large_scale function.
@@ -123,5 +134,103 @@ class TestPlot(unittest.TestCase):
         )
         fig.write_image(str(out_png), width=700, height=700)
         self.assertTrue(out_png.exists())
+
+    def test_plot_tiling_compartment_unit(self):
+        """
+        Unit test for plot_tiling_compartment function.
+        Test that the function returns a valid figure object with correct structure.
+        """
+        # Test with synthetic data
+        fig = plot_tiling_compartment(
+            coolps=[str(self.synthetic_cool), str(self.synthetic_cool)],
+            eigs_files=[str(self.synthetic_eigs1), str(self.synthetic_eigs2)],
+            region="chr1",
+            title="Test Tiling Compartment",
+            corr=False,  # use raw contact counts
+            strip=False,
+        )
+        
+        # Verify figure structure
+        self.assertIsNotNone(fig)
+        # Should have at least 3 traces (heatmap + 2 eigenvector tracks)
+        self.assertGreaterEqual(len(fig.data), 3)
+        # Title should be set
+        self.assertEqual(fig.layout.title.text, "Test Tiling Compartment")
+
+    def test_plot_tiling_compartment_corr(self):
+        """
+        Unit test for plot_tiling_compartment with correlation matrix.
+        """
+        fig = plot_tiling_compartment(
+            coolps=[str(self.synthetic_cool), str(self.synthetic_cool)],
+            eigs_files=[str(self.synthetic_eigs1), str(self.synthetic_eigs2)],
+            region="chr1",
+            title="Test Tiling Compartment (Correlation)",
+            corr=True,  # use correlation matrix
+            strip=True,
+        )
+        
+        self.assertIsNotNone(fig)
+        self.assertGreaterEqual(len(fig.data), 3)
+
+    def test_plot_tiling_compartment_visual(self):
+        """
+        Visual test for plot_tiling_compartment function.
+        Generates PNG output for manual inspection.
+        Output is saved to tests/output/plot/ for verification.
+        """
+        out_png = self.outdir / "plot_tiling_compartment.png"
+        
+        fig = plot_tiling_compartment(
+            coolps=[str(self.synthetic_cool), str(self.synthetic_cool)],
+            eigs_files=[str(self.synthetic_eigs1), str(self.synthetic_eigs2)],
+            region="chr1",
+            title="Visual Test: Tiling Compartment",
+            corr=False,
+            strip=False,
+            cmap="RdBu",
+        )
+        
+        # Write image for visual inspection
+        fig.write_image(str(out_png), width=800, height=800)
+        self.assertTrue(out_png.exists())
+        print(f"Visual test output: {out_png}")
+
+    def test_plot_tiling_compartment_balance(self):
+        """
+        Unit test for plot_tiling_compartment with balance=False.
+        Note: synthetic test data does not have balancing weights.
+        """
+        fig = plot_tiling_compartment(
+            coolps=[str(self.synthetic_cool), str(self.synthetic_cool)],
+            eigs_files=[str(self.synthetic_eigs1), str(self.synthetic_eigs2)],
+            region="chr1",
+            title="Test Tiling Compartment (No Balance)",
+            balance=False,  # synthetic data has no weights
+            corr=False,
+            strip=False,
+        )
+        
+        self.assertIsNotNone(fig)
+        self.assertGreaterEqual(len(fig.data), 3)
+
+    def test_plot_tiling_compartment_custom_cmap(self):
+        """
+        Unit test for plot_tiling_compartment with custom colormap.
+        """
+        fig = plot_tiling_compartment(
+            coolps=[str(self.synthetic_cool), str(self.synthetic_cool)],
+            eigs_files=[str(self.synthetic_eigs1), str(self.synthetic_eigs2)],
+            region="chr1",
+            title="Test Tiling Compartment (Custom Cmap)",
+            cmap="viridis",
+            corr=False,
+            strip=False,
+        )
+        
+        self.assertIsNotNone(fig)
+        self.assertGreaterEqual(len(fig.data), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

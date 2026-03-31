@@ -194,19 +194,27 @@ def tiling_mat(A_orig, Ref_orig, adjust = True, ignore_diags = True):
     Output:
         A tiled matrix.
     """
-    #m = np.tril(Ref/lighter) + np.triu(A)
-    A, Ref = A_orig.copy(), Ref_orig.copy()
-    if ignore_diags:
-        np.fill_diagonal(A,0)
-        np.fill_diagonal(Ref,0)
-        As, Rs = np.nansum(A),np.nansum(Ref)
+    # Convert DataFrame to ndarray if needed
+    if hasattr(A_orig, 'values'):
+        A = A_orig.values.copy()
     else:
-        As, Rs = np.nansum(A),np.nansum(Ref)
+        A = A_orig.copy()
+    if hasattr(Ref_orig, 'values'):
+        Ref = Ref_orig.values.copy()
+    else:
+        Ref = Ref_orig.copy()
+    
+    if ignore_diags:
+        np.fill_diagonal(A, 0)
+        np.fill_diagonal(Ref, 0)
+        As, Rs = np.nansum(A), np.nansum(Ref)
+    else:
+        As, Rs = np.nansum(A), np.nansum(Ref)
     if adjust:
         if As < Rs:
-            m = np.tril(Ref) + np.triu(A*(Rs/As)) # value overflow without parentheses in (Rs/As)
+            m = np.tril(Ref) + np.triu(A * (Rs / As))  # value overflow without parentheses in (Rs/As)
         elif As > Rs:
-            m = np.tril(Ref*(As/Rs)) + np.triu(A)
+            m = np.tril(Ref * (As / Rs)) + np.triu(A)
         else:
             print("Warning: two matrix have same brightness, this seldom happens.")
             m = np.tril(Ref) + np.triu(A)
