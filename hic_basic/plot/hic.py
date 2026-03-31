@@ -1983,7 +1983,7 @@ def plot_trapezoid_with_tracks(
     region: str,
     tracks: List,
     track_heights: Optional[List[float]] = None,
-    trapezoid_height: float = 6,
+    trapezoid_height: Optional[float] = None,
     strata: int = 20,
     title: str = "",
     balance: bool = True,
@@ -1996,6 +1996,7 @@ def plot_trapezoid_with_tracks(
     mask_eig_na: bool = True,
     total_height: int = 800,
     width: int = 700,
+    auto_scale: bool = True,
     **heatmap_kwargs
 ) -> go.Figure:
     """Plot trapezoid Hi-C heatmap with arbitrary tracks below.
@@ -2018,7 +2019,8 @@ def plot_trapezoid_with_tracks(
         Relative height ratios for each track. If None, all tracks have
         equal height of 2.0.
     trapezoid_height : float, optional
-        Relative height of trapezoid row. Default 6.
+        Relative height of trapezoid row. If None and auto_scale=True,
+        will be calculated automatically to maintain square pixels.
     strata : int, optional
         Number of rows to keep in the trapezoid. Default 20.
     title : str, optional
@@ -2043,6 +2045,9 @@ def plot_trapezoid_with_tracks(
         Total figure height in pixels. Default 800.
     width : int, optional
         Figure width in pixels. Default 700.
+    auto_scale : bool, optional
+        If True, automatically calculate trapezoid_height to maintain
+        square pixel aspect ratio. Default True.
     **heatmap_kwargs
         Additional keyword arguments passed to go.Heatmap.
 
@@ -2080,11 +2085,40 @@ def plot_trapezoid_with_tracks(
     - EigenTrack: Eigenvector compartment signal
     - ISTrack: Insulation score track
     - HeatmapTrack: Standard Hi-C heatmap
+    
+    Auto-scaling behavior:
+    - When auto_scale=True, trapezoid_height is calculated to maintain
+      square pixel aspect ratio based on the trapezoid matrix shape
+    - Formula accounts for strata, n_bins, figure dimensions, and track space
     """
     from .track import TrapezoidHeatmapTrack, TrackConfig
     from .track_composer import TrackComposer
+    from cooler import Cooler
 
     n_tracks = len(tracks)
+    
+    # Default track heights
+    if track_heights is None:
+        track_heights = [2.0] * n_tracks
+    
+    # Auto-calculate trapezoid height for square pixels
+    if auto_scale and trapezoid_height is None:
+        # Load matrix to get dimensions
+        clr = Cooler(str(coolp))
+        bin_s, bin_e = clr.extent(region)
+        n_bins = bin_e - bin_s
+        
+        # Calculate height ratio for square pixels
+        total_track_height = sum(track_heights)
+        r = (strata * width) / (n_bins * total_height)
+        if r < 1:
+            trapezoid_height = r * total_track_height / (1 - r)
+            trapezoid_height = max(2.0, min(trapezoid_height, 15.0))
+        else:
+            trapezoid_height = (strata / n_bins) * 10
+    
+    if trapezoid_height is None:
+        trapezoid_height = 6.0
 
     # Create composer with appropriate layout
     composer = TrackComposer.for_trapezoid_with_tracks(
