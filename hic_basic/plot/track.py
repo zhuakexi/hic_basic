@@ -1246,27 +1246,30 @@ class GeneTrack(Track):
                 genes_to_label.append(gene)
 
         # Generate shapes for each transcript
-        y_positions = np.linspace(
-            1 - self.exon_height,
-            self.exon_height,
-            len(transcripts_to_show)
-        )
-
+        # All transcripts share the same y range [0, 1]
+        # Transcripts are drawn overlapping (all at y=0)
         for i, (gene, tx) in enumerate(transcripts_to_show):
-            y = y_positions[i]
+            # All transcripts at y_position=0
+            # Backbone at y=0.5 (center of track)
             shapes = _get_transcript_row(
                 tx,
-                y_position=y,
+                y_position=0.0,
                 utr_height=self.utr_height,
                 exon_height=self.exon_height,
                 cds_height=self.cds_height,
-                backbone_y=y
+                backbone_y=0.5  # Fixed: backbone in center of track [0, 1]
             )
             self._shapes.extend(shapes)
+        
+        # Store y-axis max for render method (always 1.0 for single row)
+        self._y_max = 1.0
 
-            # Add gene label
+        # Add gene labels
+        for i, (gene, tx) in enumerate(transcripts_to_show):
             if self.show_labels and gene in genes_to_label:
                 label = _get_gene_label(gene)
+                # Position label above the transcript row
+                y = float(i)  # Same y as transcript row
                 self._annotations.append(dict(
                     x=tx.start,
                     y=y + self.exon_height + 0.05,
@@ -1315,7 +1318,10 @@ class GeneTrack(Track):
 
         # Update axes
         fig.update_xaxes(showline=True, linecolor='black', row=row, col=col)
-        fig.update_yaxes(showticklabels=False, row=row, col=col)
+        # Set y-axis range based on number of transcripts
+        y_max = getattr(self, '_y_max', 1.0)
+        # Add some padding above transcripts for labels
+        fig.update_yaxes(showticklabels=False, range=[0, y_max + 0.5], row=row, col=col)
 
         return fig
 
@@ -1391,6 +1397,16 @@ def _get_transcript_row(
     Create shapes for a single transcript row.
 
     Returns list of plotly shapes (rectangles for exons/CDS/UTR, lines for introns).
+    
+    Parameters
+    ----------
+    y_position : float
+        Bottom y position of the track row (0-1 scale).
+    utr_height, exon_height, cds_height : float
+        Relative heights of each feature type (0-1 scale).
+    backbone_y : float, optional
+        Y position for intron backbone line. If None, calculated as center
+        of the track row based on max feature height.
     """
     shapes = []
 
@@ -1400,7 +1416,9 @@ def _get_transcript_row(
     if not sorted_exons:
         return shapes
 
-    # Determine backbone y position (middle of track)
+    # Determine backbone y position (middle of track row)
+    # Track row spans from y_position to y_position + 1
+    # Backbone should be in the center: y_position + 0.5
     if backbone_y is None:
         backbone_y = y_position + 0.5
 
@@ -1438,14 +1456,17 @@ def _get_transcript_row(
             if feat_type == 'cds':
                 height = cds_height
                 color = 'darkblue'
+                # Center CDS in the track row
                 y0 = y_position + (1 - height) / 2
             elif feat_type == 'utr':
                 height = utr_height
                 color = 'lightblue'
+                # Center UTR in the track row
                 y0 = y_position + (1 - height) / 2
             else:  # exon
                 height = exon_height
                 color = 'skyblue'
+                # Center exon in the track row
                 y0 = y_position + (1 - height) / 2
 
             # Draw exon rectangle
