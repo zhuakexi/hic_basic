@@ -17,6 +17,8 @@ from hic_basic.plot.hic import (
     plot_tiling_compartment,
     plot_compartment_trapezoid,
     plot_compartment_trapezoid_2tracks,
+    plot_tiling_compartment_v2,
+    plot_compartment_trapezoid_2tracks_v2,
 )
 
 class TestPlot(unittest.TestCase):
@@ -142,8 +144,8 @@ class TestPlot(unittest.TestCase):
         Unit test for plot_tiling_compartment function.
         Test that the function returns a valid figure object with correct structure.
         """
-        # Test with synthetic data
-        fig = plot_tiling_compartment(
+        # Test with synthetic data using new Track architecture
+        fig = plot_tiling_compartment_v2(
             coolps=[str(self.synthetic_cool), str(self.synthetic_cool)],
             eigs_files=[str(self.synthetic_eigs1), str(self.synthetic_eigs2)],
             region="chr1",
@@ -163,7 +165,7 @@ class TestPlot(unittest.TestCase):
         """
         Unit test for plot_tiling_compartment with correlation matrix.
         """
-        fig = plot_tiling_compartment(
+        fig = plot_tiling_compartment_v2(
             coolps=[str(self.synthetic_cool), str(self.synthetic_cool)],
             eigs_files=[str(self.synthetic_eigs1), str(self.synthetic_eigs2)],
             region="chr1",
@@ -183,7 +185,7 @@ class TestPlot(unittest.TestCase):
         """
         out_png = self.outdir / "plot_tiling_compartment.png"
         
-        fig = plot_tiling_compartment(
+        fig = plot_tiling_compartment_v2(
             coolps=[str(self.synthetic_cool), str(self.synthetic_cool)],
             eigs_files=[str(self.synthetic_eigs1), str(self.synthetic_eigs2)],
             region="chr1",
@@ -203,7 +205,7 @@ class TestPlot(unittest.TestCase):
         Unit test for plot_tiling_compartment with balance=False.
         Note: synthetic test data does not have balancing weights.
         """
-        fig = plot_tiling_compartment(
+        fig = plot_tiling_compartment_v2(
             coolps=[str(self.synthetic_cool), str(self.synthetic_cool)],
             eigs_files=[str(self.synthetic_eigs1), str(self.synthetic_eigs2)],
             region="chr1",
@@ -220,7 +222,7 @@ class TestPlot(unittest.TestCase):
         """
         Unit test for plot_tiling_compartment with custom colormap.
         """
-        fig = plot_tiling_compartment(
+        fig = plot_tiling_compartment_v2(
             coolps=[str(self.synthetic_cool), str(self.synthetic_cool)],
             eigs_files=[str(self.synthetic_eigs1), str(self.synthetic_eigs2)],
             region="chr1",
@@ -309,7 +311,7 @@ class TestCompartmentTrapezoid(unittest.TestCase):
         """
         Unit test for plot_compartment_trapezoid_2tracks basic functionality.
         """
-        fig = plot_compartment_trapezoid_2tracks(
+        fig = plot_compartment_trapezoid_2tracks_v2(
             coolp0=str(self.synthetic_cool),
             vec_file1=str(self.synthetic_eigs1),
             vec_file2=str(self.synthetic_eigs2),
@@ -331,7 +333,7 @@ class TestCompartmentTrapezoid(unittest.TestCase):
         """
         out_png = self.outdir / "plot_compartment_trapezoid_2tracks.png"
         
-        fig = plot_compartment_trapezoid_2tracks(
+        fig = plot_compartment_trapezoid_2tracks_v2(
             coolp0=str(self.synthetic_cool),
             vec_file1=str(self.synthetic_eigs1),
             vec_file2=str(self.synthetic_eigs2),

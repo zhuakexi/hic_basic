@@ -175,10 +175,16 @@ class TrackComposer:
 
         # Load data and render each track
         for (row, col), track in self.tracks.items():
-            # Load data with appropriate parameters
             # Use delayed import to avoid circular dependency
-            from .track import EigenTrack
+            from .track import EigenTrack, HeatmapTrack
 
+            # Skip loading if data is already loaded (pre-loaded tracks)
+            if track._data is not None or (hasattr(track, '_matrix') and track._matrix is not None):
+                # Data already loaded, just render
+                track.render(self._fig, row=row, col=col)
+                continue
+
+            # Load data with appropriate parameters
             if isinstance(track, EigenTrack):
                 # EigenTrack requires clr parameter
                 if clr is not None:
@@ -188,6 +194,12 @@ class TrackComposer:
                         f"EigenTrack at ({row},{col}) requires a 'clr' parameter. "
                         "Please provide 'clr' when calling build()."
                     )
+            elif isinstance(track, HeatmapTrack):
+                # HeatmapTrack can use clr or cool_path
+                if clr is not None:
+                    track.load_data(region=region, clr=clr)
+                else:
+                    track.load_data(region=region)
             elif clr is not None:
                 # Use shared cooler if provided
                 track.load_data(clr=clr, region=region)

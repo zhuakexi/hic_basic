@@ -2002,7 +2002,11 @@ def plot_compartment_trapezoid_2tracks_v2(
             AB=lambda df: np.where(df[eigen_col] < 0, "B", "A")
         )
 
-        eigen.render(composer.fig, row=i, col=1)
+        composer.add_track(eigen, row=i, col=1)
+
+    # Build the figure (this will load data and render all tracks)
+    clr = Cooler(str(coolp0))
+    composer.build(region=region, clr=clr, title=title)
 
     # Update layout
     composer.fig.update_layout(
@@ -2124,7 +2128,7 @@ def plot_tiling_compartment_v2(
     )
     composer.add_track(heatmap, row=1, col=2)
 
-    # Add eigenvector tracks
+    # Add eigenvector tracks as pre-loaded tracks
     for i, (eig_file, orientation) in enumerate([
         (eigs_files[0], "h"),  # bottom track - horizontal
         (eigs_files[1], "v"),  # left track - vertical
@@ -2149,9 +2153,11 @@ def plot_tiling_compartment_v2(
         ).assign(
             AB=lambda df: np.where(df[Enames[i - 1]] < 0, "B", "A")
         )
-
         row, col = (2, 2) if i == 1 else (1, 1)
-        eigen.render(composer.fig, row=row, col=col)
+        composer.add_track(eigen, row=row, col=col)
+
+    # Build the figure (this will load data and render all tracks)
+    composer.build(region=region, clr=clr, title=title)
 
     # Update layout
     composer.fig.update_layout(
@@ -2163,3 +2169,153 @@ def plot_tiling_compartment_v2(
     )
 
     return composer.fig
+
+
+# =============================================================================
+# Deprecated functions - kept for backward compatibility
+# =============================================================================
+
+
+def _plot_tiling_compartment_legacy(
+    coolps, eigs_files, region, title, corr=True, strip=True,
+    balance=False, cmap="RdBu", donorm=False,
+    Enames=["E1","E1"], eig_y_kwargs={}, **args
+):
+    """Legacy implementation of plot_tiling_compartment.
+
+    Deprecated: Use plot_tiling_compartment() instead, which uses the new Track architecture.
+    This function is kept for backward compatibility and will be removed in a future version.
+    """
+    import warnings
+    warnings.warn(
+        "plot_tiling_compartment (legacy) is deprecated and will be removed in a future version. "
+        "The new implementation uses the Track architecture for better modularity.",
+        FutureWarning,
+        stacklevel=2
+    )
+    # Call original implementation
+    clrs = [Cooler(str(coolp)) for coolp in coolps]
+    eigs = [pd.read_table(eigs_file) for eigs_file in eigs_files]
+    bin_s, bin_e = clrs[0].extent(region)
+    if corr:
+        region_mat1 = compartments(
+            clrs[0].matrix(balance = balance).fetch(region),
+            matrixonly = True
+        )
+        region_mat2 = compartments(
+            clrs[1].matrix(balance = balance).fetch(region),
+            matrixonly = True
+        )
+    else:
+        region_mat1 = clrs[0].matrix(balance = balance).fetch(region)
+        region_mat2 = clrs[1].matrix(balance = balance).fetch(region)
+    region_mat = tiling_mat(region_mat1, region_mat2)
+    pos = clrs[0].bins()[bin_s:bin_e]["start"]
+    region_mat = pd.DataFrame(region_mat, index=pos, columns=pos)
+    if strip:
+        for i in range(region_mat.shape[0]):
+            if np.all(region_mat.iloc[i,:] == 0):
+                i_s = i
+            else:
+                i_s = i
+                break
+        for i in range(region_mat.shape[0]-1, -1, -1):
+            if np.all(region_mat.iloc[i,:] == 0):
+                i_e = i
+            else:
+                i_e = i
+                break
+        region_mat = region_mat.iloc[i_s:i_e,i_s:i_e]
+
+    figure = make_subplots(
+        rows=2, cols=2, vertical_spacing=0.01, horizontal_spacing=0.01,
+        row_heights=[10,1], column_widths=[1,10]
+    )
+    mat_fig = _plot_mat(region_mat, cmap=cmap, donorm=donorm, **args)
+    figure.add_trace(mat_fig.data[0], row=1, col=2)
+
+    for i, (eig_file, Ename, row, col, orientation) in enumerate([
+        (eigs_files[1], Enames[1], 1, 1, 'h'),
+        (eigs_files[0], Enames[0], 2, 2, 'v')
+    ]):
+        dat = pd.merge(
+            left=clrs[i].bins()[bin_s:bin_e], right=eigs[i],
+            how="inner", on=("chrom","start","end")
+        ).copy()
+        bar_width = dat["start"].diff().mode()[0]
+        dat = dat.assign(AB="A")
+        dat.loc[dat[Ename]<0, "AB"] = "B"
+        eigs_fig = px.bar(
+            dat, y="start" if orientation=='h' else dat[Ename],
+            x=dat[Ename] if orientation=='h' else "start",
+            color="AB", orientation=orientation,
+            color_discrete_map={"B":'rgb(33,102,172)',"A":'rgb(178,24,43)'}
+        )
+        eigs_fig.update_traces(showlegend=False, width=bar_width)
+        for trace in eigs_fig.data:
+            figure.add_trace(trace, row=row, col=col)
+
+    figure.update_traces(selector=dict(type="bar"), marker=dict(line=dict(color="purple", width=0)))
+    figure.update_xaxes(visible=False, row=1, col=2)
+    figure.update_yaxes(visible=False, row=1, col=2)
+    figure.update_xaxes(
+        showline=True, linecolor="black", tickvals=[-0.5,0.5], ticks="", range=[-0.5,0.5],
+        side="top", row=1, col=1, **eig_y_kwargs
+    )
+    figure.update_yaxes(
+        showline=True, linecolor="black", tickvals=[-0.5,0.5], ticks="", range=[-0.5,0.5],
+        row=2, col=2, **eig_y_kwargs
+    )
+    figure.update_layout(paper_bgcolor="white", plot_bgcolor="white", height=700, width=700, title=title)
+    return figure
+
+
+def _plot_compartment_trapezoid_2tracks_legacy(
+    coolp0, vec_file1, vec_file2, region, balance=True, strata=20,
+    title="TITLE", quant=0.01, minmax="min", cmap="RdBu_r",
+    eigen_col="E1", fillna=False, strip=False, mask_eig_na=True,
+    vec_file0=None, coolp1=None, coolp2=None
+):
+    """Legacy implementation of plot_compartment_trapezoid_2tracks.
+
+    Deprecated: Use plot_compartment_trapezoid_2tracks() instead, which uses the new Track architecture.
+    This function is kept for backward compatibility and will be removed in a future version.
+    """
+    import warnings
+    warnings.warn(
+        "plot_compartment_trapezoid_2tracks (legacy) is deprecated and will be removed in a future version. "
+        "The new implementation uses the Track architecture for better modularity.",
+        FutureWarning,
+        stacklevel=2
+    )
+    # Call original implementation
+    if vec_file0 is None:
+        vec_file0 = vec_file1
+    eig_dats = []
+    for i, (vec_file, coolp) in enumerate(zip([vec_file0, vec_file1, vec_file2], [coolp0, coolp1, coolp2])):
+        if coolp is None:
+            coolp = coolp0
+        _square_fig, _cmat, _extent, eig_dat = plot_compartment(
+            coolp, vec_file, region=region, eigen_col=eigen_col, balance=balance,
+            title=title, strip=strip, mask_eig_na=mask_eig_na, fillna=fillna,
+            give_mat=True, quant=quant, minmax=minmax, eq_hist=False, cmap=cmap, ignore_diags=False
+        )
+        if i == 0:
+            square_fig, cmat, extent = _square_fig, _cmat.copy(), _extent
+        else:
+            eig_dats.append(eig_dat)
+
+    fig = make_subplots(rows=3, cols=1, shared_xaxes=False, shared_yaxes=False, vertical_spacing=0.05, row_heights=[0.6, 0.2, 0.2])
+    heatmap = plot_compartment_trapezoid(
+        coolp0, vec_file0, region, balance, strata, title, quant, minmax, cmap, eigen_col, fillna, strip, mask_eig_na
+    )
+    fig.add_trace(heatmap.data[0], row=1, col=1)
+    for i, eig_dat in enumerate(eig_dats):
+        eigs_fig = px.bar(eig_dat, x="start", y=eigen_col, color="AB", color_discrete_map={"B":'rgb(33,102,172)',"A":'rgb(178,24,43)'})
+        bar_width = eig_dat["start"].diff().mode()[0]
+        eigs_fig.update_traces(showlegend=False, width=bar_width)
+        for trace in eigs_fig.data:
+            fig.add_trace(trace, row=i+2, col=1)
+    fig.update_traces(selector=dict(type="bar"), marker=dict(line=dict(color="purple", width=0)))
+    fig.update_layout(title=title, plot_bgcolor="white", height=800, width=700)
+    return fig
