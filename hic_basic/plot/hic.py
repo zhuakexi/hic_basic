@@ -1,5 +1,7 @@
 from itertools import product
 from math import ceil
+from pathlib import Path
+from typing import List, Optional, Union
 
 import bioframe
 import cooler
@@ -1775,3 +1777,323 @@ def plot_compartment_trapezoid_2tracks(
         width=700
     )
     return fig
+
+
+def plot_compartment_trapezoid_2tracks_v2(
+    coolp0: Union[str, Path],
+    vec_file1: Union[str, Path],
+    vec_file2: Union[str, Path],
+    region: str,
+    balance: bool = True,
+    strata: int = 20,
+    title: str = "TITLE",
+    quant: float = 0.01,
+    minmax: str = "min",
+    cmap: str = "RdBu_r",
+    eigen_col: str = "E1",
+    fillna: bool = False,
+    strip: bool = False,
+    mask_eig_na: bool = True,
+    vec_file0: Optional[Union[str, Path]] = None,
+    coolp1: Optional[Union[str, Path]] = None,
+    coolp2: Optional[Union[str, Path]] = None
+) -> go.Figure:
+    """Plot compartment trapezoid heatmap with two eigenvector tracks.
+
+    This function creates a 3-row subplot layout using the Track architecture:
+    - Row 1: Trapezoid compartment heatmap
+    - Row 2: Eigenvector track 1 (e.g., sample 1)
+    - Row 3: Eigenvector track 2 (e.g., sample 2 or reference)
+
+    Args:
+        coolp0: Path to primary cooler file.
+        vec_file1: Path to first eigenvector file.
+        vec_file2: Path to second eigenvector file.
+        region: Genome region to plot (e.g., "chr1").
+        balance: Whether to use balanced cooler matrix. Default True.
+        strata: Number of rows to keep in the trapezoid. Default 20.
+        title: Plot title. Default "TITLE".
+        quant: Quantile for color scale clipping. Default 0.01.
+        minmax: How to compute color limits. Default "min".
+        cmap: Colormap name. Default "RdBu_r".
+        eigen_col: Column name for eigenvector values. Default "E1".
+        fillna: Whether to fill NaN values in the matrix. Default False.
+        strip: Whether to strip consecutive zeros. Default False.
+        mask_eig_na: Whether to mask NaN eigenvalues. Default True.
+        vec_file0: Path to eigenvector file for primary cooler. Default None (uses vec_file1).
+        coolp1: Path to second cooler file for eigenvector 1. Default None (uses coolp0).
+        coolp2: Path to third cooler file for eigenvector 2. Default None (uses coolp0).
+
+    Returns:
+        go.Figure: Plotly figure with trapezoid heatmap and two eigenvector tracks.
+
+    Example:
+        >>> fig = plot_compartment_trapezoid_2tracks_v2(
+        ...     coolp0="sperm.cool",
+        ...     vec_file1="sperm_eigvec.bedgraph",
+        ...     vec_file2="esc_eigvec.bedgraph",
+        ...     region="chr1",
+        ...     strata=50,
+        ...     title="Sperm vs ESC compartment"
+        ... )
+        >>> fig.show()
+    """
+    from .track import EigenTrack, TrackConfig, HeatmapTrack
+    from .track_composer import TrackComposer
+
+    if vec_file0 is None:
+        vec_file0 = vec_file1
+
+    # Create composer with 3-row layout
+    composer = TrackComposer.for_trapezoid_2tracks(
+        row_heights=[0.6, 0.2, 0.2]
+    )
+
+    # Generate trapezoid heatmap data
+    square_fig, cmat, extent, eig_dat0 = plot_compartment(
+        coolp0,
+        vec_file0,
+        region=region,
+        eigen_col=eigen_col,
+        balance=balance,
+        title=title,
+        strip=strip,
+        mask_eig_na=mask_eig_na,
+        fillna=fillna,
+        give_mat=True,
+        quant=quant,
+        minmax=minmax,
+        eq_hist=False,
+        cmap=cmap,
+        ignore_diags=False
+    )
+
+    # Process cmat for trapezoid
+    min_v = cmat.min().min()
+    cmat = cmat.fillna(min_v - 100)
+    r_cmat = rotate(cmat, 45, cval=np.nan, order=1)
+    r_cmat[r_cmat < min_v - 0.5] = np.nan
+    df = pd.DataFrame(r_cmat)
+    N = df.shape[0]
+
+    if N % 2 == 0:
+        trapezoid = df.iloc[N // 2: N // 2 + strata, :]
+    else:
+        trapezoid = df.iloc[N // 2 + 1: N // 2 + strata, :]
+
+    # Set default heatmap kwargs
+    default_kwargs = {}
+    if isinstance(extent, tuple):
+        default_kwargs["zmin"] = extent[0]
+        default_kwargs["zmax"] = extent[1]
+    else:
+        default_kwargs["zmin"] = -extent
+        default_kwargs["zmax"] = extent
+
+    # Create heatmap track
+    clr = Cooler(str(coolp0))
+    bin_s, bin_e = clr.extent(region)
+    bins = clr.bins()[bin_s:bin_e]
+    bins_df = pd.DataFrame({
+        "chrom": bins["chrom"],
+        "start": bins["start"],
+        "end": bins["end"]
+    })
+
+    heatmap = HeatmapTrack.from_matrix(
+        trapezoid.values,
+        bins_df,
+        config=TrackConfig(row=1, col=1),
+        colorscale=cmap,
+        **default_kwargs
+    )
+    composer.add_track(heatmap, row=1, col=1)
+
+    # Add eigenvector tracks
+    for i, (vec_file, coolp) in enumerate(zip(
+        [vec_file1, vec_file2],
+        [coolp1, coolp2]
+    ), start=2):
+        if coolp is None:
+            coolp = coolp0
+
+        eigen = EigenTrack(
+            vec_file,
+            eigen_col=eigen_col,
+            orientation="v"
+        )
+        eigen._clr = Cooler(str(coolp))
+        # Load data
+        bin_s_i, bin_e_i = eigen._clr.extent(region)
+        bins = eigen._clr.bins()[bin_s_i:bin_e_i]
+        eig = pd.read_table(vec_file)
+        eigen._data = pd.merge(
+            left=bins,
+            right=eig,
+            how="inner",
+            on=("chrom", "start", "end")
+        ).assign(
+            AB=lambda df: np.where(df[eigen_col] < 0, "B", "A")
+        )
+
+        eigen.render(composer.fig, row=i, col=1)
+
+    # Update layout
+    composer.fig.update_layout(
+        title=title,
+        plot_bgcolor="white",
+        height=800,
+        width=700
+    )
+
+    return composer.fig
+
+
+def plot_tiling_compartment_v2(
+    coolps: List[Union[str, Path]],
+    eigs_files: List[Union[str, Path]],
+    region: str,
+    title: str = "",
+    corr: bool = True,
+    strip: bool = True,
+    balance: bool = False,
+    cmap: str = "RdBu",
+    donorm: bool = False,
+    Enames: List[str] = None,
+    **args
+) -> go.Figure:
+    """Plot two contact matrices in a tiling layout with eigenvector tracks.
+
+    This function creates a 2x2 subplot layout where:
+    - Top-left: Eigenvector track (vertical)
+    - Top-right: Combined heatmap (upper triangle from matrix 2, lower from matrix 1)
+    - Bottom-right: Eigenvector track (horizontal)
+
+    Args:
+        coolps: List of two cooler file paths.
+        eigs_files: List of two eigenvector file paths.
+        region: Genomic region to plot (e.g., "chr1:1000000-5000000").
+        title: Figure title.
+        corr: Whether to plot correlation matrix. Default True.
+        strip: Whether to strip consecutive zero rows/columns. Default True.
+        balance: Whether to use balanced cooler matrix. Default False.
+        cmap: Colormap name. Default "RdBu".
+        donorm: Whether to use log normalization. Default False.
+        Enames: Column names for eigenvector values. Default ["E1", "E1"].
+        **args: Additional arguments passed to _plot_mat.
+
+    Returns:
+        go.Figure: Plotly figure with tiling compartment plot.
+
+    Example:
+        >>> fig = plot_tiling_compartment_v2(
+        ...     coolps=["sample1.cool", "sample2.cool"],
+        ...     eigs_files=["eigs1.bedgraph", "eigs2.bedgraph"],
+        ...     region="chr1:1000000-5000000",
+        ...     title="Compartment Comparison"
+        ... )
+        >>> fig.show()
+    """
+    from .track import HeatmapTrack, EigenTrack, TrackConfig
+    from .track_composer import TrackComposer
+
+    if Enames is None:
+        Enames = ["E1", "E1"]
+
+    # Load data
+    clr = Cooler(str(coolps[0]))
+    bin_s, bin_e = clr.extent(region)
+
+    # Prepare matrices
+    if corr:
+        region_mat1 = compartments(
+            clr.matrix(balance=balance).fetch(region),
+            matrixonly=True
+        )
+        region_mat2 = compartments(
+            Cooler(str(coolps[1])).matrix(balance=balance).fetch(region),
+            matrixonly=True
+        )
+    else:
+        region_mat1 = clr.matrix(balance=balance).fetch(region)
+        region_mat2 = Cooler(str(coolps[1])).matrix(balance=balance).fetch(region)
+
+    # Tile matrices
+    region_mat = tiling_mat(region_mat1, region_mat2)
+    pos = clr.bins()[bin_s:bin_e]["start"]
+    region_mat = pd.DataFrame(region_mat, index=pos, columns=pos)
+
+    # Strip consecutive zeros if requested
+    if strip:
+        for i in range(region_mat.shape[0]):
+            if np.all(region_mat.iloc[i, :] == 0):
+                i_s = i
+            else:
+                i_s = i
+                break
+        for i in range(region_mat.shape[0] - 1, -1, -1):
+            if np.all(region_mat.iloc[i, :] == 0):
+                i_e = i
+            else:
+                i_e = i
+                break
+        region_mat = region_mat.iloc[i_s:i_e, i_s:i_e]
+        pos = pos[i_s:i_e]
+
+    # Create composer with 2x2 layout
+    composer = TrackComposer.for_tiling_compartment()
+
+    # Add heatmap track
+    bins_df = pd.DataFrame({
+        "chrom": clr.bins()[bin_s:bin_e]["chrom"].iloc[i_s:i_e] if strip else clr.bins()[bin_s:bin_e]["chrom"],
+        "start": pos,
+        "end": clr.bins()[bin_s:bin_e]["end"].iloc[i_s:i_e] if strip else clr.bins()[bin_s:bin_e]["end"]
+    })
+    heatmap = HeatmapTrack.from_matrix(
+        region_mat.values,
+        bins_df,
+        config=TrackConfig(row=1, col=2),
+        colorscale=cmap,
+        **args
+    )
+    composer.add_track(heatmap, row=1, col=2)
+
+    # Add eigenvector tracks
+    for i, (eig_file, orientation) in enumerate([
+        (eigs_files[0], "h"),  # bottom track - horizontal
+        (eigs_files[1], "v"),  # left track - vertical
+    ], start=1):
+        eigen = EigenTrack(
+            eig_file,
+            eigen_col=Enames[i - 1],
+            orientation=orientation
+        )
+        eigen._clr = clr
+        # Load and filter data to match region
+        bin_s_i, bin_e_i = clr.extent(region)
+        bins = clr.bins()[bin_s_i:bin_e_i]
+        if strip:
+            bins = bins.iloc[i_s:i_e]
+        eig = pd.read_table(eig_file)
+        eigen._data = pd.merge(
+            left=bins,
+            right=eig,
+            how="inner",
+            on=("chrom", "start", "end")
+        ).assign(
+            AB=lambda df: np.where(df[Enames[i - 1]] < 0, "B", "A")
+        )
+
+        row, col = (2, 2) if i == 1 else (1, 1)
+        eigen.render(composer.fig, row=row, col=col)
+
+    # Update layout
+    composer.fig.update_layout(
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        height=700,
+        width=700,
+        title=title
+    )
+
+    return composer.fig

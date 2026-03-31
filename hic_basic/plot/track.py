@@ -1,9 +1,29 @@
 
+"""
+Track module for genomic data visualization.
+
+This module provides classes and functions for visualizing genomic data
+as tracks that can be composed into multi-panel figures.
+
+Example usage:
+    >>> from hic_basic.plot.track import EigenTrack, ISTrack, TrackComposer
+    >>> composer = TrackComposer.for_heatmap_with_tracks(n_tracks=2)
+    >>> composer.add_track(heatmap, row=1, col=1)
+    >>> composer.add_track(eigen, row=2, col=1)
+    >>> composer.add_track(is_track, row=3, col=1)
+    >>> fig = composer.build(region="chr1:1000000-5000000")
+"""
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Union, Tuple, Any
+
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from typing import Dict, List, Optional, Union, Tuple
 from pathlib import Path
+from cooler import Cooler
 from .gene_track_parser import (
     parse_annotation_file,
     filter_genes_in_region,
@@ -11,6 +31,494 @@ from .gene_track_parser import (
     Transcript,
     Interval
 )
+
+
+# =============================================================================
+# Track Configuration
+# =============================================================================
+
+
+@dataclass
+class TrackConfig:
+    """Configuration for a track's position and styling.
+
+    Attributes:
+        row: Row position in the subplot grid (1-indexed).
+        col: Column position in the subplot grid (1-indexed).
+        height_ratio: Relative height ratio for the track's row.
+        title: Optional title for the track.
+        y_range: Optional (min, max) tuple for y-axis range.
+        style_kwargs: Additional styling keyword arguments.
+    """
+    row: int
+    col: int
+    height_ratio: float = 1.0
+    title: Optional[str] = None
+    y_range: Optional[Tuple[float, float]] = None
+    style_kwargs: Dict[str, Any] = field(default_factory=dict)
+
+
+# =============================================================================
+# Track Base Class
+# =============================================================================
+
+
+class Track(ABC):
+    """Abstract base class for genomic tracks.
+
+    Tracks are modular visualization components that can be composed into
+    multi-panel figures. Each track is responsible for loading its own data
+    and rendering itself onto a plotly figure.
+
+    Subclasses must implement:
+        - load_data(): Load and prepare data for visualization
+        - render(): Draw the track onto a figure at specified position
+
+    Example:
+        >>> track = EigenTrack("sample.vecs")
+        >>> track.load_data(clr, "chr1:1000000-5000000")
+        >>> track.render(fig, row=2, col=1)
+    """
+
+    def __init__(self, name: str, config: Optional[TrackConfig] = None):
+        """Initialize a Track.
+
+        Args:
+            name: Name identifier for the track.
+            config: Optional TrackConfig for position and styling.
+        """
+        self.name = name
+        self.config = config
+        self._data: Optional[pd.DataFrame] = None
+        self._clr: Optional[Cooler] = None
+
+    @abstractmethod
+    def load_data(self, **kwargs):
+        """Load and prepare data for the track.
+
+        Args:
+            **kwargs: Data loading parameters (e.g., cooler, region).
+
+        Returns:
+            self: Returns self for method chaining.
+        """
+        pass
+
+    @abstractmethod
+    def render(self, fig, row: int, col: int, **kwargs):
+        """Render the track onto a figure.
+
+        Args:
+            fig: Plotly figure to add traces to.
+            row: Row position in subplot grid.
+            col: Column position in subplot grid.
+            **kwargs: Additional rendering parameters.
+
+        Returns:
+            fig: Modified figure with track added.
+        """
+        pass
+
+    def get_default_config(self) -> TrackConfig:
+        """Get default configuration for this track type.
+
+        Returns:
+            TrackConfig: Default configuration.
+        """
+        return TrackConfig(row=1, col=1, height_ratio=1.0)
+
+    @property
+    def data(self) -> Optional[pd.DataFrame]:
+        """Get the track's data."""
+        return self._data
+
+
+# =============================================================================
+# EigenTrack - Eigenvector/Compartment Track
+# =============================================================================
+
+
+class EigenTrack(Track):
+    """Eigenvector track for A/B compartment visualization.
+
+    Displays eigenvector values as bar plots, colored by compartment
+    assignment (A positive, B negative).
+
+    Attributes:
+        data_path: Path to eigenvector file (bedGraph or TSV format).
+        eigen_col: Column name containing eigenvector values.
+        cmap: Color mapping for A/B compartments.
+        orientation: Bar orientation ('v' for vertical, 'h' for horizontal).
+
+    Example:
+        >>> eigen = EigenTrack("sample.vecs", eigen_col="E1")
+        >>> eigen.load_data(clr, "chr1:1000000-5000000")
+        >>> eigen.render(fig, row=2, col=1)
+    """
+
+    def __init__(
+        self,
+        data_path: Union[str, Path],
+        eigen_col: str = "E1",
+        cmap: Optional[Dict[str, str]] = None,
+        orientation: str = "v",
+        config: Optional[TrackConfig] = None
+    ):
+        """Initialize EigenTrack.
+
+        Args:
+            data_path: Path to eigenvector file.
+            eigen_col: Column name for eigenvector values. Default 'E1'.
+            cmap: Color map for compartments. Default {'A': 'red', 'B': 'blue'}.
+            orientation: Bar orientation. 'v' for vertical, 'h' for horizontal.
+            config: Optional TrackConfig.
+        """
+        super().__init__(name="eigen", config=config)
+        self.data_path = Path(data_path)
+        self.eigen_col = eigen_col
+        self.cmap = cmap or {"A": "rgb(178,24,43)", "B": "rgb(33,102,172)"}
+        self.orientation = orientation
+
+    def load_data(self, clr: Cooler, region: str) -> "EigenTrack":
+        """Load eigenvector data aligned with cooler bins.
+
+        Args:
+            clr: Cooler object for bin information.
+            region: Genomic region (e.g., "chr1:1000000-5000000").
+
+        Returns:
+            self: Returns self for method chaining.
+        """
+        self._clr = clr
+        bin_s, bin_e = clr.extent(region)
+        bins = clr.bins()[bin_s:bin_e]
+
+        eig = pd.read_table(self.data_path)
+        self._data = pd.merge(
+            left=bins,
+            right=eig,
+            how="inner",
+            on=("chrom", "start", "end")
+        ).assign(
+            AB=lambda df: np.where(df[self.eigen_col] < 0, "B", "A")
+        )
+        return self
+
+    def render(self, fig, row: int, col: int, **kwargs) -> go.Figure:
+        """Render eigenvector track as bar plot.
+
+        Args:
+            fig: Plotly figure to add traces to.
+            row: Row position in subplot grid.
+            col: Column position in subplot grid.
+            **kwargs: Additional parameters (width, showlegend, etc.).
+
+        Returns:
+            fig: Modified figure with track added.
+        """
+        if self._data is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        bar_width = self._data["start"].diff().mode()[0]
+        default_kwargs = dict(
+            showlegend=False,
+            width=bar_width,
+            marker=dict(line=dict(width=0, color="purple"))
+        )
+        default_kwargs.update(kwargs)
+
+        if self.orientation == "h":
+            trace = go.Bar(
+                y=self._data["start"],
+                x=self._data[self.eigen_col],
+                marker_color=self._data["AB"].map(self.cmap),
+                orientation="h",
+                **default_kwargs
+            )
+        else:
+            trace = go.Bar(
+                x=self._data["start"],
+                y=self._data[self.eigen_col],
+                marker_color=self._data["AB"].map(self.cmap),
+                orientation="v",
+                **default_kwargs
+            )
+
+        fig.add_trace(trace, row=row, col=col)
+        self._update_axes(fig, row, col, **kwargs)
+        return fig
+
+    def _update_axes(self, fig, row: int, col: int, **kwargs):
+        """Update axis styling for the track.
+
+        Args:
+            fig: Plotly figure.
+            row: Row position.
+            col: Column position.
+            **kwargs: Additional axis parameters.
+        """
+        y_range = kwargs.get("y_range", [-0.5, 0.5])
+        y_kwargs = dict(
+            showline=True,
+            linecolor="black",
+            tickvals=[-0.5, 0.5],
+            ticks="",
+            range=y_range
+        )
+
+        if self.orientation == "h":
+            fig.update_xaxes(**y_kwargs, row=row, col=col)
+            fig.update_yaxes(showline=False, row=row, col=col)
+        else:
+            fig.update_yaxes(**y_kwargs, row=row, col=col)
+            fig.update_xaxes(showline=False, row=row, col=col)
+
+
+# =============================================================================
+# ISTrack - Insulation Score Track
+# =============================================================================
+
+
+class ISTrack(Track):
+    """Insulation Score track for TAD boundary visualization.
+
+    Displays insulation score as a line plot.
+
+    Attributes:
+        data_path: Path to insulation score file.
+        is_col: Column name containing insulation score values.
+        line_color: Color of the line plot.
+        orientation: Line orientation ('v' for vertical, 'h' for horizontal).
+
+    Example:
+        >>> is_track = ISTrack("sample.IS.tsv", is_col="IS_score")
+        >>> is_track.load_data(clr, "chr1:1000000-5000000")
+        >>> is_track.render(fig, row=3, col=1)
+    """
+
+    def __init__(
+        self,
+        data_path: Union[str, Path],
+        is_col: str = "IS",
+        line_color: str = "black",
+        orientation: str = "v",
+        config: Optional[TrackConfig] = None
+    ):
+        """Initialize ISTrack.
+
+        Args:
+            data_path: Path to insulation score file.
+            is_col: Column name for insulation score. Default 'IS'.
+            line_color: Line color. Default 'black'.
+            orientation: Line orientation. 'v' for vertical, 'h' for horizontal.
+            config: Optional TrackConfig.
+        """
+        super().__init__(name="IS", config=config)
+        self.data_path = Path(data_path)
+        self.is_col = is_col
+        self.line_color = line_color
+        self.orientation = orientation
+
+    def load_data(self, clr: Cooler, region: str) -> "ISTrack":
+        """Load insulation score data aligned with cooler bins.
+
+        Args:
+            clr: Cooler object for bin information.
+            region: Genomic region.
+
+        Returns:
+            self: Returns self for method chaining.
+        """
+        self._clr = clr
+        bin_s, bin_e = clr.extent(region)
+        bins = clr.bins()[bin_s:bin_e]
+
+        is_data = pd.read_table(self.data_path)
+        self._data = pd.merge(
+            left=bins,
+            right=is_data,
+            how="inner",
+            on=("chrom", "start", "end")
+        )
+        return self
+
+    def render(self, fig, row: int, col: int, **kwargs) -> go.Figure:
+        """Render insulation score track as line plot.
+
+        Args:
+            fig: Plotly figure to add traces to.
+            row: Row position in subplot grid.
+            col: Column position in subplot grid.
+            **kwargs: Additional parameters (line width, etc.).
+
+        Returns:
+            fig: Modified figure with track added.
+        """
+        if self._data is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        default_kwargs = dict(
+            mode="lines",
+            line=dict(color=self.line_color, width=1)
+        )
+        default_kwargs.update(kwargs)
+
+        if self.orientation == "h":
+            trace = go.Scatter(
+                y=self._data["start"],
+                x=self._data[self.is_col],
+                **default_kwargs
+            )
+        else:
+            trace = go.Scatter(
+                x=self._data["start"],
+                y=self._data[self.is_col],
+                **default_kwargs
+            )
+
+        fig.add_trace(trace, row=row, col=col)
+        self._update_axes(fig, row, col, **kwargs)
+        return fig
+
+    def _update_axes(self, fig, row: int, col: int, **kwargs):
+        """Update axis styling for the track.
+
+        Args:
+            fig: Plotly figure.
+            row: Row position.
+            col: Column position.
+            **kwargs: Additional axis parameters.
+        """
+        y_kwargs = dict(
+            showline=True,
+            linecolor="black",
+            ticks=""
+        )
+
+        if self.orientation == "h":
+            y_kwargs["side"] = "top"
+            fig.update_xaxes(**y_kwargs, row=row, col=col)
+        else:
+            fig.update_yaxes(**y_kwargs, row=row, col=col)
+
+
+# =============================================================================
+# HeatmapTrack - Hi-C Contact Matrix Heatmap
+# =============================================================================
+
+
+class HeatmapTrack(Track):
+    """Heatmap track for Hi-C contact matrix visualization.
+
+    Displays contact frequency matrix as a heatmap.
+
+    Attributes:
+        cool_path: Path to cooler file.
+        balance: Whether to use balanced matrix.
+        heatmap_kwargs: Additional heatmap parameters.
+
+    Example:
+        >>> heatmap = HeatmapTrack("sample.cool", balance=True)
+        >>> heatmap.load_data("chr1:1000000-5000000")
+        >>> heatmap.render(fig, row=1, col=1)
+    """
+
+    def __init__(
+        self,
+        cool_path: Union[str, Path],
+        balance: bool = True,
+        config: Optional[TrackConfig] = None,
+        **heatmap_kwargs
+    ):
+        """Initialize HeatmapTrack.
+
+        Args:
+            cool_path: Path to cooler file.
+            balance: Whether to use balanced matrix. Default True.
+            config: Optional TrackConfig.
+            **heatmap_kwargs: Additional parameters for go.Heatmap.
+        """
+        super().__init__(name="heatmap", config=config)
+        self.cool_path = Path(cool_path)
+        self.balance = balance
+        self.heatmap_kwargs = heatmap_kwargs
+        self._matrix: Optional[np.ndarray] = None
+        self._bins: Optional[pd.DataFrame] = None
+
+    def load_data(self, region: str, clr: Optional[Cooler] = None) -> "HeatmapTrack":
+        """Load contact matrix from cooler file.
+
+        Args:
+            region: Genomic region.
+            clr: Optional Cooler object. If not provided, will create from cool_path.
+
+        Returns:
+            self: Returns self for method chaining.
+        """
+        if clr is not None:
+            self._clr = clr
+        else:
+            self._clr = Cooler(str(self.cool_path))
+        self._matrix = self._clr.matrix(balance=self.balance).fetch(region)
+        self._bins = self._clr.bins().fetch(region)
+        return self
+
+    def render(self, fig, row: int, col: int, **kwargs) -> go.Figure:
+        """Render contact matrix as heatmap.
+
+        Args:
+            fig: Plotly figure to add traces to.
+            row: Row position in subplot grid.
+            col: Column position in subplot grid.
+            **kwargs: Additional parameters for go.Heatmap.
+
+        Returns:
+            fig: Modified figure with track added.
+        """
+        if self._matrix is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        merged_kwargs = {**self.heatmap_kwargs, **kwargs}
+        trace = go.Heatmap(
+            z=self._matrix,
+            x=self._bins["start"],
+            y=self._bins["start"],
+            **merged_kwargs
+        )
+        fig.add_trace(trace, row=row, col=col)
+        return fig
+
+    @classmethod
+    def from_matrix(
+        cls,
+        matrix: np.ndarray,
+        bins: pd.DataFrame,
+        config: Optional[TrackConfig] = None,
+        **heatmap_kwargs
+    ) -> "HeatmapTrack":
+        """Create HeatmapTrack from pre-computed matrix.
+
+        Args:
+            matrix: Contact matrix as numpy array.
+            bins: DataFrame with bin positions (chrom, start, end).
+            config: Optional TrackConfig.
+            **heatmap_kwargs: Additional parameters for go.Heatmap.
+
+        Returns:
+            HeatmapTrack: New instance with pre-computed data.
+        """
+        track = cls.__new__(cls)
+        Track.__init__(track, name="heatmap", config=config)
+        track._matrix = matrix
+        track._bins = bins
+        track.heatmap_kwargs = heatmap_kwargs
+        return track
+
+
+# =============================================================================
+# Genome-wide visualization functions
+# =============================================================================
+
 
 ### --- helpers --- ###
 
