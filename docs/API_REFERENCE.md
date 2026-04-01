@@ -46,7 +46,7 @@ Total modules with public functions: 90
 - [impute.schicluster](#impute-schicluster) (3 functions)
 - [impute.simpute](#impute-simpute) (9 functions)
 - [inter_contact](#inter_contact) (3 functions)
-- [interpolate](#interpolate) (5 functions)
+- [interpolate](#interpolate) (10 functions)
 - [lap_embedding](#lap_embedding) (3 functions)
 - [mchr](#mchr) (7 functions)
 - [metrics](#metrics) (4 functions)
@@ -5839,7 +5839,69 @@ No documentation available.
 
 **File:** `interpolate.py`
 
-**Public functions:** 5
+**Public functions:** 10
+
+
+### `compute_center_of_mass(trajectory, grid_values)`
+
+
+Compute center of mass (weighted average time position) for each feature.
+
+The center of mass is computed as:
+    com = sum(grid_values * |trajectory|) / sum(|trajectory|)
+
+Using absolute values to handle both positive and negative trajectories.
+
+Parameters
+----------
+trajectory : np.ndarray
+    Trajectory matrix of shape (n_features, n_grid_points).
+grid_values : np.ndarray
+    Grid point values of shape (n_grid_points,).
+
+Returns
+-------
+com : np.ndarray
+    Center of mass for each feature, shape (n_features,).
+
+
+**Source:** Line 239 in [interpolate.py](interpolate.py#L239)
+
+
+---
+
+
+### `compute_continuous_peak_time(trajectory, grid_values)`
+
+
+Compute continuous peak time for each feature using parabolic interpolation.
+
+For each feature, fits a parabola through the peak grid point and its two
+neighbors, then computes the vertex position as the continuous peak time.
+
+Parameters
+----------
+trajectory : np.ndarray
+    Trajectory matrix of shape (n_features, n_grid_points).
+    Each row is the GP-smoothed trajectory for one feature.
+grid_values : np.ndarray
+    Grid point values of shape (n_grid_points,). The actual time/pseudotime
+    values at each grid point.
+
+Returns
+-------
+peak_time : np.ndarray
+    Continuous peak time for each feature, shape (n_features,).
+    If a feature has no clear peak (monotonic or flat), returns the grid
+    position of the maximum value.
+peak_value : np.ndarray
+    The interpolated peak value at the continuous peak time.
+
+
+**Source:** Line 145 in [interpolate.py](interpolate.py#L145)
+
+
+---
 
 
 ### `correct_pseudotime(adata, pseudotime_col, n_pcs=15, inplace=True)`
@@ -5854,7 +5916,7 @@ Output:
     new adata object
 
 
-**Source:** Line 943 in [interpolate.py](interpolate.py#L943)
+**Source:** Line 1494 in [interpolate.py](interpolate.py#L1494)
 
 
 ---
@@ -5874,7 +5936,7 @@ Output:
     new adata object numPts * adata.shape[1]
 
 
-**Source:** Line 684 in [interpolate.py](interpolate.py#L684)
+**Source:** Line 1229 in [interpolate.py](interpolate.py#L1229)
 
 
 ---
@@ -5886,7 +5948,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 641 in [interpolate.py](interpolate.py#L641)
+**Source:** Line 1186 in [interpolate.py](interpolate.py#L1186)
 
 
 ---
@@ -5949,19 +6011,20 @@ anndata.AnnData
     AnnData with GP interpolation results stored in ``adata.uns[result_key]``.
 
 
-**Source:** Line 801 in [interpolate.py](interpolate.py#L801)
+**Source:** Line 1346 in [interpolate.py](interpolate.py#L1346)
 
 
 ---
 
 
-### `plot_gp_heatmap(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_method='linspace', endpoint_mode='half-interval', scaling='z_score', figsize=(8, 6), dpi=100, save_path=None, show_grid=True, show_colorbar=True)`
+### `plot_gp_heatmap(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_method='linspace', endpoint_mode='half-interval', scaling='z_score', figsize=(8, 6), dpi=100, save_path=None, show_grid=True, show_colorbar=True, feature_order=None)`
 
 
 Plot a single heatmap for GP interpolation results.
 
-Shows raw expression (sorted by pseudotime) with grid point positions
-and GP-smoothed expression side-by-side.
+This is a convenience wrapper around plot_trajectory_heatmap() for AnnData-based
+RNA/gene expression data. For more control or for non-RNA data (e.g., loops),
+use plot_trajectory_heatmap() directly.
 
 Parameters
 ----------
@@ -5994,14 +6057,203 @@ show_grid : bool, optional
     Show vertical lines at grid point positions. Default is True.
 show_colorbar : bool, optional
     Show colorbar. Default is True.
+feature_order : np.ndarray, optional
+    Indices to reorder features (genes). If None, genes are shown in original order.
+    Typically obtained from sort_features_by_trajectory().
 
 Returns
 -------
 fig : matplotlib.figure.Figure
     The matplotlib figure object.
+axes : np.ndarray
+    Array of matplotlib axes objects.
+
+See Also
+--------
+plot_trajectory_heatmap : General-purpose trajectory heatmap for any feature type.
 
 
-**Source:** Line 284 in [interpolate.py](interpolate.py#L284)
+**Source:** Line 889 in [interpolate.py](interpolate.py#L889)
+
+
+---
+
+
+### `plot_trajectory_heatmap(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_methods=None, endpoint_mode='half-interval', scaling='z_score', figsize=(10, 12), dpi=100)`
+
+
+Internal function: Visualize and compare multiple grid methods side-by-side.
+
+This is a debugging utility, not intended for production use.
+Use plot_gp_heatmap() for single-method visualization.
+
+Parameters
+----------
+adata : anndata.AnnData
+    AnnData object with expression data and pseudotime.
+pseudotime_col : str
+    Column name in adata.obs containing pseudotime values.
+layer : str, optional
+    Expression layer to use. Default is "X".
+gene_mask_key : str, optional
+    Boolean column in adata.var for gene selection.
+numPts : int, optional
+    Number of grid points. Default is 14.
+grid_methods : list, optional
+    List of grid methods to compare. Default is ["linspace", "quantile", "density"].
+endpoint_mode : str, optional
+    Endpoint handling mode. Default is "half-interval".
+scaling : str, optional
+    Color scaling: "z_score" or "zero_one". Default is "z_score".
+figsize : tuple, optional
+    Figure size (width, height) in inches. Default is (10, 12).
+dpi : int, optional
+    Figure DPI. Default is 100.
+
+Returns
+-------
+fig : matplotlib.figure.Figure
+    The matplotlib figure object.
+axes : np.ndarray
+    Array of matplotlib axes objects.
+
+
+**Source:** Line 342 in [interpolate.py](interpolate.py#L342)
+
+
+---
+
+
+### `plot_trajectory_heatmap(trajectory_raw, pseudotime, trajectory_gp=None, grid_values=None, grid_cell_positions=None, feature_order=None, feature_labels=None, scaling='z_score', cmap='RdBu_r', vmin=None, vmax=None, figsize=(8, 6), dpi=100, save_path=None, show_grid=True, grid_line_color='black', grid_line_style='--', grid_line_alpha=0.7, show_colorbar=True, left_title='Raw (cell space)', right_title='GP-smoothed (grid space)', suptitle=None)`
+
+
+Plot trajectory heatmap for features (genes, loops, etc.) with GP-smoothed trajectories.
+
+This is a context-agnostic visualization function that works with any feature type
+(RNA genes, chromatin loops, etc.) as long as the data is provided as numpy arrays.
+
+Parameters
+----------
+trajectory_raw : np.ndarray or pd.DataFrame
+    Raw trajectory matrix of shape (n_features, n_cells). Each row is a feature's
+    trajectory across cells. Can also be a DataFrame with feature names as index.
+pseudotime : np.ndarray or pd.Series
+    Pseudotime values for cells, shape (n_cells,). Used to sort cells and compute
+    grid line positions.
+trajectory_gp : np.ndarray, optional
+    GP-smoothed trajectory matrix of shape (n_features, n_grid_points).
+    If None, only the raw trajectory panel is shown.
+grid_values : np.ndarray, optional
+    Grid point values in pseudotime space, shape (n_grid_points,).
+    Used for right panel x-axis labels and to compute grid_cell_positions if needed.
+grid_cell_positions : np.ndarray, optional
+    Grid point positions in cell rank space [0, 1], shape (n_grid_points,).
+    If None but grid_values is provided, computed from pseudotime.
+feature_order : np.ndarray, optional
+    Indices to reorder features (rows). If None, features are shown in original order.
+    Typically obtained from sort_features_by_trajectory().
+feature_labels : list or np.ndarray, optional
+    Labels for features (rows). If None, uses integer indices.
+scaling : str, optional
+    Color scaling method. Options:
+    - "z_score": Z-score normalization per feature
+    - "zero_one": Min-max normalization to [0, 1]
+cmap : str or matplotlib.colors.Colormap, optional
+    Colormap for the heatmap. Default is "RdBu_r" (diverging).
+vmin, vmax : float, optional
+    Color scale limits. If None, computed from data based on scaling.
+figsize : tuple, optional
+    Figure size (width, height) in inches. Default is (8, 6).
+dpi : int, optional
+    Figure DPI. Default is 100.
+save_path : str, optional
+    Path to save the figure. If None, figure is not saved.
+show_grid : bool, optional
+    Show vertical lines at grid point positions. Default is True.
+grid_line_color : str, optional
+    Color of grid lines. Default is "black".
+grid_line_style : str, optional
+    Line style of grid lines. Default is "--".
+grid_line_alpha : float, optional
+    Alpha transparency of grid lines. Default is 0.7.
+show_colorbar : bool, optional
+    Show colorbar. Default is True.
+left_title : str, optional
+    Title for left panel (raw data). Default is "Raw (cell space)".
+right_title : str, optional
+    Title for right panel (GP-smoothed). Default is "GP-smoothed (grid space)".
+suptitle : str, optional
+    Figure super title. If None, auto-generated from parameters.
+
+Returns
+-------
+fig : matplotlib.figure.Figure
+    The matplotlib figure object.
+axes : np.ndarray
+    Array of matplotlib axes objects (1 or 2 elements depending on trajectory_gp).
+
+Examples
+--------
+>>> # RNA/gene trajectory visualization
+>>> gp_result = gp_interpolate(adata, pseudotime_col="pt")
+>>> gp_mean = gp_result.uns["gp_interpolate"]["mean"].values
+>>> grid_vals = gp_result.uns["gp_interpolate"]["time_grid"].values
+>>> sorted_idx, _ = sort_features_by_trajectory(gp_mean, grid_vals)
+>>> fig, axes = plot_trajectory_heatmap(
+...     trajectory_raw=adata.X.T,
+...     pseudotime=adata.obs["pt"],
+...     trajectory_gp=gp_mean,
+...     grid_values=grid_vals,
+...     feature_order=sorted_idx
+... )
+
+>>> # Loop trajectory visualization (same interface)
+>>> gp_result = gp_interpolate(loop_adata, pseudotime_col="pt")
+>>> gp_mean = gp_result.uns["gp_interpolate"]["mean"].values
+>>> sorted_idx, _ = sort_features_by_trajectory(gp_mean, grid_vals)
+>>> fig, axes = plot_trajectory_heatmap(
+...     trajectory_raw=loop_adata.X.T,
+...     pseudotime=loop_adata.obs["pt"],
+...     trajectory_gp=gp_mean,
+...     grid_values=grid_vals,
+...     feature_order=sorted_idx
+... )
+
+
+**Source:** Line 614 in [interpolate.py](interpolate.py#L614)
+
+
+---
+
+
+### `sort_features_by_trajectory(trajectory, grid_values, sort_keys=('peak_time', 'com', '-peak_value'))`
+
+
+Sort features based on trajectory dynamics characteristics.
+
+Parameters
+----------
+trajectory : np.ndarray
+    Trajectory matrix of shape (n_features, n_grid_points).
+grid_values : np.ndarray
+    Grid point values of shape (n_grid_points,).
+sort_keys : tuple of str
+    List of sort keys in priority order. Supported keys:
+    - "peak_time": continuous peak time (parabolic interpolation)
+    - "com": center of mass
+    - "peak_value": peak value at continuous peak time
+    - "-peak_value": negative peak value (for descending sort)
+    - "max_grid_idx": discrete grid index of maximum (fallback)
+
+Returns
+-------
+sorted_indices : np.ndarray
+    Indices that would sort the features.
+sort_values : pd.DataFrame
+    DataFrame with columns for each computed metric.
+
+
+**Source:** Line 275 in [interpolate.py](interpolate.py#L275)
 
 
 ---
@@ -7558,7 +7810,7 @@ Input:
 ---
 
 
-### `plot_cool_with_tracks(coolp1: Union[str, Path], coolp2: Optional[Union[str, Path]]=None, tracks: Optional[List]=None, region: str='chr1', track_heights: Optional[List[float]]=None, heatmap_height: float=10, title: str='', balance: bool=True, vmax: Optional[float]=None, cmap: str='fall', ignore_diags: bool=False, adjust_brightness: bool=True, marks: Optional[List[Dict]]=None)`
+### `plot_cool_with_tracks(coolp1: Union[str, Path], coolp2: Optional[Union[str, Path]]=None, tracks: Optional[List]=None, region: str='chr1', track_heights: Optional[List[float]]=None, heatmap_height: float=10, square_heatmap: bool=False, title: str='', balance: bool=True, vmax: Optional[float]=None, cmap: str='fall', ignore_diags: bool=False, adjust_brightness: bool=True, marks: Optional[List[Dict]]=None)`
 
 **Returns:** `go.Figure`
 
@@ -7591,6 +7843,11 @@ track_heights : list of float, optional
     equal height of 2.0. Default is None.
 heatmap_height : float, optional
     Relative height of heatmap row. Default is 10.
+    Ignored if square_heatmap is True.
+square_heatmap : bool, optional
+    If True, automatically calculates heatmap_height to make the heatmap
+    region approximately square (width == height). This is recommended
+    for Hi-C contact matrices which are symmetric. Default is False.
 title : str, optional
     Plot title. Default is "".
 balance : bool, optional
@@ -9004,7 +9261,7 @@ Output:
     fig: plotly.graph_objs._figure.Figure, the figure with added grid lines.
 
 
-**Source:** Line 1298 in [plot/track.py](plot/track.py#L1298)
+**Source:** Line 1325 in [plot/track.py](plot/track.py#L1325)
 
 
 ---
@@ -9042,7 +9299,7 @@ Returns:
     HeatmapTrack: New instance with pre-computed data.
 
 
-**Source:** Line 720 in [plot/track.py](plot/track.py#L720)
+**Source:** Line 747 in [plot/track.py](plot/track.py#L747)
 
 
 ---
@@ -9067,7 +9324,7 @@ Returns:
     TrapezoidHeatmapTrack: New instance with pre-computed data.
 
 
-**Source:** Line 1156 in [plot/track.py](plot/track.py#L1156)
+**Source:** Line 1183 in [plot/track.py](plot/track.py#L1183)
 
 
 ---
@@ -9090,7 +9347,7 @@ Returns:
     MarkTrack: New instance with marks at specified pixel IDs.
 
 
-**Source:** Line 951 in [plot/track.py](plot/track.py#L951)
+**Source:** Line 978 in [plot/track.py](plot/track.py#L978)
 
 
 ---
@@ -9171,7 +9428,7 @@ Raises:
     ImportError: If pyBigWig is not installed.
 
 
-**Source:** Line 326 in [plot/track.py](plot/track.py#L326)
+**Source:** Line 333 in [plot/track.py](plot/track.py#L333)
 
 
 ---
@@ -9192,7 +9449,7 @@ Returns:
     self: Returns self for method chaining.
 
 
-**Source:** Line 527 in [plot/track.py](plot/track.py#L527)
+**Source:** Line 554 in [plot/track.py](plot/track.py#L554)
 
 
 ---
@@ -9213,7 +9470,7 @@ Returns:
     self: Returns self for method chaining.
 
 
-**Source:** Line 663 in [plot/track.py](plot/track.py#L663)
+**Source:** Line 690 in [plot/track.py](plot/track.py#L690)
 
 
 ---
@@ -9235,7 +9492,7 @@ Returns:
     self: Returns self for method chaining.
 
 
-**Source:** Line 809 in [plot/track.py](plot/track.py#L809)
+**Source:** Line 836 in [plot/track.py](plot/track.py#L836)
 
 
 ---
@@ -9256,7 +9513,7 @@ Returns:
     self: Returns self for method chaining.
 
 
-**Source:** Line 1070 in [plot/track.py](plot/track.py#L1070)
+**Source:** Line 1097 in [plot/track.py](plot/track.py#L1097)
 
 
 ---
@@ -9276,7 +9533,7 @@ Returns:
     self: Returns self for method chaining.
 
 
-**Source:** Line 1462 in [plot/track.py](plot/track.py#L1462)
+**Source:** Line 1489 in [plot/track.py](plot/track.py#L1489)
 
 
 ---
@@ -9347,7 +9604,7 @@ implementation. Planned improvements include:
 - Better visual integration with exon/intron structures
 
 
-**Source:** Line 1928 in [plot/track.py](plot/track.py#L1928)
+**Source:** Line 1997 in [plot/track.py](plot/track.py#L1997)
 
 
 ---
@@ -9383,7 +9640,7 @@ plotly.graph_objects.Figure
     Combined figure with heatmap and gene track.
 
 
-**Source:** Line 2129 in [plot/track.py](plot/track.py#L2129)
+**Source:** Line 2198 in [plot/track.py](plot/track.py#L2198)
 
 
 ---
@@ -9401,7 +9658,7 @@ Output:
     fig: plotly.graph_objs._figure.Figure
 
 
-**Source:** Line 1264 in [plot/track.py](plot/track.py#L1264)
+**Source:** Line 1291 in [plot/track.py](plot/track.py#L1291)
 
 
 ---
@@ -9426,7 +9683,7 @@ Output:
     fig: plotly.graph_objs._figure.Figure
 
 
-**Source:** Line 1213 in [plot/track.py](plot/track.py#L1213)
+**Source:** Line 1240 in [plot/track.py](plot/track.py#L1240)
 
 
 ---
@@ -9493,7 +9750,7 @@ Returns:
     fig: Modified figure with track added.
 
 
-**Source:** Line 407 in [plot/track.py](plot/track.py#L407)
+**Source:** Line 414 in [plot/track.py](plot/track.py#L414)
 
 
 ---
@@ -9516,7 +9773,7 @@ Returns:
     fig: Modified figure with track added.
 
 
-**Source:** Line 550 in [plot/track.py](plot/track.py#L550)
+**Source:** Line 577 in [plot/track.py](plot/track.py#L577)
 
 
 ---
@@ -9539,7 +9796,7 @@ Returns:
     fig: Modified figure with track added.
 
 
-**Source:** Line 681 in [plot/track.py](plot/track.py#L681)
+**Source:** Line 708 in [plot/track.py](plot/track.py#L708)
 
 
 ---
@@ -9562,7 +9819,7 @@ Returns:
     fig: Modified figure with marks added.
 
 
-**Source:** Line 833 in [plot/track.py](plot/track.py#L833)
+**Source:** Line 860 in [plot/track.py](plot/track.py#L860)
 
 
 ---
@@ -9585,7 +9842,7 @@ Returns:
     fig: Modified figure with track added.
 
 
-**Source:** Line 1116 in [plot/track.py](plot/track.py#L1116)
+**Source:** Line 1143 in [plot/track.py](plot/track.py#L1143)
 
 
 ---
@@ -9608,7 +9865,7 @@ Returns:
     fig: Modified figure with track added.
 
 
-**Source:** Line 1554 in [plot/track.py](plot/track.py#L1554)
+**Source:** Line 1623 in [plot/track.py](plot/track.py#L1623)
 
 
 ---
@@ -9620,7 +9877,7 @@ Returns:
 No documentation available.
 
 
-**Source:** Line 1195 in [plot/track.py](plot/track.py#L1195)
+**Source:** Line 1222 in [plot/track.py](plot/track.py#L1222)
 
 
 ---

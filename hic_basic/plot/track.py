@@ -290,9 +290,10 @@ class BigWigTrack(Track):
         agg_method: Aggregation method ('mean', 'max', 'min', 'sum').
         color: Bar color.
         orientation: Bar orientation ('v' for vertical, 'h' for horizontal).
+        display_name: Name to display on the track label.
 
     Example:
-        >>> bw_track = BigWigTrack("H3K27ac.bw", bin_size=1000)
+        >>> bw_track = BigWigTrack("H3K27ac.bw", bin_size=1000, display_name="H3K27ac")
         >>> bw_track.load_data("chr1:1000000-5000000")
         >>> bw_track.render(fig, row=2, col=1)
     """
@@ -304,6 +305,7 @@ class BigWigTrack(Track):
         agg_method: str = "mean",
         color: str = "#1f77b4",
         orientation: str = "v",
+        display_name: Optional[str] = None,
         config: Optional[TrackConfig] = None
     ):
         """Initialize BigWigTrack.
@@ -314,14 +316,19 @@ class BigWigTrack(Track):
             agg_method: Aggregation method. Default 'mean'.
             color: Bar color. Default '#1f77b4'.
             orientation: Bar orientation. 'v' for vertical, 'h' for horizontal.
+            display_name: Name to display on track label. Default is filename.
             config: Optional TrackConfig.
         """
-        super().__init__(name="bigwig", config=config)
+        # Extract filename for display name if not provided
+        if display_name is None:
+            display_name = Path(data_path).name
+        super().__init__(name=display_name, config=config)
         self.data_path = Path(data_path)
         self.bin_size = bin_size
         self.agg_method = agg_method
         self.color = color
         self.orientation = orientation
+        self.display_name = display_name
 
     def load_data(self, region: str, chrom_sizes: Optional[Dict[str, int]] = None) -> "BigWigTrack":
         """Load bigWig signal data for a genomic region.
@@ -468,15 +475,35 @@ class BigWigTrack(Track):
             fig.update_xaxes(**x_kwargs, row=row, col=col)
             fig.update_yaxes(showline=False, row=row, col=col)
         else:
+            # Use empty title and add annotation for horizontal track label
             y_kwargs = dict(
                 showline=True,
                 linecolor="black",
-                title="Signal"
+                title="",  # Empty title
+                showticklabels=True,
+                tickfont=dict(size=9)
             )
             if y_range:
                 y_kwargs["range"] = y_range
             fig.update_yaxes(**y_kwargs, row=row, col=col)
             fig.update_xaxes(showline=False, row=row, col=col)
+            
+            # Add horizontal track name annotation at left side, vertically centered
+            # Use domain coordinates for y axis (0-1 within the subplot)
+            yref_domain = f"y{row} domain" if row > 1 else "y domain"
+            
+            fig.add_annotation(
+                text=self.display_name,
+                xref="paper",  # Use paper coordinates for x (0-1 across entire figure)
+                yref=yref_domain,
+                x=0.02,  # 2% from left edge of figure
+                y=0.5,  # Vertically centered in track (domain coordinates)
+                showarrow=False,
+                textangle=0,  # Horizontal text
+                xanchor="left",
+                yanchor="middle",
+                font=dict(size=9, color="black"),
+            )
 
 
 # =============================================================================
@@ -1529,25 +1556,67 @@ class GeneTrack(Track):
                 backbone_y=0.5  # Fixed: backbone in center of track [0, 1]
             )
             self._shapes.extend(shapes)
-        
-        # Store y-axis max for render method (always 1.0 for single row)
-        self._y_max = 1.0
 
-        # Add gene labels
+        # Add gene labels with staggered rows to avoid overlap
+        # Labels are placed above the transcript structures
+        # Use multiple rows (y=1.2, 1.5, 1.8, etc.) to stagger overlapping labels
+        # Start well above the transcript structures (which are at y=0 to y=1)
+        label_rows = []  # List of (y_position, end_position) for staggered rows
+        label_row_height = 0.25  # Height between label rows
+        base_label_y = 1.25  # Starting y position for first label row (well above transcripts at y=0-1)
+        
         for i, (gene, tx) in enumerate(transcripts_to_show):
             if self.show_labels and gene in genes_to_label:
                 label = _get_gene_label(gene)
-                # Position label above the transcript row
-                y = float(i)  # Same y as transcript row
-                self._annotations.append(dict(
-                    x=tx.start,
-                    y=y + self.exon_height + 0.05,
-                    text=label,
-                    showarrow=False,
-                    font=dict(size=self.label_font_size),
-                    xref='x',
-                    yref='y'
-                ))
+                # Estimate label width in base pairs
+                # Use wider estimate to avoid visual overlap
+                label_width_bp = len(label) * 1500  # More conservative estimate
+                
+                label_start = tx.start
+                label_end = tx.start + label_width_bp
+                
+                # Find a row that doesn't overlap with existing labels
+                # Start from the lowest row and go up
+                row_found = False
+                for row_idx, (row_y, row_end) in enumerate(label_rows):
+                    # Check if this label overlaps with the last label in this row
+                    if label_start > row_end + 15000:  # 15kb padding between labels in same row
+                        # Can use this row
+                        label_y = base_label_y + row_idx * label_row_height
+                        self._annotations.append(dict(
+                            x=tx.start,
+                            y=label_y,
+                            text=label,
+                            showarrow=False,
+                            font=dict(size=self.label_font_size),
+                            xref='x',
+                            yref='y'
+                        ))
+                        label_rows[row_idx] = (row_y, label_end)
+                        row_found = True
+                        break
+                
+                if not row_found:
+                    # Create a new row above all existing rows
+                    new_row_y = base_label_y + len(label_rows) * label_row_height
+                    self._annotations.append(dict(
+                        x=tx.start,
+                        y=new_row_y,
+                        text=label,
+                        showarrow=False,
+                        font=dict(size=self.label_font_size),
+                        xref='x',
+                        yref='y'
+                    ))
+                    label_rows.append((new_row_y, label_end))
+
+        # Store y-axis max for render method
+        # Account for label rows
+        if label_rows:
+            max_label_y = max(y for y, _ in label_rows)
+            self._y_max = max(1.0, max_label_y + 0.3)  # Add padding above labels
+        else:
+            self._y_max = 1.0
 
         return self
 

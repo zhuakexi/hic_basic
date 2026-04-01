@@ -287,13 +287,30 @@ fig = plot_cool_with_tracks(
     cmap="RdBu_r"
 )
 fig.write_image("tiling_comparison.png", width=900, height=1100)
+
+# Square heatmap option (automatically calculates height for 1:1 aspect ratio)
+fig = plot_cool_with_tracks(
+    coolp1="sample.cool",
+    tracks=[
+        BigWigTrack("H3K27ac.bw", bin_size=10000, display_name="H3K27ac"),
+        GeneTrack("annotations.gtf", mode="canonical")
+    ],
+    region="chr1:0-500000",
+    square_heatmap=True,  # Make heatmap approximately square
+    track_heights=[1.0, 4.0],  # Adjust track heights (BigWig, Gene)
+    heatmap_height=12
+)
+fig.write_image("square_heatmap.png", width=1100, height=1600)
 ```
 
 **Key Features:**
 - **Tiling mode**: When `coolp2` is provided, creates composite heatmap with lower triangle from `coolp1` and upper triangle from `coolp2`
-- **Track types**: Supports `EigenTrack`, `BigWigTrack`, `GeneTrack`, `ISTrack`, etc.
+- **Track types**: Supports `EigenTrack`, `BigWigTrack` (with `display_name`), `GeneTrack`, `ISTrack`, etc.
 - **Brightness adjustment**: `adjust_brightness=True` auto-scales the brighter sample for better visual comparison
 - **Mark pixels**: Use `marks` parameter to highlight specific position pairs with circles or rectangles
+- **Square heatmap**: `square_heatmap=True` automatically calculates height for 1:1 aspect ratio
+- **Track labels**: BigWigTrack `display_name` parameter sets the track label (defaults to filename)
+- **Gene track**: Automatically staggers overlapping gene labels across multiple rows
 
 ### Mark Pixels on Heatmap
 ```python

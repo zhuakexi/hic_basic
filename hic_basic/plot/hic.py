@@ -2175,6 +2175,7 @@ def plot_cool_with_tracks(
     region: str = "chr1",
     track_heights: Optional[List[float]] = None,
     heatmap_height: float = 10,
+    square_heatmap: bool = False,
     title: str = "",
     balance: bool = True,
     vmax: Optional[float] = None,
@@ -2212,6 +2213,11 @@ def plot_cool_with_tracks(
         equal height of 2.0. Default is None.
     heatmap_height : float, optional
         Relative height of heatmap row. Default is 10.
+        Ignored if square_heatmap is True.
+    square_heatmap : bool, optional
+        If True, automatically calculates heatmap_height to make the heatmap
+        region approximately square (width == height). This is recommended
+        for Hi-C contact matrices which are symmetric. Default is False.
     title : str, optional
         Plot title. Default is "".
     balance : bool, optional
@@ -2297,6 +2303,7 @@ def plot_cool_with_tracks(
     clr1 = Cooler(str(coolp1))
     bin_s, bin_e = clr1.extent(region)
     bins = clr1.bins()[bin_s:bin_e]
+    n_bins = len(bins)  # Number of bins determines aspect ratio
 
     # Prepare matrix (single or tiling)
     if coolp2 is not None:
@@ -2311,6 +2318,20 @@ def plot_cool_with_tracks(
         if ignore_diags:
             import numpy as np
             np.fill_diagonal(mat, 0)
+
+    # Calculate heatmap_height for square heatmap if requested
+    if square_heatmap:
+        # For a square heatmap, the height in pixels should equal the width in pixels
+        # The width is determined by figure width and margins
+        # The height is determined by row_heights ratio
+        # We need to estimate the appropriate heatmap_height ratio
+        # Default figure width is ~1100, with margins ~200 total for y-axis
+        # So effective width is ~900 pixels
+        # For n_bins x n_bins matrix to be square:
+        #   heatmap_height / total_height = heatmap_pixel_height / figure_pixel_height
+        # We estimate: heatmap_height ≈ n_bins * k where k is a scaling factor
+        # Empirically: heatmap_height = n_bins * 0.5 works well for typical figures
+        heatmap_height = max(n_bins * 0.5, 5)  # Minimum height of 5
 
     # Create composer
     n_tracks = len(tracks) if tracks else 0
