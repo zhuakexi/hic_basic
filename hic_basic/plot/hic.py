@@ -2166,3 +2166,179 @@ def plot_trapezoid_with_tracks(
     )
 
     return fig
+
+
+def plot_cool_with_tracks(
+    coolp1: Union[str, Path],
+    coolp2: Optional[Union[str, Path]] = None,
+    tracks: Optional[List] = None,
+    region: str = "chr1",
+    track_heights: Optional[List[float]] = None,
+    heatmap_height: float = 10,
+    title: str = "",
+    balance: bool = True,
+    vmax: Optional[float] = None,
+    cmap: str = "fall",
+    ignore_diags: bool = False,
+    adjust_brightness: bool = True,
+    **heatmap_kwargs
+) -> go.Figure:
+    """Plot Hi-C contact heatmap with optional tracks below.
+
+    This function creates a vertical layout with:
+    - Row 1: Hi-C contact matrix heatmap (single sample or tiling of two samples)
+    - Rows 2 to N: Additional tracks (BigWig, Gene, Eigen, IS, etc.)
+
+    When two cooler files are provided, the function uses tiling layout to
+    compare two contact matrices: lower triangle from coolp1, upper triangle
+    from coolp2.
+
+    Parameters
+    ----------
+    coolp1 : str or Path
+        Path to first cooler file.
+    coolp2 : str or Path, optional
+        Path to second cooler file for tiling comparison. If None, only
+        coolp1 is displayed. Default is None.
+    tracks : list, optional
+        List of Track objects (BigWigTrack, GeneTrack, EigenTrack, etc.).
+        Default is None (no tracks).
+    region : str, optional
+        Genome region to plot, e.g., "chr1" or "chr1:1000000-5000000".
+        Default is "chr1".
+    track_heights : list of float, optional
+        Relative height ratios for each track. If None, all tracks have
+        equal height of 2.0. Default is None.
+    heatmap_height : float, optional
+        Relative height of heatmap row. Default is 10.
+    title : str, optional
+        Plot title. Default is "".
+    balance : bool, optional
+        Whether to use balanced cooler matrix. Default is True.
+    vmax : float, optional
+        Maximum value for color scale. If None, auto-scaled. Default is None.
+    cmap : str, optional
+        Colormap name. Default is "fall".
+    ignore_diags : bool, optional
+        Whether to ignore diagonal values. Default is False.
+    adjust_brightness : bool, optional
+        Whether to adjust brightness when tiling two matrices. When True,
+        scales the brighter matrix to match the darker one. Default is True.
+        Only used when coolp2 is provided.
+    **heatmap_kwargs
+        Additional keyword arguments passed to go.Heatmap.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Plotly figure with Hi-C heatmap and tracks.
+
+    Examples
+    --------
+    Single sample with tracks:
+
+    >>> from hic_basic.plot import BigWigTrack, GeneTrack
+    >>> from hic_basic.plot.hic import plot_cool_with_tracks
+    >>>
+    >>> fig = plot_cool_with_tracks(
+    ...     coolp1="sample.cool",
+    ...     tracks=[
+    ...         BigWigTrack("H3K27ac.bw", bin_size=1000),
+    ...         BigWigTrack("H3K4me3.bw", bin_size=1000),
+    ...         GeneTrack("annotations.gtf")
+    ...     ],
+    ...     region="chr1:1000000-5000000",
+    ...     title="Hi-C + Tracks"
+    ... )
+    >>> fig.show()
+
+    Two samples tiling comparison with tracks:
+
+    >>> fig = plot_cool_with_tracks(
+    ...     coolp1="sample1.cool",
+    ...     coolp2="sample2.cool",
+    ...     tracks=[
+    ...         EigenTrack("eigvec.bedgraph", eigen_col="E1"),
+    ...         BigWigTrack("H3K27ac.bw", bin_size=1000)
+    ...     ],
+    ...     region="chr1:1000000-5000000",
+    ...     title="Sample1 vs Sample2 (tiling)",
+    ...     adjust_brightness=True
+    ... )
+    >>> fig.show()
+
+    Notes
+    -----
+    - When coolp2 is provided, uses tiling_mat() to create a composite matrix
+      with lower triangle from coolp1 and upper triangle from coolp2.
+    - All tracks are aligned to coolp1's bins.
+    - The adjust_brightness parameter helps visualize differences when two
+      matrices have very different signal intensities.
+    """
+    from .track import HeatmapTrack, TrackConfig
+    from .track_composer import TrackComposer
+    from .utils import tiling_mat
+    from cooler import Cooler
+
+    # Load first cooler
+    clr1 = Cooler(str(coolp1))
+    bin_s, bin_e = clr1.extent(region)
+    bins = clr1.bins()[bin_s:bin_e]
+
+    # Prepare matrix (single or tiling)
+    if coolp2 is not None:
+        # Load second cooler and create tiling matrix
+        clr2 = Cooler(str(coolp2))
+        mat1 = clr1.matrix(balance=balance).fetch(region)
+        mat2 = clr2.matrix(balance=balance).fetch(region)
+        mat = tiling_mat(mat1, mat2, adjust=adjust_brightness, ignore_diags=ignore_diags)
+    else:
+        # Single matrix
+        mat = clr1.matrix(balance=balance).fetch(region)
+        if ignore_diags:
+            import numpy as np
+            np.fill_diagonal(mat, 0)
+
+    # Create composer
+    n_tracks = len(tracks) if tracks else 0
+    composer = TrackComposer.for_cool_with_tracks(
+        n_tracks=n_tracks,
+        heatmap_height=heatmap_height,
+        track_heights=track_heights
+    )
+
+    # Create heatmap track
+    bins_df = pd.DataFrame({
+        "chrom": bins["chrom"],
+        "start": bins["start"],
+        "end": bins["end"]
+    })
+
+    heatmap_kwargs_merged = {"colorscale": cmap}
+    if vmax is not None:
+        heatmap_kwargs_merged["zmax"] = vmax
+    heatmap_kwargs_merged.update(heatmap_kwargs)
+
+    heatmap = HeatmapTrack.from_matrix(
+        mat,
+        bins_df,
+        config=TrackConfig(row=1, col=1),
+        **heatmap_kwargs_merged
+    )
+    composer.add_track(heatmap, row=1, col=1)
+
+    # Add additional tracks
+    for i, track in enumerate(tracks or [], start=2):
+        composer.add_track(track, row=i, col=1)
+
+    # Build the figure
+    fig = composer.build(region=region, clr=clr1, title=title)
+
+    # Update layout
+    fig.update_layout(
+        title=title,
+        plot_bgcolor="white",
+        paper_bgcolor="white"
+    )
+
+    return fig

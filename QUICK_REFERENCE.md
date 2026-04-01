@@ -254,6 +254,46 @@ fig = plot_tiling_compartment(
 fig.write_html("tiling_compartment.html")
 ```
 
+### Hi-C Heatmap with Tracks (Track Architecture v3)
+```python
+from hic_basic.plot.hic import plot_cool_with_tracks
+from hic_basic.plot import BigWigTrack, GeneTrack, EigenTrack
+
+# Single sample with tracks
+fig = plot_cool_with_tracks(
+    coolp1="sample.cool",
+    tracks=[
+        EigenTrack("eigvec.bedgraph", eigen_col="E1"),
+        BigWigTrack("H3K27ac.bw", bin_size=10000),
+        GeneTrack("annotations.gtf", mode="all_transcripts")
+    ],
+    region="chr1:0-500000",
+    title="Hi-C + Multi-omics Tracks"
+)
+fig.write_image("hic_with_tracks.png", width=800, height=1000)
+
+# Two samples tiling comparison with tracks
+# Lower triangle: sample1, Upper triangle: sample2
+fig = plot_cool_with_tracks(
+    coolp1="sample1.cool",
+    coolp2="sample2.cool",
+    tracks=[
+        EigenTrack("eigvec.bedgraph", eigen_col="E1"),
+        BigWigTrack("signal.bw", bin_size=10000)
+    ],
+    region="chr1:0-500000",
+    title="Sample1 vs Sample2 (Tiling)",
+    adjust_brightness=True,  # Auto-balance signal intensities
+    cmap="RdBu_r"
+)
+fig.write_image("tiling_comparison.png", width=900, height=1100)
+```
+
+**Key Features:**
+- **Tiling mode**: When `coolp2` is provided, creates composite heatmap with lower triangle from `coolp1` and upper triangle from `coolp2`
+- **Track types**: Supports `EigenTrack`, `BigWigTrack`, `GeneTrack`, `ISTrack`, etc.
+- **Brightness adjustment**: `adjust_brightness=True` auto-scales the brighter sample for better visual comparison
+
 ### Gene Track Visualization (GTF/GFF3)
 ```python
 from hic_basic.plot.track import plot_gene_track, plot_gene_track_with_heatmap

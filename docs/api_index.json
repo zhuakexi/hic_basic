@@ -2601,7 +2601,7 @@
     },
     {
       "name": "plot_cool",
-      "signature": "plot_cool(coolp, title='', region='chr1', vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False)",
+      "signature": "plot_cool(coolp, title='', region='chr1', vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False, return_data=False)",
       "docstring": "\"\nPlot heatmap of single cooler file.\nInput:\n    coolp: path to cooler file.\n    title: name of the plot.\n    region: genome region to plot.\n        \"chr1\" or \"chr1:1000000-2000000\" or [\"chr1:1,000,00...",
       "return_type": null,
       "lineno": 238
@@ -2611,126 +2611,140 @@
       "signature": "plot_cools(cools, regions, ncols=3, subplot_titles=None, sub_height=100, sub_width=100, margin=None)",
       "docstring": "Plot multiple regions in multiple cooler files.\nIterate over regions first, then coolers. Will skip if either is None.\nInput:\n    cools: list of cooler file paths.\n    regions: list of genome regions ...",
       "return_type": null,
-      "lineno": 296
+      "lineno": 308
     },
     {
       "name": "merge_track_data",
       "signature": "merge_track_data(clr, track_file, region)",
       "docstring": "Pick out the track data that is in the region.\nInput:\n    clr: cooler obj.\n    track_file: path to track file\n    region: genome region to plot.\nOutput:\n    pd.Series; index: start of each bin, value:...",
       "return_type": null,
-      "lineno": 362
+      "lineno": 374
     },
     {
       "name": "plot_cool_track",
       "signature": "plot_cool_track(coolp, track_files, region, title, balance=False)",
       "docstring": "Plot cooler with additional track files.\nInput:\n    coolp: path to cooler file.\n    track_files: dict; key: track name, value: (path to track file, column name in track file)\n    region: genome region...",
       "return_type": null,
-      "lineno": 383
+      "lineno": 395
     },
     {
       "name": "plot_compare_cool_track_hor",
       "signature": "plot_compare_cool_track_hor(coolp1, coolp2, IS_file1, IS_file2, eigs_file1, eigs_file2, subplot_titles, region, title, balance=False, winSize=500000)",
       "docstring": "Plot cooler with additional track files",
       "return_type": null,
-      "lineno": 444
+      "lineno": 456
     },
     {
       "name": "plot_compare_cool_pixels",
       "signature": "plot_compare_cool_pixels(coolpA, coolpB, region, outline_pixels, subplot_titles=['A', 'B'])",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 577
+      "lineno": 589
     },
     {
       "name": "add_eig_track",
       "signature": "add_eig_track(fig, orig_data, eig_col=None, y_kwargs={}, row=None, col=None)",
       "docstring": "Add eigen vector track to a plotly figure or subplot.\nInput:\n    fig: figure to add trace.\n    orig_data: dataframe or series; [chrom, start, eig_col]\n    eig_col: column name of eigen vector.\n    y_k...",
       "return_type": null,
-      "lineno": 641
+      "lineno": 653
     },
     {
       "name": "plot_compartment",
       "signature": "plot_compartment(coolp, eigs_file, region, title, eigen_col='E1', strip=False, balance=False, mask_eig_na=True, give_mat=False, quant=0.005, minmax='min', cmap='RdBu_r', eq_hist=False)",
       "docstring": "Plot distance-normalized Hi-C correlation matrix with compartment track.\nInput:\n    coolp: path to cooler file.\n    eigs_file: path to eigen vector file.\n    region: genome region to plot.\n    title: ...",
       "return_type": null,
-      "lineno": 701
+      "lineno": 713
     },
     {
       "name": "plot_saddle_mpl",
       "signature": "plot_saddle_mpl(file, title, vmin=10 ** (-1), vmax=10 ** 1)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 915
+      "lineno": 927
     },
     {
       "name": "plot_saddle",
       "signature": "plot_saddle(file, title, vmin=10 ** (-1), vmax=10 ** 1, strength_square_size=10)",
       "docstring": "Plot saddle plot.\nInput:\n    file: path to saddle file, usually ends with .saddledump.npz.\n    title: title of the plot.\n    vmin: min z value.\n    vmax: max z value.\n    strength_square_size: which s...",
       "return_type": null,
-      "lineno": 929
+      "lineno": 941
     },
     {
       "name": "plot_IS",
       "signature": "plot_IS(IS_file)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 1003
+      "lineno": 1015
     },
     {
       "name": "pileup_IS",
       "signature": "pileup_IS(coolp, IS, genome='hg19', flank=800000)",
       "docstring": "Pileup TAD boundaries from a cool file.\nInput:\n    coolp: cooler path(adding resolutions when mcool)\n    IS: Insulation score; pd.Dataframe\n    genome: reference genome. eg. hg19\n    flank: flank size...",
       "return_type": null,
-      "lineno": 1071
+      "lineno": 1083
     },
     {
       "name": "format_ticks",
       "signature": "format_ticks(ax, x=True, y=True, rotate=True)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 1099
+      "lineno": 1111
     },
     {
       "name": "plot_IS",
       "signature": "plot_IS(clr, insulation_table, title, resolution=500000.0, window=1500000.0, balance=True, chrom='chr2', start=10500000, steps=90, vmin=0.001, vmax=0.1)",
       "docstring": "Plot insulation score together with Hi-C matrix strata.\nInput:\n    clr: cooler obj.\n    insulation_table: insulation score table.",
       "return_type": null,
-      "lineno": 1108
+      "lineno": 1120
     },
     {
       "name": "plot_cdps",
       "signature": "plot_cdps(adata, index_col='velocity_pseudotime', reverse=False)",
       "docstring": "Input:\n    index_col: wich adata.obs col to sort sample by\n    reverse: whether to reverse the order of the sample",
       "return_type": null,
-      "lineno": 1178
+      "lineno": 1190
     },
     {
       "name": "plot_compartment_strength",
       "signature": "plot_compartment_strength(adata, index_col='velocity_pseudotime')",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 1244
+      "lineno": 1256
     },
     {
       "name": "plot_compartment_trapezoid",
       "signature": "plot_compartment_trapezoid(coolp, vec_file, region, balance=True, strata=20, title='TITLE', quant=0.01, minmax='min', cmap='RdBu_r', eigen_col='E1', fillna=False, strip=False, mask_eig_na=True, add_track=False)",
       "docstring": "Plot compartment heatmap as a trapezoid shape by rotating the square contact matrix 45 degrees.\n\nThis function extracts the compartment signal from a cooler file and eigenvector track,\nrotates the con...",
       "return_type": null,
-      "lineno": 1297
+      "lineno": 1309
     },
     {
       "name": "plot_compartment_trapezoid_2tracks",
       "signature": "plot_compartment_trapezoid_2tracks(coolp0: Union[str, Path], vec_file1: Union[str, Path], vec_file2: Union[str, Path], region: str, balance: bool=True, strata: int=20, title: str='TITLE', quant: float=0.01, minmax: str='min', cmap: str='RdBu_r', eigen_col: str='E1', fillna: bool=False, strip: bool=False, mask_eig_na: bool=True, vec_file0: Optional[Union[str, Path]]=None, coolp1: Optional[Union[str, Path]]=None, coolp2: Optional[Union[str, Path]]=None)",
       "docstring": "Plot compartment trapezoid heatmap with two eigenvector tracks.\n\nThis function creates a 3-row subplot layout using the Track architecture:\n- Row 1: Trapezoid compartment heatmap\n- Row 2: Eigenvector ...",
       "return_type": "go.Figure",
-      "lineno": 1487
+      "lineno": 1499
     },
     {
       "name": "plot_tiling_compartment",
       "signature": "plot_tiling_compartment(coolps: List[Union[str, Path]], eigs_files: List[Union[str, Path]], region: str, title: str='', corr: bool=True, strip: bool=True, balance: bool=False, cmap: str='RdBu', donorm: bool=False, Enames: List[str]=None)",
       "docstring": "Plot two contact matrices in a tiling layout with eigenvector tracks.\n\nThis function creates a 2x2 subplot layout where:\n- Top-left: Eigenvector track (vertical)\n- Top-right: Combined heatmap (upper t...",
       "return_type": "go.Figure",
-      "lineno": 1661
+      "lineno": 1673
+    },
+    {
+      "name": "plot_trapezoid_with_tracks",
+      "signature": "plot_trapezoid_with_tracks(coolp: Union[str, Path], vec_file: Union[str, Path], region: str, tracks: List, track_heights: Optional[List[float]]=None, trapezoid_height: Optional[float]=None, strata: int=20, title: str='', balance: bool=True, cmap: str='RdBu_r', quant: float=0.01, minmax: str='min', eigen_col: str='E1', fillna: bool=False, strip: bool=False, mask_eig_na: bool=True, total_height: int=800, width: int=700, auto_scale: bool=True)",
+      "docstring": "Plot trapezoid Hi-C heatmap with arbitrary tracks below.\n\nThis function creates a vertical layout with:\n- Row 1: Trapezoid compartment heatmap (rotated 45 degrees)\n- Rows 2 to N: Additional tracks (Bi...",
+      "return_type": "go.Figure",
+      "lineno": 1980
+    },
+    {
+      "name": "plot_cool_with_tracks",
+      "signature": "plot_cool_with_tracks(coolp1: Union[str, Path], coolp2: Optional[Union[str, Path]]=None, tracks: Optional[List]=None, region: str='chr1', track_heights: Optional[List[float]]=None, heatmap_height: float=10, title: str='', balance: bool=True, vmax: Optional[float]=None, cmap: str='fall', ignore_diags: bool=False, adjust_brightness: bool=True)",
+      "docstring": "Plot Hi-C contact heatmap with optional tracks below.\n\nThis function creates a vertical layout with:\n- Row 1: Hi-C contact matrix heatmap (single sample or tiling of two samples)\n- Rows 2 to N: Additi...",
+      "return_type": "go.Figure",
+      "lineno": 2171
     }
   ],
   "plot.pca": [
@@ -3175,42 +3189,42 @@
       "signature": "sort_index_chrom(df, chromosomes)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 525
+      "lineno": 926
     },
     {
       "name": "plot_genome_scatter",
       "signature": "plot_genome_scatter(genome_data, chromosomes=None, value_cols=None, shift_unit=0.05, shift_threshold=100, chorm_label_shift=0.05, y_extra_expansion=0.1, range_y=None)",
       "docstring": "Scatter genome wide data. Sepaarate chromosomes by vertical lines and add chromosome names.\nTODO: add real positions, now only add 1,2,3,4... as x axis.\nInput:\n    genome_data: pd.DataFrame, index is ...",
       "return_type": null,
-      "lineno": 543
+      "lineno": 944
     },
     {
       "name": "plot_genome_heatmap",
       "signature": "plot_genome_heatmap(genome_data, chromosomes=None)",
       "docstring": "Heatmap genome wide data. Sepaarate chromosomes by vertical lines and add chromosome names.\nInput:\n    genome_data: pd.DataFrame, index is multiindex with level 0 as chromosome names\n        columns a...",
       "return_type": null,
-      "lineno": 594
+      "lineno": 995
     },
     {
       "name": "add_chrom_grid",
       "signature": "add_chrom_grid(df, fig, fig_type='scatter', x_extra_expansion=0, y_extra_expansion=0.1, value_cols=None, range_y=None)",
       "docstring": "Add chromosome grid lines to an existing genome track figure.\nInput:\n    df: pd.DataFrame, the genome data used to plot the figure. Index is multiindex with level 0 as chromosome names \n        and le...",
       "return_type": null,
-      "lineno": 628
+      "lineno": 1029
     },
     {
       "name": "plot_gene_track",
       "signature": "plot_gene_track(annotation_file: Union[str, Path], region: str, mode: str='all_transcripts', title: Optional[str]=None, height: int=400, width: int=1000, utr_height: float=0.3, exon_height: float=0.4, cds_height: float=0.6, row_spacing: float=0.2, show_labels: bool=True, label_font_size: int=10)",
       "docstring": "Plot gene annotation track in genome browser style.\n\nThis function creates a Plotly figure showing gene structures including\nexons, introns, CDS, and UTRs with strand direction indicators.\n\nParameters...",
       "return_type": "go.Figure",
-      "lineno": 1041
+      "lineno": 1659
     },
     {
       "name": "plot_gene_track_with_heatmap",
       "signature": "plot_gene_track_with_heatmap(annotation_file: Union[str, Path], region: str, heatmap_data: Optional[pd.DataFrame]=None, heatmap_title: Optional[str]=None, gene_track_height: int=300, heatmap_height: int=400)",
       "docstring": "Plot gene track below a heatmap (e.g., Hi-C contact matrix).\n\nParameters\n----------\nannotation_file : str or Path\n    Path to GTF or GFF3 annotation file.\nregion : str\n    Genomic region to display.\nh...",
       "return_type": "go.Figure",
-      "lineno": 1242
+      "lineno": 1860
     },
     {
       "name": "load_data",
@@ -3256,38 +3270,87 @@
     },
     {
       "name": "load_data",
+      "signature": "load_data(self, region: str, chrom_sizes: Optional[Dict[str, int]]=None)",
+      "docstring": "Load bigWig signal data for a genomic region.\n\nArgs:\n    region: Genomic region (e.g., \"chr1:1000000-5000000\").\n    chrom_sizes: Optional dict of chromosome sizes. If not provided,\n        will attemp...",
+      "return_type": "'BigWigTrack'",
+      "lineno": 326
+    },
+    {
+      "name": "render",
+      "signature": "render(self, fig, row: int, col: int)",
+      "docstring": "Render bigWig signal as bar plot.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional parameters (...",
+      "return_type": "go.Figure",
+      "lineno": 407
+    },
+    {
+      "name": "load_data",
       "signature": "load_data(self, clr: Cooler, region: str)",
       "docstring": "Load insulation score data aligned with cooler bins.\n\nArgs:\n    clr: Cooler object for bin information.\n    region: Genomic region.\n\nReturns:\n    self: Returns self for method chaining.",
       "return_type": "'ISTrack'",
-      "lineno": 322
+      "lineno": 527
     },
     {
       "name": "render",
       "signature": "render(self, fig, row: int, col: int)",
       "docstring": "Render insulation score track as line plot.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional pa...",
       "return_type": "go.Figure",
-      "lineno": 345
+      "lineno": 550
     },
     {
       "name": "load_data",
       "signature": "load_data(self, region: str, clr: Optional[Cooler]=None)",
       "docstring": "Load contact matrix from cooler file.\n\nArgs:\n    region: Genomic region.\n    clr: Optional Cooler object. If not provided, will create from cool_path.\n\nReturns:\n    self: Returns self for method chain...",
       "return_type": "'HeatmapTrack'",
-      "lineno": 448
+      "lineno": 653
     },
     {
       "name": "render",
       "signature": "render(self, fig, row: int, col: int)",
       "docstring": "Render contact matrix as heatmap.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional parameters f...",
       "return_type": "go.Figure",
-      "lineno": 466
+      "lineno": 671
     },
     {
       "name": "from_matrix",
       "signature": "from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, config: Optional[TrackConfig]=None)",
       "docstring": "Create HeatmapTrack from pre-computed matrix.\n\nArgs:\n    matrix: Contact matrix as numpy array.\n    bins: DataFrame with bin positions (chrom, start, end).\n    config: Optional TrackConfig.\n    **heat...",
       "return_type": "'HeatmapTrack'",
-      "lineno": 492
+      "lineno": 697
+    },
+    {
+      "name": "load_data",
+      "signature": "load_data(self, region: str, clr: Optional[Cooler]=None)",
+      "docstring": "Load and process trapezoid heatmap data.\n\nArgs:\n    region: Genomic region.\n    clr: Optional Cooler object. If not provided, will create from cool_path.\n\nReturns:\n    self: Returns self for method ch...",
+      "return_type": "'TrapezoidHeatmapTrack'",
+      "lineno": 801
+    },
+    {
+      "name": "render",
+      "signature": "render(self, fig, row: int, col: int)",
+      "docstring": "Render trapezoid heatmap.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional parameters for go.He...",
+      "return_type": "go.Figure",
+      "lineno": 847
+    },
+    {
+      "name": "from_matrix",
+      "signature": "from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, extent: Union[float, Tuple[float, float]], config: Optional[TrackConfig]=None, cmap: str='RdBu_r')",
+      "docstring": "Create TrapezoidHeatmapTrack from pre-computed matrix.\n\nArgs:\n    matrix: Trapezoid matrix as numpy array.\n    bins: DataFrame with bin positions.\n    extent: Color scale extent (single value or (min,...",
+      "return_type": "'TrapezoidHeatmapTrack'",
+      "lineno": 887
+    },
+    {
+      "name": "load_data",
+      "signature": "load_data(self, region: str)",
+      "docstring": "Load gene annotation data for a genomic region.\n\nArgs:\n    region: Genomic region (e.g., \"chr1:1000000-5000000\").\n\nReturns:\n    self: Returns self for method chaining.",
+      "return_type": "'GeneTrack'",
+      "lineno": 1193
+    },
+    {
+      "name": "render",
+      "signature": "render(self, fig, row: int, col: int)",
+      "docstring": "Render gene track as shapes and annotations.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional p...",
+      "return_type": "go.Figure",
+      "lineno": 1285
     }
   ],
   "plot.track_composer": [
@@ -3310,42 +3373,56 @@
       "signature": "for_tiling_compartment(cls, row_heights: Optional[List[float]]=None, col_widths: Optional[List[float]]=None)",
       "docstring": "Create composer for tiling compartment layout.\n\nCreates a 2x2 grid optimized for displaying two triangular\ncontact matrices with eigenvector tracks on left and bottom.\n\nArgs:\n    row_heights: Optional...",
       "return_type": "'TrackComposer'",
-      "lineno": 226
+      "lineno": 238
     },
     {
       "name": "for_trapezoid_2tracks",
       "signature": "for_trapezoid_2tracks(cls, row_heights: Optional[List[float]]=None)",
       "docstring": "Create composer for trapezoid heatmap with two tracks.\n\nCreates a 3-row vertical layout for trapezoid compartment\nheatmap with two eigenvector tracks below.\n\nArgs:\n    row_heights: Optional override f...",
       "return_type": "'TrackComposer'",
-      "lineno": 262
+      "lineno": 274
+    },
+    {
+      "name": "for_trapezoid_with_tracks",
+      "signature": "for_trapezoid_with_tracks(cls, n_tracks: int, trapezoid_height: float=6, track_heights: Optional[List[float]]=None, vertical_spacing: float=0.05)",
+      "docstring": "Create composer for trapezoid heatmap with arbitrary tracks.\n\nCreates a vertical layout with:\n- Row 1: Trapezoid compartment heatmap\n- Rows 2 to n_tracks+1: Additional tracks (bigWig, gene, etc.)\n\nArg...",
+      "return_type": "'TrackComposer'",
+      "lineno": 308
     },
     {
       "name": "for_heatmap_with_tracks",
       "signature": "for_heatmap_with_tracks(cls, n_tracks: int, heatmap_height: float=10, track_height: float=2)",
       "docstring": "Create composer for heatmap with multiple tracks below.\n\nCreates a vertical layout with heatmap on top and specified\nnumber of tracks below.\n\nArgs:\n    n_tracks: Number of tracks below the heatmap.\n  ...",
       "return_type": "'TrackComposer'",
-      "lineno": 296
+      "lineno": 365
+    },
+    {
+      "name": "for_cool_with_tracks",
+      "signature": "for_cool_with_tracks(cls, n_tracks: int, heatmap_height: float=10, track_heights: Optional[List[float]]=None)",
+      "docstring": "Create composer for Hi-C contact heatmap (with optional tiling) + tracks.\n\nCreates a vertical layout with:\n- Row 1: Hi-C contact matrix heatmap (can be tiling of two samples)\n- Rows 2 to n_tracks+1: A...",
+      "return_type": "'TrackComposer'",
+      "lineno": 404
     },
     {
       "name": "fig",
       "signature": "fig(self)",
       "docstring": "Get the assembled figure.\n\nReturns:\n    The assembled plotly figure, or None if build() has not been called.",
       "return_type": "Optional[Figure]",
-      "lineno": 335
+      "lineno": 461
     },
     {
       "name": "get_track",
       "signature": "get_track(self, row: int, col: int)",
       "docstring": "Get track at specified position.\n\nArgs:\n    row: Row position.\n    col: Column position.\n\nReturns:\n    Track at position, or None if no track exists.",
       "return_type": "Optional['Track']",
-      "lineno": 343
+      "lineno": 469
     },
     {
       "name": "list_tracks",
       "signature": "list_tracks(self)",
       "docstring": "List all tracks with their positions.\n\nReturns:\n    List of (row, col, track_name) tuples.",
       "return_type": "List[Tuple[int, int, str]]",
-      "lineno": 355
+      "lineno": 481
     }
   ],
   "plot.utils": [

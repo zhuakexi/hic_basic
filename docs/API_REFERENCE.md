@@ -58,7 +58,7 @@ Total modules with public functions: 90
 - [plot.bar](#plot-bar) (1 functions)
 - [plot.gene_track_parser](#plot-gene_track_parser) (6 functions)
 - [plot.general](#plot-general) (8 functions)
-- [plot.hic](#plot-hic) (20 functions)
+- [plot.hic](#plot-hic) (22 functions)
 - [plot.pca](#plot-pca) (2 functions)
 - [plot.plot](#plot-plot) (15 functions)
 - [plot.plotly_template](#plot-plotly_template) (1 functions)
@@ -67,8 +67,8 @@ Total modules with public functions: 90
 - [plot.scanpy](#plot-scanpy) (5 functions)
 - [plot.scatter](#plot-scatter) (6 functions)
 - [plot.tech](#plot-tech) (1 functions)
-- [plot.track](#plot-track) (17 functions)
-- [plot.track_composer](#plot-track_composer) (8 functions)
+- [plot.track](#plot-track) (24 functions)
+- [plot.track_composer](#plot-track_composer) (10 functions)
 - [plot.utils](#plot-utils) (20 functions)
 - [pp](#pp) (1 functions)
 - [pymol.color_centelo](#pymol-color_centelo) (2 functions)
@@ -7201,7 +7201,7 @@ Output:
 
 **File:** `plot/hic.py`
 
-**Public functions:** 20
+**Public functions:** 22
 
 
 ### `add_eig_track(fig, orig_data, eig_col=None, y_kwargs={}, row=None, col=None)`
@@ -7219,7 +7219,7 @@ Output:
     fig: figure with eigen track added.
 
 
-**Source:** Line 641 in [plot/hic.py](plot/hic.py#L641)
+**Source:** Line 653 in [plot/hic.py](plot/hic.py#L653)
 
 
 ---
@@ -7231,7 +7231,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 1099 in [plot/hic.py](plot/hic.py#L1099)
+**Source:** Line 1111 in [plot/hic.py](plot/hic.py#L1111)
 
 
 ---
@@ -7249,7 +7249,7 @@ Output:
     pd.Series; index: start of each bin, value: track value.
 
 
-**Source:** Line 362 in [plot/hic.py](plot/hic.py#L362)
+**Source:** Line 374 in [plot/hic.py](plot/hic.py#L374)
 
 
 ---
@@ -7268,7 +7268,7 @@ Output:
     pd.Dataframe
 
 
-**Source:** Line 1071 in [plot/hic.py](plot/hic.py#L1071)
+**Source:** Line 1083 in [plot/hic.py](plot/hic.py#L1083)
 
 
 ---
@@ -7295,7 +7295,7 @@ Input:
 No documentation available.
 
 
-**Source:** Line 1003 in [plot/hic.py](plot/hic.py#L1003)
+**Source:** Line 1015 in [plot/hic.py](plot/hic.py#L1015)
 
 
 ---
@@ -7310,7 +7310,7 @@ Input:
     insulation_table: insulation score table.
 
 
-**Source:** Line 1108 in [plot/hic.py](plot/hic.py#L1108)
+**Source:** Line 1120 in [plot/hic.py](plot/hic.py#L1120)
 
 
 ---
@@ -7324,7 +7324,7 @@ Input:
     reverse: whether to reverse the order of the sample
 
 
-**Source:** Line 1178 in [plot/hic.py](plot/hic.py#L1178)
+**Source:** Line 1190 in [plot/hic.py](plot/hic.py#L1190)
 
 
 ---
@@ -7336,7 +7336,7 @@ Input:
 No documentation available.
 
 
-**Source:** Line 577 in [plot/hic.py](plot/hic.py#L577)
+**Source:** Line 589 in [plot/hic.py](plot/hic.py#L589)
 
 
 ---
@@ -7348,7 +7348,7 @@ No documentation available.
 Plot cooler with additional track files
 
 
-**Source:** Line 444 in [plot/hic.py](plot/hic.py#L444)
+**Source:** Line 456 in [plot/hic.py](plot/hic.py#L456)
 
 
 ---
@@ -7377,7 +7377,7 @@ Input:
     eq_hist: whether to use equalized histogram.
 
 
-**Source:** Line 701 in [plot/hic.py](plot/hic.py#L701)
+**Source:** Line 713 in [plot/hic.py](plot/hic.py#L713)
 
 
 ---
@@ -7389,7 +7389,7 @@ Input:
 No documentation available.
 
 
-**Source:** Line 1244 in [plot/hic.py](plot/hic.py#L1244)
+**Source:** Line 1256 in [plot/hic.py](plot/hic.py#L1256)
 
 
 ---
@@ -7454,7 +7454,7 @@ Examples
 >>> fig.show()
 
 
-**Source:** Line 1297 in [plot/hic.py](plot/hic.py#L1297)
+**Source:** Line 1309 in [plot/hic.py](plot/hic.py#L1309)
 
 
 ---
@@ -7506,13 +7506,13 @@ Example:
     >>> fig.show()
 
 
-**Source:** Line 1487 in [plot/hic.py](plot/hic.py#L1487)
+**Source:** Line 1499 in [plot/hic.py](plot/hic.py#L1499)
 
 
 ---
 
 
-### `plot_cool(coolp, title='', region='chr1', vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False)`
+### `plot_cool(coolp, title='', region='chr1', vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False, return_data=False)`
 
 
 "
@@ -7527,6 +7527,11 @@ Input:
     vmax: max z value.
     balance: whether to load balanced cooler matrix.
     norm: whether to use lognorm.
+    return_data: if True, return (fig, matrix, bins) instead of just fig.
+        Default False.
+Output:
+    If return_data=False: plotly figure
+    If return_data=True: (fig, matrix DataFrame, bins DataFrame)
 
 
 **Source:** Line 238 in [plot/hic.py](plot/hic.py#L238)
@@ -7547,7 +7552,111 @@ Input:
     balance: whether to load balanced cooler matrix.
 
 
-**Source:** Line 383 in [plot/hic.py](plot/hic.py#L383)
+**Source:** Line 395 in [plot/hic.py](plot/hic.py#L395)
+
+
+---
+
+
+### `plot_cool_with_tracks(coolp1: Union[str, Path], coolp2: Optional[Union[str, Path]]=None, tracks: Optional[List]=None, region: str='chr1', track_heights: Optional[List[float]]=None, heatmap_height: float=10, title: str='', balance: bool=True, vmax: Optional[float]=None, cmap: str='fall', ignore_diags: bool=False, adjust_brightness: bool=True)`
+
+**Returns:** `go.Figure`
+
+
+Plot Hi-C contact heatmap with optional tracks below.
+
+This function creates a vertical layout with:
+- Row 1: Hi-C contact matrix heatmap (single sample or tiling of two samples)
+- Rows 2 to N: Additional tracks (BigWig, Gene, Eigen, IS, etc.)
+
+When two cooler files are provided, the function uses tiling layout to
+compare two contact matrices: lower triangle from coolp1, upper triangle
+from coolp2.
+
+Parameters
+----------
+coolp1 : str or Path
+    Path to first cooler file.
+coolp2 : str or Path, optional
+    Path to second cooler file for tiling comparison. If None, only
+    coolp1 is displayed. Default is None.
+tracks : list, optional
+    List of Track objects (BigWigTrack, GeneTrack, EigenTrack, etc.).
+    Default is None (no tracks).
+region : str, optional
+    Genome region to plot, e.g., "chr1" or "chr1:1000000-5000000".
+    Default is "chr1".
+track_heights : list of float, optional
+    Relative height ratios for each track. If None, all tracks have
+    equal height of 2.0. Default is None.
+heatmap_height : float, optional
+    Relative height of heatmap row. Default is 10.
+title : str, optional
+    Plot title. Default is "".
+balance : bool, optional
+    Whether to use balanced cooler matrix. Default is True.
+vmax : float, optional
+    Maximum value for color scale. If None, auto-scaled. Default is None.
+cmap : str, optional
+    Colormap name. Default is "fall".
+ignore_diags : bool, optional
+    Whether to ignore diagonal values. Default is False.
+adjust_brightness : bool, optional
+    Whether to adjust brightness when tiling two matrices. When True,
+    scales the brighter matrix to match the darker one. Default is True.
+    Only used when coolp2 is provided.
+**heatmap_kwargs
+    Additional keyword arguments passed to go.Heatmap.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    Plotly figure with Hi-C heatmap and tracks.
+
+Examples
+--------
+Single sample with tracks:
+
+>>> from hic_basic.plot import BigWigTrack, GeneTrack
+>>> from hic_basic.plot.hic import plot_cool_with_tracks
+>>>
+>>> fig = plot_cool_with_tracks(
+...     coolp1="sample.cool",
+...     tracks=[
+...         BigWigTrack("H3K27ac.bw", bin_size=1000),
+...         BigWigTrack("H3K4me3.bw", bin_size=1000),
+...         GeneTrack("annotations.gtf")
+...     ],
+...     region="chr1:1000000-5000000",
+...     title="Hi-C + Tracks"
+... )
+>>> fig.show()
+
+Two samples tiling comparison with tracks:
+
+>>> fig = plot_cool_with_tracks(
+...     coolp1="sample1.cool",
+...     coolp2="sample2.cool",
+...     tracks=[
+...         EigenTrack("eigvec.bedgraph", eigen_col="E1"),
+...         BigWigTrack("H3K27ac.bw", bin_size=1000)
+...     ],
+...     region="chr1:1000000-5000000",
+...     title="Sample1 vs Sample2 (tiling)",
+...     adjust_brightness=True
+... )
+>>> fig.show()
+
+Notes
+-----
+- When coolp2 is provided, uses tiling_mat() to create a composite matrix
+  with lower triangle from coolp1 and upper triangle from coolp2.
+- All tracks are aligned to coolp1's bins.
+- The adjust_brightness parameter helps visualize differences when two
+  matrices have very different signal intensities.
+
+
+**Source:** Line 2171 in [plot/hic.py](plot/hic.py#L2171)
 
 
 ---
@@ -7569,7 +7678,7 @@ Input:
     kwargs: kwargs for _plot_mat.
 
 
-**Source:** Line 296 in [plot/hic.py](plot/hic.py#L296)
+**Source:** Line 308 in [plot/hic.py](plot/hic.py#L308)
 
 
 ---
@@ -7590,7 +7699,7 @@ Output:
     plot
 
 
-**Source:** Line 929 in [plot/hic.py](plot/hic.py#L929)
+**Source:** Line 941 in [plot/hic.py](plot/hic.py#L941)
 
 
 ---
@@ -7602,7 +7711,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 915 in [plot/hic.py](plot/hic.py#L915)
+**Source:** Line 927 in [plot/hic.py](plot/hic.py#L927)
 
 
 ---
@@ -7646,7 +7755,112 @@ Example:
     >>> fig.show()
 
 
-**Source:** Line 1661 in [plot/hic.py](plot/hic.py#L1661)
+**Source:** Line 1673 in [plot/hic.py](plot/hic.py#L1673)
+
+
+---
+
+
+### `plot_trapezoid_with_tracks(coolp: Union[str, Path], vec_file: Union[str, Path], region: str, tracks: List, track_heights: Optional[List[float]]=None, trapezoid_height: Optional[float]=None, strata: int=20, title: str='', balance: bool=True, cmap: str='RdBu_r', quant: float=0.01, minmax: str='min', eigen_col: str='E1', fillna: bool=False, strip: bool=False, mask_eig_na: bool=True, total_height: int=800, width: int=700, auto_scale: bool=True)`
+
+**Returns:** `go.Figure`
+
+
+Plot trapezoid Hi-C heatmap with arbitrary tracks below.
+
+This function creates a vertical layout with:
+- Row 1: Trapezoid compartment heatmap (rotated 45 degrees)
+- Rows 2 to N: Additional tracks (BigWig, Gene, Eigen, IS, etc.)
+
+Parameters
+----------
+coolp : str or Path
+    Path to cooler file.
+vec_file : str or Path
+    Path to eigenvector file for compartment coloring.
+region : str
+    Genome region to plot, e.g., "chr1:1000000-5000000".
+tracks : list
+    List of Track objects (BigWigTrack, GeneTrack, EigenTrack, etc.).
+track_heights : list of float, optional
+    Relative height ratios for each track. If None, all tracks have
+    equal height of 2.0.
+trapezoid_height : float, optional
+    Relative height of trapezoid row. If auto_scale=True, this parameter
+    is ignored and height is calculated automatically. Set auto_scale=False
+    to use a custom height. Default None (auto-calculated).
+strata : int, optional
+    Number of rows to keep in the trapezoid. Default 20.
+title : str, optional
+    Plot title. Default "".
+balance : bool, optional
+    Whether to use balanced cooler matrix. Default True.
+cmap : str, optional
+    Colormap name. Default "RdBu_r".
+quant : float, optional
+    Quantile for color scale clipping. Default 0.01.
+minmax : str, optional
+    How to compute color limits. Default "min".
+eigen_col : str, optional
+    Column name for eigenvector values. Default "E1".
+fillna : bool, optional
+    Whether to fill NaN values in the matrix. Default False.
+strip : bool, optional
+    Whether to strip consecutive zeros. Default False.
+mask_eig_na : bool, optional
+    Whether to mask NaN eigenvalues. Default True.
+total_height : int, optional
+    Total figure height in pixels. Default 800.
+width : int, optional
+    Figure width in pixels. Default 700.
+auto_scale : bool, optional
+    If True, automatically calculate trapezoid_height to maintain
+    square pixel aspect ratio. Default True.
+**heatmap_kwargs
+    Additional keyword arguments passed to go.Heatmap.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    Plotly figure with trapezoid heatmap and tracks.
+
+Examples
+--------
+>>> from hic_basic.plot.track import BigWigTrack, GeneTrack
+>>> from hic_basic.plot.hic import plot_trapezoid_with_tracks
+>>>
+>>> tracks = [
+...     BigWigTrack("H3K27ac.bw", bin_size=1000, color="#1f77b4"),
+...     BigWigTrack("H3K4me3.bw", bin_size=1000, color="#ff7f0e"),
+...     GeneTrack("annotations.gtf", mode="all_transcripts")
+... ]
+>>> fig = plot_trapezoid_with_tracks(
+...     coolp="sample.cool",
+...     vec_file="eigvec.bedgraph",
+...     region="chr1:1000000-5000000",
+...     tracks=tracks,
+...     track_heights=[2, 2, 3],  # gene track taller
+...     title="Hi-C + Multi-omics"
+... )
+>>> fig.show()
+
+Notes
+-----
+The function uses Track architecture for modular composition.
+Track types supported:
+- BigWigTrack: Continuous signal from bigWig files
+- GeneTrack: Gene annotation from GTF/GFF3 files
+- EigenTrack: Eigenvector compartment signal
+- ISTrack: Insulation score track
+- HeatmapTrack: Standard Hi-C heatmap
+
+Auto-scaling behavior:
+- When auto_scale=True, trapezoid_height is calculated to maintain
+  square pixel aspect ratio based on the trapezoid matrix shape
+- Formula accounts for strata, n_bins, figure dimensions, and track space
+
+
+**Source:** Line 1980 in [plot/hic.py](plot/hic.py#L1980)
 
 
 ---
@@ -8756,7 +8970,7 @@ TODO:
 
 **File:** `plot/track.py`
 
-**Public functions:** 17
+**Public functions:** 24
 
 
 ### `add_chrom_grid(df, fig, fig_type='scatter', x_extra_expansion=0, y_extra_expansion=0.1, value_cols=None, range_y=None)`
@@ -8778,7 +8992,7 @@ Output:
     fig: plotly.graph_objs._figure.Figure, the figure with added grid lines.
 
 
-**Source:** Line 628 in [plot/track.py](plot/track.py#L628)
+**Source:** Line 1029 in [plot/track.py](plot/track.py#L1029)
 
 
 ---
@@ -8815,7 +9029,32 @@ Returns:
     HeatmapTrack: New instance with pre-computed data.
 
 
-**Source:** Line 492 in [plot/track.py](plot/track.py#L492)
+**Source:** Line 697 in [plot/track.py](plot/track.py#L697)
+
+
+---
+
+
+### `from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, extent: Union[float, Tuple[float, float]], config: Optional[TrackConfig]=None, cmap: str='RdBu_r')`
+
+**Returns:** `'TrapezoidHeatmapTrack'`
+
+
+Create TrapezoidHeatmapTrack from pre-computed matrix.
+
+Args:
+    matrix: Trapezoid matrix as numpy array.
+    bins: DataFrame with bin positions.
+    extent: Color scale extent (single value or (min, max) tuple).
+    config: Optional TrackConfig.
+    cmap: Colormap name. Default 'RdBu_r'.
+    **heatmap_kwargs: Additional parameters for go.Heatmap.
+
+Returns:
+    TrapezoidHeatmapTrack: New instance with pre-computed data.
+
+
+**Source:** Line 887 in [plot/track.py](plot/track.py#L887)
 
 
 ---
@@ -8877,6 +9116,31 @@ Returns:
 ---
 
 
+### `load_data(self, region: str, chrom_sizes: Optional[Dict[str, int]]=None)`
+
+**Returns:** `'BigWigTrack'`
+
+
+Load bigWig signal data for a genomic region.
+
+Args:
+    region: Genomic region (e.g., "chr1:1000000-5000000").
+    chrom_sizes: Optional dict of chromosome sizes. If not provided,
+        will attempt to read from bigWig file.
+
+Returns:
+    self: Returns self for method chaining.
+
+Raises:
+    ImportError: If pyBigWig is not installed.
+
+
+**Source:** Line 326 in [plot/track.py](plot/track.py#L326)
+
+
+---
+
+
 ### `load_data(self, clr: Cooler, region: str)`
 
 **Returns:** `'ISTrack'`
@@ -8892,7 +9156,7 @@ Returns:
     self: Returns self for method chaining.
 
 
-**Source:** Line 322 in [plot/track.py](plot/track.py#L322)
+**Source:** Line 527 in [plot/track.py](plot/track.py#L527)
 
 
 ---
@@ -8913,7 +9177,48 @@ Returns:
     self: Returns self for method chaining.
 
 
-**Source:** Line 448 in [plot/track.py](plot/track.py#L448)
+**Source:** Line 653 in [plot/track.py](plot/track.py#L653)
+
+
+---
+
+
+### `load_data(self, region: str, clr: Optional[Cooler]=None)`
+
+**Returns:** `'TrapezoidHeatmapTrack'`
+
+
+Load and process trapezoid heatmap data.
+
+Args:
+    region: Genomic region.
+    clr: Optional Cooler object. If not provided, will create from cool_path.
+
+Returns:
+    self: Returns self for method chaining.
+
+
+**Source:** Line 801 in [plot/track.py](plot/track.py#L801)
+
+
+---
+
+
+### `load_data(self, region: str)`
+
+**Returns:** `'GeneTrack'`
+
+
+Load gene annotation data for a genomic region.
+
+Args:
+    region: Genomic region (e.g., "chr1:1000000-5000000").
+
+Returns:
+    self: Returns self for method chaining.
+
+
+**Source:** Line 1193 in [plot/track.py](plot/track.py#L1193)
 
 
 ---
@@ -8984,7 +9289,7 @@ implementation. Planned improvements include:
 - Better visual integration with exon/intron structures
 
 
-**Source:** Line 1041 in [plot/track.py](plot/track.py#L1041)
+**Source:** Line 1659 in [plot/track.py](plot/track.py#L1659)
 
 
 ---
@@ -9020,7 +9325,7 @@ plotly.graph_objects.Figure
     Combined figure with heatmap and gene track.
 
 
-**Source:** Line 1242 in [plot/track.py](plot/track.py#L1242)
+**Source:** Line 1860 in [plot/track.py](plot/track.py#L1860)
 
 
 ---
@@ -9038,7 +9343,7 @@ Output:
     fig: plotly.graph_objs._figure.Figure
 
 
-**Source:** Line 594 in [plot/track.py](plot/track.py#L594)
+**Source:** Line 995 in [plot/track.py](plot/track.py#L995)
 
 
 ---
@@ -9063,7 +9368,7 @@ Output:
     fig: plotly.graph_objs._figure.Figure
 
 
-**Source:** Line 543 in [plot/track.py](plot/track.py#L543)
+**Source:** Line 944 in [plot/track.py](plot/track.py#L944)
 
 
 ---
@@ -9118,6 +9423,29 @@ Returns:
 **Returns:** `go.Figure`
 
 
+Render bigWig signal as bar plot.
+
+Args:
+    fig: Plotly figure to add traces to.
+    row: Row position in subplot grid.
+    col: Column position in subplot grid.
+    **kwargs: Additional parameters (width, showlegend, etc.).
+
+Returns:
+    fig: Modified figure with track added.
+
+
+**Source:** Line 407 in [plot/track.py](plot/track.py#L407)
+
+
+---
+
+
+### `render(self, fig, row: int, col: int)`
+
+**Returns:** `go.Figure`
+
+
 Render insulation score track as line plot.
 
 Args:
@@ -9130,7 +9458,7 @@ Returns:
     fig: Modified figure with track added.
 
 
-**Source:** Line 345 in [plot/track.py](plot/track.py#L345)
+**Source:** Line 550 in [plot/track.py](plot/track.py#L550)
 
 
 ---
@@ -9153,7 +9481,53 @@ Returns:
     fig: Modified figure with track added.
 
 
-**Source:** Line 466 in [plot/track.py](plot/track.py#L466)
+**Source:** Line 671 in [plot/track.py](plot/track.py#L671)
+
+
+---
+
+
+### `render(self, fig, row: int, col: int)`
+
+**Returns:** `go.Figure`
+
+
+Render trapezoid heatmap.
+
+Args:
+    fig: Plotly figure to add traces to.
+    row: Row position in subplot grid.
+    col: Column position in subplot grid.
+    **kwargs: Additional parameters for go.Heatmap.
+
+Returns:
+    fig: Modified figure with track added.
+
+
+**Source:** Line 847 in [plot/track.py](plot/track.py#L847)
+
+
+---
+
+
+### `render(self, fig, row: int, col: int)`
+
+**Returns:** `go.Figure`
+
+
+Render gene track as shapes and annotations.
+
+Args:
+    fig: Plotly figure to add traces to.
+    row: Row position in subplot grid.
+    col: Column position in subplot grid.
+    **kwargs: Additional parameters.
+
+Returns:
+    fig: Modified figure with track added.
+
+
+**Source:** Line 1285 in [plot/track.py](plot/track.py#L1285)
 
 
 ---
@@ -9165,7 +9539,7 @@ Returns:
 No documentation available.
 
 
-**Source:** Line 525 in [plot/track.py](plot/track.py#L525)
+**Source:** Line 926 in [plot/track.py](plot/track.py#L926)
 
 
 ---
@@ -9175,7 +9549,7 @@ No documentation available.
 
 **File:** `plot/track_composer.py`
 
-**Public functions:** 8
+**Public functions:** 10
 
 
 ### `add_track(self, track: 'Track', row: int, col: int, height_ratio: Optional[float]=None)`
@@ -9248,7 +9622,49 @@ Returns:
     The assembled plotly figure, or None if build() has not been called.
 
 
-**Source:** Line 335 in [plot/track_composer.py](plot/track_composer.py#L335)
+**Source:** Line 461 in [plot/track_composer.py](plot/track_composer.py#L461)
+
+
+---
+
+
+### `for_cool_with_tracks(cls, n_tracks: int, heatmap_height: float=10, track_heights: Optional[List[float]]=None)`
+
+**Returns:** `'TrackComposer'`
+
+
+Create composer for Hi-C contact heatmap (with optional tiling) + tracks.
+
+Creates a vertical layout with:
+- Row 1: Hi-C contact matrix heatmap (can be tiling of two samples)
+- Rows 2 to n_tracks+1: Additional tracks (BigWig, Gene, Eigen, IS, etc.)
+
+This is similar to for_heatmap_with_tracks() but with different default
+spacing optimized for Hi-C contact matrix visualization.
+
+Args:
+    n_tracks: Number of tracks below the heatmap.
+    heatmap_height: Relative height of heatmap row. Default 10.
+    track_heights: List of height ratios for each track.
+        If None, all tracks have equal height of 2.
+    **kwargs: Additional LayoutConfig parameters.
+
+Returns:
+    TrackComposer: Configured composer instance.
+
+Example:
+    >>> composer = TrackComposer.for_cool_with_tracks(
+    ...     n_tracks=3,
+    ...     heatmap_height=10,
+    ...     track_heights=[2, 2, 3]  # gene track taller
+    ... )
+    >>> composer.add_track(heatmap, row=1, col=1)
+    >>> composer.add_track(bw_track1, row=2, col=1)
+    >>> composer.add_track(bw_track2, row=3, col=1)
+    >>> composer.add_track(gene_track, row=4, col=1)
+
+
+**Source:** Line 404 in [plot/track_composer.py](plot/track_composer.py#L404)
 
 
 ---
@@ -9281,7 +9697,7 @@ Example:
     >>> composer.add_track(track3, row=4, col=1)
 
 
-**Source:** Line 296 in [plot/track_composer.py](plot/track_composer.py#L296)
+**Source:** Line 365 in [plot/track_composer.py](plot/track_composer.py#L365)
 
 
 ---
@@ -9312,7 +9728,7 @@ Example:
     >>> composer.add_track(eigen_bottom, row=2, col=2)
 
 
-**Source:** Line 226 in [plot/track_composer.py](plot/track_composer.py#L226)
+**Source:** Line 238 in [plot/track_composer.py](plot/track_composer.py#L238)
 
 
 ---
@@ -9342,7 +9758,47 @@ Example:
     >>> composer.add_track(eigen2, row=3, col=1)
 
 
-**Source:** Line 262 in [plot/track_composer.py](plot/track_composer.py#L262)
+**Source:** Line 274 in [plot/track_composer.py](plot/track_composer.py#L274)
+
+
+---
+
+
+### `for_trapezoid_with_tracks(cls, n_tracks: int, trapezoid_height: float=6, track_heights: Optional[List[float]]=None, vertical_spacing: float=0.05)`
+
+**Returns:** `'TrackComposer'`
+
+
+Create composer for trapezoid heatmap with arbitrary tracks.
+
+Creates a vertical layout with:
+- Row 1: Trapezoid compartment heatmap
+- Rows 2 to n_tracks+1: Additional tracks (bigWig, gene, etc.)
+
+Args:
+    n_tracks: Number of additional tracks below the trapezoid.
+    trapezoid_height: Height ratio for trapezoid row. Default 6.
+    track_heights: List of height ratios for each track.
+        If None, all tracks have equal height of 2.
+    vertical_spacing: Spacing between rows. Default 0.05.
+    **kwargs: Additional LayoutConfig parameters.
+
+Returns:
+    TrackComposer: Configured composer instance.
+
+Example:
+    >>> composer = TrackComposer.for_trapezoid_with_tracks(
+    ...     n_tracks=3,
+    ...     trapezoid_height=6,
+    ...     track_heights=[2, 2, 3]  # gene track taller
+    ... )
+    >>> composer.add_track(trapezoid, row=1, col=1)
+    >>> composer.add_track(bw_track1, row=2, col=1)
+    >>> composer.add_track(bw_track2, row=3, col=1)
+    >>> composer.add_track(gene_track, row=4, col=1)
+
+
+**Source:** Line 308 in [plot/track_composer.py](plot/track_composer.py#L308)
 
 
 ---
@@ -9363,7 +9819,7 @@ Returns:
     Track at position, or None if no track exists.
 
 
-**Source:** Line 343 in [plot/track_composer.py](plot/track_composer.py#L343)
+**Source:** Line 469 in [plot/track_composer.py](plot/track_composer.py#L469)
 
 
 ---
@@ -9380,7 +9836,7 @@ Returns:
     List of (row, col, track_name) tuples.
 
 
-**Source:** Line 355 in [plot/track_composer.py](plot/track_composer.py#L355)
+**Source:** Line 481 in [plot/track_composer.py](plot/track_composer.py#L481)
 
 
 ---

@@ -400,6 +400,63 @@ class TrackComposer:
             **kwargs
         ))
 
+    @classmethod
+    def for_cool_with_tracks(
+        cls,
+        n_tracks: int,
+        heatmap_height: float = 10,
+        track_heights: Optional[List[float]] = None,
+        **kwargs
+    ) -> "TrackComposer":
+        """Create composer for Hi-C contact heatmap (with optional tiling) + tracks.
+
+        Creates a vertical layout with:
+        - Row 1: Hi-C contact matrix heatmap (can be tiling of two samples)
+        - Rows 2 to n_tracks+1: Additional tracks (BigWig, Gene, Eigen, IS, etc.)
+
+        This is similar to for_heatmap_with_tracks() but with different default
+        spacing optimized for Hi-C contact matrix visualization.
+
+        Args:
+            n_tracks: Number of tracks below the heatmap.
+            heatmap_height: Relative height of heatmap row. Default 10.
+            track_heights: List of height ratios for each track.
+                If None, all tracks have equal height of 2.
+            **kwargs: Additional LayoutConfig parameters.
+
+        Returns:
+            TrackComposer: Configured composer instance.
+
+        Example:
+            >>> composer = TrackComposer.for_cool_with_tracks(
+            ...     n_tracks=3,
+            ...     heatmap_height=10,
+            ...     track_heights=[2, 2, 3]  # gene track taller
+            ... )
+            >>> composer.add_track(heatmap, row=1, col=1)
+            >>> composer.add_track(bw_track1, row=2, col=1)
+            >>> composer.add_track(bw_track2, row=3, col=1)
+            >>> composer.add_track(gene_track, row=4, col=1)
+        """
+        if track_heights is None:
+            track_heights = [2.0] * n_tracks
+        elif len(track_heights) != n_tracks:
+            raise ValueError(
+                f"track_heights length ({len(track_heights)}) must match "
+                f"n_tracks ({n_tracks})"
+            )
+
+        row_heights = [heatmap_height] + track_heights
+
+        return cls(LayoutConfig(
+            rows=1 + n_tracks,
+            cols=1,
+            row_heights=row_heights,
+            vertical_spacing=0.02,
+            shared_xaxes=True,
+            **kwargs
+        ))
+
     @property
     def fig(self) -> Optional[Figure]:
         """Get the assembled figure.

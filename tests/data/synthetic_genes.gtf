@@ -1,0 +1,7 @@
+# Gene annotations for testing
+chr1	test	gene	5000	25000	.	+	.	gene_id "Gene1"; gene_name "GeneA";
+chr1	test	exon	5000	10000	.	+	.	gene_id "Gene1"; gene_name "GeneA";
+chr1	test	exon	15000	25000	.	+	.	gene_id "Gene1"; gene_name "GeneA";
+chr1	test	gene	30000	45000	.	-	.	gene_id "Gene2"; gene_name "GeneB";
+chr1	test	exon	30000	35000	.	-	.	gene_id "Gene2"; gene_name "GeneB";
+chr1	test	exon	40000	45000	.	-	.	gene_id "Gene2"; gene_name "GeneB";

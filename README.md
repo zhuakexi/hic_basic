@@ -46,6 +46,35 @@ plot_clusters(slingshot, save_path="clusters.png")
 
 See `TI.slingshot` and `TI.slingshot.plot` modules for details.
 
+### Hi-C Visualization with Multi-omics Tracks
+
+```python
+from hic_basic.plot.hic import plot_cool_with_tracks
+from hic_basic.plot import BigWigTrack, GeneTrack, EigenTrack
+
+# Single sample with tracks
+fig = plot_cool_with_tracks(
+    coolp1="sample.cool",
+    tracks=[
+        EigenTrack("eigvec.bedgraph"),
+        BigWigTrack("H3K27ac.bw"),
+        GeneTrack("annotations.gtf")
+    ],
+    region="chr1:0-500000"
+)
+fig.write_image("hic_tracks.png")
+
+# Two samples tiling comparison
+fig = plot_cool_with_tracks(
+    coolp1="sample1.cool",
+    coolp2="sample2.cool",
+    tracks=[EigenTrack("eigvec.bedgraph")],
+    region="chr1:0-500000",
+    adjust_brightness=True  # Auto-balance intensities
+)
+fig.write_image("tiling.png")
+```
+
 ## Installation
 
 In jupyter notebooks, add
