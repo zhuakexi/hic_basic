@@ -1,7 +1,7 @@
 from itertools import product
 from math import ceil
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 import bioframe
 import cooler
@@ -2181,6 +2181,7 @@ def plot_cool_with_tracks(
     cmap: str = "fall",
     ignore_diags: bool = False,
     adjust_brightness: bool = True,
+    marks: Optional[List[Dict]] = None,  # NEW: marks parameter
     **heatmap_kwargs
 ) -> go.Figure:
     """Plot Hi-C contact heatmap with optional tracks below.
@@ -2225,6 +2226,16 @@ def plot_cool_with_tracks(
         Whether to adjust brightness when tiling two matrices. When True,
         scales the brighter matrix to match the darker one. Default is True.
         Only used when coolp2 is provided.
+    marks : list of dict, optional
+        List of mark dictionaries to highlight specific pixels. Each dict
+        should contain:
+        - chrom1, start1, end1: First genomic position
+        - chrom2, start2, end2: Second genomic position
+        - color: Optional, color of the mark (default: red)
+        - shape: Optional, shape type ("circle", "rect") (default: circle)
+        - width: Optional, line width (default: 2)
+        - label: Optional, text label for the mark
+        Default is None (no marks).
     **heatmap_kwargs
         Additional keyword arguments passed to go.Heatmap.
 
@@ -2252,16 +2263,17 @@ def plot_cool_with_tracks(
     ... )
     >>> fig.show()
 
-    Two samples tiling comparison with tracks:
+    Two samples tiling comparison with marks:
 
     >>> fig = plot_cool_with_tracks(
     ...     coolp1="sample1.cool",
     ...     coolp2="sample2.cool",
-    ...     tracks=[
-    ...         EigenTrack("eigvec.bedgraph", eigen_col="E1"),
-    ...         BigWigTrack("H3K27ac.bw", bin_size=1000)
+    ...     marks=[
+    ...         {"chrom1": "chr1", "start1": 100000, "end1": 110000,
+    ...          "chrom2": "chr1", "start2": 200000, "end2": 210000,
+    ...          "color": "red", "shape": "circle", "width": 2}
     ...     ],
-    ...     region="chr1:1000000-5000000",
+    ...     region="chr1:0-500000",
     ...     title="Sample1 vs Sample2 (tiling)",
     ...     adjust_brightness=True
     ... )
@@ -2274,8 +2286,9 @@ def plot_cool_with_tracks(
     - All tracks are aligned to coolp1's bins.
     - The adjust_brightness parameter helps visualize differences when two
       matrices have very different signal intensities.
+    - Marks are rendered as shapes (circles, rectangles) on top of the heatmap.
     """
-    from .track import HeatmapTrack, TrackConfig
+    from .track import HeatmapTrack, TrackConfig, MarkTrack
     from .track_composer import TrackComposer
     from .utils import tiling_mat
     from cooler import Cooler
@@ -2323,6 +2336,7 @@ def plot_cool_with_tracks(
         mat,
         bins_df,
         config=TrackConfig(row=1, col=1),
+        marks=marks,  # Pass marks to heatmap
         **heatmap_kwargs_merged
     )
     composer.add_track(heatmap, row=1, col=1)

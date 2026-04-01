@@ -18,7 +18,7 @@ import cooler
 sys.path.insert(0, "/share/home/ychi/dev/hic_basic")
 
 from hic_basic.plot.hic import plot_cool_with_tracks
-from hic_basic.plot.track import BigWigTrack, GeneTrack, EigenTrack
+from hic_basic.plot.track import BigWigTrack, GeneTrack, EigenTrack, MarkTrack, HeatmapTrack
 
 
 def create_synthetic_cool_file(output_path, resolution=10000, n_bins=50, sample_id=1):
@@ -573,6 +573,161 @@ class TestPlotCoolWithTracksVisual(unittest.TestCase):
         )
         
         fig.write_image(str(out_png), width=700, height=600)
+        self.assertTrue(out_png.exists())
+        print(f"Output: {out_png}")
+
+
+class TestMarkTrack(unittest.TestCase):
+    """Test MarkTrack functionality for marking pixels on heatmaps."""
+    
+    @classmethod
+    def setUpClass(cls):
+        """Use existing synthetic test data."""
+        cls.test_data_dir = Path(os.path.dirname(__file__)) / "data"
+        cls.synthetic_cool1 = cls.test_data_dir / "synthetic_cool1_tiling.cool"
+        cls.synthetic_cool2 = cls.test_data_dir / "synthetic_cool2_tiling.cool"
+        cls.synthetic_eigs1 = cls.test_data_dir / "synthetic_eigs1_tiling.bedgraph"
+        cls.outdir = Path(os.path.dirname(__file__)) / "output" / "cool_with_tracks"
+        cls.outdir.mkdir(parents=True, exist_ok=True)
+    
+    def test_mark_track_basic(self):
+        """Test basic MarkTrack functionality."""
+        from plotly.subplots import make_subplots
+        from cooler import Cooler
+        
+        clr = Cooler(str(self.synthetic_cool1))
+        
+        # Create mark track with a single mark
+        mark = MarkTrack(
+            marks=[
+                {
+                    "chrom1": "chr1", "start1": 50000, "end1": 60000,
+                    "chrom2": "chr1", "start2": 150000, "end2": 160000,
+                    "color": "red", "shape": "circle", "width": 2
+                }
+            ]
+        )
+        mark.load_data(clr=clr, region="chr1:0-500000")
+        
+        # Create figure and render
+        fig = make_subplots(rows=1, cols=1)
+        mark.render(fig, row=1, col=1)
+        
+        # Should have added at least one shape
+        self.assertGreaterEqual(len(fig.layout.shapes), 1)
+    
+    def test_mark_track_multiple_shapes(self):
+        """Test MarkTrack with multiple marks and shapes."""
+        from plotly.subplots import make_subplots
+        from cooler import Cooler
+        
+        clr = Cooler(str(self.synthetic_cool1))
+        
+        mark = MarkTrack(
+            marks=[
+                {
+                    "chrom1": "chr1", "start1": 50000, "end1": 60000,
+                    "chrom2": "chr1", "start2": 150000, "end2": 160000,
+                    "color": "red", "shape": "circle", "width": 2
+                },
+                {
+                    "chrom1": "chr1", "start1": 200000, "end1": 210000,
+                    "chrom2": "chr1", "start2": 250000, "end2": 260000,
+                    "color": "blue", "shape": "rect", "width": 3
+                }
+            ]
+        )
+        mark.load_data(clr=clr, region="chr1:0-500000")
+        
+        fig = make_subplots(rows=1, cols=1)
+        mark.render(fig, row=1, col=1)
+        
+        # Should have added two shapes
+        self.assertEqual(len(fig.layout.shapes), 2)
+    
+    def test_heatmap_with_marks(self):
+        """Test HeatmapTrack with marks parameter."""
+        from cooler import Cooler
+        
+        clr = Cooler(str(self.synthetic_cool1))
+        
+        heatmap = HeatmapTrack(
+            cool_path=str(self.synthetic_cool1),
+            balance=False,
+            marks=[
+                {
+                    "chrom1": "chr1", "start1": 50000, "end1": 60000,
+                    "chrom2": "chr1", "start2": 150000, "end2": 160000,
+                    "color": "red", "shape": "circle", "width": 2
+                }
+            ]
+        )
+        heatmap.load_data(region="chr1:0-500000", clr=clr)
+        
+        from plotly.subplots import make_subplots
+        fig = make_subplots(rows=1, cols=1)
+        heatmap.render(fig, row=1, col=1)
+        
+        # Should have heatmap trace + mark shapes
+        self.assertGreaterEqual(len(fig.data), 1)
+        self.assertGreaterEqual(len(fig.layout.shapes), 1)
+    
+    def test_plot_cool_with_tracks_marks(self):
+        """Test plot_cool_with_tracks with marks parameter."""
+        out_png = self.outdir / "with_marks.png"
+        
+        fig = plot_cool_with_tracks(
+            coolp1=str(self.synthetic_cool1),
+            region="chr1:0-500000",
+            title="With Marks",
+            balance=False,
+            marks=[
+                {
+                    "chrom1": "chr1", "start1": 50000, "end1": 60000,
+                    "chrom2": "chr1", "start2": 150000, "end2": 160000,
+                    "color": "red", "shape": "circle", "width": 2,
+                    "label": "Loop"
+                },
+                {
+                    "chrom1": "chr1", "start1": 200000, "end1": 210000,
+                    "chrom2": "chr1", "start2": 250000, "end2": 260000,
+                    "color": "blue", "shape": "rect", "width": 3
+                }
+            ]
+        )
+        
+        fig.write_image(str(out_png), width=700, height=700)
+        self.assertTrue(out_png.exists())
+        print(f"Output: {out_png}")
+    
+    def test_tiling_with_marks(self):
+        """Test tiling comparison with marks."""
+        out_png = self.outdir / "tiling_with_marks.png"
+        
+        fig = plot_cool_with_tracks(
+            coolp1=str(self.synthetic_cool1),
+            coolp2=str(self.synthetic_cool2),
+            region="chr1:0-500000",
+            title="Tiling with Marks",
+            balance=False,
+            adjust_brightness=True,
+            marks=[
+                {
+                    "chrom1": "chr1", "start1": 50000, "end1": 60000,
+                    "chrom2": "chr1", "start2": 150000, "end2": 160000,
+                    "color": "red", "shape": "circle", "width": 2,
+                    "label": "S1 Loop"
+                },
+                {
+                    "chrom1": "chr1", "start1": 300000, "end1": 310000,
+                    "chrom2": "chr1", "start2": 400000, "end2": 410000,
+                    "color": "blue", "shape": "circle", "width": 2,
+                    "label": "S2 Loop"
+                }
+            ]
+        )
+        
+        fig.write_image(str(out_png), width=800, height=800)
         self.assertTrue(out_png.exists())
         print(f"Output: {out_png}")
 

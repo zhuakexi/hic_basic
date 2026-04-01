@@ -20,6 +20,7 @@ from .track import (
     BigWigTrack,
     GeneTrack,
     TrapezoidHeatmapTrack,
+    MarkTrack,
 )
 
 # Track composer

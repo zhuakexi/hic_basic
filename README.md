@@ -73,6 +73,21 @@ fig = plot_cool_with_tracks(
     adjust_brightness=True  # Auto-balance intensities
 )
 fig.write_image("tiling.png")
+
+# Mark specific pixels (loops, TAD boundaries, etc.)
+fig = plot_cool_with_tracks(
+    coolp1="sample.cool",
+    region="chr1:0-500000",
+    marks=[
+        {
+            "chrom1": "chr1", "start1": 50000, "end1": 60000,
+            "chrom2": "chr1", "start2": 150000, "end2": 160000,
+            "color": "red", "shape": "circle", "width": 2,
+            "label": "Loop"
+        }
+    ]
+)
+fig.write_image("marked.png")
 ```
 
 ## Installation

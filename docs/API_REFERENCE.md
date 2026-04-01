@@ -67,7 +67,7 @@ Total modules with public functions: 90
 - [plot.scanpy](#plot-scanpy) (5 functions)
 - [plot.scatter](#plot-scatter) (6 functions)
 - [plot.tech](#plot-tech) (1 functions)
-- [plot.track](#plot-track) (24 functions)
+- [plot.track](#plot-track) (27 functions)
 - [plot.track_composer](#plot-track_composer) (10 functions)
 - [plot.utils](#plot-utils) (20 functions)
 - [pp](#pp) (1 functions)
@@ -7558,7 +7558,7 @@ Input:
 ---
 
 
-### `plot_cool_with_tracks(coolp1: Union[str, Path], coolp2: Optional[Union[str, Path]]=None, tracks: Optional[List]=None, region: str='chr1', track_heights: Optional[List[float]]=None, heatmap_height: float=10, title: str='', balance: bool=True, vmax: Optional[float]=None, cmap: str='fall', ignore_diags: bool=False, adjust_brightness: bool=True)`
+### `plot_cool_with_tracks(coolp1: Union[str, Path], coolp2: Optional[Union[str, Path]]=None, tracks: Optional[List]=None, region: str='chr1', track_heights: Optional[List[float]]=None, heatmap_height: float=10, title: str='', balance: bool=True, vmax: Optional[float]=None, cmap: str='fall', ignore_diags: bool=False, adjust_brightness: bool=True, marks: Optional[List[Dict]]=None)`
 
 **Returns:** `go.Figure`
 
@@ -7605,6 +7605,16 @@ adjust_brightness : bool, optional
     Whether to adjust brightness when tiling two matrices. When True,
     scales the brighter matrix to match the darker one. Default is True.
     Only used when coolp2 is provided.
+marks : list of dict, optional
+    List of mark dictionaries to highlight specific pixels. Each dict
+    should contain:
+    - chrom1, start1, end1: First genomic position
+    - chrom2, start2, end2: Second genomic position
+    - color: Optional, color of the mark (default: red)
+    - shape: Optional, shape type ("circle", "rect") (default: circle)
+    - width: Optional, line width (default: 2)
+    - label: Optional, text label for the mark
+    Default is None (no marks).
 **heatmap_kwargs
     Additional keyword arguments passed to go.Heatmap.
 
@@ -7632,16 +7642,17 @@ Single sample with tracks:
 ... )
 >>> fig.show()
 
-Two samples tiling comparison with tracks:
+Two samples tiling comparison with marks:
 
 >>> fig = plot_cool_with_tracks(
 ...     coolp1="sample1.cool",
 ...     coolp2="sample2.cool",
-...     tracks=[
-...         EigenTrack("eigvec.bedgraph", eigen_col="E1"),
-...         BigWigTrack("H3K27ac.bw", bin_size=1000)
+...     marks=[
+...         {"chrom1": "chr1", "start1": 100000, "end1": 110000,
+...          "chrom2": "chr1", "start2": 200000, "end2": 210000,
+...          "color": "red", "shape": "circle", "width": 2}
 ...     ],
-...     region="chr1:1000000-5000000",
+...     region="chr1:0-500000",
 ...     title="Sample1 vs Sample2 (tiling)",
 ...     adjust_brightness=True
 ... )
@@ -7654,6 +7665,7 @@ Notes
 - All tracks are aligned to coolp1's bins.
 - The adjust_brightness parameter helps visualize differences when two
   matrices have very different signal intensities.
+- Marks are rendered as shapes (circles, rectangles) on top of the heatmap.
 
 
 **Source:** Line 2171 in [plot/hic.py](plot/hic.py#L2171)
@@ -8970,7 +8982,7 @@ TODO:
 
 **File:** `plot/track.py`
 
-**Public functions:** 24
+**Public functions:** 27
 
 
 ### `add_chrom_grid(df, fig, fig_type='scatter', x_extra_expansion=0, y_extra_expansion=0.1, value_cols=None, range_y=None)`
@@ -8992,7 +9004,7 @@ Output:
     fig: plotly.graph_objs._figure.Figure, the figure with added grid lines.
 
 
-**Source:** Line 1029 in [plot/track.py](plot/track.py#L1029)
+**Source:** Line 1298 in [plot/track.py](plot/track.py#L1298)
 
 
 ---
@@ -9012,7 +9024,7 @@ Get the track's data.
 ---
 
 
-### `from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, config: Optional[TrackConfig]=None)`
+### `from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, config: Optional[TrackConfig]=None, marks: Optional[List[Dict]]=None)`
 
 **Returns:** `'HeatmapTrack'`
 
@@ -9023,13 +9035,14 @@ Args:
     matrix: Contact matrix as numpy array.
     bins: DataFrame with bin positions (chrom, start, end).
     config: Optional TrackConfig.
+    marks: List of mark dictionaries.
     **heatmap_kwargs: Additional parameters for go.Heatmap.
 
 Returns:
     HeatmapTrack: New instance with pre-computed data.
 
 
-**Source:** Line 697 in [plot/track.py](plot/track.py#L697)
+**Source:** Line 720 in [plot/track.py](plot/track.py#L720)
 
 
 ---
@@ -9054,7 +9067,30 @@ Returns:
     TrapezoidHeatmapTrack: New instance with pre-computed data.
 
 
-**Source:** Line 887 in [plot/track.py](plot/track.py#L887)
+**Source:** Line 1156 in [plot/track.py](plot/track.py#L1156)
+
+
+---
+
+
+### `from_pixel_ids(cls, pixel_ids: List[int], clr: Cooler, binsize: int)`
+
+**Returns:** `'MarkTrack'`
+
+
+Create MarkTrack from pixel IDs.
+
+Args:
+    pixel_ids: List of pixel IDs to mark.
+    clr: Cooler object for coordinate conversion.
+    binsize: Bin size in base pairs.
+    **kwargs: Additional arguments passed to MarkTrack.
+
+Returns:
+    MarkTrack: New instance with marks at specified pixel IDs.
+
+
+**Source:** Line 951 in [plot/track.py](plot/track.py#L951)
 
 
 ---
@@ -9177,7 +9213,29 @@ Returns:
     self: Returns self for method chaining.
 
 
-**Source:** Line 653 in [plot/track.py](plot/track.py#L653)
+**Source:** Line 663 in [plot/track.py](plot/track.py#L663)
+
+
+---
+
+
+### `load_data(self, clr: Optional[Cooler]=None, region: Optional[str]=None, bins: Optional[pd.DataFrame]=None)`
+
+**Returns:** `'MarkTrack'`
+
+
+Load cooler data for coordinate conversion.
+
+Args:
+    clr: Cooler object.
+    region: Genomic region (used to filter marks).
+    bins: Optional bins DataFrame. If not provided, will fetch from clr.
+
+Returns:
+    self: Returns self for method chaining.
+
+
+**Source:** Line 809 in [plot/track.py](plot/track.py#L809)
 
 
 ---
@@ -9198,7 +9256,7 @@ Returns:
     self: Returns self for method chaining.
 
 
-**Source:** Line 801 in [plot/track.py](plot/track.py#L801)
+**Source:** Line 1070 in [plot/track.py](plot/track.py#L1070)
 
 
 ---
@@ -9218,7 +9276,7 @@ Returns:
     self: Returns self for method chaining.
 
 
-**Source:** Line 1193 in [plot/track.py](plot/track.py#L1193)
+**Source:** Line 1462 in [plot/track.py](plot/track.py#L1462)
 
 
 ---
@@ -9289,7 +9347,7 @@ implementation. Planned improvements include:
 - Better visual integration with exon/intron structures
 
 
-**Source:** Line 1659 in [plot/track.py](plot/track.py#L1659)
+**Source:** Line 1928 in [plot/track.py](plot/track.py#L1928)
 
 
 ---
@@ -9325,7 +9383,7 @@ plotly.graph_objects.Figure
     Combined figure with heatmap and gene track.
 
 
-**Source:** Line 1860 in [plot/track.py](plot/track.py#L1860)
+**Source:** Line 2129 in [plot/track.py](plot/track.py#L2129)
 
 
 ---
@@ -9343,7 +9401,7 @@ Output:
     fig: plotly.graph_objs._figure.Figure
 
 
-**Source:** Line 995 in [plot/track.py](plot/track.py#L995)
+**Source:** Line 1264 in [plot/track.py](plot/track.py#L1264)
 
 
 ---
@@ -9368,7 +9426,7 @@ Output:
     fig: plotly.graph_objs._figure.Figure
 
 
-**Source:** Line 944 in [plot/track.py](plot/track.py#L944)
+**Source:** Line 1213 in [plot/track.py](plot/track.py#L1213)
 
 
 ---
@@ -9481,7 +9539,30 @@ Returns:
     fig: Modified figure with track added.
 
 
-**Source:** Line 671 in [plot/track.py](plot/track.py#L671)
+**Source:** Line 681 in [plot/track.py](plot/track.py#L681)
+
+
+---
+
+
+### `render(self, fig, row: int, col: int)`
+
+**Returns:** `go.Figure`
+
+
+Render marks as shapes on the figure.
+
+Args:
+    fig: Plotly figure to add shapes to.
+    row: Row position in subplot grid.
+    col: Column position in subplot grid.
+    **kwargs: Additional parameters (ignored).
+
+Returns:
+    fig: Modified figure with marks added.
+
+
+**Source:** Line 833 in [plot/track.py](plot/track.py#L833)
 
 
 ---
@@ -9504,7 +9585,7 @@ Returns:
     fig: Modified figure with track added.
 
 
-**Source:** Line 847 in [plot/track.py](plot/track.py#L847)
+**Source:** Line 1116 in [plot/track.py](plot/track.py#L1116)
 
 
 ---
@@ -9527,7 +9608,7 @@ Returns:
     fig: Modified figure with track added.
 
 
-**Source:** Line 1285 in [plot/track.py](plot/track.py#L1285)
+**Source:** Line 1554 in [plot/track.py](plot/track.py#L1554)
 
 
 ---
@@ -9539,7 +9620,7 @@ Returns:
 No documentation available.
 
 
-**Source:** Line 926 in [plot/track.py](plot/track.py#L926)
+**Source:** Line 1195 in [plot/track.py](plot/track.py#L1195)
 
 
 ---

@@ -620,6 +620,7 @@ class HeatmapTrack(Track):
     Attributes:
         cool_path: Path to cooler file.
         balance: Whether to use balanced matrix.
+        marks: List of marks to display on the heatmap.
         heatmap_kwargs: Additional heatmap parameters.
 
     Example:
@@ -632,6 +633,7 @@ class HeatmapTrack(Track):
         self,
         cool_path: Union[str, Path],
         balance: bool = True,
+        marks: Optional[List[Dict]] = None,
         config: Optional[TrackConfig] = None,
         **heatmap_kwargs
     ):
@@ -640,12 +642,20 @@ class HeatmapTrack(Track):
         Args:
             cool_path: Path to cooler file.
             balance: Whether to use balanced matrix. Default True.
+            marks: List of mark dictionaries. Each dict should contain:
+                - chrom1, start1, end1: First genomic position
+                - chrom2, start2, end2: Second genomic position
+                - color: Optional, color of the mark (default: red)
+                - shape: Optional, shape type ("circle", "rect") (default: circle)
+                - width: Optional, line width (default: 2)
+                - label: Optional, text label for the mark
             config: Optional TrackConfig.
             **heatmap_kwargs: Additional parameters for go.Heatmap.
         """
         super().__init__(name="heatmap", config=config)
         self.cool_path = Path(cool_path)
         self.balance = balance
+        self.marks = marks or []
         self.heatmap_kwargs = heatmap_kwargs
         self._matrix: Optional[np.ndarray] = None
         self._bins: Optional[pd.DataFrame] = None
@@ -691,6 +701,19 @@ class HeatmapTrack(Track):
             **merged_kwargs
         )
         fig.add_trace(trace, row=row, col=col)
+
+        # Render marks if present
+        if self.marks:
+            mark_track = MarkTrack(
+                marks=self.marks,
+                default_shape="circle",
+                default_color="red",
+                default_width=2
+            )
+            mark_track._clr = getattr(self, '_clr', None)
+            mark_track._bins = self._bins
+            mark_track.render(fig, row=row, col=col)
+
         return fig
 
     @classmethod
@@ -699,6 +722,7 @@ class HeatmapTrack(Track):
         matrix: np.ndarray,
         bins: pd.DataFrame,
         config: Optional[TrackConfig] = None,
+        marks: Optional[List[Dict]] = None,
         **heatmap_kwargs
     ) -> "HeatmapTrack":
         """Create HeatmapTrack from pre-computed matrix.
@@ -707,6 +731,7 @@ class HeatmapTrack(Track):
             matrix: Contact matrix as numpy array.
             bins: DataFrame with bin positions (chrom, start, end).
             config: Optional TrackConfig.
+            marks: List of mark dictionaries.
             **heatmap_kwargs: Additional parameters for go.Heatmap.
 
         Returns:
@@ -716,8 +741,252 @@ class HeatmapTrack(Track):
         Track.__init__(track, name="heatmap", config=config)
         track._matrix = matrix
         track._bins = bins
+        track.marks = marks or []
         track.heatmap_kwargs = heatmap_kwargs
         return track
+
+
+# =============================================================================
+# MarkTrack - Mark Specific Pixels on Heatmap
+# =============================================================================
+
+
+class MarkTrack(Track):
+    """Mark specific pixels or regions on a Hi-C heatmap.
+
+    Supports marking position pairs with various shapes (circle, rectangle, line).
+    Marks are rendered as outlines on top of heatmap tracks.
+
+    Attributes:
+        marks: List of dictionaries specifying position pairs and styling.
+        default_shape: Default shape for marks ("circle", "rect", "line").
+        default_color: Default color for marks.
+        default_width: Default line width for marks.
+
+    Example:
+        >>> mark = MarkTrack(
+        ...     marks=[
+        ...         {"chrom1": "chr1", "start1": 100000,
+        ...          "chrom2": "chr1", "start2": 200000,
+        ...          "color": "red", "shape": "circle"}
+        ...     ]
+        ... )
+        >>> mark.load_data(clr=clr, region="chr1:0-500000")
+        >>> mark.render(fig, row=1, col=1)
+    """
+
+    def __init__(
+        self,
+        marks: Optional[List[Dict]] = None,
+        default_shape: str = "circle",
+        default_color: str = "red",
+        default_width: int = 2,
+        config: Optional[TrackConfig] = None,
+    ):
+        """Initialize MarkTrack.
+
+        Args:
+            marks: List of mark dictionaries. Each dict should contain:
+                - chrom1, start1, end1: First genomic position
+                - chrom2, start2, end2: Second genomic position
+                - color: Optional, color of the mark (default: red)
+                - shape: Optional, shape type ("circle", "rect") (default: circle)
+                - width: Optional, line width (default: 2)
+                - label: Optional, text label for the mark
+            default_shape: Default shape for marks.
+            default_color: Default color for marks.
+            default_width: Default line width for marks.
+            config: Optional TrackConfig.
+        """
+        super().__init__(name="mark", config=config)
+        self.marks = marks or []
+        self.default_shape = default_shape
+        self.default_color = default_color
+        self.default_width = default_width
+        self._clr: Optional[Cooler] = None
+        self._bins: Optional[pd.DataFrame] = None
+
+    def load_data(
+        self,
+        clr: Optional[Cooler] = None,
+        region: Optional[str] = None,
+        bins: Optional[pd.DataFrame] = None
+    ) -> "MarkTrack":
+        """Load cooler data for coordinate conversion.
+
+        Args:
+            clr: Cooler object.
+            region: Genomic region (used to filter marks).
+            bins: Optional bins DataFrame. If not provided, will fetch from clr.
+
+        Returns:
+            self: Returns self for method chaining.
+        """
+        if clr is not None:
+            self._clr = clr
+        if bins is not None:
+            self._bins = bins
+        elif self._clr is not None:
+            self._bins = self._clr.bins().fetch(region) if region else self._clr.bins()[:]
+        return self
+
+    def render(self, fig, row: int, col: int, **kwargs) -> go.Figure:
+        """Render marks as shapes on the figure.
+
+        Args:
+            fig: Plotly figure to add shapes to.
+            row: Row position in subplot grid.
+            col: Column position in subplot grid.
+            **kwargs: Additional parameters (ignored).
+
+        Returns:
+            fig: Modified figure with marks added.
+        """
+        if self._clr is None and self._bins is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        for mark in self.marks:
+            # Get genomic coordinates
+            chrom1 = mark.get("chrom1")
+            start1 = mark.get("start1")
+            end1 = mark.get("end1")
+            chrom2 = mark.get("chrom2")
+            start2 = mark.get("start2")
+            end2 = mark.get("end2")
+
+            # Convert to bin coordinates
+            if self._bins is not None:
+                # Find bin indices
+                bin1_mask = (
+                    (self._bins["chrom"] == chrom1) &
+                    (self._bins["start"] >= start1) &
+                    (self._bins["end"] <= end1)
+                )
+                bin2_mask = (
+                    (self._bins["chrom"] == chrom2) &
+                    (self._bins["start"] >= start2) &
+                    (self._bins["end"] <= end2)
+                )
+
+                bin1_idx = self._bins[bin1_mask].index.min()
+                bin2_idx = self._bins[bin2_mask].index.min()
+
+                # Get bin centers for shape positioning
+                bin1_start = self._bins.loc[bin1_idx, "start"]
+                bin1_end = self._bins.loc[bin1_idx, "end"]
+                bin2_start = self._bins.loc[bin2_idx, "start"]
+                bin2_end = self._bins.loc[bin2_idx, "end"]
+
+                binsize1 = bin1_end - bin1_start
+                binsize2 = bin2_end - bin2_start
+
+                # Shape positioning
+                shape = mark.get("shape", self.default_shape)
+                color = mark.get("color", self.default_color)
+                width = mark.get("width", self.default_width)
+
+                if shape == "circle":
+                    # Circle centered on the pixel
+                    x0 = bin1_start - 0.5 * binsize1
+                    y0 = bin2_start - 0.5 * binsize2
+                    x1 = bin1_end - 0.5 * binsize1
+                    y1 = bin2_end - 0.5 * binsize2
+
+                    fig.add_shape(
+                        type="circle",
+                        x0=x0, y0=y0, x1=x1, y1=y1,
+                        line=dict(color=color, width=width),
+                        xref=f"x{row}",
+                        yref=f"y{col}"
+                    )
+                elif shape == "rect":
+                    # Rectangle outlining the pixel
+                    fig.add_shape(
+                        type="rect",
+                        x0=bin1_start, y0=bin2_start,
+                        x1=bin1_end, y1=bin2_end,
+                        line=dict(color=color, width=width),
+                        xref=f"x{row}",
+                        yref=f"y{col}"
+                    )
+                elif shape == "line":
+                    # Line connecting two points
+                    fig.add_shape(
+                        type="line",
+                        x0=bin1_start, y0=bin2_start,
+                        x1=bin1_end, y1=bin2_end,
+                        line=dict(color=color, width=width),
+                        xref=f"x{row}",
+                        yref=f"y{col}"
+                    )
+
+                # Add label if provided
+                if "label" in mark:
+                    # Position label outside the shape
+                    # Offset to top-right of the mark
+                    center_x = (bin1_start + bin1_end) / 2
+                    center_y = (bin2_start + bin2_end) / 2
+                    
+                    # Calculate offset based on binsize
+                    offset_x = max(binsize1, binsize2) * 0.75
+                    offset_y = max(binsize1, binsize2) * 0.75
+                    
+                    # Position label to the right and above the mark
+                    label_x = center_x + offset_x
+                    label_y = center_y + offset_y
+                    
+                    fig.add_annotation(
+                        x=label_x,
+                        y=label_y,
+                        text=mark["label"],
+                        showarrow=False,
+                        font=dict(color=color, size=11),
+                        xref=f"x{row}",
+                        yref=f"y{col}"
+                    )
+
+        return fig
+
+    @classmethod
+    def from_pixel_ids(
+        cls,
+        pixel_ids: List[int],
+        clr: Cooler,
+        binsize: int,
+        **kwargs
+    ) -> "MarkTrack":
+        """Create MarkTrack from pixel IDs.
+
+        Args:
+            pixel_ids: List of pixel IDs to mark.
+            clr: Cooler object for coordinate conversion.
+            binsize: Bin size in base pairs.
+            **kwargs: Additional arguments passed to MarkTrack.
+
+        Returns:
+            MarkTrack: New instance with marks at specified pixel IDs.
+        """
+        from ..genome import GenomeIdeograph
+
+        genome = GenomeIdeograph.from_cooler(clr)
+        marks = []
+
+        for pixel_id in pixel_ids:
+            # Convert pixel_id to genomic coordinates
+            temp_df = pd.DataFrame({"pixel_id": [pixel_id]})
+            result = genome.join_positions(temp_df, binsize)
+
+            mark = {
+                "chrom1": result["chrom1"].iloc[0],
+                "start1": result["start1"].iloc[0],
+                "end1": result["end1"].iloc[0],
+                "chrom2": result["chrom2"].iloc[0],
+                "start2": result["start2"].iloc[0],
+                "end2": result["end2"].iloc[0],
+            }
+            marks.append(mark)
+
+        return cls(marks=marks, **kwargs)
 
 
 # =============================================================================

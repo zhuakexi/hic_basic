@@ -293,6 +293,58 @@ fig.write_image("tiling_comparison.png", width=900, height=1100)
 - **Tiling mode**: When `coolp2` is provided, creates composite heatmap with lower triangle from `coolp1` and upper triangle from `coolp2`
 - **Track types**: Supports `EigenTrack`, `BigWigTrack`, `GeneTrack`, `ISTrack`, etc.
 - **Brightness adjustment**: `adjust_brightness=True` auto-scales the brighter sample for better visual comparison
+- **Mark pixels**: Use `marks` parameter to highlight specific position pairs with circles or rectangles
+
+### Mark Pixels on Heatmap
+```python
+from hic_basic.plot import plot_cool_with_tracks, MarkTrack, HeatmapTrack
+
+# Method 1: Using plot_cool_with_tracks marks parameter
+fig = plot_cool_with_tracks(
+    coolp1="sample.cool",
+    region="chr1:0-500000",
+    marks=[
+        {
+            "chrom1": "chr1", "start1": 50000, "end1": 60000,
+            "chrom2": "chr1", "start2": 150000, "end2": 160000,
+            "color": "red",      # Mark color
+            "shape": "circle",   # "circle", "rect", or "line"
+            "width": 2,          # Line width
+            "label": "Loop"      # Optional text label
+        }
+    ]
+)
+fig.write_image("marked_heatmap.png", width=800, height=800)
+
+# Method 2: Using HeatmapTrack with marks
+heatmap = HeatmapTrack(
+    cool_path="sample.cool",
+    marks=[
+        {"chrom1": "chr1", "start1": 50000, "end1": 60000,
+         "chrom2": "chr1", "start2": 150000, "end2": 160000,
+         "color": "blue", "shape": "rect", "width": 3}
+    ]
+)
+
+# Method 3: Using standalone MarkTrack
+mark = MarkTrack(
+    marks=[
+        {"chrom1": "chr1", "start1": 50000, "end1": 60000,
+         "chrom2": "chr1", "start2": 150000, "end2": 160000,
+         "color": "red", "shape": "circle"}
+    ],
+    default_shape="circle",
+    default_color="red"
+)
+```
+
+**Mark Options:**
+| Option | Values | Description |
+|--------|--------|-------------|
+| `shape` | `circle`, `rect`, `line` | Shape type |
+| `color` | Any CSS color | Mark color |
+| `width` | Integer | Line width (default: 2) |
+| `label` | String | Optional text label (positioned outside shape) |
 
 ### Gene Track Visualization (GTF/GFF3)
 ```python

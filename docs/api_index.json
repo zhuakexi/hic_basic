@@ -2741,7 +2741,7 @@
     },
     {
       "name": "plot_cool_with_tracks",
-      "signature": "plot_cool_with_tracks(coolp1: Union[str, Path], coolp2: Optional[Union[str, Path]]=None, tracks: Optional[List]=None, region: str='chr1', track_heights: Optional[List[float]]=None, heatmap_height: float=10, title: str='', balance: bool=True, vmax: Optional[float]=None, cmap: str='fall', ignore_diags: bool=False, adjust_brightness: bool=True)",
+      "signature": "plot_cool_with_tracks(coolp1: Union[str, Path], coolp2: Optional[Union[str, Path]]=None, tracks: Optional[List]=None, region: str='chr1', track_heights: Optional[List[float]]=None, heatmap_height: float=10, title: str='', balance: bool=True, vmax: Optional[float]=None, cmap: str='fall', ignore_diags: bool=False, adjust_brightness: bool=True, marks: Optional[List[Dict]]=None)",
       "docstring": "Plot Hi-C contact heatmap with optional tracks below.\n\nThis function creates a vertical layout with:\n- Row 1: Hi-C contact matrix heatmap (single sample or tiling of two samples)\n- Rows 2 to N: Additi...",
       "return_type": "go.Figure",
       "lineno": 2171
@@ -3189,42 +3189,42 @@
       "signature": "sort_index_chrom(df, chromosomes)",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 926
+      "lineno": 1195
     },
     {
       "name": "plot_genome_scatter",
       "signature": "plot_genome_scatter(genome_data, chromosomes=None, value_cols=None, shift_unit=0.05, shift_threshold=100, chorm_label_shift=0.05, y_extra_expansion=0.1, range_y=None)",
       "docstring": "Scatter genome wide data. Sepaarate chromosomes by vertical lines and add chromosome names.\nTODO: add real positions, now only add 1,2,3,4... as x axis.\nInput:\n    genome_data: pd.DataFrame, index is ...",
       "return_type": null,
-      "lineno": 944
+      "lineno": 1213
     },
     {
       "name": "plot_genome_heatmap",
       "signature": "plot_genome_heatmap(genome_data, chromosomes=None)",
       "docstring": "Heatmap genome wide data. Sepaarate chromosomes by vertical lines and add chromosome names.\nInput:\n    genome_data: pd.DataFrame, index is multiindex with level 0 as chromosome names\n        columns a...",
       "return_type": null,
-      "lineno": 995
+      "lineno": 1264
     },
     {
       "name": "add_chrom_grid",
       "signature": "add_chrom_grid(df, fig, fig_type='scatter', x_extra_expansion=0, y_extra_expansion=0.1, value_cols=None, range_y=None)",
       "docstring": "Add chromosome grid lines to an existing genome track figure.\nInput:\n    df: pd.DataFrame, the genome data used to plot the figure. Index is multiindex with level 0 as chromosome names \n        and le...",
       "return_type": null,
-      "lineno": 1029
+      "lineno": 1298
     },
     {
       "name": "plot_gene_track",
       "signature": "plot_gene_track(annotation_file: Union[str, Path], region: str, mode: str='all_transcripts', title: Optional[str]=None, height: int=400, width: int=1000, utr_height: float=0.3, exon_height: float=0.4, cds_height: float=0.6, row_spacing: float=0.2, show_labels: bool=True, label_font_size: int=10)",
       "docstring": "Plot gene annotation track in genome browser style.\n\nThis function creates a Plotly figure showing gene structures including\nexons, introns, CDS, and UTRs with strand direction indicators.\n\nParameters...",
       "return_type": "go.Figure",
-      "lineno": 1659
+      "lineno": 1928
     },
     {
       "name": "plot_gene_track_with_heatmap",
       "signature": "plot_gene_track_with_heatmap(annotation_file: Union[str, Path], region: str, heatmap_data: Optional[pd.DataFrame]=None, heatmap_title: Optional[str]=None, gene_track_height: int=300, heatmap_height: int=400)",
       "docstring": "Plot gene track below a heatmap (e.g., Hi-C contact matrix).\n\nParameters\n----------\nannotation_file : str or Path\n    Path to GTF or GFF3 annotation file.\nregion : str\n    Genomic region to display.\nh...",
       "return_type": "go.Figure",
-      "lineno": 1860
+      "lineno": 2129
     },
     {
       "name": "load_data",
@@ -3301,56 +3301,77 @@
       "signature": "load_data(self, region: str, clr: Optional[Cooler]=None)",
       "docstring": "Load contact matrix from cooler file.\n\nArgs:\n    region: Genomic region.\n    clr: Optional Cooler object. If not provided, will create from cool_path.\n\nReturns:\n    self: Returns self for method chain...",
       "return_type": "'HeatmapTrack'",
-      "lineno": 653
+      "lineno": 663
     },
     {
       "name": "render",
       "signature": "render(self, fig, row: int, col: int)",
       "docstring": "Render contact matrix as heatmap.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional parameters f...",
       "return_type": "go.Figure",
-      "lineno": 671
+      "lineno": 681
     },
     {
       "name": "from_matrix",
-      "signature": "from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, config: Optional[TrackConfig]=None)",
-      "docstring": "Create HeatmapTrack from pre-computed matrix.\n\nArgs:\n    matrix: Contact matrix as numpy array.\n    bins: DataFrame with bin positions (chrom, start, end).\n    config: Optional TrackConfig.\n    **heat...",
+      "signature": "from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, config: Optional[TrackConfig]=None, marks: Optional[List[Dict]]=None)",
+      "docstring": "Create HeatmapTrack from pre-computed matrix.\n\nArgs:\n    matrix: Contact matrix as numpy array.\n    bins: DataFrame with bin positions (chrom, start, end).\n    config: Optional TrackConfig.\n    marks:...",
       "return_type": "'HeatmapTrack'",
-      "lineno": 697
+      "lineno": 720
+    },
+    {
+      "name": "load_data",
+      "signature": "load_data(self, clr: Optional[Cooler]=None, region: Optional[str]=None, bins: Optional[pd.DataFrame]=None)",
+      "docstring": "Load cooler data for coordinate conversion.\n\nArgs:\n    clr: Cooler object.\n    region: Genomic region (used to filter marks).\n    bins: Optional bins DataFrame. If not provided, will fetch from clr.\n\n...",
+      "return_type": "'MarkTrack'",
+      "lineno": 809
+    },
+    {
+      "name": "render",
+      "signature": "render(self, fig, row: int, col: int)",
+      "docstring": "Render marks as shapes on the figure.\n\nArgs:\n    fig: Plotly figure to add shapes to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional paramete...",
+      "return_type": "go.Figure",
+      "lineno": 833
+    },
+    {
+      "name": "from_pixel_ids",
+      "signature": "from_pixel_ids(cls, pixel_ids: List[int], clr: Cooler, binsize: int)",
+      "docstring": "Create MarkTrack from pixel IDs.\n\nArgs:\n    pixel_ids: List of pixel IDs to mark.\n    clr: Cooler object for coordinate conversion.\n    binsize: Bin size in base pairs.\n    **kwargs: Additional argume...",
+      "return_type": "'MarkTrack'",
+      "lineno": 951
     },
     {
       "name": "load_data",
       "signature": "load_data(self, region: str, clr: Optional[Cooler]=None)",
       "docstring": "Load and process trapezoid heatmap data.\n\nArgs:\n    region: Genomic region.\n    clr: Optional Cooler object. If not provided, will create from cool_path.\n\nReturns:\n    self: Returns self for method ch...",
       "return_type": "'TrapezoidHeatmapTrack'",
-      "lineno": 801
+      "lineno": 1070
     },
     {
       "name": "render",
       "signature": "render(self, fig, row: int, col: int)",
       "docstring": "Render trapezoid heatmap.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional parameters for go.He...",
       "return_type": "go.Figure",
-      "lineno": 847
+      "lineno": 1116
     },
     {
       "name": "from_matrix",
       "signature": "from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, extent: Union[float, Tuple[float, float]], config: Optional[TrackConfig]=None, cmap: str='RdBu_r')",
       "docstring": "Create TrapezoidHeatmapTrack from pre-computed matrix.\n\nArgs:\n    matrix: Trapezoid matrix as numpy array.\n    bins: DataFrame with bin positions.\n    extent: Color scale extent (single value or (min,...",
       "return_type": "'TrapezoidHeatmapTrack'",
-      "lineno": 887
+      "lineno": 1156
     },
     {
       "name": "load_data",
       "signature": "load_data(self, region: str)",
       "docstring": "Load gene annotation data for a genomic region.\n\nArgs:\n    region: Genomic region (e.g., \"chr1:1000000-5000000\").\n\nReturns:\n    self: Returns self for method chaining.",
       "return_type": "'GeneTrack'",
-      "lineno": 1193
+      "lineno": 1462
     },
     {
       "name": "render",
       "signature": "render(self, fig, row: int, col: int)",
       "docstring": "Render gene track as shapes and annotations.\n\nArgs:\n    fig: Plotly figure to add traces to.\n    row: Row position in subplot grid.\n    col: Column position in subplot grid.\n    **kwargs: Additional p...",
       "return_type": "go.Figure",
-      "lineno": 1285
+      "lineno": 1554
     }
   ],
   "plot.track_composer": [
