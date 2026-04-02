@@ -4,12 +4,341 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import ConstantKernel, RBF
 import anndata as ad
 from scipy import sparse
-from scipy.stats import gaussian_kde
 
 from .metrics import euclidean_distances
 
 
+# =============================================================================
+# Feature trajectory analysis utilities (context-agnostic: RNA/Loop/etc.)
+# =============================================================================
+
 def _plot_grid_comparison(
+    adata,
+    pseudotime_col,
+    layer="X",
+    gene_mask_key=None,
+    numPts=14,
+    grid_methods=None,
+    endpoint_mode="half-interval",
+    scaling="z_score",
+    figsize=(10, 12),
+    dpi=100,
+):
+    """
+    Internal function: Visualize and compare multiple grid methods side-by-side.
+
+    This is a debugging utility, not intended for production use.
+    Use plot_gp_heatmap() for single-method visualization.
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import TwoSlopeNorm
+
+    if grid_methods is None:
+        grid_methods = ["linspace", "quantile", "density"]
+
+    # Get expression and pseudotime
+    if layer == "X":
+        expr = adata.X.T
+    else:
+        expr = adata.layers[layer].T
+    if sparse.issparse(expr):
+        expr = expr.toarray()
+
+    pseudotime = adata.obs[pseudotime_col].values
+    cell_order = np.argsort(pseudotime)
+    expr_sorted = expr[:, cell_order]
+    pseudotime_sorted = pseudotime[cell_order]
+
+    if gene_mask_key is not None:
+        gene_mask = adata.var[gene_mask_key].values
+        expr_sorted = expr_sorted[gene_mask, :]
+
+    # Normalize
+    if scaling == "z_score":
+        expr_mean = expr_sorted.mean(axis=1, keepdims=True)
+        expr_std = expr_sorted.std(axis=1, keepdims=True) + 1e-6
+        expr_norm = (expr_sorted - expr_mean) / expr_std
+        cmap, vmin, vmax = "RdBu_r", -3, 3
+    else:
+        expr_min = expr_sorted.min(axis=1, keepdims=True)
+        expr_max = expr_sorted.max(axis=1, keepdims=True)
+        expr_norm = (expr_sorted - expr_min) / (expr_max - expr_min + 1e-6)
+        cmap, vmin, vmax = "inferno", 0, 1
+
+    n_methods = len(grid_methods)
+    n_genes = expr_norm.shape[0]
+    n_cells = expr_norm.shape[1]
+
+    fig, axes = plt.subplots(
+        n_methods, 2, figsize=figsize, dpi=dpi, sharey=True,
+        gridspec_kw={"width_ratios": [3, 2], "hspace": 0.15, "wspace": 0.1}
+    )
+    if n_methods == 1:
+        axes = axes.reshape(1, -1)
+
+    cell_ranks = np.arange(n_cells) / (n_cells - 1)
+    pt_sorted = np.sort(pseudotime)
+    n_pt = len(pt_sorted)
+
+    for row_idx, method in enumerate(grid_methods):
+        grid, _ = _build_time_grid(pd.Series(pseudotime), numPts=numPts, method=method, endpoint_mode=endpoint_mode)
+
+        # Left: Raw
+        ax = axes[row_idx, 0]
+        ax.imshow(expr_norm, aspect="auto", origin="lower", extent=[0, 1, 0, n_genes], cmap=cmap, vmin=vmin, vmax=vmax)
+        for grid_t in grid:
+            rank_pos = np.searchsorted(pt_sorted, grid_t) / (n_pt - 1)
+            ax.axvline(x=rank_pos, color="black", linestyle="--", linewidth=0.8, alpha=0.7)
+        ax.set_title(f"{method}: Raw", fontsize=10, fontweight="bold")
+        ax.set_xlabel("Cell rank")
+        if row_idx == 0:
+            ax.set_ylabel("Gene index")
+
+        # Right: Smoothed schematic
+        ax = axes[row_idx, 1]
+        smooth = np.zeros((n_genes, len(grid)))
+        for i in range(n_genes):
+            smooth[i, :] = np.interp(grid, cell_ranks, np.convolve(expr_sorted[i, :], np.ones(5)/5, mode="same"))
+        if scaling == "z_score":
+            smooth = (smooth - smooth.mean(axis=1, keepdims=True)) / (smooth.std(axis=1, keepdims=True) + 1e-6)
+        else:
+            smooth = (smooth - smooth.min(axis=1, keepdims=True)) / (smooth.max(axis=1, keepdims=True) + 1e-6)
+        ax.imshow(smooth, aspect="auto", origin="lower", extent=[-0.5, len(grid)-0.5, 0, n_genes], cmap=cmap, vmin=vmin, vmax=vmax)
+        ax.set_title(f"{method}: GP-smoothed", fontsize=10, fontweight="bold")
+        ax.set_xlabel("Grid point index")
+        ax.set_xticks(range(len(grid)))
+        if row_idx == 0:
+            ax.set_ylabel("Gene index")
+
+    cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
+    norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax) if scaling == "z_score" else None
+    fig.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), cax=cbar_ax, label="Z-score" if scaling == "z_score" else "Scaled")
+    fig.suptitle(f"GP Interpolation: Grid Comparison (endpoint_mode='{endpoint_mode}')", y=0.995, fontsize=12, fontweight="bold")
+    return fig, axes
+
+
+def _plot_grid_methods_comparison(
+    adata,
+    pseudotime_col,
+    layer="X",
+    gene_mask_key=None,
+    numPts=14,
+    grid_methods=None,
+    endpoint_mode="half-interval",
+    scaling="z_score",
+    figsize=(10, 12),
+    dpi=100,
+    save_path=None,
+):
+    """Internal: Plot comparison of different grid methods."""
+    fig, _ = _plot_grid_comparison(
+        adata, pseudotime_col, layer=layer, gene_mask_key=gene_mask_key,
+        numPts=numPts, grid_methods=grid_methods, endpoint_mode=endpoint_mode,
+        scaling=scaling, figsize=figsize, dpi=dpi,
+    )
+    if save_path:
+        fig.savefig(save_path, dpi=dpi, bbox_inches="tight")
+    return fig
+
+
+def compute_continuous_peak_time(trajectory, grid_values):
+    """
+    Compute continuous peak time for each feature using parabolic interpolation.
+
+    For each feature, fits a parabola through the peak grid point and its two
+    neighbors, then computes the vertex position as the continuous peak time.
+
+    Parameters
+    ----------
+    trajectory : np.ndarray
+        Trajectory matrix of shape (n_features, n_grid_points).
+        Each row is the GP-smoothed trajectory for one feature.
+    grid_values : np.ndarray
+        Grid point values of shape (n_grid_points,). The actual time/pseudotime
+        values at each grid point.
+
+    Returns
+    -------
+    peak_time : np.ndarray
+        Continuous peak time for each feature, shape (n_features,).
+        If a feature has no clear peak (monotonic or flat), returns the grid
+        position of the maximum value.
+    peak_value : np.ndarray
+        The interpolated peak value at the continuous peak time.
+    """
+    trajectory = np.asarray(trajectory)
+    grid_values = np.asarray(grid_values)
+    
+    n_features, n_grid = trajectory.shape
+    
+    if n_grid < 3:
+        # Not enough points for parabolic interpolation
+        peak_idx = np.argmax(trajectory, axis=1)
+        return grid_values[peak_idx], trajectory[np.arange(n_features), peak_idx]
+    
+    peak_time = np.zeros(n_features)
+    peak_value = np.zeros(n_features)
+    
+    for i in range(n_features):
+        y = trajectory[i, :]
+        peak_idx = np.argmax(y)
+        
+        # Handle boundary cases
+        if peak_idx == 0:
+            peak_idx = 1
+        elif peak_idx == n_grid - 1:
+            peak_idx = n_grid - 2
+        
+        # Get three points for parabolic fit: (x_{i-1}, y_{i-1}), (x_i, y_i), (x_{i+1}, y_{i+1})
+        x = grid_values[peak_idx - 1 : peak_idx + 2]
+        y_local = y[peak_idx - 1 : peak_idx + 2]
+        
+        # Fit parabola: y = ax^2 + bx + c
+        # Using Lagrange interpolation formula for vertex:
+        # x_vertex = -b/(2a)
+        # where a, b are coefficients from quadratic fit
+        
+        # Alternative: use the closed-form solution for 3-point parabola vertex
+        # Given points (x0,y0), (x1,y1), (x2,y2), the vertex x-coordinate is:
+        # x_v = (x1^2 - x0^2)(y2 - y1) - (x2^2 - x1^2)(y1 - y0)
+        #       ---------------------------------------------------
+        #       2 * [(x1 - x0)(y2 - y1) - (x2 - x1)(y1 - y0)]
+        
+        x0, x1, x2 = x
+        y0, y1, y2 = y_local
+        
+        denom = (x1 - x0) * (y2 - y1) - (x2 - x1) * (y1 - y0)
+        
+        if np.abs(denom) < 1e-10:
+            # Parabola is degenerate (points are collinear or flat)
+            # Fall back to discrete peak
+            peak_time[i] = grid_values[peak_idx]
+            peak_value[i] = y[peak_idx]
+        else:
+            x_vertex = ((x1**2 - x0**2) * (y2 - y1) - (x2**2 - x1**2) * (y1 - y0)) / (2 * denom)
+            
+            # Clamp to the interpolation range
+            x_vertex = np.clip(x_vertex, x0, x2)
+            
+            # Compute interpolated value at vertex: y = ax^2 + bx + c
+            # Using Lagrange interpolation:
+            a_coef = (y2 - y1) / (x2 - x1) - (y1 - y0) / (x1 - x0)
+            a_coef = a_coef / (x2 - x0)
+            b_coef = (y1 - y0) / (x1 - x0) - a_coef * (x0 + x1)
+            c_coef = y0 - a_coef * x0**2 - b_coef * x0
+            
+            y_vertex = a_coef * x_vertex**2 + b_coef * x_vertex + c_coef
+            
+            peak_time[i] = x_vertex
+            peak_value[i] = y_vertex
+    
+    return peak_time, peak_value
+
+
+def compute_center_of_mass(trajectory, grid_values):
+    """
+    Compute center of mass (weighted average time position) for each feature.
+
+    The center of mass is computed as:
+        com = sum(grid_values * |trajectory|) / sum(|trajectory|)
+
+    Using absolute values to handle both positive and negative trajectories.
+
+    Parameters
+    ----------
+    trajectory : np.ndarray
+        Trajectory matrix of shape (n_features, n_grid_points).
+    grid_values : np.ndarray
+        Grid point values of shape (n_grid_points,).
+
+    Returns
+    -------
+    com : np.ndarray
+        Center of mass for each feature, shape (n_features,).
+    """
+    trajectory = np.asarray(trajectory)
+    grid_values = np.asarray(grid_values)
+    
+    # Use absolute values for weighting (handles both up/down regulation)
+    weights = np.abs(trajectory)
+    
+    # Avoid division by zero
+    weight_sum = weights.sum(axis=1, keepdims=True)
+    weight_sum = np.where(weight_sum < 1e-10, 1e-10, weight_sum)
+    
+    com = (grid_values * weights).sum(axis=1) / weight_sum.squeeze()
+    
+    return com
+
+
+def sort_features_by_trajectory(trajectory, grid_values, 
+                                 sort_keys=("peak_time", "com", "-peak_value")):
+    """
+    Sort features based on trajectory dynamics characteristics.
+
+    Parameters
+    ----------
+    trajectory : np.ndarray
+        Trajectory matrix of shape (n_features, n_grid_points).
+    grid_values : np.ndarray
+        Grid point values of shape (n_grid_points,).
+    sort_keys : tuple of str
+        List of sort keys in priority order. Supported keys:
+        - "peak_time": continuous peak time (parabolic interpolation)
+        - "com": center of mass
+        - "peak_value": peak value at continuous peak time
+        - "-peak_value": negative peak value (for descending sort)
+        - "max_grid_idx": discrete grid index of maximum (fallback)
+
+    Returns
+    -------
+    sorted_indices : np.ndarray
+        Indices that would sort the features.
+    sort_values : pd.DataFrame
+        DataFrame with columns for each computed metric.
+    """
+    trajectory = np.asarray(trajectory)
+    n_features = trajectory.shape[0]
+    
+    # Compute all possible metrics
+    peak_time, peak_value = compute_continuous_peak_time(trajectory, grid_values)
+    com = compute_center_of_mass(trajectory, grid_values)
+    max_grid_idx = np.argmax(trajectory, axis=1)
+    
+    # Build sort values DataFrame
+    sort_values = pd.DataFrame({
+        "peak_time": peak_time,
+        "com": com,
+        "peak_value": peak_value,
+        "-peak_value": -peak_value,
+        "max_grid_idx": max_grid_idx,
+    })
+    
+    # Build sort keys list, handling negative signs
+    keys_to_sort = []
+    for key in sort_keys:
+        if key in sort_values.columns:
+            keys_to_sort.append(key)
+        else:
+            raise ValueError(f"Unknown sort key: '{key}'. "
+                           f"Supported: {list(sort_values.columns)}")
+    
+    # Compute sorted indices using lexsort (last key is primary)
+    if len(keys_to_sort) == 0:
+        sorted_indices = np.arange(n_features)
+    else:
+        # lexsort sorts by last column first, so reverse the order
+        sort_arrays = [sort_values[key].values for key in reversed(keys_to_sort)]
+        sorted_indices = np.lexsort(sort_arrays)
+    
+    return sorted_indices, sort_values
+
+
+# =============================================================================
+# Visualization functions
+# =============================================================================
+
+def plot_trajectory_heatmap(
     adata,
     pseudotime_col,
     layer="X",
@@ -281,6 +610,283 @@ def _plot_grid_methods_comparison(
     return fig
 
 
+def plot_trajectory_heatmap(
+    trajectory_raw,
+    pseudotime,
+    trajectory_gp=None,
+    grid_values=None,
+    grid_cell_positions=None,
+    feature_order=None,
+    feature_labels=None,
+    scaling="z_score",
+    cmap="RdBu_r",
+    vmin=None,
+    vmax=None,
+    figsize=(8, 6),
+    dpi=100,
+    save_path=None,
+    show_grid=True,
+    grid_line_color="black",
+    grid_line_style="--",
+    grid_line_alpha=0.7,
+    show_colorbar=True,
+    left_title="Raw (cell space)",
+    right_title="GP-smoothed (grid space)",
+    suptitle=None,
+):
+    """
+    Plot trajectory heatmap for features (genes, loops, etc.) with GP-smoothed trajectories.
+
+    This is a context-agnostic visualization function that works with any feature type
+    (RNA genes, chromatin loops, etc.) as long as the data is provided as numpy arrays.
+
+    Parameters
+    ----------
+    trajectory_raw : np.ndarray or pd.DataFrame
+        Raw trajectory matrix of shape (n_features, n_cells). Each row is a feature's
+        trajectory across cells. Can also be a DataFrame with feature names as index.
+    pseudotime : np.ndarray or pd.Series
+        Pseudotime values for cells, shape (n_cells,). Used to sort cells and compute
+        grid line positions.
+    trajectory_gp : np.ndarray, optional
+        GP-smoothed trajectory matrix of shape (n_features, n_grid_points).
+        If None, only the raw trajectory panel is shown.
+    grid_values : np.ndarray, optional
+        Grid point values in pseudotime space, shape (n_grid_points,).
+        Used for right panel x-axis labels and to compute grid_cell_positions if needed.
+    grid_cell_positions : np.ndarray, optional
+        Grid point positions in cell rank space [0, 1], shape (n_grid_points,).
+        If None but grid_values is provided, computed from pseudotime.
+    feature_order : np.ndarray, optional
+        Indices to reorder features (rows). If None, features are shown in original order.
+        Typically obtained from sort_features_by_trajectory().
+    feature_labels : list or np.ndarray, optional
+        Labels for features (rows). If None, uses integer indices.
+    scaling : str, optional
+        Color scaling method. Options:
+        - "z_score": Z-score normalization per feature
+        - "zero_one": Min-max normalization to [0, 1]
+    cmap : str or matplotlib.colors.Colormap, optional
+        Colormap for the heatmap. Default is "RdBu_r" (diverging).
+    vmin, vmax : float, optional
+        Color scale limits. If None, computed from data based on scaling.
+    figsize : tuple, optional
+        Figure size (width, height) in inches. Default is (8, 6).
+    dpi : int, optional
+        Figure DPI. Default is 100.
+    save_path : str, optional
+        Path to save the figure. If None, figure is not saved.
+    show_grid : bool, optional
+        Show vertical lines at grid point positions. Default is True.
+    grid_line_color : str, optional
+        Color of grid lines. Default is "black".
+    grid_line_style : str, optional
+        Line style of grid lines. Default is "--".
+    grid_line_alpha : float, optional
+        Alpha transparency of grid lines. Default is 0.7.
+    show_colorbar : bool, optional
+        Show colorbar. Default is True.
+    left_title : str, optional
+        Title for left panel (raw data). Default is "Raw (cell space)".
+    right_title : str, optional
+        Title for right panel (GP-smoothed). Default is "GP-smoothed (grid space)".
+    suptitle : str, optional
+        Figure super title. If None, auto-generated from parameters.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The matplotlib figure object.
+    axes : np.ndarray
+        Array of matplotlib axes objects (1 or 2 elements depending on trajectory_gp).
+
+    Examples
+    --------
+    >>> # RNA/gene trajectory visualization
+    >>> gp_result = gp_interpolate(adata, pseudotime_col="pt")
+    >>> gp_mean = gp_result.uns["gp_interpolate"]["mean"].values
+    >>> grid_vals = gp_result.uns["gp_interpolate"]["time_grid"].values
+    >>> sorted_idx, _ = sort_features_by_trajectory(gp_mean, grid_vals)
+    >>> fig, axes = plot_trajectory_heatmap(
+    ...     trajectory_raw=adata.X.T,
+    ...     pseudotime=adata.obs["pt"],
+    ...     trajectory_gp=gp_mean,
+    ...     grid_values=grid_vals,
+    ...     feature_order=sorted_idx
+    ... )
+
+    >>> # Loop trajectory visualization (same interface)
+    >>> gp_result = gp_interpolate(loop_adata, pseudotime_col="pt")
+    >>> gp_mean = gp_result.uns["gp_interpolate"]["mean"].values
+    >>> sorted_idx, _ = sort_features_by_trajectory(gp_mean, grid_vals)
+    >>> fig, axes = plot_trajectory_heatmap(
+    ...     trajectory_raw=loop_adata.X.T,
+    ...     pseudotime=loop_adata.obs["pt"],
+    ...     trajectory_gp=gp_mean,
+    ...     grid_values=grid_vals,
+    ...     feature_order=sorted_idx
+    ... )
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import TwoSlopeNorm
+
+    # Convert inputs to numpy arrays
+    if isinstance(trajectory_raw, pd.DataFrame):
+        if feature_labels is None:
+            feature_labels = trajectory_raw.index.values
+        trajectory_raw = trajectory_raw.values
+    elif sparse.issparse(trajectory_raw):
+        # Handle sparse matrix: convert to dense BEFORE np.asarray
+        trajectory_raw = trajectory_raw.toarray()
+    else:
+        trajectory_raw = np.asarray(trajectory_raw)
+    
+    pseudotime = np.asarray(pseudotime)
+    n_features, n_cells = trajectory_raw.shape
+    
+    # Apply feature ordering
+    if feature_order is not None:
+        trajectory_raw = trajectory_raw[feature_order, :]
+        if feature_labels is not None:
+            feature_labels = np.asarray(feature_labels)[feature_order]
+    
+    # Sort cells by pseudotime
+    cell_order = np.argsort(pseudotime)
+    trajectory_sorted = trajectory_raw[:, cell_order]
+    pseudotime_sorted = np.sort(pseudotime)
+    
+    # Normalize expression
+    if scaling == "z_score":
+        traj_mean = trajectory_sorted.mean(axis=1, keepdims=True)
+        traj_std = trajectory_sorted.std(axis=1, keepdims=True) + 1e-6
+        trajectory_norm = (trajectory_sorted - traj_mean) / traj_std
+        if vmin is None:
+            vmin = -3
+        if vmax is None:
+            vmax = 3
+    else:  # zero_one
+        traj_min = trajectory_sorted.min(axis=1, keepdims=True)
+        traj_max = trajectory_sorted.max(axis=1, keepdims=True)
+        trajectory_norm = (trajectory_sorted - traj_min) / (traj_max - traj_min + 1e-6)
+        if vmin is None:
+            vmin = 0
+        if vmax is None:
+            vmax = 1
+
+    # Compute grid cell positions if needed
+    if grid_cell_positions is None and grid_values is not None:
+        n = len(pseudotime_sorted)
+        grid_cell_positions = np.searchsorted(pseudotime_sorted, grid_values) / (n - 1)
+
+    # Determine number of panels
+    show_gp = trajectory_gp is not None and grid_values is not None
+    n_panels = 2 if show_gp else 1
+    
+    # Create figure
+    if n_panels == 2:
+        fig, axes = plt.subplots(
+            1, 2,
+            figsize=figsize,
+            dpi=dpi,
+            sharey=True,
+            gridspec_kw={"width_ratios": [3, 2], "hspace": 0.1, "wspace": 0.1}
+        )
+        axes = np.asarray(axes)
+    else:
+        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+        axes = np.asarray([ax])
+    
+    # Left panel: Raw data with grid lines
+    ax = axes[0]
+    extent = [0, 1, 0, n_features]
+    im = ax.imshow(
+        trajectory_norm,
+        aspect="auto",
+        origin="lower",
+        extent=extent,
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+    )
+    
+    # Add grid lines
+    if show_grid and grid_cell_positions is not None:
+        for pos in grid_cell_positions:
+            ax.axvline(x=pos, color=grid_line_color, linestyle=grid_line_style,
+                      linewidth=0.8, alpha=grid_line_alpha)
+    
+    ax.set_title(left_title, fontsize=11, fontweight="bold")
+    ax.set_xlabel("Cell rank (sorted by pseudotime)")
+    ax.set_ylabel("Feature index" if feature_labels is None else "Features")
+
+    # Right panel: GP-smoothed
+    if show_gp:
+        trajectory_gp = np.asarray(trajectory_gp)
+        
+        # Apply feature ordering to GP trajectory
+        if feature_order is not None:
+            trajectory_gp = trajectory_gp[feature_order, :]
+        
+        n_grid = trajectory_gp.shape[1]
+        grid_indices = np.arange(n_grid)
+        
+        # Normalize GP trajectory
+        if scaling == "z_score":
+            gp_mean = trajectory_gp.mean(axis=1, keepdims=True)
+            gp_std = trajectory_gp.std(axis=1, keepdims=True) + 1e-6
+            trajectory_gp_norm = (trajectory_gp - gp_mean) / gp_std
+        else:  # zero_one
+            gp_min = trajectory_gp.min(axis=1, keepdims=True)
+            gp_max = trajectory_gp.max(axis=1, keepdims=True)
+            trajectory_gp_norm = (trajectory_gp - gp_min) / (gp_max - gp_min + 1e-6)
+        
+        ax = axes[1]
+        extent = [-0.5, n_grid - 0.5, 0, n_features]
+        im = ax.imshow(
+            trajectory_gp_norm,
+            aspect="auto",
+            origin="lower",
+            extent=extent,
+            cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
+        )
+        
+        ax.set_title(right_title, fontsize=11, fontweight="bold")
+        ax.set_xlabel("Grid point index")
+        ax.set_xticks(grid_indices)
+        ax.set_xticklabels(grid_indices.astype(str))
+        
+        # Add grid lines at integer positions (grid point boundaries)
+        if show_grid:
+            for i in range(n_grid + 1):
+                ax.axvline(x=i - 0.5, color=grid_line_color, linestyle=":",
+                          linewidth=0.6, alpha=0.3)
+
+    # Add colorbar
+    if show_colorbar:
+        cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax) if scaling == "z_score" else None
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        fig.colorbar(sm, cax=cbar_ax, label="Z-score" if scaling == "z_score" else "Scaled [0, 1]")
+
+    # Add super title
+    if suptitle is None:
+        if show_gp and grid_values is not None:
+            suptitle = f"Trajectory Heatmap ({len(grid_values)} grid points)"
+        else:
+            suptitle = "Trajectory Heatmap (Raw)"
+    
+    if suptitle:
+        fig.suptitle(suptitle, y=0.995, fontsize=12, fontweight="bold")
+
+    if save_path is not None:
+        fig.savefig(save_path, dpi=dpi, bbox_inches="tight")
+
+    return fig, axes
+
+
 def plot_gp_heatmap(
     adata,
     pseudotime_col,
@@ -295,12 +901,14 @@ def plot_gp_heatmap(
     save_path=None,
     show_grid=True,
     show_colorbar=True,
+    feature_order=None,
 ):
     """
     Plot a single heatmap for GP interpolation results.
 
-    Shows raw expression (sorted by pseudotime) with grid point positions
-    and GP-smoothed expression side-by-side.
+    This is a convenience wrapper around plot_trajectory_heatmap() for AnnData-based
+    RNA/gene expression data. For more control or for non-RNA data (e.g., loops),
+    use plot_trajectory_heatmap() directly.
 
     Parameters
     ----------
@@ -333,15 +941,21 @@ def plot_gp_heatmap(
         Show vertical lines at grid point positions. Default is True.
     show_colorbar : bool, optional
         Show colorbar. Default is True.
+    feature_order : np.ndarray, optional
+        Indices to reorder features (genes). If None, genes are shown in original order.
+        Typically obtained from sort_features_by_trajectory().
 
     Returns
     -------
     fig : matplotlib.figure.Figure
         The matplotlib figure object.
-    """
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import TwoSlopeNorm
+    axes : np.ndarray
+        Array of matplotlib axes objects.
 
+    See Also
+    --------
+    plot_trajectory_heatmap : General-purpose trajectory heatmap for any feature type.
+    """
     # Get expression and pseudotime
     if layer == "X":
         expr = adata.X.T
@@ -351,78 +965,32 @@ def plot_gp_heatmap(
         expr = expr.toarray()
 
     pseudotime = adata.obs[pseudotime_col].values
-    cell_order = np.argsort(pseudotime)
-    expr_sorted = expr[:, cell_order]
-    n_genes, n_cells = expr_sorted.shape
-
+    
     # Apply gene mask if provided
     if gene_mask_key is not None:
         gene_mask = adata.var[gene_mask_key].values
-        expr_sorted = expr_sorted[gene_mask, :]
-        n_genes = expr_sorted.shape[0]
-
-    # Normalize expression
-    if scaling == "z_score":
-        expr_mean = expr_sorted.mean(axis=1, keepdims=True)
-        expr_std = expr_sorted.std(axis=1, keepdims=True) + 1e-6
-        expr_norm = (expr_sorted - expr_mean) / expr_std
-        cmap = "RdBu_r"
-        vmin, vmax = -3, 3
-    else:
-        expr_min = expr_sorted.min(axis=1, keepdims=True)
-        expr_max = expr_sorted.max(axis=1, keepdims=True)
-        expr_norm = (expr_sorted - expr_min) / (expr_max - expr_min + 1e-6)
-        cmap = "inferno"
-        vmin, vmax = 0, 1
-
-    # Generate grid
+        expr = expr[gene_mask, :]
+    
+    n_genes, n_cells = expr.shape
+    
+    # Generate grid and compute grid cell positions
     grid, _ = _build_time_grid(
         pd.Series(pseudotime),
         numPts=numPts,
         method=grid_method,
         endpoint_mode=endpoint_mode
     )
-
-    # Create figure
-    fig, axes = plt.subplots(
-        1, 2,
-        figsize=figsize,
-        dpi=dpi,
-        sharey=True,
-        gridspec_kw={"width_ratios": [3, 2], "hspace": 0.1, "wspace": 0.1}
-    )
-
+    
+    # Compute grid cell positions for visualization
+    pseudotime_sorted = np.sort(pseudotime)
+    grid_cell_positions = np.searchsorted(pseudotime_sorted, grid) / (n_cells - 1)
+    
+    # Create schematic GP-smoothed trajectory (for visualization without running GP)
+    # Note: This is a schematic approximation. For real GP results, use plot_trajectory_heatmap()
+    # with trajectory_gp from gp_interpolate() output.
     cell_ranks = np.arange(n_cells) / (n_cells - 1)
-
-    # Left panel: Raw data with grid lines
-    ax = axes[0]
-    extent = [0, 1, 0, n_genes]
-    im = ax.imshow(
-        expr_norm,
-        aspect="auto",
-        origin="lower",
-        extent=extent,
-        cmap=cmap,
-        vmin=vmin,
-        vmax=vmax,
-    )
-
-    # Add grid lines
-    if show_grid:
-        pseudotime_sorted = np.sort(pseudotime)
-        for grid_t in grid:
-            rank_pos = np.searchsorted(pseudotime_sorted, grid_t) / (n_cells - 1)
-            ax.axvline(x=rank_pos, color="black", linestyle="--", linewidth=0.8, alpha=0.7)
-
-    ax.set_title(f"{grid_method}: Raw (grid lines)", fontsize=11, fontweight="bold")
-    ax.set_xlabel("Cell rank (sorted by pseudotime)")
-    ax.set_ylabel("Gene index")
-
-    # Right panel: GP-smoothed
-    ax = axes[1]
-    grid_indices = np.arange(len(grid))
-
-    # Create smoothed schematic
+    expr_sorted = expr[:, np.argsort(pseudotime)]
+    
     smooth_schematic = np.zeros((n_genes, len(grid)))
     for i in range(n_genes):
         raw_gene = expr_sorted[i, :]
@@ -431,52 +999,30 @@ def plot_gp_heatmap(
             cell_ranks,
             np.convolve(raw_gene, np.ones(5) / 5, mode="same")
         )
-
-    # Normalize smooth data
-    if scaling == "z_score":
-        smooth_mean = smooth_schematic.mean(axis=1, keepdims=True)
-        smooth_std = smooth_schematic.std(axis=1, keepdims=True) + 1e-6
-        smooth_norm = (smooth_schematic - smooth_mean) / smooth_std
-    else:
-        smooth_min = smooth_schematic.min(axis=1, keepdims=True)
-        smooth_max = smooth_schematic.max(axis=1, keepdims=True)
-        smooth_norm = (smooth_schematic - smooth_min) / (smooth_max - smooth_min + 1e-6)
-
-    extent = [-0.5, len(grid) - 0.5, 0, n_genes]
-    im = ax.imshow(
-        smooth_norm,
-        aspect="auto",
-        origin="lower",
-        extent=extent,
-        cmap=cmap,
-        vmin=vmin,
-        vmax=vmax,
+    
+    # Use plot_trajectory_heatmap for actual plotting
+    feature_labels = adata.var_names[gene_mask].values if gene_mask_key is not None else adata.var_names.values
+    
+    fig, axes = plot_trajectory_heatmap(
+        trajectory_raw=expr,
+        pseudotime=pseudotime,
+        trajectory_gp=smooth_schematic,
+        grid_values=grid,
+        grid_cell_positions=grid_cell_positions,
+        feature_order=feature_order,
+        feature_labels=feature_labels,
+        scaling=scaling,
+        figsize=figsize,
+        dpi=dpi,
+        save_path=save_path,
+        show_grid=show_grid,
+        show_colorbar=show_colorbar,
+        left_title=f"{grid_method}: Raw (grid lines)",
+        right_title=f"{grid_method}: GP-smoothed ({len(grid)} pts)",
+        suptitle=f"GP Interpolation: {grid_method} (endpoint_mode='{endpoint_mode}')"
     )
-
-    ax.set_title(f"{grid_method}: GP-smoothed ({len(grid)} pts)", fontsize=11, fontweight="bold")
-    ax.set_xlabel("Grid point index")
-    ax.set_xticks(grid_indices)
-    ax.set_xticklabels(grid_indices.astype(str))
-
-    # Add colorbar
-    if show_colorbar:
-        cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
-        norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax) if scaling == "z_score" else None
-        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm.set_array([])
-        fig.colorbar(sm, cax=cbar_ax, label="Z-score" if scaling == "z_score" else "Scaled [0, 1]")
-
-    fig.suptitle(
-        f"GP Interpolation: {grid_method} (endpoint_mode='{endpoint_mode}')",
-        y=0.995,
-        fontsize=12,
-        fontweight="bold"
-    )
-
-    if save_path is not None:
-        fig.savefig(save_path, dpi=dpi, bbox_inches="tight")
-
-    return fig
+    
+    return fig, axes
 
 
 def _build_time_grid(pseudotime, numPts=14, method="linspace", grid_custom=None,
@@ -925,6 +1471,12 @@ def gp_interpolate(adata, pseudotime_col, layer="X", gene_mask_key=None,
         "mean": pd.DataFrame(mean_rows),
         "variance": pd.DataFrame(variance_rows),
         "hyperparameters": pd.DataFrame(hyper_rows),
+        # Grid positions in cell rank space [0, 1] for visualization
+        "grid_cell_positions": pd.Series(
+            np.searchsorted(np.sort(pseudotime.values), grid_values) / (len(pseudotime) - 1),
+            index=grid_index,
+            name="cell_rank_position"
+        ),
         "metadata": {
             "pseudotime_col": pseudotime_col,
             "layer": layer,
