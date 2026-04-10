@@ -3,14 +3,16 @@ import argparse
 from . import (
     version,
     render,
-    download
+    download,
+    ana_describe,
 )
 
 # To register a new command, append the module to the list below (2/3).
 modules = [
     version,
     render,
-    download
+    download,
+    ana_describe,
 ]
 
 # To register a new command, define add_arguments and run functions in the module (3/3).
