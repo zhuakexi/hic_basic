@@ -423,6 +423,38 @@ git add hic_basic/ docs/
 git commit -m "Update code and docs"
 ```
 
+### QC Filtering with Flexible Thresholds
+```python
+from hic_basic.wet.qc import c_u_filter
+
+# Standard filtering with both bounds
+qc_cells = c_u_filter(
+    meta=adata.obs,
+    ccol='contacts',
+    ucol='umis',
+    c_threshold=[150_000, 1_000_000],  # [lower, upper]
+    u_threshold=[10_000, 600_000]
+)
+
+# Only upper bound (no lower limit)
+qc_cells = c_u_filter(
+    meta=adata.obs,
+    ccol='contacts',
+    ucol='umis',
+    c_threshold=[None, 1_000_000],  # Only filter high contacts
+    u_threshold=[None, 600_000]     # Only filter high UMIs
+)
+
+# Only lower bound (no upper limit)
+qc_cells = c_u_filter(
+    meta=adata.obs,
+    ccol='contacts',
+    ucol='umis',
+    c_threshold=[150_000, None],  # Only filter low contacts
+    u_threshold=[10_000, None]    # Only filter low UMIs
+)
+```
+
 ## 📖 Documentation Best Practices
 
 ```python
