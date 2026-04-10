@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 from hires_utils.mmcif import chrom_rm_suffix, chrom_rm_prefix
 
-from .hicio import get_ref_dir, load_json, parse_gtf, parse_bed
-from .utils import two_sets
+from ..hicio import get_ref_dir, load_json, parse_gtf, parse_bed
+from ..utils import two_sets
 from tqdm import tqdm
 
 ref_dir = Path(get_ref_dir())
@@ -67,7 +67,7 @@ class RefGenome:
         self._feature_factories[feature_name] = factory
 
     def _build_chromosomes(self, size_file):
-        from .feature import Chromosomes
+        from ..feature import Chromosomes
 
         size_file = Path(size_file)
         if not size_file.exists():
@@ -154,8 +154,8 @@ def get_chrom_data(genome, order=False):
         >>> # From file path
         >>> chrom_df = get_chrom_data("/path/to/chrom.sizes")
     """
-    from .feature import Chromosomes
-    
+    from ..feature import Chromosomes
+
     # Handle RefGenome objects
     if isinstance(genome, RefGenome):
         chrom_df = genome.chromosomes.data

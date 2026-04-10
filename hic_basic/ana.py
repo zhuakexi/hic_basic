@@ -1,15 +1,34 @@
 # This module is designed for bioinformatic project management
-from pathlib import Path
-import hashlib
+import inspect
+import os
 import re
+import hashlib
 import shutil
-import pandas as pd
+from pathlib import Path
+
 import numpy as np
-import json
+import pandas as pd
 from datetime import datetime
 from typing import Dict, Any, Optional, Union, List
 import warnings
 from .hicio import dump_json, load_json
+
+# File format extension → key mapping, used for auto-detection of file columns
+_FILE_EXT_TO_FORMAT = {
+    ".cool": "cool", ".mcool": "cool",
+    ".scool": "scool",
+    ".pairs": "pairs", ".pairsam": "pairs",
+    ".bedpe": "bedpe",
+    ".bam": "bam", ".cram": "cram",
+    ".bed": "bed", ".bedgraph": "bedgraph", ".bedGraph": "bedgraph",
+    ".bw": "bigwig", ".bigwig": "bigwig", ".bigWig": "bigwig",
+    ".vcf": "vcf",
+    ".fa": "fasta", ".fasta": "fasta", ".fna": "fasta",
+    ".fq": "fastq", ".fastq": "fastq",
+    ".gff": "gff", ".gff3": "gff", ".gtf": "gff",
+    ".tsv": "tsv", ".tab": "tsv",
+    ".csv": "csv",
+}
 
 class Ana:
     """
@@ -397,10 +416,53 @@ class Ana:
             warnings.warn(f"Could not parse dtype: {standard_dtype}, defaulting to object")
             return np.dtype('object')
     
+    def _detect_file_format(self, series: pd.Series) -> Optional[str]:
+        """
+        Detect if a Series contains file paths and return the best-matching
+        file format key.
+
+        Parameters
+        ----------
+        series : pd.Series
+            Column to inspect.
+
+        Returns
+        -------
+        str or None
+            File format key (e.g., ``"cool"``, ``"bam"``), or None if not
+            a recognizable file column.
+        """
+        # Sample up to 10 non-null values
+        sample = series.dropna().astype(str).head(10)
+        if len(sample) == 0:
+            return None
+
+        # Count how many values look like file paths with known extensions
+        format_counts: dict[str, int] = {}
+        path_like_count = 0
+        for val in sample:
+            val_lower = val.lower().strip()
+            # Check if it looks like a file path
+            if any(c in val_lower for c in ["/", "\\", ".\\"]):
+                path_like_count += 1
+            # Check for known extensions
+            for ext, fmt in _FILE_EXT_TO_FORMAT.items():
+                if val_lower.endswith(ext):
+                    format_counts[fmt] = format_counts.get(fmt, 0) + 1
+                    break
+
+        # Need at least 50% path-like and at least one recognized format
+        n = len(sample)
+        if path_like_count < n * 0.5:
+            return None
+        if format_counts:
+            return max(format_counts, key=format_counts.get)  # type: ignore[arg-type]
+        return None
+
     def _save_data_with_schema(self, df: pd.DataFrame, data_path: Path):
         """
         Save DataFrame to CSV along with its dtype schema.
-        
+
         Parameters
         ----------
         df : pandas.DataFrame
@@ -410,14 +472,20 @@ class Ana:
         """
         # Save data as CSV
         df.to_csv(data_path, index=True)
-        
+
         # Create and save schema
         schema = {}
-        
+
         # Save column dtypes
         schema['columns'] = {}
         for col in df.columns:
-            schema['columns'][col] = self._dtype_to_dict(df[col].dtype)
+            col_schema = self._dtype_to_dict(df[col].dtype)
+            # Auto-detect file-type columns
+            fmt = self._detect_file_format(df[col])
+            if fmt is not None:
+                col_schema['type'] = 'file'
+                col_schema['file_format'] = fmt
+            schema['columns'][col] = col_schema
         
         # 总是保存索引信息，包括RangeIndex
         schema['index'] = self._dtype_to_dict(df.index.dtype)
@@ -766,7 +834,13 @@ class Ana:
         
         return commit_id
     
-    def update(self, new_data, key=None, description=None, force=False):
+    def update(
+        self, new_data, key=None, description=None, force=False,
+        column_descriptions=None,
+        computed_by=None,
+        depends_on=None,
+        file_format=None,
+    ):
         """
         Update data storage and automatically commit changes.
 
@@ -786,6 +860,22 @@ class Ana:
             If True, create a new commit even when the data state is identical
             to the last commit. Useful for recording explicit checkpoints during
             iterative development.
+        column_descriptions : dict, optional
+            ``{col_name: "short description"}`` for new or existing columns.
+            Used by ``describe()`` and for agent discoverability.
+        computed_by : dict, optional
+            ``{"file": "/path/to/script.ipynb", "note": "optional context"}``.
+            If not provided, auto-detected from the calling frame.
+        depends_on : dict, optional
+            Column/object dependencies. Format::
+
+                {"col_name": {"columns": ["a", "b"], "objects": ["x"]}}
+
+            Can also be a flat dict mapping col_name to a list of mixed deps
+            (the method will classify them automatically).
+        file_format : dict, optional
+            ``{col_name: format_key}`` to override auto-detected file format
+            (e.g., ``{"bam_paths": "bam"}``).
 
         Returns
         -------
@@ -814,6 +904,13 @@ class Ana:
             dump_json(obj, self.obj_path)
             if self.verbose:
                 print("Object data updated.")
+            # Inject column metadata for object keys
+            self._inject_column_meta(
+                {key: True},
+                column_descriptions=column_descriptions,
+                computed_by=computed_by,
+                depends_on=depends_on,
+            )
             return self._maybe_commit(description, force)
         else:
             raise TypeError(f"Unsupported data type: {type(new_data)}")
@@ -846,10 +943,92 @@ class Ana:
         # Save the updated data with schema
         self._save_data_with_schema(res, self.data_path)
 
+        # Inject column metadata for new/updated columns
+        new_cols = [c for c in new_data_df.columns if c not in self.data.columns or c in new_data_df.columns]
+        # Use all columns from the new data
+        self._inject_column_meta(
+            new_data_df.columns.tolist(),
+            column_descriptions=column_descriptions,
+            computed_by=computed_by,
+            depends_on=depends_on,
+            file_format=file_format,
+        )
+
         if self.verbose:
             print("Data updated with schema preservation.")
 
         return self._maybe_commit(description, force)
+
+    def _inject_column_meta(
+        self,
+        columns,
+        column_descriptions=None,
+        computed_by=None,
+        depends_on=None,
+        file_format=None,
+    ):
+        """
+        Update column metadata for the given columns.
+
+        Parameters
+        ----------
+        columns : list
+            Column names (or object keys) to annotate.
+        column_descriptions : dict, optional
+            ``{col: "description"}``.
+        computed_by : dict, optional
+            ``{"file": "...", "note": "..."}``. If None, auto-detected.
+        depends_on : dict, optional
+            ``{col: {"columns": [...], "objects": [...]}}`` or
+            ``{col: [dep1, dep2, ...]}`` (flat list).
+        file_format : dict, optional
+            ``{col: format_key}`` for explicit file format override.
+        """
+        meta = self._load_column_meta()
+        commit_id = None
+        commit_meta_raw = load_json(self.commit_meta_path)
+        if commit_meta_raw["commits"]:
+            commit_id = commit_meta_raw["commits"][-1]["id"]
+
+        # Auto-detect computed_by if not provided
+        if computed_by is None:
+            computed_by = self._detect_computed_by()
+
+        for col in columns:
+            if col not in meta:
+                meta[col] = {}
+
+            entry = meta[col]
+
+            # Description
+            if column_descriptions and col in column_descriptions:
+                entry["description"] = column_descriptions[col]
+
+            # computed_by (only set if not already present, or always override)
+            entry["computed_by"] = computed_by
+
+            # depends_on
+            if depends_on and col in depends_on:
+                dep = depends_on[col]
+                if isinstance(dep, dict):
+                    entry["depends_on"] = dep
+                elif isinstance(dep, list):
+                    # Classify deps: columns that exist in data vs. objects
+                    entry["depends_on"] = {"columns": [], "objects": []}
+                    for d in dep:
+                        # Heuristic: if d looks like a known column or object key
+                        # We keep it simple and put everything in "columns" for now
+                        entry["depends_on"]["columns"].append(d)
+
+            # file_format
+            if file_format and col in file_format:
+                entry["file_format"] = file_format[col]
+
+            # commit_id
+            if commit_id is not None:
+                entry.setdefault("commit_id", commit_id)
+
+        self._save_column_meta(meta)
 
     def _maybe_commit(self, description, force):
         """
@@ -954,7 +1133,7 @@ class Ana:
     def get_schema(self):
         """
         Get the current data schema information.
-        
+
         Returns
         -------
         dict
@@ -963,3 +1142,162 @@ class Ana:
         if self.schema_path.exists():
             return load_json(self.schema_path)
         return {}
+
+    # ---- Column metadata helpers ----
+
+    @property
+    def _column_meta_path(self):
+        """Path to the column metadata JSON file."""
+        return self.home / "column_meta.json"
+
+    def _load_column_meta(self) -> dict:
+        """Load column metadata, returning empty dict if missing."""
+        path = self._column_meta_path
+        if path.exists():
+            return load_json(path)
+        return {}
+
+    def _save_column_meta(self, meta: dict):
+        """Save column metadata."""
+        dump_json(meta, self._column_meta_path)
+
+    def _detect_computed_by(self) -> dict:
+        """
+        Attempt to detect the file that called ``update()``.
+
+        Priority:
+        1. VS Code Jupyter injected ``__vsc_ipynb_file__``
+        2. ``ipynbname`` package (Jupyter Lab/Notebook)
+        3. ``inspect.stack()`` — first frame outside hic_basic package
+        4. Fallback to ``{"file": "<unknown>"}``
+
+        Returns
+        -------
+        dict
+            ``{"file": "<path>"}`` or ``{"file": "<unknown>"}`` with optional warning.
+        """
+        # 1. VS Code Jupyter
+        import builtins
+        vsc_file = getattr(builtins, "__vsc_ipynb_file__", None)
+        if vsc_file:
+            return {"file": str(vsc_file)}
+
+        # 2. ipynbname package
+        try:
+            import ipynbname
+            nb_path = ipynbname.path()
+            if Path(nb_path).exists():
+                return {"file": str(nb_path)}
+        except (ImportError, FileNotFoundError, KeyError, ValueError):
+            pass
+
+        # 3. inspect.stack() — find first frame not in hic_basic
+        try:
+            for frame_info in inspect.stack()[2:]:
+                fname = frame_info.filename
+                if "hic_basic" not in fname and fname != "<string>":
+                    abs_path = os.path.abspath(fname)
+                    if Path(abs_path).exists():
+                        return {"file": abs_path}
+                    # Frame exists but file not found
+                    return {"file": fname, "note": "file not found on disk"}
+        except Exception:
+            pass
+
+        # 4. Fallback
+        return {"file": "<unknown>", "note": "could not auto-detect caller; please declare computed_by manually"}
+
+    def describe(self):
+        """
+        Print a compact, agent-friendly summary of columns and objects.
+
+        Output includes column names, their schema type, and short
+        descriptions (if available). Also lists stored objects.
+
+        Example output::
+
+            Columns (3):
+              bam_paths        file         Aligned BAM paths per sample
+              norm_contact     standard     KR-normalized contact freq
+              raw_contact      standard     Raw contact counts
+
+            Objects (2):
+              peak_files       (no description)
+              sample_groups    Group assignments for 3 conditions
+        """
+        schema = self.get_schema()
+        col_meta = self._load_column_meta()
+        cols = schema.get("columns", {})
+        col_names = schema.get("columns_list", [])
+
+        print(f"Columns ({len(col_names)}):")
+        for col in col_names:
+            col_schema = cols.get(col, {})
+            col_type = col_schema.get("type", "standard")
+            # Use user-provided description if available, else fallback
+            meta_entry = col_meta.get(col, {})
+            desc = meta_entry.get("description", "(no description)")
+            print(f"  {col:<20s} {col_type:<14s} {desc}")
+
+        # Objects
+        obj = self.obj
+        if obj:
+            print(f"\nObjects ({len(obj)}):")
+            for key in sorted(obj):
+                desc = col_meta.get(key, {}).get("description", "(no description)")
+                print(f"  {key:<20s} {desc}")
+
+    def column_meta(self, key: str) -> dict:
+        """
+        Get full metadata for a column or object key.
+
+        Parameters
+        ----------
+        key : str
+            Column name or object key.
+
+        Returns
+        -------
+        dict
+            Metadata dict (description, computed_by, depends_on,
+            file_structure, commit_id). Empty dict if not found.
+        """
+        return self._load_column_meta().get(key, {})
+
+    def file_format(self, key: str) -> dict:
+        """
+        Look up the file format definition for a file-type column.
+
+        Searches instance-level overrides first, then falls back to the
+        built-in ``hic_basic.data.file_formats`` registry.
+
+        Parameters
+        ----------
+        key : str
+            File format key (e.g., ``"cool"``, ``"bam"``) or column name
+            whose ``file_format`` schema value will be used for lookup.
+
+        Returns
+        -------
+        dict or None
+            Format definition, or None if not found.
+        """
+        from .data.file_formats import FILE_FORMATS as _BUILTIN_FORMATS
+
+        # First check if key is a column name → look up its file_format
+        schema = self.get_schema()
+        cols = schema.get("columns", {})
+        if key in cols:
+            col_schema = cols[key]
+            fmt_key = col_schema.get("file_format", key)
+        else:
+            fmt_key = key
+
+        # Check instance-level overrides in column_meta
+        col_meta = self._load_column_meta()
+        instance_formats = col_meta.get("file_formats", {})
+        if fmt_key in instance_formats:
+            return instance_formats[fmt_key]
+
+        # Fall back to built-in
+        return _BUILTIN_FORMATS.get(fmt_key)

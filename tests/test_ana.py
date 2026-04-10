@@ -786,5 +786,90 @@ class TestAna(unittest.TestCase):
         loaded_df = ana2.data
         self.assertEqual(len(loaded_df), 3)
 
+    def test_file_column_auto_detection(self):
+        """
+        Test that columns containing file paths are auto-detected as type 'file'.
+        """
+        df = pd.DataFrame({
+            "cool_paths": ["/data/sample1.cool", "/data/sample2.cool"],
+            "bam_paths": ["/align/s1.bam", "/align/s2.bam"],
+            "values": [1.0, 2.0],
+        }, index=["s1", "s2"])
+
+        ana = Ana(self.home, data=df)
+        schema = ana.get_schema()
+
+        self.assertEqual(schema["columns"]["cool_paths"]["type"], "file")
+        self.assertEqual(schema["columns"]["cool_paths"]["file_format"], "cool")
+        self.assertEqual(schema["columns"]["bam_paths"]["type"], "file")
+        self.assertEqual(schema["columns"]["bam_paths"]["file_format"], "bam")
+        self.assertEqual(schema["columns"]["values"]["type"], "standard")
+
+    def test_column_metadata_injection(self):
+        """
+        Test that column_descriptions and depends_on are stored in column_meta.json.
+        """
+        df = pd.DataFrame({"A": [1, 2], "B": [3, 4]}, index=["x", "y"])
+        ana = Ana(self.home, data=df)
+
+        # Second update with metadata
+        df2 = pd.DataFrame({"C": [5, 6]}, index=["x", "y"])
+        ana.update(
+            df2,
+            column_descriptions={"C": "Derived column"},
+            depends_on={"C": {"columns": ["A", "B"]}},
+            computed_by={"file": "/scripts/calc.ipynb"},
+        )
+
+        meta = ana.column_meta("C")
+        self.assertEqual(meta["description"], "Derived column")
+        self.assertEqual(meta["computed_by"]["file"], "/scripts/calc.ipynb")
+        self.assertEqual(meta["depends_on"]["columns"], ["A", "B"])
+
+    def test_describe_output(self):
+        """
+        Test that describe() prints column and object info.
+        """
+        import io
+        import sys
+
+        df = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
+        ana = Ana(self.home, data=df)
+        ana.update([1, 2, 3], key="my_list")
+
+        # Capture stdout
+        old_stdout = sys.stdout
+        sys.stdout = captured = io.StringIO()
+        try:
+            ana.describe()
+        finally:
+            sys.stdout = old_stdout
+
+        output = captured.getvalue()
+        self.assertIn("Columns (1):", output)
+        self.assertIn("A", output)
+        self.assertIn("Objects (1):", output)
+        self.assertIn("my_list", output)
+
+    def test_file_format_lookup(self):
+        """
+        Test that file_format() returns built-in definitions.
+        """
+        df = pd.DataFrame({
+            "cool_paths": ["/data/a.cool", "/data/b.cool"],
+        }, index=["a", "b"])
+        ana = Ana(self.home, data=df)
+
+        fmt = ana.file_format("cool_paths")
+        self.assertIsNotNone(fmt)
+        self.assertEqual(fmt["format"], "Cooler")
+
+        # Direct key lookup
+        fmt2 = ana.file_format("bam")
+        self.assertEqual(fmt2["format"], "BAM")
+
+        # Unknown key
+        self.assertIsNone(ana.file_format("nonexistent_format"))
+
 if __name__ == "__main__":
     unittest.main()
