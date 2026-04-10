@@ -6,13 +6,36 @@ def c_u_filter(meta, ccol, ucol, c_threshold, u_threshold):
     Input:
         ccol: column name of contact number
         ucol: column name of umis
-        c_threshold: [low, high] for contacts
-        u_threshold: [low, high] for contacts
+        c_threshold: [low, high] for contacts, use None for unbounded (e.g., [None, 2000] means only upper limit)
+        u_threshold: [low, high] for umis, use None for unbounded (e.g., [None, 2000] means only upper limit)
     Output:
         new df with qc-passed rows
     """
     io_filter = (~meta[ccol].isna())&(~meta[ucol].isna())&(meta[ccol]>1)&(meta[ucol]>1)
-    metric_filter = (meta[ccol] > c_threshold[0]) & (meta[ccol] < c_threshold[1]) & (meta[ucol] < u_threshold[1]) & (meta[ucol] > u_threshold[0])
+    
+    # Build contact filter
+    if c_threshold[0] is not None:
+        c_filter_low = meta[ccol] > c_threshold[0]
+    else:
+        c_filter_low = True
+    
+    if c_threshold[1] is not None:
+        c_filter_high = meta[ccol] < c_threshold[1]
+    else:
+        c_filter_high = True
+    
+    # Build umi filter
+    if u_threshold[0] is not None:
+        u_filter_low = meta[ucol] > u_threshold[0]
+    else:
+        u_filter_low = True
+    
+    if u_threshold[1] is not None:
+        u_filter_high = meta[ucol] < u_threshold[1]
+    else:
+        u_filter_high = True
+    
+    metric_filter = c_filter_low & c_filter_high & u_filter_low & u_filter_high
     qc = meta.loc[io_filter & metric_filter]
     print("Filter out %d samples with key-NA." % (~io_filter).sum())
     print("Filter out %d samples with bad contacts or umis." % (~metric_filter).sum())
