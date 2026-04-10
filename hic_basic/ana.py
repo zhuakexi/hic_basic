@@ -738,10 +738,10 @@ class Ana:
         
         return commit_id
     
-    def update(self, new_data, key=None, description=None, force=False):
+    def update(self, new_data, key=None, description=None, force=None):
         """
         Update data storage and automatically commit changes.
-        
+
         Parameters
         ----------
         new_data : pandas.DataFrame, pandas.Series, dict, or list
@@ -750,22 +750,15 @@ class Ana:
             Specifies the column name (for dict/Series) or object key (for list).
         description : str, optional
             Custom description for the automatic commit.
-        force : bool, optional, default False
-            If True, overwrite existing data for the given key.
+        force : bool, optional
+            Deprecated. No longer has any effect. Kept for backward compatibility.
         """
-        # Check for existing data and handle based on force flag
-        if not force and key is not None:
-            if isinstance(new_data, list):
-                if key in self.obj:
-                    if self.verbose:
-                        print(f"Key '{key}' already exists in obj. Use force=True to overwrite.")
-                    return
-            elif isinstance(new_data, (pd.Series, dict)):
-                col_name = key if key is not None else (new_data.name if hasattr(new_data, 'name') else None)
-                if col_name and col_name in self.data.columns:
-                    if self.verbose:
-                        print(f"Column '{col_name}' already exists in data. Use force=True to overwrite.")
-                    return
+        if force is not None:
+            warnings.warn(
+                "The 'force' parameter is deprecated and will be removed in a future version.",
+                FutureWarning,
+                stacklevel=2,
+            )
         
         # Process different data types
         if isinstance(new_data, pd.DataFrame):
@@ -795,43 +788,11 @@ class Ana:
         # Record original data shape for comparison
         original_shape = self.data.shape
         original_rows, original_cols = original_shape
-        
-        # 获取当前数据的列
-        current_columns = set(self.data.columns) if not self.data.empty else set()
-        
-        # 获取新数据的列
-        new_columns = set(new_data_df.columns)
-        
-        # 找出重叠列（force=True时需要特殊处理的列）
-        overlapping_columns = current_columns.intersection(new_columns)
-        
-        # 记录新数据中重叠列的原始dtype（仅在force=True时使用）
-        dtype_mapping = {}
-        if force and overlapping_columns:
-            for col in overlapping_columns:
-                if col in new_data_df.columns:
-                    dtype_mapping[col] = new_data_df[col].dtype
-        
+
         # Merge new data with existing data
         res = pd.concat([self.data, new_data_df], axis=0, join="outer")
         res = res.groupby(level=0, observed=True).last()
-        
-        # 关键修改：对于force=True的情况，修复重叠列的dtype
-        if force and dtype_mapping:
-            for col, dtype in dtype_mapping.items():
-                if col in res.columns:
-                    try:
-                        # 尝试将列转换回新数据的原始dtype
-                        res[col] = res[col].astype(dtype)
-                        if self.verbose:
-                            print(f"Column '{col}' dtype restored to {dtype}")
-                    except Exception as e:
-                        # 如果类型转换失败，发出警告但继续执行
-                        warnings.warn(
-                            f"Failed to convert column '{col}' to dtype {dtype} "
-                            f"after force update: {e}. Column will keep dtype {res[col].dtype}."
-                        )
-        
+
         # Get new shape and compare
         new_shape = res.shape
         new_rows, new_cols = new_shape

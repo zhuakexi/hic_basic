@@ -291,29 +291,16 @@ class TestAna(unittest.TestCase):
         # Should be able to revert using the mapping
         ana2.revert(1)  # Should work via file mapping
 
-    def test_force_parameter(self):
+    def test_force_parameter_deprecated(self):
         """
-        Test the force parameter for overwriting existing data.
+        Test that the force parameter triggers a deprecation warning.
         """
         ana = Ana(self.home, clear=True, verbose=False)
-        
-        # First update without force
-        df1 = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
-        ana.update(df1, key="data", force=False)
-        initial_shape = ana.data.shape
-        
-        # Try to update same key without force - should be skipped
-        # `force`` only work for dict and series input 
-        dat = {
-            "z" : 3,
-            "w" : 4
-        }
-        ana.update(dat, key="A", force=False)
-        self.assertEqual(ana.data.shape, initial_shape)  # No change
-        
-        # Update with force - should overwrite
-        ana.update(dat, key="A", force=True)
-        self.assertEqual(ana.data.shape[0], 4)  # Add new data
+        df = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
+
+        with self.assertWarns(FutureWarning) as ctx:
+            ana.update(df, force=False)
+        self.assertIn("force", str(ctx.warning))
 
     def test_max_commits_parameter(self):
         """
