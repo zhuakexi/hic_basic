@@ -1,5 +1,6 @@
 # This module is designed for bioinformatic project management
 from pathlib import Path
+import hashlib
 import re
 import shutil
 import pandas as pd
@@ -636,27 +637,49 @@ class Ana:
             return load_json(self.obj_path)
         except FileNotFoundError:
             return {}
+
+    def _compute_state_hash(self):
+        """
+        Compute SHA-256 hash of the current data + obj state.
+
+        Used for idempotency detection in update().
+        """
+        h = hashlib.sha256()
+        # Hash data file
+        if self.data_path.exists():
+            h.update(self.data_path.read_bytes())
+        # Hash schema file
+        if self.schema_path.exists():
+            h.update(self.schema_path.read_bytes())
+        # Hash obj file
+        if self.obj_path.exists():
+            h.update(self.obj_path.read_bytes())
+        return h.hexdigest()
     
-    def commit(self, description=None):
+    def commit(self, description=None, state_hash=None):
         """
         Create a new commit snapshot of the current data state.
-        
+
         Parameters
         ----------
         description : str, optional
             Human-readable description of the commit. If None, uses commit ID.
             Must be unique and cannot be purely numeric.
-            
+        state_hash : str, optional
+            Pre-computed SHA-256 hash of the current data state. If None,
+            will be computed from the data files. Used for idempotency
+            detection in update().
+
         Returns
         -------
         int
             Commit ID of the newly created commit.
-            
+
         Raises
         ------
         ValueError
             If description already exists or is purely numeric.
-            
+
         Notes
         -----
         Each commit creates physical copies of data files and schema files.
@@ -665,7 +688,7 @@ class Ana:
         assert isinstance(description, (str, type(None))), "Description must be a string or None"
         # Load current metadata
         meta = load_json(self.commit_meta_path)
-        
+
         # Generate commit ID and validate description
         commit_id = meta["last_commit_count"] + 1
         if description is None:
@@ -678,16 +701,21 @@ class Ana:
             if re.fullmatch(r'-?\d+', stripped_description):
                 raise ValueError("Commit description cannot be purely numeric")
         meta["last_commit_count"] = commit_id
-        
+
         # Get physical filename for this commit using circular naming
         commit_filename = self._get_commit_filename(commit_id)
-        
+
+        # Compute state hash if not provided
+        if state_hash is None:
+            state_hash = self._compute_state_hash()
+
         # Create commit metadata entry
         commit_entry = {
             "id": commit_id,
             "description": description,
             "timestamp": datetime.now().isoformat(),
-            "filename": commit_filename
+            "filename": commit_filename,
+            "state_hash": state_hash,
         }
         meta["commits"].append(commit_entry)
         
@@ -738,9 +766,13 @@ class Ana:
         
         return commit_id
     
-    def update(self, new_data, key=None, description=None, force=None):
+    def update(self, new_data, key=None, description=None, force=False):
         """
         Update data storage and automatically commit changes.
+
+        This operation is **idempotent**: calling update() with the same data
+        will not create additional commits. Use ``force=True`` to override
+        this behavior and create a new commit regardless.
 
         Parameters
         ----------
@@ -750,21 +782,22 @@ class Ana:
             Specifies the column name (for dict/Series) or object key (for list).
         description : str, optional
             Custom description for the automatic commit.
-        force : bool, optional
-            Deprecated. No longer has any effect. Kept for backward compatibility.
+        force : bool, optional, default False
+            If True, create a new commit even when the data state is identical
+            to the last commit. Useful for recording explicit checkpoints during
+            iterative development.
+
+        Returns
+        -------
+        int
+            Commit ID of the new commit, or the last commit ID if the update
+            was skipped due to idempotency.
         """
-        if force is not None:
-            warnings.warn(
-                "The 'force' parameter is deprecated and will be removed in a future version.",
-                FutureWarning,
-                stacklevel=2,
-            )
-        
         # Process different data types
         if isinstance(new_data, pd.DataFrame):
             new_data_df = new_data.copy()
         elif isinstance(new_data, pd.Series):
-            if not key is None:
+            if key is not None:
                 new_data = new_data.copy().rename(key)
             new_data_df = new_data.to_frame()
         elif isinstance(new_data, dict):
@@ -781,10 +814,10 @@ class Ana:
             dump_json(obj, self.obj_path)
             if self.verbose:
                 print("Object data updated.")
-            return 
+            return self._maybe_commit(description, force)
         else:
             raise TypeError(f"Unsupported data type: {type(new_data)}")
-        
+
         # Record original data shape for comparison
         original_shape = self.data.shape
         original_rows, original_cols = original_shape
@@ -796,30 +829,57 @@ class Ana:
         # Get new shape and compare
         new_shape = res.shape
         new_rows, new_cols = new_shape
-        
+
         # Print shape change information if rows changed
         if original_rows != new_rows:
             row_change = new_rows - original_rows
             row_change_type = "added" if row_change > 0 else "removed"
             print(f"Data shape changed: {original_shape} -> {new_shape}")
             print(f"Rows {row_change_type}: {abs(row_change)}")
-        
+
         # Also print column changes if any
         if original_cols != new_cols:
             col_change = new_cols - original_cols
             col_change_type = "added" if col_change > 0 else "removed"
             print(f"Columns {col_change_type}: {abs(col_change)}")
-        
+
         # Save the updated data with schema
         self._save_data_with_schema(res, self.data_path)
-        
+
         if self.verbose:
             print("Data updated with schema preservation.")
-        
-        # Create commit for the data change
-        self.commit(description=description)
-        if self.verbose:
-            print("Data updated and committed.")
+
+        return self._maybe_commit(description, force)
+
+    def _maybe_commit(self, description, force):
+        """
+        Commit only if the current state differs from the last commit,
+        unless ``force=True``.
+
+        Returns
+        -------
+        int
+            New commit ID, or the last commit ID if skipped.
+        """
+        meta = load_json(self.commit_meta_path)
+        current_hash = self._compute_state_hash()
+
+        # Get last commit's hash (if any)
+        last_hash = None
+        last_commit_id = None
+        if meta["commits"]:
+            last_commit = meta["commits"][-1]
+            last_hash = last_commit.get("state_hash")
+            last_commit_id = last_commit["id"]
+
+        # Idempotency check
+        if not force and last_hash is not None and current_hash == last_hash:
+            if self.verbose:
+                print(f"Data unchanged, skipping commit (last commit: {last_commit_id})")
+            return last_commit_id
+
+        # Proceed with commit
+        return self.commit(description=description, state_hash=current_hash)
     
     def revert(self, commit_repr):
         """

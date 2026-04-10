@@ -291,16 +291,57 @@ class TestAna(unittest.TestCase):
         # Should be able to revert using the mapping
         ana2.revert(1)  # Should work via file mapping
 
-    def test_force_parameter_deprecated(self):
+    def test_idempotent_update(self):
         """
-        Test that the force parameter triggers a deprecation warning.
+        Test that update() is idempotent: calling with the same data
+        does not create additional commits.
         """
         ana = Ana(self.home, clear=True, verbose=False)
         df = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
 
-        with self.assertWarns(FutureWarning) as ctx:
-            ana.update(df, force=False)
-        self.assertIn("force", str(ctx.warning))
+        # First update should create a commit
+        cid1 = ana.update(df)
+        self.assertEqual(cid1, 1)
+
+        # Second update with identical data should skip commit
+        cid2 = ana.update(df)
+        self.assertEqual(cid2, cid1)  # Same commit ID returned
+
+        # Verify no new commits were created
+        meta = load_json(ana.commit_meta_path)
+        self.assertEqual(len(meta["commits"]), 1)
+
+    def test_force_override_idempotency(self):
+        """
+        Test that force=True overrides idempotency and creates a new commit.
+        """
+        ana = Ana(self.home, clear=True, verbose=False)
+        df = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
+
+        cid1 = ana.update(df)
+        self.assertEqual(cid1, 1)
+
+        # force=True should create a new commit even with identical data
+        cid2 = ana.update(df, force=True)
+        self.assertGreater(cid2, cid1)
+
+        meta = load_json(ana.commit_meta_path)
+        self.assertEqual(len(meta["commits"]), 2)
+
+    def test_update_different_data_creates_commit(self):
+        """
+        Test that update() with different data always creates a new commit.
+        """
+        ana = Ana(self.home, clear=True, verbose=False)
+        df1 = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
+        df2 = pd.DataFrame({"A": [3, 4]}, index=["z", "w"])
+
+        cid1 = ana.update(df1)
+        cid2 = ana.update(df2)
+        self.assertGreater(cid2, cid1)
+
+        meta = load_json(ana.commit_meta_path)
+        self.assertEqual(len(meta["commits"]), 2)
 
     def test_max_commits_parameter(self):
         """
