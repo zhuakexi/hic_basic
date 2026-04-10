@@ -13393,8 +13393,8 @@ Filter out low-quality cells.
 Input:
     ccol: column name of contact number
     ucol: column name of umis
-    c_threshold: [low, high] for contacts
-    u_threshold: [low, high] for contacts
+    c_threshold: [low, high] for contacts, use None for unbounded (e.g., [None, 2000] means only upper limit)
+    u_threshold: [low, high] for umis, use None for unbounded (e.g., [None, 2000] means only upper limit)
 Output:
     new df with qc-passed rows
 
