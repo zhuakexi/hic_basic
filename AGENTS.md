@@ -9,6 +9,7 @@ This repository is a Python library and CLI for Hi-C / 3D genome data processing
 - Search by module: `hic_basic api list coolstuff`
 - Repo-local fallback: `python docs/search_api.py cool2mat`
 - Programmatic index: `docs/api_index.json`
+- Package-installed index: `hic_basic/data/api_index.json`
 - Full reference: `docs/API_REFERENCE.md`
 
 ## Repo layout (high signal)
@@ -30,14 +31,16 @@ This repository is a Python library and CLI for Hi-C / 3D genome data processing
 
 ## Documentation workflow
 - Public functions are auto-indexed; keep docstrings accurate.
-- Regenerate docs after adding/updating public APIs:
+- Regenerate docs/indexes after adding, renaming, moving, deleting, or changing docstrings/signatures of public APIs:
   - `./run_in_env.sh python scripts/generate_api_reference.py`
-  - Commit both code changes and updated docs (`docs/API_REFERENCE.md`, `docs/api_index.json`).
+  - Verify installed-package lookup: `./run_in_env.sh hic_basic api show <symbol>`
+  - Verify repo-local fallback: `./run_in_env.sh python docs/search_api.py <symbol>`
+  - Commit code plus generated artifacts: `docs/API_REFERENCE.md`, `docs/api_index.json`, `hic_basic/data/api_index.json`.
 
 ## API command system discipline
-- Treat `docs/api_index.json` and the future package-installed API index as generated artifacts from the same source; do not hand-edit either index.
+- Treat `docs/api_index.json` and `hic_basic/data/api_index.json` as generated artifacts from the same source; do not hand-edit either index.
 - When changing public functions, keep signatures and docstrings agent-usable: include the purpose, important inputs, return value, and any non-obvious constraints.
-- After adding, renaming, moving, or deleting public APIs, regenerate the API docs/index and verify lookup still works for the changed symbol.
+- After API changes, regenerate the API docs/index and verify lookup still works for the changed symbol before committing.
 - If modifying the API lookup command itself, preserve compatibility with the existing repo-local workflow: `python docs/search_api.py <query>`, `--module`, `--keyword`, and `--list-modules`.
 - Prefer adding shared API lookup logic in importable library code and making `docs/search_api.py` plus `hic_basic api ...` thin command wrappers around it.
 - Keep downstream usage independent of the repo checkout: `hic_basic api ...` must read package-installed resources, not assume the current working directory is the hic_basic repository.
@@ -54,6 +57,7 @@ This repository is a Python library and CLI for Hi-C / 3D genome data processing
    - avoid absolute paths and large files
    - when shrinking data, keep a reproducible command or note in the test
 4. **Avoid project-specific logic** in this repo; put shared, general utilities only.
+5. **Keep generated API artifacts synchronized** whenever public API docs/signatures change.
 
 ## Project conventions
 - Prefer `read_meta()` from `hic_basic.hicio` for metadata ingestion instead of ad-hoc pandas reads.
