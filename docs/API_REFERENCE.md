@@ -6139,24 +6139,46 @@ No documentation available.
 **Returns:** `pd.DataFrame`
 
 
-Simplediff method to compute differential interactions.
-Input:
-    groupA_samples: sample names of group A
-    groupB_samples: sample names of group B
-    max_linear_dist: max linear distance to consider
-    max_3d_dist: max 3D distance to consider, if any of groupA and groupB have mean distance
-        larger than this value in pixel, this pixel will be filtered out
-    fdrcut: FDR cutoff, if None, no multiple testing correction and will give all valid pixels
-        if set, only pixels with FDR < fdrcut will be returned
-    chrom_blacklist: chromosomes to exclude
-    n_jobs: number of threads for parallel computing
-    mem: memory limit for each worker(GB)
-Output:
-    DI: differential interactions, index and columns are 3-level multiindex
-    (chrom, start1, start2)
+Detect differential 3D interactions between sample groups.
+
+Compare 3D spatial distances between two groups using SimpleDiff method
+with Mann-Whitney U test and FDR correction. Identifies genomic regions
+with significantly different 3D structure organization.
+
+Parameters
+----------
+groupA_samples : list
+    Sample names in group A (e.g., control condition)
+groupB_samples : list
+    Sample names in group B (e.g., treatment condition)
+max_linear_dist : int
+    Maximum genomic distance to consider (default 2 Mb)
+max_3d_dist : float
+    Maximum 3D distance threshold; pixels with mean distance > this
+    in any group are filtered out
+fdrcut : float
+    FDR cutoff for significance. If None, returns all valid pixels
+    without multiple testing correction.
+chrom_blacklist : list
+    Chromosomes to exclude from analysis (default: chrX, chrY)
+n_jobs : int, optional
+    Number of parallel workers for dask distributed computation
+mem : int
+    Memory limit per worker in GB (default: 4)
+
+Returns
+-------
+pd.DataFrame
+    Differential interactions with (chrom, start1, start2) multiindex,
+    columns include: p, A, B, diff, FDR (if fdrcut specified)
+
+Examples
+--------
+>>> mchr = Mchr.from_netcdf("structures.nc")
+>>> di = mchr.DI(["ctrl1", "ctrl2"], ["treat1", "treat2"], fdrcut=0.05)
 
 
-**Source:** Line 358 in [mchr.py](mchr.py#L358)
+**Source:** Line 502 in [mchr.py](mchr.py#L502)
 
 
 ---
@@ -6167,23 +6189,37 @@ Output:
 **Returns:** `pd.DataFrame`
 
 
-Compute distance matrix.
-Input:
-    samples: sample names to compute
-    region_pair: genome region to compute DM, can include inter-chromosome regions,
-        can cross chromosomes.
-        [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]
-    proximity: if not None, calculate proximity instead of distance
-        count pixels within proximity
-    n_jobs: number of threads for parallel computing
-        if None, use a simple in-memory method
-        else, use dask
-Output:
-    DM: distance matrix, index and columns are 2-level multiindex
-    (chrom, start)
+Compute 3D distance matrix from single-cell Hi-C structures.
+
+Calculate pairwise Euclidean distances between genomic bins using
+.3dg structure coordinates. Supports inter-chromosome regions and
+multi-sample aggregation with parallel computation.
+
+Parameters
+----------
+samples : list
+    Sample names to include in aggregation
+region_pair : list
+    Genome regions as [[(chrom1,pos1),(chrom1,pos2)], [(chrom2,pos1),(chrom2,pos2)]]
+    Supports inter-chromosome regions and cross-chromosome analysis.
+min_samples : int, optional
+    Minimum samples required for valid pixel, filters low coverage bins
+n_jobs : int, optional
+    Number of parallel workers. Uses dask distributed if specified,
+    otherwise in-memory computation.
+
+Returns
+-------
+pd.DataFrame
+    Distance matrix with (chrom, start) multiindex for rows and columns
+
+Examples
+--------
+>>> mchr = Mchr.from_netcdf("structures.nc")
+>>> dm = mchr.DM(["sample1", "sample2"], [["chr1",0,100e6]])
 
 
-**Source:** Line 310 in [mchr.py](mchr.py#L310)
+**Source:** Line 428 in [mchr.py](mchr.py#L428)
 
 
 ---
@@ -6194,19 +6230,32 @@ Output:
 **Returns:** `pd.DataFrame`
 
 
-Compute insulation score for each sample.
-NOTE: this method is not recommended for large regions.
-    Will be replaced by a more efficient method.
-Input:
-    samples: sample names to compute
-    region_pair: genome region to compute IS, can only use intra-chromosome regions here
-    w: window size
-Output:
-    IS: insulation score, index is 2-level multiindex
-    (chrom, start), columns are sample names
+Compute insulation score from 3D distance matrices.
+
+Calculate TAD boundary strength using insulation score on single-cell
+3D structure distance matrices. Transforms distances to proximity scores
+and applies sliding window insulation score calculation.
+
+Parameters
+----------
+samples : list
+    Sample names to compute insulation scores for
+region_pair : list
+    Genome region to compute insulation score, intra-chromosome only
+w : int
+    Window size for insulation score calculation in bins
+
+Returns
+-------
+pd.DataFrame
+    Insulation scores with (chrom, start) multiindex, columns are sample names
+
+Notes
+-----
+Not recommended for large regions. Will be replaced by a more efficient method.
 
 
-**Source:** Line 277 in [mchr.py](mchr.py#L277)
+**Source:** Line 382 in [mchr.py](mchr.py#L382)
 
 
 ---
@@ -6217,22 +6266,34 @@ Output:
 **Returns:** `pd.DataFrame`
 
 
-Compute proximity matrix.
-Input:
-    samples: sample names to compute
-    region_pair: genome region to compute PM, can include inter-chromosome regions,
-        can cross chromosomes.
-        [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]
-    proximity: count pixels within proximity
-    n_jobs: number of threads for parallel computing
-        if None, use a simple in-memory method
-        else, use dask
-Output:
-    PM: proximity matrix, index and columns are 2-level multiindex
-    (chrom, start)
+Compute proximity matrix from 3D structure coordinates.
+
+Count genomic bins within a spatial proximity threshold in .3dg structures.
+Useful for contact frequency estimation from 3D models and spatial
+proximity analysis.
+
+Parameters
+----------
+samples : list
+    Sample names to include in aggregation
+region_pair : list
+    Genome regions as [[(chrom1,pos1),(chrom1,pos2)], [(chrom2,pos1),(chrom2,pos2)]]
+    Supports inter-chromosome regions and cross-chromosome analysis.
+proximity : int
+    Spatial distance threshold to count as proximal contacts
+min_samples : int, optional
+    Minimum samples required for valid pixel
+n_jobs : int, optional
+    Number of parallel workers. Uses dask distributed if specified.
+
+Returns
+-------
+pd.DataFrame
+    Proximity matrix with (chrom, start) multiindex for rows and columns,
+    normalized by sample coverage.
 
 
-**Source:** Line 334 in [mchr.py](mchr.py#L334)
+**Source:** Line 466 in [mchr.py](mchr.py#L466)
 
 
 ---
@@ -6241,14 +6302,40 @@ Output:
 ### `from_netcdf(cls, _3dg_ds_fp: str, ddir=None, _3dg_files=None, samples=None, genome=None, binsize=None, flavor=None)`
 
 
-Initialize a Mchr object from a netcdf file.
-Input:
-    _3dg_ds_fp: netcdf file path
-Output:
-    Mchr object
+Load Mchr object from a saved netcdf file.
+
+Restore a previously saved Mchr 3D structure dataset from netcdf format.
+Useful for reusing processed .3dg structure data without re-ingestion.
+
+Parameters
+----------
+_3dg_ds_fp : str
+    Path to the netcdf file containing 3D structure dataset
+ddir : str, optional
+    Directory for intermediate files (default: alongside netcdf)
+_3dg_files : list, optional
+    Override original .3dg file paths stored in netcdf
+samples : list, optional
+    Override sample names stored in netcdf
+genome : str, optional
+    Override genome assembly name
+binsize : int, optional
+    Override bin resolution
+flavor : str, optional
+    Override bin flavor (e.g., 'hickit')
+
+Returns
+-------
+Mchr
+    Mchr object ready for DM/PM/IS/DI analysis
+
+Examples
+--------
+>>> mchr = Mchr.from_netcdf("processed_structures.nc")
+>>> dm = mchr.DM(["sample1"], [["chr1", 0, 50e6]])
 
 
-**Source:** Line 226 in [mchr.py](mchr.py#L226)
+**Source:** Line 295 in [mchr.py](mchr.py#L295)
 
 
 ---
@@ -6259,22 +6346,32 @@ Output:
 **Returns:** `xr.DataArray`
 
 
-Compute distance matrix for each single sample.
-NOTE: this method is not recommended for large regions.
-A better way is to aggregate DM to 1D feature in a split-apply-combine manner.
-Input:
-    samples: sample names to compute
-    region_pair: genome region to compute DM, can include inter-chromosome regions,
-        can cross chromosomes.
-        [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]
-    n_jobs: number of threads for parallel computing
-        if None, use a simple in-memory method
-        else, use dask
-Output:
-    xarray DataArray, sample_name as a dimension
+Compute 3D distance matrix for each single-cell sample.
+
+Calculate pairwise Euclidean distances between genomic bins from
+.3dg structure coordinates for each individual sample. Returns
+per-sample distance matrices as xarray DataArray.
+
+Parameters
+----------
+samples : list
+    Sample names to compute distance matrices for
+region_pair : list
+    Genome regions as [[(chrom1,pos1),(chrom1,pos2)], [(chrom2,pos1),(chrom2,pos2)]]
+    Supports inter-chromosome regions crossing chromosomes.
+
+Returns
+-------
+xr.DataArray
+    Distance matrix with sample_name dimension, suitable for downstream analysis
+
+Notes
+-----
+Not recommended for large regions. Consider aggregating to 1D features
+using split-apply-combine pattern for better performance.
 
 
-**Source:** Line 254 in [mchr.py](mchr.py#L254)
+**Source:** Line 349 in [mchr.py](mchr.py#L349)
 
 
 ---

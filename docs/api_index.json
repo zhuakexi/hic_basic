@@ -4303,85 +4303,85 @@
     {
       "name": "DI",
       "signature": "DI(self, groupA_samples, groupB_samples, max_linear_dist=2000000, max_3d_dist=5, fdrcut=0.05, chrom_blacklist: list=['chrX', 'chrY'], n_jobs=None, mem: int=4)",
-      "summary": "Simplediff method to compute differential interactions.",
-      "docstring": "Simplediff method to compute differential interactions.\nInput:\n    groupA_samples: sample names of group A\n    groupB_samples: sample names of group B\n    max_linear_dist: max linear distance to consider\n    max_3d_dist: max 3D distance to consider, if any of groupA and groupB have mean distance\n        larger than this value in pixel, this pixel will be filtered out\n    fdrcut: FDR cutoff, if None, no multiple testing correction and will give all valid pixels\n        if set, only pixels with FDR < fdrcut will be returned\n    chrom_blacklist: chromosomes to exclude\n    n_jobs: number of threads for parallel computing\n    mem: memory limit for each worker(GB)\nOutput:\n    DI: differential interactions, index and columns are 3-level multiindex\n    (chrom, start1, start2)",
+      "summary": "Detect differential 3D interactions between sample groups.",
+      "docstring": "Detect differential 3D interactions between sample groups.\n\nCompare 3D spatial distances between two groups using SimpleDiff method\nwith Mann-Whitney U test and FDR correction. Identifies genomic regions\nwith significantly different 3D structure organization.\n\nParameters\n----------\ngroupA_samples : list\n    Sample names in group A (e.g., control condition)\ngroupB_samples : list\n    Sample names in group B (e.g., treatment condition)\nmax_linear_dist : int\n    Maximum genomic distance to consider (default 2 Mb)\nmax_3d_dist : float\n    Maximum 3D distance threshold; pixels with mean distance > this\n    in any group are filtered out\nfdrcut : float\n    FDR cutoff for significance. If None, returns all valid pixels\n    without multiple testing correction.\nchrom_blacklist : list\n    Chromosomes to exclude from analysis (default: chrX, chrY)\nn_jobs : int, optional\n    Number of parallel workers for dask distributed computation\nmem : int\n    Memory limit per worker in GB (default: 4)\n\nReturns\n-------\npd.DataFrame\n    Differential interactions with (chrom, start1, start2) multiindex,\n    columns include: p, A, B, diff, FDR (if fdrcut specified)\n\nExamples\n--------\n>>> mchr = Mchr.from_netcdf(\"structures.nc\")\n>>> di = mchr.DI([\"ctrl1\", \"ctrl2\"], [\"treat1\", \"treat2\"], fdrcut=0.05)",
       "return_type": "pd.DataFrame",
-      "lineno": 358,
+      "lineno": 502,
       "symbol": "hic_basic.mchr.DI",
       "import": "from hic_basic.mchr import DI",
       "source": {
         "module_path": "hic_basic/mchr.py",
-        "lineno": 358
+        "lineno": 502
       }
     },
     {
       "name": "DM",
       "signature": "DM(self, samples: list, region_pair: list, min_samples=None, n_jobs=None)",
-      "summary": "Compute distance matrix.",
-      "docstring": "Compute distance matrix.\nInput:\n    samples: sample names to compute\n    region_pair: genome region to compute DM, can include inter-chromosome regions,\n        can cross chromosomes.\n        [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]\n    proximity: if not None, calculate proximity instead of distance\n        count pixels within proximity\n    n_jobs: number of threads for parallel computing\n        if None, use a simple in-memory method\n        else, use dask\nOutput:\n    DM: distance matrix, index and columns are 2-level multiindex\n    (chrom, start)",
+      "summary": "Compute 3D distance matrix from single-cell Hi-C structures.",
+      "docstring": "Compute 3D distance matrix from single-cell Hi-C structures.\n\nCalculate pairwise Euclidean distances between genomic bins using\n.3dg structure coordinates. Supports inter-chromosome regions and\nmulti-sample aggregation with parallel computation.\n\nParameters\n----------\nsamples : list\n    Sample names to include in aggregation\nregion_pair : list\n    Genome regions as [[(chrom1,pos1),(chrom1,pos2)], [(chrom2,pos1),(chrom2,pos2)]]\n    Supports inter-chromosome regions and cross-chromosome analysis.\nmin_samples : int, optional\n    Minimum samples required for valid pixel, filters low coverage bins\nn_jobs : int, optional\n    Number of parallel workers. Uses dask distributed if specified,\n    otherwise in-memory computation.\n\nReturns\n-------\npd.DataFrame\n    Distance matrix with (chrom, start) multiindex for rows and columns\n\nExamples\n--------\n>>> mchr = Mchr.from_netcdf(\"structures.nc\")\n>>> dm = mchr.DM([\"sample1\", \"sample2\"], [[\"chr1\",0,100e6]])",
       "return_type": "pd.DataFrame",
-      "lineno": 310,
+      "lineno": 428,
       "symbol": "hic_basic.mchr.DM",
       "import": "from hic_basic.mchr import DM",
       "source": {
         "module_path": "hic_basic/mchr.py",
-        "lineno": 310
+        "lineno": 428
       }
     },
     {
       "name": "IS",
       "signature": "IS(self, samples: list, region_pair: list, w: int)",
-      "summary": "Compute insulation score for each sample.",
-      "docstring": "Compute insulation score for each sample.\nNOTE: this method is not recommended for large regions.\n    Will be replaced by a more efficient method.\nInput:\n    samples: sample names to compute\n    region_pair: genome region to compute IS, can only use intra-chromosome regions here\n    w: window size\nOutput:\n    IS: insulation score, index is 2-level multiindex\n    (chrom, start), columns are sample names",
+      "summary": "Compute insulation score from 3D distance matrices.",
+      "docstring": "Compute insulation score from 3D distance matrices.\n\nCalculate TAD boundary strength using insulation score on single-cell\n3D structure distance matrices. Transforms distances to proximity scores\nand applies sliding window insulation score calculation.\n\nParameters\n----------\nsamples : list\n    Sample names to compute insulation scores for\nregion_pair : list\n    Genome region to compute insulation score, intra-chromosome only\nw : int\n    Window size for insulation score calculation in bins\n\nReturns\n-------\npd.DataFrame\n    Insulation scores with (chrom, start) multiindex, columns are sample names\n\nNotes\n-----\nNot recommended for large regions. Will be replaced by a more efficient method.",
       "return_type": "pd.DataFrame",
-      "lineno": 277,
+      "lineno": 382,
       "symbol": "hic_basic.mchr.IS",
       "import": "from hic_basic.mchr import IS",
       "source": {
         "module_path": "hic_basic/mchr.py",
-        "lineno": 277
+        "lineno": 382
       }
     },
     {
       "name": "PM",
       "signature": "PM(self, samples: list, region_pair: list, proximity: int, min_samples=None, n_jobs=None)",
-      "summary": "Compute proximity matrix.",
-      "docstring": "Compute proximity matrix.\nInput:\n    samples: sample names to compute\n    region_pair: genome region to compute PM, can include inter-chromosome regions,\n        can cross chromosomes.\n        [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]\n    proximity: count pixels within proximity\n    n_jobs: number of threads for parallel computing\n        if None, use a simple in-memory method\n        else, use dask\nOutput:\n    PM: proximity matrix, index and columns are 2-level multiindex\n    (chrom, start)",
+      "summary": "Compute proximity matrix from 3D structure coordinates.",
+      "docstring": "Compute proximity matrix from 3D structure coordinates.\n\nCount genomic bins within a spatial proximity threshold in .3dg structures.\nUseful for contact frequency estimation from 3D models and spatial\nproximity analysis.\n\nParameters\n----------\nsamples : list\n    Sample names to include in aggregation\nregion_pair : list\n    Genome regions as [[(chrom1,pos1),(chrom1,pos2)], [(chrom2,pos1),(chrom2,pos2)]]\n    Supports inter-chromosome regions and cross-chromosome analysis.\nproximity : int\n    Spatial distance threshold to count as proximal contacts\nmin_samples : int, optional\n    Minimum samples required for valid pixel\nn_jobs : int, optional\n    Number of parallel workers. Uses dask distributed if specified.\n\nReturns\n-------\npd.DataFrame\n    Proximity matrix with (chrom, start) multiindex for rows and columns,\n    normalized by sample coverage.",
       "return_type": "pd.DataFrame",
-      "lineno": 334,
+      "lineno": 466,
       "symbol": "hic_basic.mchr.PM",
       "import": "from hic_basic.mchr import PM",
       "source": {
         "module_path": "hic_basic/mchr.py",
-        "lineno": 334
+        "lineno": 466
       }
     },
     {
       "name": "from_netcdf",
       "signature": "from_netcdf(cls, _3dg_ds_fp: str, ddir=None, _3dg_files=None, samples=None, genome=None, binsize=None, flavor=None)",
-      "summary": "Initialize a Mchr object from a netcdf file.",
-      "docstring": "Initialize a Mchr object from a netcdf file.\nInput:\n    _3dg_ds_fp: netcdf file path\nOutput:\n    Mchr object",
+      "summary": "Load Mchr object from a saved netcdf file.",
+      "docstring": "Load Mchr object from a saved netcdf file.\n\nRestore a previously saved Mchr 3D structure dataset from netcdf format.\nUseful for reusing processed .3dg structure data without re-ingestion.\n\nParameters\n----------\n_3dg_ds_fp : str\n    Path to the netcdf file containing 3D structure dataset\nddir : str, optional\n    Directory for intermediate files (default: alongside netcdf)\n_3dg_files : list, optional\n    Override original .3dg file paths stored in netcdf\nsamples : list, optional\n    Override sample names stored in netcdf\ngenome : str, optional\n    Override genome assembly name\nbinsize : int, optional\n    Override bin resolution\nflavor : str, optional\n    Override bin flavor (e.g., 'hickit')\n\nReturns\n-------\nMchr\n    Mchr object ready for DM/PM/IS/DI analysis\n\nExamples\n--------\n>>> mchr = Mchr.from_netcdf(\"processed_structures.nc\")\n>>> dm = mchr.DM([\"sample1\"], [[\"chr1\", 0, 50e6]])",
       "return_type": null,
-      "lineno": 226,
+      "lineno": 295,
       "symbol": "hic_basic.mchr.from_netcdf",
       "import": "from hic_basic.mchr import from_netcdf",
       "source": {
         "module_path": "hic_basic/mchr.py",
-        "lineno": 226
+        "lineno": 295
       }
     },
     {
       "name": "multiDM",
       "signature": "multiDM(self, samples: list, region_pair: list)",
-      "summary": "Compute distance matrix for each single sample.",
-      "docstring": "Compute distance matrix for each single sample.\nNOTE: this method is not recommended for large regions.\nA better way is to aggregate DM to 1D feature in a split-apply-combine manner.\nInput:\n    samples: sample names to compute\n    region_pair: genome region to compute DM, can include inter-chromosome regions,\n        can cross chromosomes.\n        [[(chrom1,pos1),(chrom1,pos2)],[(chrom2,pos1),(chrom2,pos2)]\n    n_jobs: number of threads for parallel computing\n        if None, use a simple in-memory method\n        else, use dask\nOutput:\n    xarray DataArray, sample_name as a dimension",
+      "summary": "Compute 3D distance matrix for each single-cell sample.",
+      "docstring": "Compute 3D distance matrix for each single-cell sample.\n\nCalculate pairwise Euclidean distances between genomic bins from\n.3dg structure coordinates for each individual sample. Returns\nper-sample distance matrices as xarray DataArray.\n\nParameters\n----------\nsamples : list\n    Sample names to compute distance matrices for\nregion_pair : list\n    Genome regions as [[(chrom1,pos1),(chrom1,pos2)], [(chrom2,pos1),(chrom2,pos2)]]\n    Supports inter-chromosome regions crossing chromosomes.\n\nReturns\n-------\nxr.DataArray\n    Distance matrix with sample_name dimension, suitable for downstream analysis\n\nNotes\n-----\nNot recommended for large regions. Consider aggregating to 1D features\nusing split-apply-combine pattern for better performance.",
       "return_type": "xr.DataArray",
-      "lineno": 254,
+      "lineno": 349,
       "symbol": "hic_basic.mchr.multiDM",
       "import": "from hic_basic.mchr import multiDM",
       "source": {
         "module_path": "hic_basic/mchr.py",
-        "lineno": 254
+        "lineno": 349
       }
     },
     {
