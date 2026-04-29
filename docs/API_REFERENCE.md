@@ -2,7 +2,7 @@
 
 *Auto-generated API documentation for public functions*
 
-Total modules with public functions: 90
+Total modules with public functions: 93
 
 ---
 
@@ -17,11 +17,14 @@ Total modules with public functions: 90
 - [TI.slingshot.plot](#ti-slingshot-plot) (3 functions)
 - [TI.slingshot.slingshot](#ti-slingshot-slingshot) (22 functions)
 - [TI.slingshot.utils](#ti-slingshot-utils) (5 functions)
-- [ana](#ana) (12 functions)
+- [ana](#ana) (15 functions)
+- [api_query](#api_query) (13 functions)
 - [atac](#atac) (6 functions)
 - [basic](#basic) (5 functions)
 - [binnify](#binnify) (1 functions)
 - [calculate](#calculate) (4 functions)
+- [cli.ana_describe](#cli-ana_describe) (2 functions)
+- [cli.api](#cli-api) (2 functions)
 - [cli.download](#cli-download) (2 functions)
 - [cli.render](#cli-render) (3 functions)
 - [cli.version](#cli-version) (2 functions)
@@ -36,7 +39,7 @@ Total modules with public functions: 90
 - [crossover.pipeline](#crossover-pipeline) (4 functions)
 - [crossover.pipeline_mii](#crossover-pipeline_mii) (5 functions)
 - [cycle_phasing](#cycle_phasing) (2 functions)
-- [data](#data) (18 functions)
+- [data.file_formats](#data-file_formats) (2 functions)
 - [embedding](#embedding) (5 functions)
 - [feature](#feature) (10 functions)
 - [genome](#genome) (11 functions)
@@ -46,7 +49,7 @@ Total modules with public functions: 90
 - [impute.schicluster](#impute-schicluster) (3 functions)
 - [impute.simpute](#impute-simpute) (9 functions)
 - [inter_contact](#inter_contact) (3 functions)
-- [interpolate](#interpolate) (10 functions)
+- [interpolate](#interpolate) (5 functions)
 - [lap_embedding](#lap_embedding) (3 functions)
 - [mchr](#mchr) (7 functions)
 - [metrics](#metrics) (4 functions)
@@ -1208,10 +1211,35 @@ No documentation available.
 
 **File:** `ana.py`
 
-**Public functions:** 12
+**Public functions:** 15
 
 
-### `commit(self, description=None)`
+### `column_meta(self, key: str)`
+
+**Returns:** `dict`
+
+
+Get full metadata for a column or object key.
+
+Parameters
+----------
+key : str
+    Column name or object key.
+
+Returns
+-------
+dict
+    Metadata dict (description, computed_by, depends_on,
+    file_structure, commit_id). Empty dict if not found.
+
+
+**Source:** Line 1250 in [ana.py](ana.py#L1250)
+
+
+---
+
+
+### `commit(self, description=None, state_hash=None)`
 
 
 Create a new commit snapshot of the current data state.
@@ -1221,24 +1249,28 @@ Parameters
 description : str, optional
     Human-readable description of the commit. If None, uses commit ID.
     Must be unique and cannot be purely numeric.
-    
+state_hash : str, optional
+    Pre-computed SHA-256 hash of the current data state. If None,
+    will be computed from the data files. Used for idempotency
+    detection in update().
+
 Returns
 -------
 int
     Commit ID of the newly created commit.
-    
+
 Raises
 ------
 ValueError
     If description already exists or is purely numeric.
-    
+
 Notes
 -----
 Each commit creates physical copies of data files and schema files.
 Uses circular file naming to prevent infinite filename number growth.
 
 
-**Source:** Line 640 in [ana.py](ana.py#L640)
+**Source:** Line 727 in [ana.py](ana.py#L727)
 
 
 ---
@@ -1250,7 +1282,7 @@ Uses circular file naming to prevent infinite filename number growth.
 No documentation available.
 
 
-**Source:** Line 513 in [ana.py](ana.py#L513)
+**Source:** Line 582 in [ana.py](ana.py#L582)
 
 
 ---
@@ -1262,7 +1294,7 @@ No documentation available.
 Create an empty JSON file with empty dictionary content.
 
 
-**Source:** Line 199 in [ana.py](ana.py#L199)
+**Source:** Line 219 in [ana.py](ana.py#L219)
 
 
 ---
@@ -1284,7 +1316,7 @@ Uses schema file to restore all pandas dtypes including categorical, string,
 nullable integers, etc. Falls back to standard CSV reading if schema is missing.
 
 
-**Source:** Line 605 in [ana.py](ana.py#L605)
+**Source:** Line 674 in [ana.py](ana.py#L674)
 
 
 ---
@@ -1296,7 +1328,61 @@ nullable integers, etc. Falls back to standard CSV reading if schema is missing.
 Path to the CSV file storing structured data.
 
 
-**Source:** Line 226 in [ana.py](ana.py#L226)
+**Source:** Line 246 in [ana.py](ana.py#L246)
+
+
+---
+
+
+### `describe(self)`
+
+
+Print a compact, agent-friendly summary of columns and objects.
+
+Output includes column names, their schema type, and short
+descriptions (if available). Also lists stored objects.
+
+Example output::
+
+    Columns (3):
+      bam_paths        file         Aligned BAM paths per sample
+      norm_contact     standard     KR-normalized contact freq
+      raw_contact      standard     Raw contact counts
+
+    Objects (2):
+      peak_files       (no description)
+      sample_groups    Group assignments for 3 conditions
+
+
+**Source:** Line 1210 in [ana.py](ana.py#L1210)
+
+
+---
+
+
+### `file_format(self, key: str)`
+
+**Returns:** `dict`
+
+
+Look up the file format definition for a file-type column.
+
+Searches instance-level overrides first, then falls back to the
+built-in ``hic_basic.data.file_formats`` registry.
+
+Parameters
+----------
+key : str
+    File format key (e.g., ``"cool"``, ``"bam"``) or column name
+    whose ``file_format`` schema value will be used for lookup.
+
+Returns
+-------
+dict or None
+    Format definition, or None if not found.
+
+
+**Source:** Line 1267 in [ana.py](ana.py#L1267)
 
 
 ---
@@ -1313,7 +1399,7 @@ dict
     Current schema information including column dtypes.
 
 
-**Source:** Line 933 in [ana.py](ana.py#L933)
+**Source:** Line 1133 in [ana.py](ana.py#L1133)
 
 
 ---
@@ -1325,7 +1411,7 @@ dict
 Display all available commits in chronological order.
 
 
-**Source:** Line 922 in [ana.py](ana.py#L922)
+**Source:** Line 1122 in [ana.py](ana.py#L1122)
 
 
 ---
@@ -1342,7 +1428,7 @@ dict
     Current object storage state. Returns empty dict if no objects exist.
 
 
-**Source:** Line 626 in [ana.py](ana.py#L626)
+**Source:** Line 695 in [ana.py](ana.py#L695)
 
 
 ---
@@ -1354,7 +1440,7 @@ dict
 Path to the JSON file storing unstructured object data.
 
 
-**Source:** Line 236 in [ana.py](ana.py#L236)
+**Source:** Line 256 in [ana.py](ana.py#L256)
 
 
 ---
@@ -1376,7 +1462,7 @@ int
     Commit ID of the new commit created after revert operation.
 
 
-**Source:** Line 863 in [ana.py](ana.py#L863)
+**Source:** Line 1063 in [ana.py](ana.py#L1063)
 
 
 ---
@@ -1388,16 +1474,20 @@ int
 Path to the JSON schema file storing dtype information.
 
 
-**Source:** Line 231 in [ana.py](ana.py#L231)
+**Source:** Line 251 in [ana.py](ana.py#L251)
 
 
 ---
 
 
-### `update(self, new_data, key=None, description=None, force=False)`
+### `update(self, new_data, key=None, description=None, force=False, column_descriptions=None, computed_by=None, depends_on=None, file_format=None)`
 
 
 Update data storage and automatically commit changes.
+
+This operation is **idempotent**: calling update() with the same data
+will not create additional commits. Use ``force=True`` to override
+this behavior and create a new commit regardless.
 
 Parameters
 ----------
@@ -1408,10 +1498,223 @@ key : str, optional
 description : str, optional
     Custom description for the automatic commit.
 force : bool, optional, default False
-    If True, overwrite existing data for the given key.
+    If True, create a new commit even when the data state is identical
+    to the last commit. Useful for recording explicit checkpoints during
+    iterative development.
+column_descriptions : dict, optional
+    ``{col_name: "short description"}`` for new or existing columns.
+    Used by ``describe()`` and for agent discoverability.
+computed_by : dict, optional
+    ``{"file": "/path/to/script.ipynb", "note": "optional context"}``.
+    If not provided, auto-detected from the calling frame.
+depends_on : dict, optional
+    Column/object dependencies. Format::
+
+        {"col_name": {"columns": ["a", "b"], "objects": ["x"]}}
+
+    Can also be a flat dict mapping col_name to a list of mixed deps
+    (the method will classify them automatically).
+file_format : dict, optional
+    ``{col_name: format_key}`` to override auto-detected file format
+    (e.g., ``{"bam_paths": "bam"}``).
+
+Returns
+-------
+int
+    Commit ID of the new commit, or the last commit ID if the update
+    was skipped due to idempotency.
 
 
-**Source:** Line 741 in [ana.py](ana.py#L741)
+**Source:** Line 837 in [ana.py](ana.py#L837)
+
+
+---
+
+
+## api_query
+
+**File:** `api_query.py`
+
+**Public functions:** 13
+
+
+### `entry_to_json(entry: Dict[str, Any], include_resolved_source: bool=False)`
+
+**Returns:** `Dict[str, Any]`
+
+
+Return a stable JSON-serializable entry payload.
+
+
+**Source:** Line 192 in [api_query.py](api_query.py#L192)
+
+
+---
+
+
+### `first_doc_line(docstring: str)`
+
+**Returns:** `str`
+
+
+Extract the first non-empty line from a docstring.
+
+
+**Source:** Line 48 in [api_query.py](api_query.py#L48)
+
+
+---
+
+
+### `iter_entries(api_index: Index)`
+
+**Returns:** `Iterable[Dict[str, Any]]`
+
+
+Yield normalized function entries from an API index.
+
+
+**Source:** Line 24 in [api_query.py](api_query.py#L24)
+
+
+---
+
+
+### `list_module_functions(api_index: Index, module_query: str)`
+
+**Returns:** `List[Dict[str, Any]]`
+
+
+List functions for exact or partial module matches.
+
+
+**Source:** Line 65 in [api_query.py](api_query.py#L65)
+
+
+---
+
+
+### `list_modules(api_index: Index)`
+
+**Returns:** `List[Dict[str, Any]]`
+
+
+Return module names and public function counts.
+
+
+**Source:** Line 57 in [api_query.py](api_query.py#L57)
+
+
+---
+
+
+### `load_api_index(json_path: Optional[Path]=None)`
+
+**Returns:** `Index`
+
+
+Load an API index from a path or from package resources.
+
+
+**Source:** Line 16 in [api_query.py](api_query.py#L16)
+
+
+---
+
+
+### `normalize_entry(module: str, func: Dict[str, Any])`
+
+**Returns:** `Dict[str, Any]`
+
+
+Return a function entry with stable derived fields.
+
+
+**Source:** Line 31 in [api_query.py](api_query.py#L31)
+
+
+---
+
+
+### `resolve_source(entry: Dict[str, Any])`
+
+**Returns:** `Dict[str, Any]`
+
+
+Resolve source location in the installed environment when possible.
+
+
+**Source:** Line 167 in [api_query.py](api_query.py#L167)
+
+
+---
+
+
+### `resolve_symbol(api_index: Index, symbol: str)`
+
+**Returns:** `Tuple[str, List[Dict[str, Any]]]`
+
+
+Resolve a short function name or fully qualified hic_basic symbol.
+
+
+**Source:** Line 145 in [api_query.py](api_query.py#L145)
+
+
+---
+
+
+### `score_entry(entry: Dict[str, Any], tokens: List[str])`
+
+**Returns:** `int`
+
+
+Score an entry for query tokens.
+
+
+**Source:** Line 119 in [api_query.py](api_query.py#L119)
+
+
+---
+
+
+### `search_by_keyword(api_index: Index, keyword: str, case_sensitive: bool=False)`
+
+**Returns:** `List[Dict[str, Any]]`
+
+
+Search for functions by keyword in docstrings.
+
+
+**Source:** Line 89 in [api_query.py](api_query.py#L89)
+
+
+---
+
+
+### `search_by_name(api_index: Index, query: str, case_sensitive: bool=False)`
+
+**Returns:** `List[Dict[str, Any]]`
+
+
+Search for functions by name.
+
+
+**Source:** Line 78 in [api_query.py](api_query.py#L78)
+
+
+---
+
+
+### `search_entries(api_index: Index, query: str, limit: int=10)`
+
+**Returns:** `List[Dict[str, Any]]`
+
+
+Rank API entries using deterministic keyword matching.
+
+
+**Source:** Line 101 in [api_query.py](api_query.py#L101)
 
 
 ---
@@ -1788,6 +2091,68 @@ Returns:
 
 
 **Source:** Line 45 in [calculate.py](calculate.py#L45)
+
+
+---
+
+
+## cli.ana_describe
+
+**File:** `cli/ana_describe.py`
+
+**Public functions:** 2
+
+
+### `add_arguments(subparser)`
+
+
+No documentation available.
+
+
+**Source:** Line 12 in [cli/ana_describe.py](cli/ana_describe.py#L12)
+
+
+---
+
+
+### `run(args)`
+
+
+No documentation available.
+
+
+**Source:** Line 32 in [cli/ana_describe.py](cli/ana_describe.py#L32)
+
+
+---
+
+
+## cli.api
+
+**File:** `cli/api.py`
+
+**Public functions:** 2
+
+
+### `add_arguments(subparser)`
+
+
+No documentation available.
+
+
+**Source:** Line 23 in [cli/api.py](cli/api.py#L23)
+
+
+---
+
+
+### `run(args)`
+
+
+No documentation available.
+
+
+**Source:** Line 47 in [cli/api.py](cli/api.py#L47)
 
 
 ---
@@ -3979,340 +4344,46 @@ Output:
 ---
 
 
-## data
+## data.file_formats
 
-**File:** `data.py`
+**File:** `data/file_formats.py`
 
-**Public functions:** 18
-
-
-### `Jichang2022_embryo_gene_module()`
+**Public functions:** 2
 
 
-No documentation available.
+### `get_format(key: str)`
+
+**Returns:** `dict | None`
 
 
-**Source:** Line 743 in [data.py](data.py#L743)
+Look up a file format definition by key.
+
+Parameters
+----------
+key : str
+    Format key (e.g., ``"cool"``, ``"bam"``).
+
+Returns
+-------
+dict or None
+    Format definition dict, or None if not found.
 
 
----
-
-
-### `XijinGe2017_embryo_gene_module()`
-
-
-Gene clusters from `Exploratory bioinformatics investigation reveals importance of “junk” DNA in early embryo development`.
-Note:
-    has excel gene-name to Date problem
-Output:
-    dict of list.
-    A: Oocyte-specific
-    B: 2-4 transient
-    C: oocyte-16C
-    D: 2-16C transient strong
-    E: 2-16 suppressed
-    F: 2-16C mild
-    G: 2-4-8 graduate activation
-    H: Blastocyst strong activation (starts at 8c)
-    I: Blastocyst specific A
-    J: Blastocyst specific B
-
-
-**Source:** Line 752 in [data.py](data.py#L752)
+**Source:** Line 142 in [data/file_formats.py](data/file_formats.py#L142)
 
 
 ---
 
 
-### `callback(data)`
+### `list_formats()`
 
+**Returns:** `list[str]`
 
-No documentation available.
 
+Return sorted list of all registered format keys.
 
-**Source:** Line 265 in [data.py](data.py#L265)
 
-
----
-
-
-### `chromosomes(genome, order=False)`
-
-
-Get chromosome lengths.
-Input:
-    genome: genome name or chromosome length table; string or pd.DataFrame;
-        Now support hg19, hg19_dip, GRCh38, GRCh38_dip, mm10, mm10_dip
-    order: if True, order chromosomes in a natural way (chr1, chr2 ...),
-        if list order chromosomes by the list given;
-Return:
-    pandas.DataFrame
-
-
-**Source:** Line 481 in [data.py](data.py#L481)
-
-
----
-
-
-### `download_geo(geo_id, outdir, method='ftp', timeout=30, retries=3, block_size=8192)`
-
-
-Download GEO data with enhanced error handling, retries, larger block size, passive mode for FTP, and download resumption.
-
-Input:
-    geo_id: GEO ID; string
-    outdir: output directory; string
-    method: download method; string; "ftp" or "https"
-    timeout: timeout for downloads in seconds; int
-    retries: number of retries for failed downloads; int
-    block_size: initial block size for downloading large files; int
-
-
-**Source:** Line 210 in [data.py](data.py#L210)
-
-
----
-
-
-### `download_sra(accessions, outdir, method='ena', timeout=30, retries=3, block_size=8192)`
-
-
-Download sequencing data by SRA run accession(s).
-
-Input:
-    accessions:
-        - single accession string (e.g., "SRR1234567")
-        - comma-separated string (e.g., "SRR1,SRR2")
-        - list/tuple of accessions
-        Note: reading a run-list text file is handled by the CLI; pass a list here.
-    outdir: output directory
-    method:
-        - "ena": use ENA filereport to resolve FASTQ URLs and download via HTTPS/FTP with resume and retries
-        - "sra-tools": use prefetch + fasterq-dump if SRA Toolkit is available in PATH
-    timeout: request timeout in seconds
-    retries: retry count for transient errors
-    block_size: chunk size for streaming downloads
-
-
-**Source:** Line 331 in [data.py](data.py#L331)
-
-
----
-
-
-### `dupref_annote(bins, ref)`
-
-
-Annotate diploid genome with haploid ref
-Input:
-    bins: pd.DataFrame, 2-level index
-    ref: pd.DataFrame, 2-level index
-Output:
-    pd.DataFrame, 3dg with ref
-
-
-**Source:** Line 452 in [data.py](data.py#L452)
-
-
----
-
-
-### `fetch_TSS(gnames, TSS, name_col='gene_name')`
-
-
-Fetch TSS regions for given gene names.
-Input:
-    gnames: genename list
-    TSS: genome name or TSS reference table; string or pd.DataFrame
-    name_col: column name of gene name in TSS table; string
-Output:
-    chromname, TSS id, TSS sites; pd.Series
-
-
-**Source:** Line 701 in [data.py](data.py#L701)
-
-
----
-
-
-### `fetch_cent_chromlen(genome)`
-
-
-Get centromere regions and chromosome lengths.
-Only work with mm10 for now.
-TODO: generalize to other genomes
-Input:
-    fp (str): path to the gap file
-Returns:
-    dict(chrom) of list[start, end, chrom_length]
-
-
-**Source:** Line 543 in [data.py](data.py#L543)
-
-
----
-
-
-### `fetch_centromeres(genome)`
-
-
-Get centromere regions.
-Returns:
-    pandas.DataFrame
-
-
-**Source:** Line 521 in [data.py](data.py#L521)
-
-
----
-
-
-### `get_chrom_data(genome, order=False)`
-
-
-Get chromosome data from various genome representations.
-
-This helper function provides a unified interface to extract chromosome
-length data from different genome input formats.
-
-Args:
-    genome: Genome specification in one of these forms:
-        - RefGenome object (e.g., mm10, GRCh38)
-        - Chromosomes object from feature module
-        - pandas DataFrame with chromosome lengths
-        - str: genome name (e.g., "mm10") or path to chromosome sizes file
-    order (bool): If True, ensure chromosomes are ordered naturally
-        (chr1, chr2, ..., chr10, ..., chrX, chrY).
-
-Returns:
-    pd.DataFrame: DataFrame with chromosome names as index and at least
-        a 'length' column containing chromosome lengths.
-
-Raises:
-    ValueError: If genome cannot be resolved or has invalid format.
-    FileNotFoundError: If genome string refers to non-existent file.
-
-Examples:
-    >>> from hic_basic.data import mm10, get_chrom_data
-    >>> # From RefGenome object
-    >>> chrom_df = get_chrom_data(mm10)
-    >>> # From genome name string
-    >>> chrom_df = get_chrom_data("mm10")
-    >>> # From file path
-    >>> chrom_df = get_chrom_data("/path/to/chrom.sizes")
-
-
-**Source:** Line 125 in [data.py](data.py#L125)
-
-
----
-
-
-### `id2name(genelist, genome)`
-
-
-Convert gene IDs to gene names.
-Input:
-    genelist: list of gene IDs
-    genome: genome name or gene ID to gene name mapping dataframe; string or pd.DataFrame
-        gene ID as index when using a dataframe
-Output:
-    gene names; list
-
-
-**Source:** Line 643 in [data.py](data.py#L643)
-
-
----
-
-
-### `mouse_GO_cell_cycle()`
-
-
-Mouse cell cycle genes with term: `G2/M transition of mitotic cell cycle` and `G1/S transition of mitotic cell cycle`.
-Output:
-    dict of list
-
-
-**Source:** Line 789 in [data.py](data.py#L789)
-
-
----
-
-
-### `mouse_cell_cycle()`
-
-
-Cell cycle gene sets in mouse. Used in seurat or scanpy g1/s, g2/m score.
-Output:
-    dict of list.
-
-
-**Source:** Line 779 in [data.py](data.py#L779)
-
-
----
-
-
-### `name2id(genelist, genome, pickid=False)`
-
-
-Convert gene names to gene IDs.
-Input:
-    genelist: list of gene names
-    genome: genome name or gene ID to gene name mapping dataframe (name 2 id df will have non-unique index); string or pd.DataFrame
-        gene id as index when using a dataframe
-    pickid: if True, pick 1 gene ID for genes with multiple IDs, else return NA for genes with multiple IDs
-Output:
-    gene IDs; list
-
-
-**Source:** Line 664 in [data.py](data.py#L664)
-
-
----
-
-
-### `register_chromosomes(self, size_file)`
-
-
-Register chromosome sizes for this genome.
-
-Args:
-    size_file (str | pathlib.Path): Path to a two-column
-        chromosome sizes file.
-
-
-**Source:** Line 80 in [data.py](data.py#L80)
-
-
----
-
-
-### `register_feature(self, feature_name, factory)`
-
-
-Register a feature factory.
-
-Args:
-    feature_name (str): Attribute name for the feature.
-    factory (Callable[[], Any]): Function that builds the feature.
-
-
-**Source:** Line 60 in [data.py](data.py#L60)
-
-
----
-
-
-### `split_links(v)`
-
-
-No documentation available.
-
-
-**Source:** Line 391 in [data.py](data.py#L391)
+**Source:** Line 158 in [data/file_formats.py](data/file_formats.py#L158)
 
 
 ---
@@ -5839,69 +5910,7 @@ No documentation available.
 
 **File:** `interpolate.py`
 
-**Public functions:** 10
-
-
-### `compute_center_of_mass(trajectory, grid_values)`
-
-
-Compute center of mass (weighted average time position) for each feature.
-
-The center of mass is computed as:
-    com = sum(grid_values * |trajectory|) / sum(|trajectory|)
-
-Using absolute values to handle both positive and negative trajectories.
-
-Parameters
-----------
-trajectory : np.ndarray
-    Trajectory matrix of shape (n_features, n_grid_points).
-grid_values : np.ndarray
-    Grid point values of shape (n_grid_points,).
-
-Returns
--------
-com : np.ndarray
-    Center of mass for each feature, shape (n_features,).
-
-
-**Source:** Line 239 in [interpolate.py](interpolate.py#L239)
-
-
----
-
-
-### `compute_continuous_peak_time(trajectory, grid_values)`
-
-
-Compute continuous peak time for each feature using parabolic interpolation.
-
-For each feature, fits a parabola through the peak grid point and its two
-neighbors, then computes the vertex position as the continuous peak time.
-
-Parameters
-----------
-trajectory : np.ndarray
-    Trajectory matrix of shape (n_features, n_grid_points).
-    Each row is the GP-smoothed trajectory for one feature.
-grid_values : np.ndarray
-    Grid point values of shape (n_grid_points,). The actual time/pseudotime
-    values at each grid point.
-
-Returns
--------
-peak_time : np.ndarray
-    Continuous peak time for each feature, shape (n_features,).
-    If a feature has no clear peak (monotonic or flat), returns the grid
-    position of the maximum value.
-peak_value : np.ndarray
-    The interpolated peak value at the continuous peak time.
-
-
-**Source:** Line 145 in [interpolate.py](interpolate.py#L145)
-
-
----
+**Public functions:** 5
 
 
 ### `correct_pseudotime(adata, pseudotime_col, n_pcs=15, inplace=True)`
@@ -5916,7 +5925,7 @@ Output:
     new adata object
 
 
-**Source:** Line 1494 in [interpolate.py](interpolate.py#L1494)
+**Source:** Line 943 in [interpolate.py](interpolate.py#L943)
 
 
 ---
@@ -5936,7 +5945,7 @@ Output:
     new adata object numPts * adata.shape[1]
 
 
-**Source:** Line 1229 in [interpolate.py](interpolate.py#L1229)
+**Source:** Line 684 in [interpolate.py](interpolate.py#L684)
 
 
 ---
@@ -5948,7 +5957,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 1186 in [interpolate.py](interpolate.py#L1186)
+**Source:** Line 641 in [interpolate.py](interpolate.py#L641)
 
 
 ---
@@ -6011,20 +6020,19 @@ anndata.AnnData
     AnnData with GP interpolation results stored in ``adata.uns[result_key]``.
 
 
-**Source:** Line 1346 in [interpolate.py](interpolate.py#L1346)
+**Source:** Line 801 in [interpolate.py](interpolate.py#L801)
 
 
 ---
 
 
-### `plot_gp_heatmap(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_method='linspace', endpoint_mode='half-interval', scaling='z_score', figsize=(8, 6), dpi=100, save_path=None, show_grid=True, show_colorbar=True, feature_order=None)`
+### `plot_gp_heatmap(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_method='linspace', endpoint_mode='half-interval', scaling='z_score', figsize=(8, 6), dpi=100, save_path=None, show_grid=True, show_colorbar=True)`
 
 
 Plot a single heatmap for GP interpolation results.
 
-This is a convenience wrapper around plot_trajectory_heatmap() for AnnData-based
-RNA/gene expression data. For more control or for non-RNA data (e.g., loops),
-use plot_trajectory_heatmap() directly.
+Shows raw expression (sorted by pseudotime) with grid point positions
+and GP-smoothed expression side-by-side.
 
 Parameters
 ----------
@@ -6057,203 +6065,14 @@ show_grid : bool, optional
     Show vertical lines at grid point positions. Default is True.
 show_colorbar : bool, optional
     Show colorbar. Default is True.
-feature_order : np.ndarray, optional
-    Indices to reorder features (genes). If None, genes are shown in original order.
-    Typically obtained from sort_features_by_trajectory().
 
 Returns
 -------
 fig : matplotlib.figure.Figure
     The matplotlib figure object.
-axes : np.ndarray
-    Array of matplotlib axes objects.
-
-See Also
---------
-plot_trajectory_heatmap : General-purpose trajectory heatmap for any feature type.
 
 
-**Source:** Line 889 in [interpolate.py](interpolate.py#L889)
-
-
----
-
-
-### `plot_trajectory_heatmap(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_methods=None, endpoint_mode='half-interval', scaling='z_score', figsize=(10, 12), dpi=100)`
-
-
-Internal function: Visualize and compare multiple grid methods side-by-side.
-
-This is a debugging utility, not intended for production use.
-Use plot_gp_heatmap() for single-method visualization.
-
-Parameters
-----------
-adata : anndata.AnnData
-    AnnData object with expression data and pseudotime.
-pseudotime_col : str
-    Column name in adata.obs containing pseudotime values.
-layer : str, optional
-    Expression layer to use. Default is "X".
-gene_mask_key : str, optional
-    Boolean column in adata.var for gene selection.
-numPts : int, optional
-    Number of grid points. Default is 14.
-grid_methods : list, optional
-    List of grid methods to compare. Default is ["linspace", "quantile", "density"].
-endpoint_mode : str, optional
-    Endpoint handling mode. Default is "half-interval".
-scaling : str, optional
-    Color scaling: "z_score" or "zero_one". Default is "z_score".
-figsize : tuple, optional
-    Figure size (width, height) in inches. Default is (10, 12).
-dpi : int, optional
-    Figure DPI. Default is 100.
-
-Returns
--------
-fig : matplotlib.figure.Figure
-    The matplotlib figure object.
-axes : np.ndarray
-    Array of matplotlib axes objects.
-
-
-**Source:** Line 342 in [interpolate.py](interpolate.py#L342)
-
-
----
-
-
-### `plot_trajectory_heatmap(trajectory_raw, pseudotime, trajectory_gp=None, grid_values=None, grid_cell_positions=None, feature_order=None, feature_labels=None, scaling='z_score', cmap='RdBu_r', vmin=None, vmax=None, figsize=(8, 6), dpi=100, save_path=None, show_grid=True, grid_line_color='black', grid_line_style='--', grid_line_alpha=0.7, show_colorbar=True, left_title='Raw (cell space)', right_title='GP-smoothed (grid space)', suptitle=None)`
-
-
-Plot trajectory heatmap for features (genes, loops, etc.) with GP-smoothed trajectories.
-
-This is a context-agnostic visualization function that works with any feature type
-(RNA genes, chromatin loops, etc.) as long as the data is provided as numpy arrays.
-
-Parameters
-----------
-trajectory_raw : np.ndarray or pd.DataFrame
-    Raw trajectory matrix of shape (n_features, n_cells). Each row is a feature's
-    trajectory across cells. Can also be a DataFrame with feature names as index.
-pseudotime : np.ndarray or pd.Series
-    Pseudotime values for cells, shape (n_cells,). Used to sort cells and compute
-    grid line positions.
-trajectory_gp : np.ndarray, optional
-    GP-smoothed trajectory matrix of shape (n_features, n_grid_points).
-    If None, only the raw trajectory panel is shown.
-grid_values : np.ndarray, optional
-    Grid point values in pseudotime space, shape (n_grid_points,).
-    Used for right panel x-axis labels and to compute grid_cell_positions if needed.
-grid_cell_positions : np.ndarray, optional
-    Grid point positions in cell rank space [0, 1], shape (n_grid_points,).
-    If None but grid_values is provided, computed from pseudotime.
-feature_order : np.ndarray, optional
-    Indices to reorder features (rows). If None, features are shown in original order.
-    Typically obtained from sort_features_by_trajectory().
-feature_labels : list or np.ndarray, optional
-    Labels for features (rows). If None, uses integer indices.
-scaling : str, optional
-    Color scaling method. Options:
-    - "z_score": Z-score normalization per feature
-    - "zero_one": Min-max normalization to [0, 1]
-cmap : str or matplotlib.colors.Colormap, optional
-    Colormap for the heatmap. Default is "RdBu_r" (diverging).
-vmin, vmax : float, optional
-    Color scale limits. If None, computed from data based on scaling.
-figsize : tuple, optional
-    Figure size (width, height) in inches. Default is (8, 6).
-dpi : int, optional
-    Figure DPI. Default is 100.
-save_path : str, optional
-    Path to save the figure. If None, figure is not saved.
-show_grid : bool, optional
-    Show vertical lines at grid point positions. Default is True.
-grid_line_color : str, optional
-    Color of grid lines. Default is "black".
-grid_line_style : str, optional
-    Line style of grid lines. Default is "--".
-grid_line_alpha : float, optional
-    Alpha transparency of grid lines. Default is 0.7.
-show_colorbar : bool, optional
-    Show colorbar. Default is True.
-left_title : str, optional
-    Title for left panel (raw data). Default is "Raw (cell space)".
-right_title : str, optional
-    Title for right panel (GP-smoothed). Default is "GP-smoothed (grid space)".
-suptitle : str, optional
-    Figure super title. If None, auto-generated from parameters.
-
-Returns
--------
-fig : matplotlib.figure.Figure
-    The matplotlib figure object.
-axes : np.ndarray
-    Array of matplotlib axes objects (1 or 2 elements depending on trajectory_gp).
-
-Examples
---------
->>> # RNA/gene trajectory visualization
->>> gp_result = gp_interpolate(adata, pseudotime_col="pt")
->>> gp_mean = gp_result.uns["gp_interpolate"]["mean"].values
->>> grid_vals = gp_result.uns["gp_interpolate"]["time_grid"].values
->>> sorted_idx, _ = sort_features_by_trajectory(gp_mean, grid_vals)
->>> fig, axes = plot_trajectory_heatmap(
-...     trajectory_raw=adata.X.T,
-...     pseudotime=adata.obs["pt"],
-...     trajectory_gp=gp_mean,
-...     grid_values=grid_vals,
-...     feature_order=sorted_idx
-... )
-
->>> # Loop trajectory visualization (same interface)
->>> gp_result = gp_interpolate(loop_adata, pseudotime_col="pt")
->>> gp_mean = gp_result.uns["gp_interpolate"]["mean"].values
->>> sorted_idx, _ = sort_features_by_trajectory(gp_mean, grid_vals)
->>> fig, axes = plot_trajectory_heatmap(
-...     trajectory_raw=loop_adata.X.T,
-...     pseudotime=loop_adata.obs["pt"],
-...     trajectory_gp=gp_mean,
-...     grid_values=grid_vals,
-...     feature_order=sorted_idx
-... )
-
-
-**Source:** Line 614 in [interpolate.py](interpolate.py#L614)
-
-
----
-
-
-### `sort_features_by_trajectory(trajectory, grid_values, sort_keys=('peak_time', 'com', '-peak_value'))`
-
-
-Sort features based on trajectory dynamics characteristics.
-
-Parameters
-----------
-trajectory : np.ndarray
-    Trajectory matrix of shape (n_features, n_grid_points).
-grid_values : np.ndarray
-    Grid point values of shape (n_grid_points,).
-sort_keys : tuple of str
-    List of sort keys in priority order. Supported keys:
-    - "peak_time": continuous peak time (parabolic interpolation)
-    - "com": center of mass
-    - "peak_value": peak value at continuous peak time
-    - "-peak_value": negative peak value (for descending sort)
-    - "max_grid_idx": discrete grid index of maximum (fallback)
-
-Returns
--------
-sorted_indices : np.ndarray
-    Indices that would sort the features.
-sort_values : pd.DataFrame
-    DataFrame with columns for each computed metric.
-
-
-**Source:** Line 275 in [interpolate.py](interpolate.py#L275)
+**Source:** Line 284 in [interpolate.py](interpolate.py#L284)
 
 
 ---
@@ -13411,7 +13230,7 @@ Output:
 No documentation available.
 
 
-**Source:** Line 21 in [wet/qc.py](wet/qc.py#L21)
+**Source:** Line 44 in [wet/qc.py](wet/qc.py#L44)
 
 
 ---
@@ -13423,7 +13242,7 @@ No documentation available.
 No documentation available.
 
 
-**Source:** Line 52 in [wet/qc.py](wet/qc.py#L52)
+**Source:** Line 75 in [wet/qc.py](wet/qc.py#L75)
 
 
 ---

@@ -4,9 +4,9 @@ This directory contains auto-generated API reference documentation for the `hic_
 
 ## 📚 Contents
 
-- **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API reference with all public functions (530 functions across 77 modules)
+- **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API reference with all public functions
 - **[api_index.json](api_index.json)** - Machine-readable JSON index for programmatic access
-- **[search_api.py](search_api.py)** - Command-line tool to search the API
+- **[search_api.py](search_api.py)** - Repo-local compatibility wrapper for API search
 
 ## 🚀 Quick Start
 
@@ -18,26 +18,29 @@ cat docs/API_REFERENCE.md
 
 ### Search for specific functions
 ```bash
-# Search by function name
+# Search installed/package API
+hic_basic api search cool2mat
+
+# Show a known function
+hic_basic api show cool2mat
+
+# List module functions
+hic_basic api list coolstuff
+
+# Locate source
+hic_basic api where cool2mat
+
+# Repo-local fallback
 python docs/search_api.py cool2mat
-
-# Search by module
-python docs/search_api.py --module coolstuff
-
-# Search by keyword in docstrings
-python docs/search_api.py --keyword "convert"
-
-# Interactive search
-python docs/search_api.py --interactive
 ```
 
 ## 📖 Usage for Coding Agents
 
 This documentation is designed to be easily consumed by AI coding assistants:
 
-1. **Quick lookup**: Check `api_index.json` for a list of all available functions
+1. **Quick lookup**: Use `hic_basic api search <keywords>` or check `api_index.json`
 2. **Detailed reference**: Read `API_REFERENCE.md` for full function signatures and docstrings
-3. **Search**: Use `search_api.py` to find relevant functions programmatically
+3. **Search**: Use `hic_basic api ...` for installed-package lookup, or `search_api.py` as a repo-local fallback
 
 ### Example for AI agents:
 ```python
@@ -63,20 +66,14 @@ for module, functions in api_index.items():
 The documentation is auto-generated from the source code. To regenerate:
 
 ```bash
-python scripts/generate_api_reference.py
+./run_in_env.sh python scripts/generate_api_reference.py
 ```
 
 This will:
 1. Scan all Python files in `hic_basic/`
 2. Extract public functions (without `_` prefix)
 3. Parse signatures and docstrings
-4. Generate both Markdown and JSON outputs
-
-## 📊 Statistics
-
-- **Total modules**: 77
-- **Total public functions**: 530
-- **Documentation lines**: ~10,000
+4. Generate Markdown, repo-local JSON, and package-installed JSON outputs
 
 ## 🔑 Key Modules
 
@@ -110,7 +107,7 @@ The JSON format enables easy integration with:
 When adding new public functions:
 1. Add clear docstrings with parameters, returns, and examples
 2. Use type hints where appropriate
-3. Regenerate docs with `python scripts/generate_api_reference.py`
+3. Regenerate docs with `./run_in_env.sh python scripts/generate_api_reference.py`
 4. Commit both code and updated documentation
 
 ---

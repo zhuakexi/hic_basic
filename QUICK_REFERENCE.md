@@ -3,23 +3,23 @@
 ## 🚀 Quick Commands
 
 ```bash
-# Search for a function by name
-python docs/search_api.py cool2mat
+# Search installed/package API
+hic_basic api search cool2mat
 
-# Search by keyword in docstrings
-python docs/search_api.py --keyword "convert"
+# Show a known function
+hic_basic api show cool2mat
 
 # List all functions in a module
-python docs/search_api.py --module coolstuff
+hic_basic api list coolstuff
 
-# List all available modules
-python docs/search_api.py --list-modules
+# Locate source
+hic_basic api where cool2mat
 
-# Interactive search mode
-python docs/search_api.py --interactive
+# Repo-local fallback
+python docs/search_api.py cool2mat
 
 # Regenerate documentation after code changes
-python scripts/generate_api_reference.py
+./run_in_env.sh python scripts/generate_api_reference.py
 ```
 
 ## 📚 Files
@@ -28,7 +28,8 @@ python scripts/generate_api_reference.py
 |------|----------|
 | `docs/API_REFERENCE.md` | Reading in editor/browser |
 | `docs/api_index.json` | Programming/scripting |
-| `docs/search_api.py` | Quick lookups |
+| `hic_basic api ...` | Installed-package quick lookups |
+| `docs/search_api.py` | Repo-local fallback lookups |
 | `docs/EXAMPLES.py` | Learning the system |
 
 ## 🔥 Most Used Modules
@@ -91,19 +92,19 @@ python -c "import json; print('\n'.join(json.load(open('docs/api_index.json')).k
 
 ### Find a Function
 ```bash
-python docs/search_api.py <function_name>
+hic_basic api show <function_name>
 ```
 
 ### Explore a Module  
 ```bash
-python docs/search_api.py --module <module_name>
+hic_basic api list <module_name>
 ```
 
 ### Search by Capability
 ```bash
-python docs/search_api.py --keyword "convert"
-python docs/search_api.py --keyword "plot"
-python docs/search_api.py --keyword "matrix"
+hic_basic api search "convert"
+hic_basic api search "plot"
+hic_basic api search "matrix"
 ```
 
 ### Slingshot Trajectory Inference
@@ -417,7 +418,7 @@ for gene_id, gene in region_genes.items():
 ```bash
 # 1. Edit code and docstrings
 # 2. Regenerate
-python scripts/generate_api_reference.py
+./run_in_env.sh python scripts/generate_api_reference.py
 # 3. Commit both
 git add hic_basic/ docs/
 git commit -m "Update code and docs"
@@ -492,16 +493,15 @@ def example_function(param1: str, param2: int = 10) -> pd.DataFrame:
 
 ## 📊 Statistics
 
-- **90** modules documented
-- **639** public functions
-- **~13,000** lines of documentation
+- Auto-generated public API index
+- Machine-readable JSON for tools and agents
 - **Auto-generated** from source
 
 ## 🎓 Learning Path
 
 1. **Start**: Read [docs/README.md](docs/README.md)
 2. **Explore**: Run `python docs/EXAMPLES.py`
-3. **Search**: Try `python docs/search_api.py --interactive`
+3. **Search**: Try `hic_basic api search "<task keywords>"`
 4. **Reference**: Browse [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 5. **Use**: Import and call functions!
 

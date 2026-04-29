@@ -3,10 +3,11 @@
 This repository is a Python library and CLI for Hi-C / 3D genome data processing. Use this file as the single source of repo-specific guidance for automation agents.
 
 ## Quick function discovery
-- Search by name: `python docs/search_api.py cool2mat`
-- Search by module: `python docs/search_api.py --module coolstuff`
-- Search by keyword: `python docs/search_api.py --keyword "convert"`
-- Interactive search: `python docs/search_api.py --interactive`
+- Search installed API by task/name: `hic_basic api search "convert pairs"`
+- Show a known function: `hic_basic api show cool2mat`
+- Locate source: `hic_basic api where cool2mat`
+- Search by module: `hic_basic api list coolstuff`
+- Repo-local fallback: `python docs/search_api.py cool2mat`
 - Programmatic index: `docs/api_index.json`
 - Full reference: `docs/API_REFERENCE.md`
 
@@ -30,8 +31,18 @@ This repository is a Python library and CLI for Hi-C / 3D genome data processing
 ## Documentation workflow
 - Public functions are auto-indexed; keep docstrings accurate.
 - Regenerate docs after adding/updating public APIs:
-  - `python scripts/generate_api_reference.py`
+  - `./run_in_env.sh python scripts/generate_api_reference.py`
   - Commit both code changes and updated docs (`docs/API_REFERENCE.md`, `docs/api_index.json`).
+
+## API command system discipline
+- Treat `docs/api_index.json` and the future package-installed API index as generated artifacts from the same source; do not hand-edit either index.
+- When changing public functions, keep signatures and docstrings agent-usable: include the purpose, important inputs, return value, and any non-obvious constraints.
+- After adding, renaming, moving, or deleting public APIs, regenerate the API docs/index and verify lookup still works for the changed symbol.
+- If modifying the API lookup command itself, preserve compatibility with the existing repo-local workflow: `python docs/search_api.py <query>`, `--module`, `--keyword`, and `--list-modules`.
+- Prefer adding shared API lookup logic in importable library code and making `docs/search_api.py` plus `hic_basic api ...` thin command wrappers around it.
+- Keep downstream usage independent of the repo checkout: `hic_basic api ...` must read package-installed resources, not assume the current working directory is the hic_basic repository.
+- Do not add task-semantic registry entries for nonexistent or planned APIs; registry/examples must refer to real importable symbols unless explicitly marked as design examples in an issue document.
+- Add or update CLI tests when changing API lookup behavior, including `--json` output and ambiguous-symbol handling where relevant.
 
 ## Agent workflow (library-first)
 1. **Search existing APIs** in `hic_basic` before adding new code. Prefer extending a relevant module over creating a new one.

@@ -5,22 +5,23 @@ A Python library for processing Hi-C and 3D genome data.
 ## 📚 Documentation
 
 **Complete API Reference**: [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
-- 600+ public functions across 85 modules
+- Auto-generated public API index
 - Auto-generated from source code
-- Searchable with `python docs/search_api.py`
+- Searchable with `hic_basic api ...`
 
 **Agent guidance**: [AGENTS.md](AGENTS.md)
 
 Quick examples:
 ```bash
 # Search for a function
-python docs/search_api.py cool2mat
+hic_basic api search cool2mat
 
 # List module functions
-python docs/search_api.py --module coolstuff
+hic_basic api list coolstuff
 
-# Interactive mode
-python docs/search_api.py --interactive
+# Show function details and source
+hic_basic api show cool2mat
+hic_basic api where cool2mat
 ```
 
 See [docs/README.md](docs/README.md) for detailed usage.
@@ -114,7 +115,7 @@ sys.path.insert(0, "$YourGitDir/hires_utils")
 - Add tests that use **minimal data** from `tests/data` and tmp paths only.
 - Avoid hard-coded absolute paths or project-specific logic.
 - Update docstrings and regenerate API docs when public APIs change:
-  - `python scripts/generate_api_reference.py`
+  - `./run_in_env.sh python scripts/generate_api_reference.py`
   - commit `docs/API_REFERENCE.md` and `docs/api_index.json`
 
 ## Quick Start Examples
@@ -164,6 +165,6 @@ plot_cool("xx.cool", "title", "chr19", vmax=500)
 For complete function documentation, see [docs/API_REFERENCE.md](docs/API_REFERENCE.md) or use the search tool:
 
 ```bash
-python docs/search_api.py <function_name>
+hic_basic api show <function_name>
 ```
 # plot compartment

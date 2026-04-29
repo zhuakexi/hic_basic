@@ -4,6 +4,9 @@ setup(
     name='hic_basic',
     version='0.1',
     packages=find_packages(),
+    package_data={
+        'hic_basic': ['data/*.json'],
+    },
     install_requires=[
         # Core dependencies
         'numpy',
