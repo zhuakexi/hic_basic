@@ -72,12 +72,12 @@ class TestEstimatedTransitionParams:
         
         alpha, beta, gamma, rho = estimate_transitions_rough(rough_labels)
         
-        # Should use default values based on n_units
-        n = len(rough_labels)
-        assert np.isclose(alpha, 1.0 / n)
-        assert np.isclose(beta, 1.0 / n)
-        assert np.isclose(gamma, 0.01 / n)
-        assert np.isclose(rho, min(100.0 / n, 0.32))
+        # Observed PP self transitions should keep PP highly persistent.
+        assert np.isclose(alpha, 0.0)
+        assert np.isclose(gamma, 0.0)
+        # Rows not observed in rough labels fall back to conservative defaults.
+        assert np.isclose(beta, 0.02)
+        assert np.isclose(rho, 0.1)
     
     def test_estimate_transitions_with_u_state(self):
         """Test estimation with U state present."""
@@ -90,6 +90,29 @@ class TestEstimatedTransitionParams:
         assert 0 <= beta <= 1
         assert 0 <= gamma <= 1
         assert 0 <= rho <= 0.32
+
+    def test_rho_is_per_target_u_exit_probability(self):
+        """rho should be one third of the total empirical U exit probability."""
+        rough_labels = pd.Series(['U', 'U', 'PP', 'PP'])
+
+        alpha, beta, gamma, rho = estimate_transitions_rough(rough_labels)
+
+        assert np.isclose(rho, 1 / 6)
+        hmm = SisterChromatidHMM(alpha=alpha, beta=beta, gamma=gamma, rho=rho)
+        assert np.isclose(hmm.transition_matrix[SisterChromatidHMM.STATE_U, :3].sum(), 0.5)
+
+    def test_estimate_transitions_includes_self_transitions(self):
+        """Low-switch rough labels should produce high HMM self probabilities."""
+        rough_labels = pd.Series(['MM'] * 60 + ['PM'] * 250 + ['PP'] * 90)
+
+        alpha, beta, gamma, rho = estimate_transitions_rough(rough_labels)
+        hmm = SisterChromatidHMM(alpha=alpha, beta=beta, gamma=gamma, rho=rho)
+
+        # Two biological switches over 399 adjacent opportunities should not
+        # collapse state persistence.
+        assert hmm.transition_matrix[SisterChromatidHMM.STATE_MM, SisterChromatidHMM.STATE_MM] > 0.97
+        assert hmm.transition_matrix[SisterChromatidHMM.STATE_PM, SisterChromatidHMM.STATE_PM] > 0.99
+        assert hmm.transition_matrix[SisterChromatidHMM.STATE_PP, SisterChromatidHMM.STATE_PP] > 0.97
 
 
 class TestRoughClassification:
@@ -203,6 +226,21 @@ class TestBinBySnp:
         assert len(binned) == 4
         assert binned.iloc[0]['n_snps'] == 250
 
+    def test_bin_by_snp_tracks_partial_bin_size(self):
+        """Test n_snps records the actual number of SNPs in a partial final bin."""
+        n_snps_total = 501
+        test_data = pd.DataFrame({
+            'chromosome': ['chr1'] * n_snps_total,
+            'position': range(n_snps_total),
+            'ref': np.ones(n_snps_total),
+            'alt': np.ones(n_snps_total),
+            'other': np.zeros(n_snps_total),
+        })
+
+        binned = bin_by_snp(test_data, n_snps=250)
+
+        assert list(binned['n_snps']) == [250, 250, 1]
+
 
 class TestHMMWithDefaultParams:
     """Tests for HMM inference with default parameters."""
@@ -244,17 +282,17 @@ class TestHMMWithDefaultParams:
         rough_labels = pd.Series(['PP'] * 100)
         alpha_est, beta_est, gamma_est, rho_est = estimate_transitions_rough(rough_labels)
         
-        # When no transitions, estimated params use default formula based on n_units
+        # With observed PP self transitions, estimated params keep PP persistent.
         # Default params should be fixed regardless of data
         assert default_params['alpha'] == 0.01
         assert default_params['beta'] == 0.02
         assert default_params['gamma'] == 0.001
         assert default_params['rho'] == 0.1
         
-        # Estimated params should depend on n_units
-        n = len(rough_labels)
-        assert np.isclose(alpha_est, 1.0 / n)
-        assert np.isclose(beta_est, 1.0 / n)
+        assert np.isclose(alpha_est, 0.0)
+        assert np.isclose(beta_est, 0.02)
+        assert np.isclose(gamma_est, 0.0)
+        assert np.isclose(rho_est, 0.1)
 
 
 class TestTransitionParamsSource:

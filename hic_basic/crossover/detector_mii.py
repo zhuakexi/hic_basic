@@ -91,6 +91,21 @@ class SisterChromatidResults:
     statistics: Dict = field(default_factory=dict)
 
 
+@dataclass
+class MiiCrossoverSimulation:
+    """
+    Container for simulated mII crossover read counts.
+
+    Attributes:
+        read_counts: SNP-level read counts and true hidden labels.
+        crossover_positions: Per-chromatid crossover positions.
+        parameters: Simulation parameters.
+    """
+    read_counts: pd.DataFrame
+    crossover_positions: Dict[str, List[int]]
+    parameters: Dict
+
+
 class SisterChromatidHMM:
     """
     Hidden Markov Model for sister chromatid composition inference.
@@ -501,6 +516,12 @@ def estimate_transitions_rough(
     """
     Estimate transition probabilities from rough labels.
 
+    Self transitions are included in the row totals so the returned parameters
+    represent per-adjacent-observation probabilities, not conditional
+    probabilities after a non-self jump has already occurred. The returned rho
+    is the per-target U->biological-state probability used by the HMM; the
+    total U exit probability is 3*rho.
+
     Args:
         rough_labels: Series with rough state labels
         pseudocount: Pseudocount for smoothing (deprecated, kept for API compatibility)
@@ -508,16 +529,14 @@ def estimate_transitions_rough(
     Returns:
         Tuple of (alpha, beta, gamma, rho)
     """
-    n_units = len(rough_labels)
-    
-    # Count transitions
-    transitions = {
-        ('PP', 'PM'): 0, ('PP', 'MM'): 0, ('PP', 'U'): 0,
-        ('PM', 'PP'): 0, ('PM', 'MM'): 0, ('PM', 'U'): 0,
-        ('MM', 'PP'): 0, ('MM', 'PM'): 0, ('MM', 'U'): 0,
-        ('U', 'PP'): 0, ('U', 'PM'): 0, ('U', 'MM'): 0, ('U', 'U'): 0,
-    }
+    states = ['PP', 'PM', 'MM', 'U']
+    defaults = get_default_transition_params()
 
+    # Count the full adjacent transition table, including self transitions.
+    # The HMM transition parameters are per adjacent observation; excluding
+    # self transitions estimates conditional jump composition instead and can
+    # severely deflate state persistence.
+    transitions = {(src, dst): 0 for src in states for dst in states}
     for i in range(1, len(rough_labels)):
         prev_state = rough_labels.iloc[i - 1]
         curr_state = rough_labels.iloc[i]
@@ -525,45 +544,46 @@ def estimate_transitions_rough(
         if key in transitions:
             transitions[key] += 1
 
-    # Check if there are any transitions
     total_transitions = sum(transitions.values())
-    
     if total_transitions == 0:
-        # No transition data, use default values
-        # These defaults ensure rho < 1/3 to keep 1-3*rho > 0
-        alpha = 1.0 / n_units
-        beta = 1.0 / n_units
-        gamma = 0.01 / n_units
-        rho = min(100.0 / n_units, 0.32)  # Larger rho for small n_units, capped at 0.32
-        
-        logger.info(f"Using default transition parameters: alpha={alpha:.4f}, beta={beta:.4f}, gamma={gamma:.4f}, rho={rho:.4f}")
-        return alpha, beta, gamma, rho
+        logger.info(
+            "Using default transition parameters: "
+            f"alpha={defaults['alpha']:.4f}, beta={defaults['beta']:.4f}, "
+            f"gamma={defaults['gamma']:.4f}, rho={defaults['rho']:.4f}"
+        )
+        return defaults['alpha'], defaults['beta'], defaults['gamma'], defaults['rho']
 
-    # Estimate parameters from transition counts (no pseudocounts)
-    
-    # alpha: from PP->PM and MM->PM (biological state transitions)
-    pp_trans = transitions[('PP', 'PM')] + transitions[('PP', 'U')]
-    mm_trans = transitions[('MM', 'PM')] + transitions[('MM', 'U')]
-    alpha_num = transitions[('PP', 'PM')] + transitions[('MM', 'PM')]
-    alpha = alpha_num / (pp_trans + mm_trans) if (pp_trans + mm_trans) > 0 else 0.0
+    row_total = {
+        state: sum(transitions[(state, dst)] for dst in states)
+        for state in states
+    }
 
-    # beta: from PM->PP and PM->MM (PM is unstable, transitions frequently)
-    pm_trans = transitions[('PM', 'PP')] + transitions[('PM', 'MM')] + transitions[('PM', 'U')]
+    # alpha: pure state (PP/MM) -> mixed PM per-step probability.
+    # Direct PP<->MM rough jumps are treated as pure-state switching evidence,
+    # since the structured HMM can only express that path through PM.
+    pure_total = row_total['PP'] + row_total['MM']
+    alpha_num = (
+        transitions[('PP', 'PM')] + transitions[('MM', 'PM')] +
+        transitions[('PP', 'MM')] + transitions[('MM', 'PP')]
+    )
+    alpha = alpha_num / pure_total if pure_total > 0 else defaults['alpha']
+
+    # beta: mixed PM -> pure state per-step probability.
+    pm_total = row_total['PM']
     beta_num = transitions[('PM', 'PP')] + transitions[('PM', 'MM')]
-    beta = beta_num / pm_trans if pm_trans > 0 else 0.0
+    beta = beta_num / pm_total if pm_total > 0 else defaults['beta']
 
-    # gamma: entering U from biological states (should be rare)
-    bio_total = (transitions[('PP', 'PM')] + transitions[('PP', 'U')] +
-                 transitions[('PM', 'PP')] + transitions[('PM', 'MM')] + transitions[('PM', 'U')] +
-                 transitions[('MM', 'PM')] + transitions[('MM', 'U')])
+    # gamma: biological states -> U per-step probability.
+    bio_total = row_total['PP'] + row_total['PM'] + row_total['MM']
     u_enter = transitions[('PP', 'U')] + transitions[('PM', 'U')] + transitions[('MM', 'U')]
-    gamma = u_enter / bio_total if bio_total > 0 else 0.0
+    gamma = u_enter / bio_total if bio_total > 0 else defaults['gamma']
 
-    # rho: leaving U state (should be moderate, ensure 1-3*rho > 0)
-    u_total = transitions[('U', 'PP')] + transitions[('U', 'PM')] + transitions[('U', 'MM')] + transitions[('U', 'U')]
+    # rho is the per-target U->biological probability. The total probability
+    # of leaving U is 3*rho in the transition matrix.
+    u_total = row_total['U']
     u_leave = transitions[('U', 'PP')] + transitions[('U', 'PM')] + transitions[('U', 'MM')]
-    rho = u_leave / u_total if u_total > 0 else 0.0
-    rho = min(rho, 0.32)  # Clamp to max 0.32 to ensure 1-3*rho > 0
+    rho = (u_leave / u_total / 3.0) if u_total > 0 else defaults['rho']
+    rho = min(rho, 0.32)  # Clamp to keep 1-3*rho positive.
 
     # Ensure transition matrix elements are non-negative
     # For PP and MM rows: alpha + gamma <= 1
@@ -598,10 +618,12 @@ def rough_classification(
         depth_threshold: Minimum total depth for confident call (default: 2)
         other_threshold: Maximum other fraction for confident call (default: 0.4)
         balance_threshold: Threshold for classifying as balanced (PM) (default: 0.25)
-                          PP: ref_frac > 0.75, MM: alt_frac > 0.75, PM: |ref-alt| < 0.25
+                          PP: ref_frac > 0.75, MM: alt_frac > 0.75, PM: |ref-alt| < 0.25.
+                          Ratio-intermediate observations are labeled AMBIG, not U.
 
     Returns:
-        Series with rough state labels
+        Series with rough state labels. U is reserved for low-depth or high-other
+        observations; AMBIG marks ratio-intermediate observations.
     """
     labels = []
 
@@ -632,6 +654,140 @@ def rough_classification(
         elif abs(ref_frac - alt_frac) < balance_threshold and ref_frac > 0.2 and alt_frac > 0.2:
             labels.append('PM')
         else:
-            labels.append('U')
+            labels.append('AMBIG')
 
     return pd.Series(labels)
+
+
+def simulate_mii_crossover_counts(
+    chromosome: str = "chr1",
+    chromosome_length: int = 100_000_000,
+    snp_spacing: int = 1_000,
+    crossover_rate_per_mb: float = 0.02,
+    mean_depth: float = 5.0,
+    sequencing_error_rate: float = 0.005,
+    depth_cv: float = 0.55,
+    local_depth_window_snps: int = 100,
+    random_state: Optional[Union[int, np.random.Generator]] = None,
+) -> MiiCrossoverSimulation:
+    """
+    Simulate SNP read counts for mII sister-chromatid crossover inference.
+
+    The simulated mII signal is the aggregate of two independent chromatid
+    haplotype paths. Each chromatid starts as either P or M, switches haplotype
+    at crossover events, and contributes equally to the observed read pool.
+    Read counts are generated with WGS-like local depth variation, Poisson
+    sampling, and random sequencing errors.
+
+    Args:
+        chromosome: Chromosome name assigned to simulated SNPs.
+        chromosome_length: Chromosome length in bp.
+        snp_spacing: Distance between adjacent SNPs in bp.
+        crossover_rate_per_mb: Per-chromatid crossover probability per Mb.
+        mean_depth: Mean total read depth per SNP.
+        sequencing_error_rate: Per-read probability of observing the wrong base.
+        depth_cv: Coefficient of variation for local depth multipliers.
+        local_depth_window_snps: Number of SNPs sharing a local depth bias.
+        random_state: Optional seed or numpy Generator for reproducibility.
+
+    Returns:
+        MiiCrossoverSimulation with read-count DataFrame, crossover positions,
+        and parameter metadata.
+    """
+    if chromosome_length <= 0:
+        raise ValueError("chromosome_length must be positive")
+    if snp_spacing <= 0:
+        raise ValueError("snp_spacing must be positive")
+    if crossover_rate_per_mb < 0:
+        raise ValueError("crossover_rate_per_mb must be non-negative")
+    if mean_depth < 0:
+        raise ValueError("mean_depth must be non-negative")
+    if not 0 <= sequencing_error_rate < 1:
+        raise ValueError("sequencing_error_rate must be in [0, 1)")
+    if depth_cv < 0:
+        raise ValueError("depth_cv must be non-negative")
+    if local_depth_window_snps <= 0:
+        raise ValueError("local_depth_window_snps must be positive")
+
+    if isinstance(random_state, np.random.Generator):
+        rng = random_state
+    else:
+        rng = np.random.default_rng(random_state)
+
+    positions = np.arange(1, chromosome_length + 1, snp_spacing, dtype=np.int64)
+    n_snps = len(positions)
+    if n_snps == 0:
+        raise ValueError("No SNPs generated; check chromosome_length and snp_spacing")
+
+    interval_mb = snp_spacing / 1_000_000
+    crossover_prob = min(crossover_rate_per_mb * interval_mb, 1.0)
+
+    hap_paths = []
+    crossover_positions: Dict[str, List[int]] = {}
+    for chromatid_idx in range(2):
+        start_hap = int(rng.integers(0, 2))  # 1 means P/ref, 0 means M/alt.
+        switches = rng.random(max(n_snps - 1, 0)) < crossover_prob
+        path = np.empty(n_snps, dtype=np.int8)
+        path[0] = start_hap
+        if n_snps > 1:
+            path[1:] = (start_hap + np.cumsum(switches)) % 2
+        hap_paths.append(path)
+        crossover_positions[f"chromatid_{chromatid_idx + 1}"] = positions[1:][switches].astype(int).tolist()
+
+    hap1, hap2 = hap_paths
+    n_ref_copies = hap1 + hap2
+    state_by_ref_copies = np.array(["MM", "PM", "PP"], dtype=object)
+    true_states = state_by_ref_copies[n_ref_copies]
+
+    n_windows = int(np.ceil(n_snps / local_depth_window_snps))
+    if depth_cv == 0:
+        window_bias = np.ones(n_windows)
+    else:
+        gamma_shape = 1.0 / (depth_cv ** 2)
+        gamma_scale = depth_cv ** 2
+        window_bias = rng.gamma(shape=gamma_shape, scale=gamma_scale, size=n_windows)
+    local_bias = np.repeat(window_bias, local_depth_window_snps)[:n_snps]
+    per_snp_bias = rng.lognormal(mean=-0.5 * 0.15 ** 2, sigma=0.15, size=n_snps)
+    expected_depth = mean_depth * local_bias * per_snp_bias
+    depth = rng.poisson(expected_depth)
+
+    err = sequencing_error_rate
+    ref_copy_fraction = n_ref_copies / 2.0
+    alt_copy_fraction = 1.0 - ref_copy_fraction
+    p_ref = ref_copy_fraction * (1.0 - err) + alt_copy_fraction * (err / 3.0)
+    p_alt = alt_copy_fraction * (1.0 - err) + ref_copy_fraction * (err / 3.0)
+    p_other = np.full(n_snps, 2.0 * err / 3.0)
+    probs = np.vstack([p_ref, p_alt, p_other]).T
+    probs = probs / probs.sum(axis=1, keepdims=True)
+
+    counts = np.array([rng.multinomial(int(d), p) for d, p in zip(depth, probs)])
+    read_counts = pd.DataFrame({
+        "chromosome": chromosome,
+        "position": positions,
+        "ref": counts[:, 0],
+        "alt": counts[:, 1],
+        "other": counts[:, 2],
+        "true_state": true_states,
+        "hap1": np.where(hap1 == 1, "P", "M"),
+        "hap2": np.where(hap2 == 1, "P", "M"),
+        "expected_depth": expected_depth,
+        "depth_bias": local_bias,
+    })
+
+    parameters = {
+        "chromosome": chromosome,
+        "chromosome_length": chromosome_length,
+        "snp_spacing": snp_spacing,
+        "n_snps": n_snps,
+        "crossover_rate_per_mb": crossover_rate_per_mb,
+        "mean_depth": mean_depth,
+        "sequencing_error_rate": sequencing_error_rate,
+        "depth_cv": depth_cv,
+        "local_depth_window_snps": local_depth_window_snps,
+    }
+
+    return MiiCrossoverSimulation(
+        read_counts=read_counts,
+        crossover_positions=crossover_positions,
+        parameters=parameters,
+    )

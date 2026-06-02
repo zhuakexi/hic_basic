@@ -16,7 +16,15 @@ from hic_basic.crossover.detector_mii import (
     estimate_emissions_from_counts,
     estimate_transitions_rough,
     rough_classification,
+    simulate_mii_crossover_counts,
 )
+from hic_basic.crossover.pipeline_mii import (
+    detect_sister_chromatid_states_end2end,
+    estimate_mii_hmm_parameters,
+    plot_mii_assignment_track,
+    plot_mii_final_assignment,
+)
+from hic_basic.plot.track import plot_genome_phased_read_count_track
 
 
 class TestSisterChromatidHMM:
@@ -193,6 +201,18 @@ class TestRoughClassification:
         assert labels.iloc[1] == 'MM'  # High alt
         assert labels.iloc[3] == 'U'   # High other
 
+    def test_ambiguous_ratio_is_not_u(self):
+        """Intermediate ref/alt ratios should be AMBIG, not U."""
+        read_counts = pd.DataFrame({
+            'ref': [70],
+            'alt': [30],
+            'other': [0],
+        })
+
+        labels = rough_classification(read_counts)
+
+        assert labels.iloc[0] == 'AMBIG'
+
     def test_low_depth(self):
         """Test classification with low depth."""
         read_counts = pd.DataFrame({
@@ -274,12 +294,10 @@ class TestParameterEstimation:
             rough_labels, pseudocount=1.0  # pseudocount is deprecated but accepted
         )
 
-        n = len(rough_labels)
-        # Default values: alpha=1/n, beta=1/n, gamma=0.01/n, rho=min(100/n, 0.32)
-        assert abs(alpha - 1.0 / n) < 1e-10
-        assert abs(beta - 1.0 / n) < 1e-10
-        assert abs(gamma - 0.01 / n) < 1e-10
-        assert abs(rho - min(100.0 / n, 0.32)) < 1e-10
+        assert abs(alpha - 0.0) < 1e-10
+        assert abs(beta - 0.02) < 1e-10
+        assert abs(gamma - 0.0) < 1e-10
+        assert abs(rho - 0.1) < 1e-10
 
 
 class TestDataClasses:
@@ -369,6 +387,479 @@ class TestIntegration:
 
         # Should have reasonable accuracy (>50%)
         assert accuracy > 0.5
+
+    def test_mii_crossover_simulation_requested_example(self):
+        """Test the requested 100 Mb, 1 kb SNP, 5x mII simulation setup."""
+        sim = simulate_mii_crossover_counts(random_state=7)
+        df = sim.read_counts
+
+        assert len(df) == 100_000
+        assert set(["chromosome", "position", "ref", "alt", "other", "true_state"]).issubset(df.columns)
+        assert df["position"].iloc[0] == 1
+        assert df["position"].diff().dropna().eq(1_000).all()
+        assert set(df["true_state"]).issubset({"PP", "PM", "MM"})
+
+        observed_depth = df[["ref", "alt", "other"]].sum(axis=1)
+        assert 3.5 < observed_depth.mean() < 6.5
+        assert "chromatid_1" in sim.crossover_positions
+        assert "chromatid_2" in sim.crossover_positions
+
+    def test_mii_estimate_only_simulated_binned250_with_diagnostics(self):
+        """Estimate parameters from simulated mII data and preserve diagnostic PNGs."""
+        sim = simulate_mii_crossover_counts(random_state=11)
+        out_dir = Path("issues/mII_crossover_sim_untracked")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        prefix = out_dir / "simulated_100Mb_1kb_depth5_bin250"
+
+        params = estimate_mii_hmm_parameters(
+            sim.read_counts,
+            transition_params="estimated",
+            binning_method="by_snp",
+            binning_snp_number=250,
+            params_vis_prefix=prefix,
+            verbose=1,
+        )
+
+        assert len(params["counts_df"]) == 400
+        assert params["rough_labels"] is not None
+        assert params["emission_source"] == "estimated_with_by_snp_u_prior"
+        assert params["transition_source"] == "estimated"
+        assert params["transition_matrix"].shape == (4, 4)
+        assert np.allclose(params["transition_matrix"].sum(axis=1), 1.0)
+        assert set(params["emission_params"]) == {"PP", "PM", "MM", "U"}
+        assert "effective_depth_threshold" in params
+        assert params["effective_depth_threshold"].iloc[0] == 500
+
+        for suffix in [
+            "rough_label_classification",
+            "rough_decision_distributions",
+            "rough_segment_lengths",
+            "rough_label_filtering",
+            "emission_matrix",
+            "transition_matrix",
+        ]:
+            png = Path(f"{prefix}.{suffix}.png")
+            assert png.exists()
+            assert png.stat().st_size > 0
+
+    def test_transition_estimation_skips_short_rough_segments(self):
+        """Short raw rough-label segments should become gaps, not joined transitions."""
+        import hic_basic.crossover.pipeline_mii as pipeline_mii
+
+        counts = pd.DataFrame({
+            "chromosome": ["chr1"] * 5,
+            "position": [1, 2, 3, 4, 5],
+            "ref": [10, 10, 0, 5, 5],
+            "alt": [0, 0, 0, 5, 5],
+            "other": [0, 0, 10, 0, 0],
+        })
+        labels = pd.Series(["PP", "PP", "U", "PM", "PM"])
+        _, _, raw_gamma, _ = estimate_transitions_rough(labels)
+
+        segments = pipeline_mii._rough_label_segments(counts, labels)
+        filtered = pipeline_mii._filter_short_rough_segments(
+            labels,
+            segments,
+            min_segment_bins=2,
+        )
+        transition_labels = pipeline_mii._labels_with_chromosome_gap_separators(
+            counts,
+            filtered,
+        )
+        filtered_alpha, _, filtered_gamma, _ = estimate_transitions_rough(transition_labels)
+
+        assert filtered.tolist() == ["PP", "PP", pipeline_mii.GAP_LABEL, "PM", "PM"]
+        assert raw_gamma > 0
+        assert filtered_gamma == 0
+        assert filtered_alpha == 0
+
+    def test_by_snp_estimated_transition_uses_u_prior(self):
+        """SNP-binned transition estimation should not estimate U transitions from rough U."""
+        counts = pd.DataFrame({
+            "chromosome": ["chr1"] * 7,
+            "position": np.arange(7),
+            "ref": [20, 20, 0, 0, 0, 10, 10],
+            "alt": [0, 0, 0, 0, 0, 10, 10],
+            "other": [0, 0, 20, 20, 20, 0, 0],
+        })
+
+        params = estimate_mii_hmm_parameters(
+            counts,
+            transition_params="estimated",
+            binning_method="by_snp",
+            binning_snp_number=1,
+            transition_min_segment_bins=1,
+            transition_u_gamma_factor=0.1,
+            transition_u_rho_prior=0.32,
+        )
+
+        assert params["transition_scale_info"]["by_snp_u_prior_applied"] is True
+        assert params["transition_scale_info"]["u_labels_treated_as_gaps_for_transition"] is True
+        assert "U" not in set(params["transition_rough_labels"])
+        assert "U" not in set(params["filtered_rough_labels"])
+        assert params["transition_params"]["gamma"] == 0.001
+        assert params["transition_params"]["rho"] == 0.32
+        assert params["emission_params"]["U"] == (0.475, 0.475, 0.05)
+        assert params["u_emission_prior_applied"] is True
+
+    def test_ambiguous_labels_are_gaps_not_u_emission(self):
+        """By-SNP AMBIG bins should not train U emission or transition counts."""
+        import hic_basic.crossover.pipeline_mii as pipeline_mii
+
+        counts = pd.DataFrame({
+            "chromosome": ["chr1"] * 5,
+            "position": np.arange(5),
+            "ref": [20, 70, 10, 0, 10],
+            "alt": [0, 30, 10, 20, 10],
+            "other": [0, 0, 0, 0, 0],
+        })
+
+        params = estimate_mii_hmm_parameters(
+            counts,
+            transition_params="estimated",
+            binning_method="by_snp",
+            binning_snp_number=1,
+            transition_min_segment_bins=1,
+        )
+
+        assert params["rough_labels"].iloc[1] == "AMBIG"
+        assert params["filtered_rough_labels"].iloc[1] == pipeline_mii.GAP_LABEL
+        assert params["emission_params"]["U"] == (0.475, 0.475, 0.05)
+
+    def test_estimate_diagnostic_plot_scaling(self, monkeypatch, tmp_path):
+        """Diagnostic plots should use log/pseudo-log x and robust count y limits."""
+        import hic_basic.crossover.pipeline_mii as pipeline_mii
+
+        captured = []
+
+        def capture_fig(fig, output_path, width=1200, height=700):
+            captured.append(fig)
+
+        monkeypatch.setattr(pipeline_mii, "_write_plotly_png", capture_fig)
+
+        normal_rows = pd.DataFrame({
+            "chromosome": ["chr1"] * 200,
+            "position": np.arange(200),
+            "ref": [10] * 200,
+            "alt": [12] * 200,
+            "other": [0] * 200,
+        })
+        extreme_row = pd.DataFrame({
+            "chromosome": ["chr1"],
+            "position": [201],
+            "ref": [10000],
+            "alt": [0],
+            "other": [0],
+        })
+        counts = pd.concat([normal_rows, extreme_row], ignore_index=True)
+        labels = pd.Series(["PM"] * len(counts))
+
+        pipeline_mii._plot_rough_decision_distributions_png(
+            counts_df=counts,
+            output_path=tmp_path / "decision.png",
+            effective_depth_threshold=2,
+            other_threshold=0.4,
+            balance_threshold=0.25,
+        )
+        decision_fig = captured[-1]
+        assert "log10(total depth + 1)" in decision_fig.layout.xaxis.title.text
+        assert "log10(other fraction + eps)" in decision_fig.layout.xaxis2.title.text
+
+        pipeline_mii._plot_rough_label_count_png(
+            counts_df=counts,
+            rough_labels=labels,
+            output_path=tmp_path / "label_count.png",
+        )
+        label_count_fig = captured[-1]
+        assert label_count_fig.layout.yaxis2.range[1] < 10000
+        assert any(
+            "y-axis capped at p99.5" in annotation.text
+            for annotation in label_count_fig.layout.annotations
+        )
+
+        pipeline_mii._plot_rough_segment_lengths_png(
+            segment_table=pipeline_mii._rough_label_segments(counts, labels),
+            min_segment_bins=3,
+            output_path=tmp_path / "segments.png",
+        )
+        segment_fig = captured[-1]
+        assert "Raw rough label segment length distribution" in segment_fig.layout.title.text
+        assert any(
+            "transition_min_segment_bins=3" in annotation.text
+            for annotation in segment_fig.layout.annotations
+        )
+
+        filtered_labels = labels.copy()
+        filtered_labels.iloc[0] = pipeline_mii.GAP_LABEL
+        pipeline_mii._plot_raw_filtered_label_png(
+            counts_df=counts,
+            raw_labels=labels,
+            filtered_labels=filtered_labels,
+            output_path=tmp_path / "filtering.png",
+        )
+        filtering_fig = captured[-1]
+        assert "Raw rough labels vs transition-filtered labels" in filtering_fig.layout.title.text
+
+        pipeline_mii._plot_assigned_label_count_png(
+            counts_df=counts,
+            assigned_labels=labels,
+            output_path=tmp_path / "assigned.png",
+        )
+        assigned_fig = captured[-1]
+        assert "Final assigned labels" in assigned_fig.layout.title.text
+        assert assigned_fig.layout.plot_bgcolor == "white"
+        assert assigned_fig.layout.xaxis.showgrid is False
+        assert assigned_fig.layout.xaxis.showline is True
+        assert assigned_fig.layout.yaxis.showgrid is False
+        assert assigned_fig.layout.yaxis.showline is True
+
+        public_fig = pipeline_mii.plot_mii_final_assignment(
+            counts.assign(state=labels),
+            region="chr1:50-120",
+            output_path=tmp_path / "public_assigned.png",
+        )
+        ref_trace = next(trace for trace in public_fig.data if trace.name == "ref")
+        assert min(ref_trace.x) >= 50
+        assert max(ref_trace.x) <= 120
+        assert public_fig.layout.paper_bgcolor == "white"
+
+    def test_independent_mii_tracks_write_review_pngs(self):
+        """Independent count, label, and final-assignment plots should write review PNGs."""
+        output_dir = Path("tests/output/crossover_mii_tracks")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        positions = np.arange(0, 1_200_000, 100_000)
+        counts = pd.DataFrame({
+            "chromosome": ["chr1"] * 6 + ["chr2"] * 6,
+            "start_pos": np.tile(positions[:6], 2),
+            "end_pos": np.tile(positions[:6] + 99_999, 2),
+            "position": np.tile(positions[:6] + 50_000, 2),
+            "ref": [22, 20, 12, 6, 3, 2, 4, 5, 11, 18, 24, 28],
+            "alt": [2, 4, 11, 17, 25, 27, 24, 22, 12, 7, 4, 2],
+            "other": [0, 1, 1, 2, 1, 0, 0, 2, 1, 1, 0, 0],
+            "state": ["PP", "PP", "PM", "PM", "MM", "MM", "MM", "MM", "PM", "PM", "PP", "PP"],
+        })
+
+        count_png = output_dir / "plot_genome_phased_read_count_track.png"
+        label_png = output_dir / "plot_mii_assignment_track.png"
+        final_png = output_dir / "plot_mii_final_assignment.png"
+
+        count_fig = plot_genome_phased_read_count_track(
+            counts,
+            output_path=count_png,
+            title="Synthetic phased read counts",
+        )
+        label_fig = plot_mii_assignment_track(
+            counts[["chromosome", "start_pos", "end_pos", "position", "state"]],
+            output_path=label_png,
+            title="Synthetic mII labels",
+        )
+        final_fig = plot_mii_final_assignment(
+            counts,
+            output_path=final_png,
+            title="Synthetic final assignment",
+        )
+
+        assert {trace.name for trace in count_fig.data} == {"ref", "alt", "other"}
+        assert any(str(trace.name).startswith("PP") for trace in label_fig.data)
+        assert len(final_fig.data) == len(count_fig.data) + len(label_fig.data)
+        for png in [count_png, label_png, final_png]:
+            assert png.exists()
+            assert png.stat().st_size > 0
+
+    def test_phased_read_count_track_uses_natural_chromosome_order(self):
+        """Chromosome grid should follow chr1, chr2, chr10 and align to trace x positions."""
+        counts = pd.DataFrame({
+            "chromosome": ["chr10", "chr1", "chr2"],
+            "position": [100, 100, 100],
+            "ref": [10, 1, 2],
+            "alt": [0, 0, 0],
+            "other": [0, 0, 0],
+            "state": ["MM", "PP", "PM"],
+        })
+
+        count_fig = plot_genome_phased_read_count_track(counts)
+        ref_trace = next(trace for trace in count_fig.data if trace.name == "ref")
+        assert ref_trace.x.tolist() == [0, 1, 2]
+        assert ref_trace.customdata[:, 0].tolist() == ["chr1", "chr2", "chr10"]
+        assert [shape.x0 for shape in count_fig.layout.shapes] == [1.0, 2.0]
+        chrom_annotations = [
+            annotation.text
+            for annotation in count_fig.layout.annotations
+            if annotation.text in {"chr1", "chr2", "chr10"}
+        ]
+        assert chrom_annotations == ["chr1", "chr2", "chr10"]
+
+        label_fig = plot_mii_assignment_track(
+            counts[["chromosome", "position", "state"]]
+        )
+        label_points = []
+        for trace in label_fig.data:
+            label_points.extend(zip(trace.x.tolist(), trace.customdata[:, 0].tolist()))
+        assert [chrom for _, chrom in sorted(label_points)] == ["chr1", "chr2", "chr10"]
+
+    def test_transition_param_unit_mb_scales_specified_params(self):
+        """Specified per-Mb transition rates should scale to bin-step probabilities."""
+        sim = simulate_mii_crossover_counts(chromosome_length=1_000_000, random_state=31)
+        emission_params = {
+            "MM": (0.01, 0.98, 0.01),
+            "PM": (0.49, 0.49, 0.02),
+            "PP": (0.98, 0.01, 0.01),
+            "U": (0.25, 0.25, 0.50),
+        }
+        transition_params = {
+            "alpha": 0.001,
+            "beta": 0.002,
+            "gamma": 0.003,
+            "rho": 0.004,
+        }
+
+        params = estimate_mii_hmm_parameters(
+            sim.read_counts,
+            emission_params=emission_params,
+            transition_params=transition_params,
+            transition_param_unit="mb",
+            binning_method="by_snp",
+            binning_snp_number=250,
+        )
+
+        distance_mb = params["transition_scale_info"]["median_distance_mb"]
+        assert np.isclose(distance_mb, 0.25)
+        assert np.isclose(params["transition_params"]["alpha"], 1 - np.exp(-0.001 * 0.25))
+        assert params["transition_scale_info"]["scaling_applied"] is True
+
+    def test_end2end_estimate_use_filters_parameter_chromosomes(self, monkeypatch, tmp_path):
+        """Multi-chromosome estimate_only should estimate on estimate_use subset."""
+        sim1 = simulate_mii_crossover_counts(
+            chromosome="chr1",
+            chromosome_length=1_000_000,
+            random_state=41,
+        )
+        sim2 = simulate_mii_crossover_counts(
+            chromosome="chr2",
+            chromosome_length=1_000_000,
+            random_state=42,
+        )
+        read_counts = pd.concat([
+            sim1.read_counts[["chromosome", "position", "ref", "alt", "other"]],
+            sim2.read_counts[["chromosome", "position", "ref", "alt", "other"]],
+        ], ignore_index=True)
+
+        import hic_basic.crossover.pipeline_mii as pipeline_mii
+
+        monkeypatch.setattr(
+            pipeline_mii,
+            "extract_read_counts",
+            lambda *args, **kwargs: read_counts.copy(),
+        )
+
+        bam_file = tmp_path / "sample.bam"
+        snp_file = tmp_path / "snps.tsv"
+        bam_file.touch()
+        snp_file.touch()
+
+        result = detect_sister_chromatid_states_end2end(
+            bam_file=str(bam_file),
+            snp_file=str(snp_file),
+            output_dir=str(tmp_path / "out"),
+            sample_id="sim",
+            chromosomes=["chr1", "chr2"],
+            estimate_use=["chr1"],
+            transition_params="estimated",
+            binning_method="by_snp",
+            binning_snp_number=250,
+            estimate_only=True,
+        )
+
+        assert set(result["counts_df"]["chromosome"]) == {"chr1"}
+        assert len(result["counts_df"]) == 4
+
+    def test_end2end_multichrom_decodes_separately_with_shared_params(self, monkeypatch, tmp_path):
+        """Multi-chromosome pipeline should share estimated params but decode per chromosome."""
+        sim1 = simulate_mii_crossover_counts(
+            chromosome="chr1",
+            chromosome_length=1_000_000,
+            random_state=51,
+        )
+        sim2 = simulate_mii_crossover_counts(
+            chromosome="chr2",
+            chromosome_length=1_000_000,
+            random_state=52,
+        )
+        read_counts = pd.concat([
+            sim1.read_counts[["chromosome", "position", "ref", "alt", "other"]],
+            sim2.read_counts[["chromosome", "position", "ref", "alt", "other"]],
+        ], ignore_index=True)
+
+        import hic_basic.crossover.pipeline_mii as pipeline_mii
+
+        monkeypatch.setattr(
+            pipeline_mii,
+            "extract_read_counts",
+            lambda *args, **kwargs: read_counts.copy(),
+        )
+
+        bam_file = tmp_path / "sample.bam"
+        snp_file = tmp_path / "snps.tsv"
+        bam_file.touch()
+        snp_file.touch()
+
+        results = detect_sister_chromatid_states_end2end(
+            bam_file=str(bam_file),
+            snp_file=str(snp_file),
+            output_dir=str(tmp_path / "out"),
+            sample_id="sim",
+            chromosomes=["chr1", "chr2"],
+            estimate_use="all",
+            transition_params="estimated",
+            binning_method="by_snp",
+            binning_snp_number=250,
+        )
+
+        assert set(results) == {"chr1", "chr2"}
+        assert results["chr1"].chromosome == "chr1"
+        assert results["chr2"].chromosome == "chr2"
+        assert len(results["chr1"].positions) == 1000
+        assert len(results["chr2"].positions) == 1000
+        assert (tmp_path / "out" / "sim_hmm_params.json").exists()
+
+    def test_end2end_estimate_only_branch_with_simulated_counts(self, monkeypatch, tmp_path):
+        """Test the public pipeline estimate_only branch without requiring a real BAM."""
+        sim = simulate_mii_crossover_counts(
+            chromosome_length=1_000_000,
+            random_state=23,
+        )
+        read_counts = sim.read_counts[["chromosome", "position", "ref", "alt", "other"]]
+
+        import hic_basic.crossover.pipeline_mii as pipeline_mii
+
+        monkeypatch.setattr(
+            pipeline_mii,
+            "extract_read_counts",
+            lambda *args, **kwargs: read_counts.copy(),
+        )
+
+        bam_file = tmp_path / "sample.bam"
+        snp_file = tmp_path / "snps.tsv"
+        bam_file.touch()
+        snp_file.touch()
+
+        result = detect_sister_chromatid_states_end2end(
+            bam_file=str(bam_file),
+            snp_file=str(snp_file),
+            output_dir=str(tmp_path / "out"),
+            sample_id="sim",
+            transition_params="estimated",
+            binning_method="by_snp",
+            binning_snp_number=250,
+            estimate_only=True,
+        )
+
+        assert result["transition_source"] == "estimated"
+        assert result["emission_source"] == "estimated_with_by_snp_u_prior"
+        assert len(result["counts_df"]) == 4
+        assert result["rough_labels"] is not None
+        assert (tmp_path / "out" / "sim_hmm_params.json").exists()
 
 
 if __name__ == "__main__":

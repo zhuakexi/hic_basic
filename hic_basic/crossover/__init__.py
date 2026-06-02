@@ -46,10 +46,12 @@ from .detector_mii import (
     SisterChromatidHMM,
     SisterChromatidBlock,
     SisterChromatidResults,
+    MiiCrossoverSimulation,
     estimate_emissions_from_counts,
     estimate_transitions_rough,
     rough_classification,
     get_default_transition_params,
+    simulate_mii_crossover_counts,
 )
 from .pipeline import (
     detect_crossovers_end2end,
@@ -60,6 +62,9 @@ from .pipeline_mii import (
     save_results_mii,
     bin_by_snp,
     convert_unit_coordinates_to_snp,
+    estimate_mii_hmm_parameters,
+    plot_mii_assignment_track,
+    plot_mii_final_assignment,
 )
 
 __all__ = [
@@ -75,12 +80,17 @@ __all__ = [
     "SisterChromatidHMM",
     "SisterChromatidBlock",
     "SisterChromatidResults",
+    "MiiCrossoverSimulation",
     "detect_sister_chromatid_states_end2end",
     "save_results_mii",
     "bin_by_snp",
     "convert_unit_coordinates_to_snp",
     "estimate_emissions_from_counts",
     "estimate_transitions_rough",
+    "estimate_mii_hmm_parameters",
+    "plot_mii_assignment_track",
+    "plot_mii_final_assignment",
     "rough_classification",
     "get_default_transition_params",
+    "simulate_mii_crossover_counts",
 ]
