@@ -176,7 +176,7 @@ class TrackComposer:
         # Load data and render each track
         for (row, col), track in self.tracks.items():
             # Use delayed import to avoid circular dependency
-            from .track import EigenTrack, HeatmapTrack, BigWigTrack, GeneTrack, TrapezoidHeatmapTrack
+            from .track import ArcTrack, EigenTrack, HeatmapTrack, BigWigTrack, GeneTrack, TrapezoidHeatmapTrack
 
             # Skip loading if data is already loaded (pre-loaded tracks)
             if track._data is not None or (hasattr(track, '_matrix') and track._matrix is not None):
@@ -211,6 +211,9 @@ class TrackComposer:
                 track.load_data(region=region)
             elif isinstance(track, GeneTrack):
                 # GeneTrack loads from region string
+                track.load_data(region=region)
+            elif isinstance(track, ArcTrack):
+                # ArcTrack loads BEDPE-like links from region string
                 track.load_data(region=region)
             elif clr is not None:
                 # Use shared cooler if provided

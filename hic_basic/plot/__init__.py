@@ -14,6 +14,8 @@ from .hic import (
 from .track import (
     Track,
     TrackConfig,
+    ArcTrack,
+    plot_arc_track,
     EigenTrack,
     ISTrack,
     HeatmapTrack,
@@ -21,6 +23,7 @@ from .track import (
     GeneTrack,
     TrapezoidHeatmapTrack,
     MarkTrack,
+    plot_genome_phased_read_count_track,
 )
 
 # Track composer

@@ -1,0 +1,7 @@
+chrom1	start1	end1	chrom2	start2	end2	score	info
+chr1	250000	260000	chr1	850000	860000	10	{"color":"#4c78a8"}
+chr1	500000	510000	chr1	1500000	1510000	30	{"color":"#f58518","dash":"dot"}
+chr1	950000	960000	chr1	2900000	2910000	100	{"color":"#d62728","width":7}
+chr1	1800000	1810000	chr1	3600000	3610000	75	{"color":"#54a24b"}
+chr1	2500000	2510000	chr1	4700000	4710000	55	{'color':'#9467bd','dash':'dashdot'}
+chr2	100000	110000	chr2	600000	610000	50	{"color":"#888888"}

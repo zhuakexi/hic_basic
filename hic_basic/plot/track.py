@@ -14,6 +14,10 @@ Example usage:
     >>> fig = composer.build(region="chr1:1000000-5000000")
 """
 
+import ast
+import gzip
+import io
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union, Tuple, Any
@@ -272,6 +276,336 @@ class EigenTrack(Track):
         else:
             fig.update_yaxes(**y_kwargs, row=row, col=col)
             fig.update_xaxes(showline=False, row=row, col=col)
+
+
+# =============================================================================
+# ArcTrack - BEDPE links as arc connections
+# =============================================================================
+
+
+BEDPE_COORD_COLUMNS = ["chrom1", "start1", "end1", "chrom2", "start2", "end2"]
+
+
+def _parse_track_region(region: str) -> Tuple[str, float, float]:
+    """Parse a simple genomic region string into chrom, start, end."""
+    if ":" not in region:
+        return region, 0.0, float("inf")
+    chrom, coords = region.split(":", 1)
+    if "-" not in coords:
+        return chrom, 0.0, float(coords.replace(",", ""))
+    start, end = coords.replace(",", "").split("-", 1)
+    return chrom, float(start), float(end)
+
+
+def _read_bedpe_like(data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
+    """Read a BEDPE-like table with optional header and score/info columns."""
+    if isinstance(data, pd.DataFrame):
+        df = data.copy()
+    else:
+        data_path = Path(data)
+        opener = gzip.open if data_path.suffix == ".gz" else open
+        with opener(data_path, "rt") as handle:
+            content = "".join(line for line in handle if not line.lstrip().startswith("#"))
+        df = pd.read_table(io.StringIO(content), header=None)
+        if df.empty:
+            return pd.DataFrame(columns=BEDPE_COORD_COLUMNS)
+
+        first_row = [str(value).strip() for value in df.iloc[0, :6].tolist()]
+        has_header = first_row == BEDPE_COORD_COLUMNS
+        if has_header:
+            header = [str(value).strip() for value in df.iloc[0].tolist()]
+            df = df.iloc[1:].reset_index(drop=True)
+            df.columns = header
+        else:
+            names = BEDPE_COORD_COLUMNS.copy()
+            if df.shape[1] >= 7:
+                names.append("score")
+            if df.shape[1] >= 8:
+                names.append("info")
+            names.extend([f"extra_{i}" for i in range(df.shape[1] - len(names))])
+            df.columns = names
+
+    if set(BEDPE_COORD_COLUMNS).issubset(df.columns):
+        return df
+
+    if all(col in df.columns for col in range(6)):
+        rename = {idx: name for idx, name in enumerate(BEDPE_COORD_COLUMNS)}
+        if 6 in df.columns:
+            rename[6] = "score"
+        if 7 in df.columns:
+            rename[7] = "info"
+        return df.rename(columns=rename)
+
+    missing = set(BEDPE_COORD_COLUMNS) - set(df.columns)
+    raise ValueError(f"BEDPE data is missing required columns: {sorted(missing)}")
+
+
+def _parse_line_info(value: Any) -> Dict[str, Any]:
+    """Parse a Plotly line style dict from JSON or Python literal text."""
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+        return {}
+    for parser in (json.loads, ast.literal_eval):
+        try:
+            parsed = parser(text)
+            if isinstance(parsed, dict):
+                return parsed
+        except (ValueError, SyntaxError, TypeError, json.JSONDecodeError):
+            continue
+    raise ValueError(f"info must be a dict/JSON/Python-literal line style, got: {value!r}")
+
+
+class ArcTrack(Track):
+    """Arc track for BEDPE connections on a genomic axis.
+
+    The track reads BEDPE coordinates and renders each intra-region pair as a
+    Plotly line arc. The ``score`` column controls default line width after
+    min/max scaling. The ``info`` column may contain a JSON or Python literal
+    dictionary of Plotly ``scatter.line`` attributes, for example
+    ``{"color": "red", "width": 4, "dash": "dot"}``; these attributes
+    override score-derived defaults.
+
+    Parameters
+    ----------
+    data : str, Path, or pandas.DataFrame
+        BEDPE-like table. Required columns are chrom1, start1, end1, chrom2,
+        start2, and end2. Optional columns score and info are recognized.
+    score_col : str, optional
+        Column used to scale arc line width. Default is "score".
+    info_col : str, optional
+        Column with Plotly line style dictionaries. Default is "info".
+    line : dict, optional
+        Default Plotly scatter line attributes.
+    score_width_range : tuple of float, optional
+        Width range used when scaling score. Default is (1.0, 6.0).
+    n_points : int, optional
+        Number of points sampled per arc. Default is 60.
+    arc_height_scale : float, optional
+        Multiplier for semicircle arc height. Default is 1.0.
+    display_name : str, optional
+        Track name shown in hover/legend context. Default is "arc".
+    """
+
+    def __init__(
+        self,
+        data: Union[str, Path, pd.DataFrame],
+        score_col: str = "score",
+        info_col: str = "info",
+        line: Optional[Dict[str, Any]] = None,
+        score_width_range: Tuple[float, float] = (1.0, 6.0),
+        n_points: int = 60,
+        arc_height_scale: float = 1.0,
+        display_name: str = "arc",
+        config: Optional[TrackConfig] = None,
+    ):
+        super().__init__(name=display_name, config=config)
+        self.data_source = data
+        self.score_col = score_col
+        self.info_col = info_col
+        self.line = line or {"color": "#4c78a8", "width": 1.5}
+        self.score_width_range = score_width_range
+        self.n_points = n_points
+        self.arc_height_scale = arc_height_scale
+        self.display_name = display_name
+        self._region: Optional[Tuple[str, float, float]] = None
+        self._max_arc_height: float = 1.0
+
+    def load_data(self, region: str, **kwargs) -> "ArcTrack":
+        """Load and filter BEDPE arcs for a genomic region.
+
+        Args:
+            region: Genomic region such as "chr1:0-5000000".
+            **kwargs: Ignored, accepted for TrackComposer compatibility.
+
+        Returns:
+            self: Returns self for method chaining.
+        """
+        chrom, region_start, region_end = _parse_track_region(region)
+        df = _read_bedpe_like(self.data_source)
+        if df.empty:
+            self._data = df.copy()
+            self._region = (chrom, region_start, region_end)
+            self._max_arc_height = 1.0
+            return self
+
+        for coord_col in ["start1", "end1", "start2", "end2"]:
+            df[coord_col] = pd.to_numeric(df[coord_col], errors="coerce")
+        df = df.dropna(subset=["start1", "end1", "start2", "end2"]).copy()
+
+        mask = (
+            (df["chrom1"].astype(str) == str(chrom))
+            & (df["chrom2"].astype(str) == str(chrom))
+            & (df["end1"] >= region_start)
+            & (df["start1"] <= region_end)
+            & (df["end2"] >= region_start)
+            & (df["start2"] <= region_end)
+        )
+        df = df.loc[mask].reset_index(drop=True)
+        if df.empty:
+            self._data = df
+            self._region = (chrom, region_start, region_end)
+            self._max_arc_height = 1.0
+            return self
+
+        df["x1"] = (df["start1"] + df["end1"]) / 2
+        df["x2"] = (df["start2"] + df["end2"]) / 2
+        df["span"] = (df["x2"] - df["x1"]).abs()
+        df = df[df["span"] > 0].reset_index(drop=True)
+        if df.empty:
+            self._data = df
+            self._region = (chrom, region_start, region_end)
+            self._max_arc_height = 1.0
+            return self
+
+        if self.score_col in df.columns:
+            score = pd.to_numeric(df[self.score_col], errors="coerce")
+            min_width, max_width = self.score_width_range
+            finite_score = score[np.isfinite(score)]
+            if len(finite_score) > 0 and finite_score.max() > finite_score.min():
+                width = min_width + (score - finite_score.min()) / (finite_score.max() - finite_score.min()) * (max_width - min_width)
+                df["_score_width"] = width.fillna(min_width)
+            elif len(finite_score) > 0:
+                df["_score_width"] = (min_width + max_width) / 2
+            else:
+                df["_score_width"] = self.line.get("width", min_width)
+        else:
+            df["_score_width"] = self.line.get("width", self.score_width_range[0])
+
+        if self.info_col in df.columns:
+            df["_line_info"] = df[self.info_col].apply(_parse_line_info)
+        else:
+            df["_line_info"] = [{} for _ in range(len(df))]
+
+        self._max_arc_height = max(float(df["span"].max()) * self.arc_height_scale / 2, 1.0)
+        self._data = df
+        self._region = (chrom, region_start, region_end)
+        return self
+
+    def render(self, fig, row: int, col: int, **kwargs) -> go.Figure:
+        """Render BEDPE links as arcs."""
+        if self._data is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        if self._data.empty:
+            fig.update_yaxes(showticklabels=False, range=[0, 1], row=row, col=col)
+            return fig
+
+        theta = np.linspace(0, np.pi, self.n_points)
+        custom_cols = ["chrom1", "start1", "end1", "chrom2", "start2", "end2"]
+        if self.score_col in self._data.columns:
+            custom_cols.append(self.score_col)
+
+        for idx, arc in self._data.iterrows():
+            x_left = min(float(arc["x1"]), float(arc["x2"]))
+            x_right = max(float(arc["x1"]), float(arc["x2"]))
+            half_span = (x_right - x_left) / 2
+            center = (x_left + x_right) / 2
+            height = half_span * self.arc_height_scale
+            x = center - half_span * np.cos(theta)
+            y = height * np.sin(theta)
+
+            line = dict(self.line)
+            line["width"] = float(arc["_score_width"])
+            line.update(arc["_line_info"])
+
+            customdata = np.tile(arc[custom_cols].to_numpy(dtype=object), (len(x), 1))
+            score_hover = ""
+            if self.score_col in self._data.columns:
+                score_hover = f"<br>{self.score_col}=%{{customdata[6]}}"
+
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=y,
+                    mode="lines",
+                    line=line,
+                    name=self.display_name,
+                    showlegend=False,
+                    customdata=customdata,
+                    hovertemplate=(
+                        "arc "
+                        "%{customdata[0]}:%{customdata[1]}-%{customdata[2]} -> "
+                        "%{customdata[3]}:%{customdata[4]}-%{customdata[5]}"
+                        + score_hover
+                        + "<extra></extra>"
+                    ),
+                ),
+                row=row,
+                col=col,
+            )
+
+        if self._region is not None:
+            _, region_start, region_end = self._region
+            if np.isfinite(region_end):
+                fig.update_xaxes(range=[region_start, region_end], row=row, col=col)
+
+        fig.update_xaxes(showline=True, linecolor="black", row=row, col=col)
+        fig.update_yaxes(
+            showticklabels=False,
+            showgrid=False,
+            zeroline=False,
+            range=[0, self._max_arc_height * 1.08],
+            row=row,
+            col=col,
+        )
+        return fig
+
+
+def plot_arc_track(
+    data: Union[str, Path, pd.DataFrame],
+    region: str,
+    title: Optional[str] = None,
+    width: int = 1000,
+    height: int = 260,
+    output_path: Optional[Union[str, Path]] = None,
+    **arc_kwargs,
+) -> go.Figure:
+    """Plot BEDPE links as a standalone genomic arc track.
+
+    Parameters
+    ----------
+    data : str, Path, or pandas.DataFrame
+        BEDPE-like table accepted by :class:`ArcTrack`. The first six columns
+        are chrom1, start1, end1, chrom2, start2, and end2. Optional score
+        controls default arc width, and optional info supplies Plotly line
+        attributes as a dict/JSON/Python-literal string.
+    region : str
+        Genomic region to show, for example "chr1:0-5000000".
+    title : str, optional
+        Figure title. If None, a title is generated from region.
+    width, height : int, optional
+        Figure size in pixels. Defaults are 1000 by 260.
+    output_path : str or Path, optional
+        PNG output path. If provided, the figure is written to this path.
+    **arc_kwargs
+        Additional keyword arguments passed to :class:`ArcTrack`.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        The generated arc track figure.
+    """
+    from plotly.subplots import make_subplots
+
+    track = ArcTrack(data, **arc_kwargs)
+    track.load_data(region)
+    fig = make_subplots(rows=1, cols=1)
+    track.render(fig, row=1, col=1)
+    fig.update_layout(
+        title=title or f"Arc track: {region}",
+        width=width,
+        height=height,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=50, r=20, t=45, b=35),
+    )
+    if output_path is not None:
+        fig.write_image(str(output_path), width=width, height=height)
+    return fig
 
 
 # =============================================================================
@@ -721,13 +1055,24 @@ class HeatmapTrack(Track):
             raise ValueError("Data not loaded. Call load_data() first.")
 
         merged_kwargs = {**self.heatmap_kwargs, **kwargs}
+        bin_centers = (self._bins["start"] + self._bins["end"]) / 2
         trace = go.Heatmap(
             z=self._matrix,
-            x=self._bins["start"],
-            y=self._bins["start"],
+            x=bin_centers,
+            y=bin_centers,
             **merged_kwargs
         )
         fig.add_trace(trace, row=row, col=col)
+        fig.update_xaxes(
+            range=[float(self._bins["start"].min()), float(self._bins["end"].max())],
+            row=row,
+            col=col,
+        )
+        fig.update_yaxes(
+            range=[float(self._bins["start"].min()), float(self._bins["end"].max())],
+            row=row,
+            col=col,
+        )
 
         # Render marks if present
         if self.marks:
@@ -881,31 +1226,20 @@ class MarkTrack(Track):
             start2 = mark.get("start2")
             end2 = mark.get("end2")
 
-            # Convert to bin coordinates
+            # Draw the provided intervals directly. This keeps multi-bin loop
+            # anchors aligned with guide lines and avoids half-bin shifts from
+            # treating bin starts as heatmap cell centers.
             if self._bins is not None:
-                # Find bin indices
-                bin1_mask = (
-                    (self._bins["chrom"] == chrom1) &
-                    (self._bins["start"] >= start1) &
-                    (self._bins["end"] <= end1)
-                )
-                bin2_mask = (
-                    (self._bins["chrom"] == chrom2) &
-                    (self._bins["start"] >= start2) &
-                    (self._bins["end"] <= end2)
-                )
+                region_chroms = set(self._bins["chrom"].astype(str))
+                if str(chrom1) not in region_chroms or str(chrom2) not in region_chroms:
+                    continue
 
-                bin1_idx = self._bins[bin1_mask].index.min()
-                bin2_idx = self._bins[bin2_mask].index.min()
-
-                # Get bin centers for shape positioning
-                bin1_start = self._bins.loc[bin1_idx, "start"]
-                bin1_end = self._bins.loc[bin1_idx, "end"]
-                bin2_start = self._bins.loc[bin2_idx, "start"]
-                bin2_end = self._bins.loc[bin2_idx, "end"]
-
-                binsize1 = bin1_end - bin1_start
-                binsize2 = bin2_end - bin2_start
+                x0 = float(start1)
+                x1 = float(end1)
+                y0 = float(start2)
+                y1 = float(end2)
+                if x1 <= x0 or y1 <= y0:
+                    continue
 
                 # Shape positioning
                 shape = mark.get("shape", self.default_shape)
@@ -913,50 +1247,42 @@ class MarkTrack(Track):
                 width = mark.get("width", self.default_width)
 
                 if shape == "circle":
-                    # Circle centered on the pixel
-                    x0 = bin1_start - 0.5 * binsize1
-                    y0 = bin2_start - 0.5 * binsize2
-                    x1 = bin1_end - 0.5 * binsize1
-                    y1 = bin2_end - 0.5 * binsize2
-
                     fig.add_shape(
                         type="circle",
                         x0=x0, y0=y0, x1=x1, y1=y1,
                         line=dict(color=color, width=width),
-                        xref=f"x{row}",
-                        yref=f"y{col}"
+                        row=row,
+                        col=col,
                     )
                 elif shape == "rect":
-                    # Rectangle outlining the pixel
                     fig.add_shape(
                         type="rect",
-                        x0=bin1_start, y0=bin2_start,
-                        x1=bin1_end, y1=bin2_end,
+                        x0=x0, y0=y0,
+                        x1=x1, y1=y1,
                         line=dict(color=color, width=width),
-                        xref=f"x{row}",
-                        yref=f"y{col}"
+                        row=row,
+                        col=col,
                     )
                 elif shape == "line":
-                    # Line connecting two points
                     fig.add_shape(
                         type="line",
-                        x0=bin1_start, y0=bin2_start,
-                        x1=bin1_end, y1=bin2_end,
+                        x0=x0, y0=y0,
+                        x1=x1, y1=y1,
                         line=dict(color=color, width=width),
-                        xref=f"x{row}",
-                        yref=f"y{col}"
+                        row=row,
+                        col=col,
                     )
 
                 # Add label if provided
                 if "label" in mark:
                     # Position label outside the shape
                     # Offset to top-right of the mark
-                    center_x = (bin1_start + bin1_end) / 2
-                    center_y = (bin2_start + bin2_end) / 2
+                    center_x = (x0 + x1) / 2
+                    center_y = (y0 + y1) / 2
                     
-                    # Calculate offset based on binsize
-                    offset_x = max(binsize1, binsize2) * 0.75
-                    offset_y = max(binsize1, binsize2) * 0.75
+                    # Calculate offset based on interval size
+                    offset_x = max(x1 - x0, y1 - y0) * 0.75
+                    offset_y = max(x1 - x0, y1 - y0) * 0.75
                     
                     # Position label to the right and above the mark
                     label_x = center_x + offset_x
@@ -968,8 +1294,8 @@ class MarkTrack(Track):
                         text=mark["label"],
                         showarrow=False,
                         font=dict(color=color, size=11),
-                        xref=f"x{row}",
-                        yref=f"y{col}"
+                        row=row,
+                        col=col,
                     )
 
         return fig
@@ -1215,6 +1541,263 @@ class TrapezoidHeatmapTrack(Track):
 # =============================================================================
 # Genome-wide visualization functions
 # =============================================================================
+
+
+DEFAULT_PHASED_READ_COUNT_COLORS = {
+    "ref": "#d62728",
+    "alt": "#1f77b4",
+    "other": "#7f7f7f",
+}
+
+
+def _write_plotly_png(fig, output_path: Union[str, Path], width: int = 1200, height: int = 700) -> None:
+    """Write a Plotly figure to PNG, with a simple matplotlib fallback."""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fig.write_image(str(output_path), width=width, height=height)
+    except Exception as exc:  # pragma: no cover - only used when kaleido/chrome is unavailable
+        import matplotlib.pyplot as plt
+
+        fallback_title = getattr(fig.layout.title, "text", None) or output_path.name
+        fallback_text = f"{fallback_title}\n\nPlotly image export failed:\n{exc}"
+        fallback_fig, ax = plt.subplots(figsize=(width / 150, height / 150))
+        ax.axis("off")
+        ax.text(0.5, 0.5, fallback_text, ha="center", va="center", wrap=True)
+        fallback_fig.savefig(output_path, dpi=150, bbox_inches="tight")
+        plt.close(fallback_fig)
+
+
+def _normalize_region(region):
+    if region is None:
+        return None
+    if isinstance(region, str):
+        chrom, coords = region.split(":", 1)
+        start, end = coords.replace(",", "").split("-", 1)
+        return chrom, float(start), float(end)
+    if isinstance(region, tuple) and len(region) == 3:
+        chrom, start, end = region
+        return chrom, float(start), float(end)
+    raise ValueError("region must be None, 'chrom:start-end', or (chrom, start, end)")
+
+
+def _chromosome_sort_value(chromosome):
+    label = str(chromosome)
+    core = label[3:] if label.lower().startswith("chr") else label
+    core_lower = core.lower()
+    special = {"x": 23, "y": 24, "m": 25, "mt": 25}
+    if core_lower in special:
+        return (0, special[core_lower], "")
+
+    digits = []
+    for char in core:
+        if char.isdigit():
+            digits.append(char)
+        else:
+            break
+    if digits:
+        number = int("".join(digits))
+        suffix = core[len(digits):].lower()
+        return (0, number, suffix)
+    return (1, 0, core_lower)
+
+
+def _sort_chromosome_position_table(df: pd.DataFrame) -> pd.DataFrame:
+    chrom_order = sorted(
+        pd.unique(df["chromosome"].astype(str)),
+        key=_chromosome_sort_value,
+    )
+    chrom_key = pd.Categorical(df["chromosome"].astype(str), categories=chrom_order, ordered=True)
+    return (
+        df.assign(_chromosome_order=chrom_key)
+        .sort_values(["_chromosome_order", "position"])
+        .drop(columns="_chromosome_order")
+        .reset_index(drop=True)
+    )
+
+
+def _normalize_phased_read_count_table(phased_read_counts, region=None):
+    df = phased_read_counts.copy().reset_index(drop=True)
+    if "chrom" in df.columns and "chromosome" not in df.columns:
+        df["chromosome"] = df["chrom"]
+    if "pos" in df.columns and "position" not in df.columns:
+        df["position"] = df["pos"]
+
+    missing = {"chromosome", "position", "ref", "alt", "other"} - set(df.columns)
+    if missing:
+        raise ValueError(f"phased_read_counts is missing required columns: {sorted(missing)}")
+
+    if "start_pos" not in df.columns:
+        df["start_pos"] = df["position"]
+    if "end_pos" not in df.columns:
+        df["end_pos"] = df["position"]
+
+    for col in ["position", "start_pos", "end_pos", "ref", "alt", "other"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.dropna(subset=["position", "start_pos", "end_pos"]).reset_index(drop=True)
+
+    parsed_region = _normalize_region(region)
+    if parsed_region is not None:
+        chrom, start, end = parsed_region
+        mask = (
+            (df["chromosome"].astype(str) == str(chrom))
+            & (df["end_pos"] >= start)
+            & (df["start_pos"] <= end)
+        )
+        df = df.loc[mask].reset_index(drop=True)
+
+    if len(df) == 0:
+        raise ValueError("No phased_read_counts rows overlap the requested region")
+
+    df = _sort_chromosome_position_table(df)
+    single_chrom = df["chromosome"].astype(str).nunique() == 1
+    if single_chrom:
+        df["x_plot"] = df["position"]
+        x_title = "genomic position (bp)"
+    else:
+        df["x_plot"] = np.arange(len(df))
+        x_title = "genome-wide bin index"
+    return df, single_chrom, x_title
+
+
+def _add_genome_wide_chrom_boundaries(fig, df, single_chrom, annotation_y=1.08):
+    if single_chrom:
+        return fig
+
+    chrom_starts = df.groupby("chromosome", sort=False)["x_plot"].min()
+    chrom_ends = df.groupby("chromosome", sort=False)["x_plot"].max()
+    for start in chrom_starts.iloc[1:]:
+        fig.add_vline(x=float(start), line_width=1, line_color="black", opacity=0.5)
+    for chrom in chrom_starts.index:
+        mid = (chrom_starts[chrom] + chrom_ends[chrom]) / 2
+        fig.add_annotation(
+            x=mid,
+            y=annotation_y,
+            xref="x",
+            yref="paper",
+            text=str(chrom),
+            showarrow=False,
+            font=dict(size=18),
+        )
+    return fig
+
+
+def plot_genome_phased_read_count_track(
+    phased_read_counts,
+    region=None,
+    output_path: Optional[Union[str, Path]] = None,
+    title: str = "phased_read_count",
+    count_cols: Tuple[str, ...] = ("ref", "alt", "other"),
+    colors: Optional[Dict[str, str]] = None,
+    y_cap_quantile: float = 0.995,
+    width: int = 1400,
+    height: int = 420,
+):
+    """
+    Plot a genome-wide phased read-count track.
+
+    This function is intended for internal phased-read count tables rather than
+    standard signal files such as bigWig. The input table must contain
+    chromosome/position coordinates and phased count columns.
+
+    Parameters
+    ----------
+    phased_read_counts : pandas.DataFrame
+        Table with chromosome, position, ref, alt, and other columns. The
+        aliases chrom and pos are accepted. Optional start_pos and end_pos
+        columns are used for interval hover text and region filtering.
+    region : str or tuple, optional
+        Region to plot, either "chr:start-end" or (chrom, start, end). If None,
+        all rows are shown with a genome-wide bin index when multiple
+        chromosomes are present.
+    output_path : str or Path, optional
+        PNG path. If provided, the figure is written to this path.
+    title : str, optional
+        Figure title.
+    count_cols : tuple of str, optional
+        Count columns to draw. Default is ("ref", "alt", "other").
+    colors : dict, optional
+        Mapping from count column to trace color.
+    y_cap_quantile : float, optional
+        Quantile used to cap the displayed y-axis. Default 0.995.
+    width, height : int, optional
+        PNG export size in pixels when output_path is provided.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        The generated read-count track figure.
+    """
+    df, single_chrom, x_title = _normalize_phased_read_count_table(phased_read_counts, region=region)
+    missing_count_cols = set(count_cols) - set(df.columns)
+    if missing_count_cols:
+        raise ValueError(f"phased_read_counts is missing count columns: {sorted(missing_count_cols)}")
+
+    values = df[list(count_cols)].to_numpy(dtype=float).ravel()
+    finite_values = values[np.isfinite(values)]
+    if len(finite_values) == 0:
+        y_cap = 1.0
+    else:
+        y_cap = max(float(np.quantile(finite_values, y_cap_quantile)), 1.0)
+    n_clipped = int(np.sum(finite_values > y_cap))
+
+    colors = {**DEFAULT_PHASED_READ_COUNT_COLORS, **(colors or {})}
+    customdata = df[["chromosome", "start_pos", "end_pos"]].to_numpy()
+    hover_base = (
+        "chrom=%{customdata[0]}<br>"
+        "start=%{customdata[1]}<br>"
+        "end=%{customdata[2]}<br>"
+    )
+
+    fig = go.Figure()
+    for col in count_cols:
+        fig.add_trace(
+            go.Scattergl(
+                x=df["x_plot"],
+                y=df[col],
+                mode="lines+markers",
+                line=dict(color=colors.get(col, "#333333"), width=1.6),
+                marker=dict(size=5),
+                name=col,
+                customdata=customdata,
+                hovertemplate=hover_base + f"{col}=%{{y}}<extra></extra>",
+            )
+        )
+
+    _add_genome_wide_chrom_boundaries(fig, df, single_chrom)
+    fig.update_xaxes(title=dict(text=x_title, font=dict(size=20)), tickfont=dict(size=18))
+    fig.update_yaxes(
+        title=dict(text="read count", font=dict(size=20)),
+        tickfont=dict(size=18),
+        range=[0, y_cap * 1.05],
+    )
+    fig.update_xaxes(showline=True, linewidth=1.4, linecolor="black", mirror=True, showgrid=False, zeroline=False, ticks="outside")
+    fig.update_yaxes(showline=True, linewidth=1.4, linecolor="black", mirror=True, showgrid=False, zeroline=False, ticks="outside")
+    cap_label = f"p{y_cap_quantile * 100:g}"
+    fig.add_annotation(
+        text=f"count y-axis capped at {cap_label}={y_cap:.1f}; clipped points={n_clipped}",
+        x=0.5,
+        y=0.94,
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font=dict(size=16),
+        bgcolor="rgba(255,255,255,0.85)",
+    )
+    fig.update_layout(
+        title=title,
+        title_font=dict(size=28),
+        font=dict(size=18),
+        width=width,
+        height=height,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.32, font=dict(size=16)),
+    )
+
+    if output_path is not None:
+        _write_plotly_png(fig, output_path, width=width, height=height)
+    return fig
 
 
 ### --- helpers --- ###
