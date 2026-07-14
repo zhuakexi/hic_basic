@@ -16,6 +16,8 @@ from .track import (
     TrackConfig,
     ArcTrack,
     plot_arc_track,
+    StateTrack,
+    resolve_state_palette,
     EigenTrack,
     ISTrack,
     HeatmapTrack,

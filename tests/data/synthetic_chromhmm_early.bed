@@ -1,0 +1,8 @@
+# Synthetic BED5 chromatin states with one explicit color override
+chr1	0	100000	1_Active_Promoter
+chr1	100000	180000	4_Strong_Enhancer
+chr1	180000	240000	4_Strong_Enhancer
+chr1	280000	390000	10_Txn_Elongation
+chr1	390000	470000	8_Insulator	#5f6570
+chr1	470000	600000	12_Repressed
+chr2	0	100000	1_Active_Promoter

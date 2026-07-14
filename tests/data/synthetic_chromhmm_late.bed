@@ -1,0 +1,7 @@
+# Synthetic BED4 chromatin states for a second condition
+chr1	0	70000	13_Heterochromatin
+chr1	70000	160000	1_Active_Promoter
+chr1	160000	260000	10_Txn_Elongation
+chr1	300000	360000	4_Strong_Enhancer
+chr1	360000	430000	4_Strong_Enhancer
+chr1	430000	600000	12_Repressed

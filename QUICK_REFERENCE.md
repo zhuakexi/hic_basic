@@ -304,9 +304,40 @@ fig = plot_cool_with_tracks(
 fig.write_image("square_heatmap.png", width=1100, height=1600)
 ```
 
+### ChromHMM / Categorical State Tracks
+```python
+from hic_basic.plot import StateTrack
+from hic_basic.plot.hic import plot_cool_with_tracks
+
+fig = plot_cool_with_tracks(
+    coolp1="sample.cool",
+    tracks=[
+        StateTrack(
+            "chromhmm_early.bed",
+            palette="chromhmm_15",
+            display_name="early 2C",
+        ),
+        StateTrack(
+            "chromhmm_late.bed",
+            palette="chromhmm_15",
+            display_name="late 2C",
+        ),
+    ],
+    track_heights=[1, 1],
+    region="chr1:0-500000",
+    title="Hi-C + ChromHMM states",
+)
+fig.write_html("hic_with_chromhmm.html")
+```
+
+`StateTrack` accepts whitespace-delimited BED4 (`chrom start end state`) or
+BED5 with a `#rrggbb` color override in column 5. Available named palettes are
+`auto`, `chromhmm_15`, and `chromhmm_18`; a custom `dict[state, color]` is also
+accepted.
+
 **Key Features:**
 - **Tiling mode**: When `coolp2` is provided, creates composite heatmap with lower triangle from `coolp1` and upper triangle from `coolp2`
-- **Track types**: Supports `EigenTrack`, `BigWigTrack` (with `display_name`), `GeneTrack`, `ISTrack`, etc.
+- **Track types**: Supports `EigenTrack`, `BigWigTrack`, `GeneTrack`, `ISTrack`, `StateTrack`, etc.
 - **Brightness adjustment**: `adjust_brightness=True` auto-scales the brighter sample for better visual comparison
 - **Mark pixels**: Use `marks` parameter to highlight specific position pairs with circles or rectangles
 - **Square heatmap**: `square_heatmap=True` automatically calculates height for 1:1 aspect ratio

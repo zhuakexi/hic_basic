@@ -16,8 +16,10 @@ Example usage:
 
 import ast
 import gzip
+import hashlib
 import io
 import json
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union, Tuple, Any
@@ -286,6 +288,53 @@ class EigenTrack(Track):
 BEDPE_COORD_COLUMNS = ["chrom1", "start1", "end1", "chrom2", "start2", "end2"]
 
 
+CHROMHMM_15_COLORS = {
+    "1_Active_Promoter": "#ff0000",
+    "2_Weak_Promoter": "#ff6969",
+    "3_Poised_Promoter": "#cf0bc6",
+    "4_Strong_Enhancer": "#ffa500",
+    "5_Strong_Enhancer": "#ffa500",
+    "6_Weak_Enhancer": "#ffd700",
+    "7_Weak_Enhancer": "#ffd700",
+    "8_Insulator": "#0abefe",
+    "9_Txn_Transition": "#0abe0a",
+    "10_Txn_Elongation": "#00b050",
+    "11_Weak_Txn": "#99c000",
+    "12_Repressed": "#c0c0c0",
+    "13_Heterochromatin": "#808080",
+    "14_Repetitive/CNV": "#4d4d4d",
+    "15_Repetitive/CNV": "#4d4d4d",
+}
+
+CHROMHMM_18_COLORS = {
+    "1_TssA": "#ff0000",
+    "2_TssFlnk": "#ff4500",
+    "3_TssFlnkU": "#ff4500",
+    "4_TssFlnkD": "#ff4500",
+    "5_Tx": "#008000",
+    "6_TxWk": "#006400",
+    "7_EnhG1": "#c2e105",
+    "8_EnhG2": "#c2e105",
+    "9_EnhA1": "#ffc34d",
+    "10_EnhA2": "#ffc34d",
+    "11_EnhWk": "#ffff00",
+    "12_ZNF/Rpts": "#66cdaa",
+    "13_Het": "#8a91d0",
+    "14_TssBiv": "#cd5c5c",
+    "15_EnhBiv": "#bdb76b",
+    "16_ReprPC": "#808080",
+    "17_ReprPCWk": "#c0c0c0",
+    "18_Quies": "#ffffff",
+}
+
+STATE_PALETTES = {
+    "chromhmm_15": CHROMHMM_15_COLORS,
+    "chromhmm_18": CHROMHMM_18_COLORS,
+}
+
+_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
 def _parse_track_region(region: str) -> Tuple[str, float, float]:
     """Parse a simple genomic region string into chrom, start, end."""
     if ":" not in region:
@@ -295,6 +344,356 @@ def _parse_track_region(region: str) -> Tuple[str, float, float]:
         return chrom, 0.0, float(coords.replace(",", ""))
     start, end = coords.replace(",", "").split("-", 1)
     return chrom, float(start), float(end)
+
+
+def _read_state_bed(
+    bed_path: Union[str, Path],
+    state_col: int,
+    color_col: Optional[int],
+) -> pd.DataFrame:
+    """Read BED4/BED5-like categorical intervals without treating colors as comments."""
+    if state_col < 0 or (color_col is not None and color_col < 0):
+        raise ValueError("state_col and color_col must be non-negative column indices")
+
+    bed_path = Path(bed_path)
+    opener = gzip.open if bed_path.suffix == ".gz" else open
+    with opener(bed_path, "rt") as handle:
+        content = "".join(
+            line for line in handle
+            if line.strip() and not line.lstrip().startswith(("#", "track ", "browser "))
+        )
+
+    columns = ["chrom", "start", "end", "state", "color"]
+    if not content:
+        return pd.DataFrame(columns=columns)
+
+    records = [re.split(r"\s+", line.strip()) for line in content.splitlines()]
+    required_col = max(2, state_col)
+    short_rows = [index + 1 for index, record in enumerate(records) if len(record) <= required_col]
+    if short_rows:
+        raise ValueError(
+            f"State BED requires coordinate columns 0-2 and state_col={state_col}; "
+            f"missing required fields on data rows: {short_rows[:10]}"
+        )
+
+    max_columns = max(map(len, records))
+    raw = pd.DataFrame(
+        [record + [None] * (max_columns - len(record)) for record in records],
+        dtype=object,
+    )
+
+    df = pd.DataFrame({
+        "chrom": raw.iloc[:, 0].astype(str),
+        "start": pd.to_numeric(raw.iloc[:, 1], errors="coerce"),
+        "end": pd.to_numeric(raw.iloc[:, 2], errors="coerce"),
+        "state": raw.iloc[:, state_col].astype(str),
+        "color": None,
+    })
+    if color_col is not None and color_col < raw.shape[1]:
+        df["color"] = raw.iloc[:, color_col]
+
+    invalid_coord = df[["start", "end"]].isna().any(axis=1)
+    if invalid_coord.any():
+        rows = (np.flatnonzero(invalid_coord.to_numpy()) + 1).tolist()
+        raise ValueError(f"State BED has non-numeric coordinates on data rows: {rows[:10]}")
+
+    df["start"] = df["start"].astype(np.int64)
+    df["end"] = df["end"].astype(np.int64)
+    invalid_interval = (df["start"] < 0) | (df["end"] <= df["start"])
+    if invalid_interval.any():
+        rows = (np.flatnonzero(invalid_interval.to_numpy()) + 1).tolist()
+        raise ValueError(f"State BED has invalid half-open intervals on data rows: {rows[:10]}")
+
+    df["state"] = df["state"].str.strip()
+    if (df["state"] == "").any():
+        raise ValueError("State BED labels cannot be empty")
+
+    df["color"] = df["color"].where(df["color"].notna(), None)
+    nonempty_color = df["color"].notna() & (df["color"].astype(str).str.strip() != "")
+    invalid_color = nonempty_color & ~df["color"].astype(str).str.match(_HEX_COLOR_RE)
+    if invalid_color.any():
+        values = sorted(df.loc[invalid_color, "color"].astype(str).unique())
+        raise ValueError(f"BED5 colors must use #rrggbb format; invalid values: {values[:10]}")
+    df.loc[nonempty_color, "color"] = df.loc[nonempty_color, "color"].str.lower()
+    df.loc[~nonempty_color, "color"] = None
+
+    df = df.sort_values(["chrom", "start", "end"], kind="stable").reset_index(drop=True)
+    previous_end = df.groupby("chrom", sort=False)["end"].shift()
+    overlap = previous_end.notna() & (df["start"] < previous_end)
+    if overlap.any():
+        row = df.loc[overlap].iloc[0]
+        raise ValueError(
+            "State BED intervals must not overlap within a chromosome; "
+            f"found overlap near {row['chrom']}:{row['start']}-{row['end']}"
+        )
+    return df
+
+
+def resolve_state_palette(
+    states: List[str],
+    palette: Union[str, Dict[str, str]] = "auto",
+) -> Dict[str, str]:
+    """Resolve state labels to colors using a built-in or custom palette.
+
+    Parameters
+    ----------
+    states : list of str
+        State labels in desired legend order.
+    palette : {"auto", "chromhmm_15", "chromhmm_18"} or dict, optional
+        Named built-in palette or a custom state-to-color mapping. Missing
+        labels fall back to Plotly's G10 qualitative sequence.
+
+    Returns
+    -------
+    dict
+        Mapping from every input state label to a hex color.
+    """
+    if isinstance(palette, str):
+        if palette == "auto":
+            supplied = {}
+        elif palette in STATE_PALETTES:
+            supplied = STATE_PALETTES[palette]
+        else:
+            raise ValueError(
+                "palette must be 'auto', 'chromhmm_15', 'chromhmm_18', or a color mapping"
+            )
+    elif isinstance(palette, dict):
+        supplied = palette
+    else:
+        raise TypeError("palette must be a named palette or dict[str, str]")
+
+    invalid = {
+        str(state): color for state, color in supplied.items()
+        if not isinstance(color, str) or not _HEX_COLOR_RE.match(color)
+    }
+    if invalid:
+        raise ValueError(f"Palette colors must use #rrggbb format; invalid entries: {invalid}")
+
+    resolved = {}
+    auto_colors = px.colors.qualitative.G10
+    for index, state in enumerate(dict.fromkeys(map(str, states))):
+        resolved[state] = supplied.get(state, auto_colors[index % len(auto_colors)]).lower()
+    return resolved
+
+
+def _merge_adjacent_state_segments(df: pd.DataFrame) -> pd.DataFrame:
+    """Merge touching intervals when both state and effective color match."""
+    if df.empty:
+        return df.copy()
+
+    merged = []
+    for row in df.itertuples(index=False):
+        item = row._asdict()
+        if (
+            merged
+            and merged[-1]["chrom"] == item["chrom"]
+            and merged[-1]["state"] == item["state"]
+            and merged[-1]["resolved_color"] == item["resolved_color"]
+            and merged[-1]["end"] == item["start"]
+        ):
+            merged[-1]["end"] = item["end"]
+        else:
+            merged.append(item)
+    return pd.DataFrame(merged, columns=df.columns)
+
+
+class StateTrack(Track):
+    """Categorical BED4/BED5 chromatin-state track.
+
+    The first three BED columns are interpreted as ``chrom``, ``start``, and
+    ``end``. ``state_col`` selects the categorical label, while an optional
+    ``color_col`` supplies per-segment ``#rrggbb`` overrides. Visible intervals
+    are clipped to the requested region and adjacent segments with the same
+    state and color are merged before rendering.
+
+    Parameters
+    ----------
+    bed_path : str or pathlib.Path
+        Whitespace-delimited BED4/BED5 state annotation, optionally gzip
+        compressed.
+    state_col : int, optional
+        Zero-based state-label column. Default is 3.
+    color_col : int or None, optional
+        Zero-based optional color column. Default is 4.
+    palette : str or dict, optional
+        ``"auto"``, ``"chromhmm_15"``, ``"chromhmm_18"``, or a custom
+        state-to-color mapping. BED5 colors override this palette.
+    display_name : str, optional
+        Track label. Defaults to the BED filename stem.
+    config : TrackConfig, optional
+        Track layout configuration.
+
+    Examples
+    --------
+    >>> track = StateTrack("states.bed", palette="chromhmm_15")
+    >>> track.load_data("chr1:1000000-2000000")
+    """
+
+    def __init__(
+        self,
+        bed_path: Union[str, Path],
+        *,
+        state_col: int = 3,
+        color_col: Optional[int] = 4,
+        palette: Union[str, Dict[str, str]] = "auto",
+        display_name: Optional[str] = None,
+        config: Optional[TrackConfig] = None,
+    ):
+        self.bed_path = Path(bed_path)
+        name = display_name or self.bed_path.name.split(".")[0]
+        super().__init__(name=name, config=config)
+        self.state_col = state_col
+        self.color_col = color_col
+        self.palette = palette
+        self.display_name = name
+        self._region: Optional[Tuple[str, float, float]] = None
+        self._resolved_palette: Dict[str, str] = {}
+        self._palette_key = ""
+
+    def load_data(
+        self,
+        region: str,
+        chrom_sizes: Optional[Dict[str, int]] = None,
+        **kwargs,
+    ) -> "StateTrack":
+        """Load, validate, clip, and merge state segments for a region.
+
+        Parameters
+        ----------
+        region : str
+            UCSC-style region, for example ``"chr1:1000000-2000000"``.
+        chrom_sizes : dict, optional
+            Chromosome sizes used to clip the requested region.
+
+        Returns
+        -------
+        StateTrack
+            This track, for method chaining.
+        """
+        chrom, region_start, region_end = _parse_track_region(region)
+        region_start = max(0.0, region_start)
+        if chrom_sizes is not None and chrom in chrom_sizes:
+            region_end = min(region_end, float(chrom_sizes[chrom]))
+        if region_end <= region_start:
+            raise ValueError(f"Region end must be greater than start: {region!r}")
+
+        df = _read_state_bed(self.bed_path, self.state_col, self.color_col)
+        df = df[
+            (df["chrom"] == str(chrom))
+            & (df["end"] > region_start)
+            & (df["start"] < region_end)
+        ].copy()
+        if not df.empty:
+            df["start"] = df["start"].clip(lower=int(region_start))
+            if np.isfinite(region_end):
+                df["end"] = df["end"].clip(upper=int(region_end))
+
+        state_order = list(dict.fromkeys(df["state"].tolist()))
+        self._resolved_palette = resolve_state_palette(state_order, self.palette)
+        if not df.empty:
+            df["resolved_color"] = [
+                color if color is not None else self._resolved_palette[state]
+                for state, color in zip(df["state"], df["color"])
+            ]
+            df = _merge_adjacent_state_segments(df)
+        else:
+            df["resolved_color"] = pd.Series(dtype=object)
+
+        palette_identity = self.palette if isinstance(self.palette, str) else self.palette
+        palette_payload = json.dumps(palette_identity, sort_keys=True)
+        self._palette_key = hashlib.sha1(palette_payload.encode("utf-8")).hexdigest()[:12]
+        self._data = df.reset_index(drop=True)
+        self._region = (str(chrom), region_start, region_end)
+        return self
+
+    def render(self, fig, row: int, col: int, **kwargs) -> go.Figure:
+        """Render visible state segments as one filled trace per state."""
+        if self._data is None or self._region is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
+        _, region_start, region_end = self._region
+        if self._data.empty:
+            if np.isfinite(region_end):
+                fig.add_shape(
+                    type="rect",
+                    x0=region_start,
+                    x1=region_end,
+                    y0=0,
+                    y1=1,
+                    fillcolor="#eeeeee",
+                    line=dict(width=0),
+                    layer="below",
+                    row=row,
+                    col=col,
+                )
+        else:
+            for state in dict.fromkeys(self._data["state"].tolist()):
+                state_df = self._data[self._data["state"] == state]
+                for color, color_df in state_df.groupby("resolved_color", sort=False):
+                    x_values = []
+                    y_values = []
+                    customdata = []
+                    for segment in color_df.itertuples(index=False):
+                        length = int(segment.end - segment.start)
+                        hover = [
+                            segment.state,
+                            segment.chrom,
+                            int(segment.start),
+                            int(segment.end),
+                            length,
+                        ]
+                        x_values.extend([
+                            segment.start,
+                            segment.end,
+                            segment.end,
+                            segment.start,
+                            segment.start,
+                            None,
+                        ])
+                        y_values.extend([0, 0, 1, 1, 0, None])
+                        customdata.extend([hover] * 5 + [[None] * 5])
+
+                    legendgroup = f"state:{self._palette_key}:{state}:{color}"
+                    legend_exists = any(
+                        getattr(trace, "legendgroup", None) == legendgroup
+                        for trace in fig.data
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x_values,
+                            y=y_values,
+                            mode="lines",
+                            fill="toself",
+                            fillcolor=color,
+                            line=dict(color=color, width=0.5),
+                            name=state,
+                            legendgroup=legendgroup,
+                            showlegend=not legend_exists,
+                            customdata=customdata,
+                            hoveron="points+fills",
+                            hovertemplate=(
+                                "State: %{customdata[0]}<br>"
+                                "Position: %{customdata[1]}:%{customdata[2]:,}-%{customdata[3]:,}<br>"
+                                "Length: %{customdata[4]:,} bp<extra></extra>"
+                            ),
+                        ),
+                        row=row,
+                        col=col,
+                    )
+
+        if np.isfinite(region_end):
+            fig.update_xaxes(range=[region_start, region_end], row=row, col=col)
+        fig.update_xaxes(showline=True, linecolor="black", showgrid=False, row=row, col=col)
+        fig.update_yaxes(
+            range=[0, 1],
+            showticklabels=False,
+            showgrid=False,
+            zeroline=False,
+            fixedrange=True,
+            row=row,
+            col=col,
+        )
+        return fig
 
 
 def _read_bedpe_like(data: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
