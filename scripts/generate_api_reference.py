@@ -41,31 +41,56 @@ def extract_functions_from_file(filepath: Path, module_name: str, module_path: s
 
         tree = ast.parse(content, filename=str(filepath))
 
-        for node in ast.walk(tree):
+        # Only module-level functions are importable using the generated import
+        # statement. Class methods and nested helpers need their owning object.
+        for node in tree.body:
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             if node.name.startswith("_"):
                 continue
 
-            args = []
-            for arg in node.args.args:
+            def format_arg(arg):
                 arg_str = arg.arg
                 if arg.annotation:
                     try:
                         arg_str += f": {ast.unparse(arg.annotation)}"
                     except Exception:
                         pass
+                return arg_str
+
+            positional_nodes = list(node.args.posonlyargs) + list(node.args.args)
+            positional = [format_arg(arg) for arg in positional_nodes]
+            defaults = list(node.args.defaults)
+            for i, default in enumerate(defaults):
+                arg_idx = len(positional) - len(defaults) + i
+                try:
+                    positional[arg_idx] += f"={ast.unparse(default)}"
+                except Exception:
+                    positional[arg_idx] += "=..."
+
+            args = []
+            posonly_count = len(node.args.posonlyargs)
+            for index, arg_str in enumerate(positional):
+                args.append(arg_str)
+                if posonly_count and index + 1 == posonly_count:
+                    args.append("/")
+
+            if node.args.vararg:
+                args.append(f"*{format_arg(node.args.vararg)}")
+            elif node.args.kwonlyargs:
+                args.append("*")
+
+            for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
+                arg_str = format_arg(arg)
+                if default is not None:
+                    try:
+                        arg_str += f"={ast.unparse(default)}"
+                    except Exception:
+                        arg_str += "=..."
                 args.append(arg_str)
 
-            defaults = node.args.defaults
-            num_defaults = len(defaults)
-            for i in range(num_defaults):
-                arg_idx = len(args) - num_defaults + i
-                try:
-                    default_val = ast.unparse(defaults[i])
-                    args[arg_idx] += f"={default_val}"
-                except Exception:
-                    args[arg_idx] += "=..."
+            if node.args.kwarg:
+                args.append(f"**{format_arg(node.args.kwarg)}")
 
             signature = f"{node.name}({', '.join(args)})"
             docstring = ast.get_docstring(node) or "No documentation available."
@@ -165,7 +190,8 @@ def generate_markdown_docs(module_functions: Dict[str, Dict], output_path: Path)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+        content = "\n".join(lines)
+        f.write("\n".join(line.rstrip() for line in content.splitlines()))
 
     print(f"Generated API reference: {output_path}")
     print(f"Total modules documented: {len(module_functions)}")
