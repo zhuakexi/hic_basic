@@ -4,6 +4,7 @@ import os
 import re
 import hashlib
 import shutil
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,8 @@ from datetime import datetime
 from typing import Dict, Any, Optional, Union, List
 import warnings
 from .hicio import dump_json, load_json
+
+ANA_SYSTEM_VERSION = 3
 
 # File format extension → key mapping, used for auto-detection of file columns
 _FILE_EXT_TO_FORMAT = {
@@ -29,6 +32,11 @@ _FILE_EXT_TO_FORMAT = {
     ".tsv": "tsv", ".tab": "tsv",
     ".csv": "csv",
 }
+
+
+class AnaUpdateError(ValueError):
+    """Raised when an Ana update would violate sample-axis safety rules."""
+
 
 class Ana:
     """
@@ -61,10 +69,13 @@ class Ana:
     
     Example:
         >>> ana = Ana('/path/to/project')
-        >>> df = pd.DataFrame({'A': pd.Categorical(['a', 'b', 'c']),
-        ...                    'B': pd.array([1, 2, None], dtype='Int64'),
-        ...                    'C': pd.Series(['x', 'y', 'z'], dtype='string')})
-        >>> ana.update(df)
+        >>> df = pd.DataFrame(
+        ...     {'A': pd.Categorical(['a', 'b', 'c']),
+        ...      'B': pd.array([1, 2, None], dtype='Int64'),
+        ...      'C': pd.array(['x', 'y', 'z'], dtype='string')},
+        ...     index=['sample_a', 'sample_b', 'sample_c'],
+        ... )
+        >>> ana.update(df, intent='add_samples')
         >>> ana.data  # Returns DataFrame with correct dtypes: categorical, Int64, string
     """
     
@@ -127,7 +138,8 @@ class Ana:
                 "commits": [],
                 "last_commit_count": 0,
                 "max_commits": max_commits,
-                "file_mapping": {}
+                "file_mapping": {},
+                **self._default_system_meta(),
             }
             dump_json(self.commit_meta, self.commit_meta_path)
             
@@ -151,9 +163,11 @@ class Ana:
                     "commits": [],
                     "last_commit_count": 0,
                     "max_commits": max_commits,
-                    "file_mapping": {}  # Maps commit_id -> physical_filename
+                    "file_mapping": {},  # Maps commit_id -> physical_filename
+                    **self._default_system_meta(),
                 }
                 dump_json(self.commit_meta, self.commit_meta_path)
+            self._ensure_system_meta()
 
             # Initialize data storage files
             data_path = self.home / "data.csv"
@@ -195,6 +209,7 @@ class Ana:
                 else:
                     raise TypeError("Initial data must be a pandas DataFrame, Series, or dict.")
 
+                self._validate_sample_index(init_df.index, context="initial ana.data")
                 self._save_data_with_schema(init_df, self.data_path)
                 self.commit("Initial data")
 
@@ -214,6 +229,32 @@ class Ana:
                         dump_json({}, self.schema_path)
                 except Exception:
                     dump_json({}, self.schema_path)
+
+    @staticmethod
+    def _default_system_meta():
+        return {
+            "ana_system_version": ANA_SYSTEM_VERSION,
+            "axis": {
+                "name": "sample_id",
+                "canonical_dtype": "string",
+                "role": "sample_axis",
+            },
+        }
+
+    def _ensure_system_meta(self):
+        """Ensure persisted Ana metadata declares the current system version."""
+        meta = load_json(self.commit_meta_path)
+        changed = False
+        for key, value in self._default_system_meta().items():
+            if key not in meta:
+                meta[key] = value
+                changed = True
+        if meta.get("ana_system_version") != ANA_SYSTEM_VERSION:
+            meta["ana_system_version"] = ANA_SYSTEM_VERSION
+            changed = True
+        if changed:
+            dump_json(meta, self.commit_meta_path)
+        self.commit_meta = meta
     
     @staticmethod
     def create_empty_json_file(path):
@@ -459,7 +500,7 @@ class Ana:
             return max(format_counts, key=format_counts.get)  # type: ignore[arg-type]
         return None
 
-    def _save_data_with_schema(self, df: pd.DataFrame, data_path: Path):
+    def _save_data_with_schema(self, df: pd.DataFrame, data_path: Path, schema_overrides=None):
         """
         Save DataFrame to CSV along with its dtype schema.
 
@@ -469,7 +510,15 @@ class Ana:
             DataFrame to save.
         data_path : Path
             Path where CSV file will be saved.
+        schema_overrides : dict, optional
+            Exact per-column schema entries to preserve while serializing a
+            proposed update. Columns not present are inferred from ``df``.
         """
+        df = df.copy()
+        if len(df.index) > 0:
+            self._validate_sample_index(df.index, context="ana.data")
+            df.index = pd.Index(self._canonical_labels(df.index), name=df.index.name, dtype=pd.StringDtype())
+
         # Save data as CSV
         df.to_csv(data_path, index=True)
 
@@ -479,12 +528,15 @@ class Ana:
         # Save column dtypes
         schema['columns'] = {}
         for col in df.columns:
-            col_schema = self._dtype_to_dict(df[col].dtype)
-            # Auto-detect file-type columns
-            fmt = self._detect_file_format(df[col])
-            if fmt is not None:
-                col_schema['type'] = 'file'
-                col_schema['file_format'] = fmt
+            if schema_overrides and col in schema_overrides:
+                col_schema = dict(schema_overrides[col])
+            else:
+                col_schema = self._dtype_to_dict(df[col].dtype)
+                # Auto-detect file-type columns
+                fmt = self._detect_file_format(df[col])
+                if fmt is not None:
+                    col_schema['type'] = 'file'
+                    col_schema['file_format'] = fmt
             schema['columns'][col] = col_schema
         
         # 总是保存索引信息，包括RangeIndex
@@ -723,6 +775,28 @@ class Ana:
         if self.obj_path.exists():
             h.update(self.obj_path.read_bytes())
         return h.hexdigest()
+
+    def _validate_commit_description(self, description, meta=None):
+        """Validate and resolve the description for the next commit."""
+        assert isinstance(description, (str, type(None))), "Description must be a string or None"
+        meta = meta or load_json(self.commit_meta_path)
+        commit_id = meta["last_commit_count"] + 1
+        if description is None:
+            return str(commit_id)
+        if any(c["description"] == description for c in meta["commits"]):
+            raise ValueError(f"Commit description '{description}' already exists")
+        if re.fullmatch(r'-?\d+', description.strip()):
+            raise ValueError("Commit description cannot be purely numeric")
+        return description
+
+    def _ensure_state_files(self):
+        """Ensure every component covered by a state hash exists."""
+        if not self.data_path.exists():
+            self.data_path.touch()
+        if not self.schema_path.exists():
+            dump_json({}, self.schema_path)
+        if not self.obj_path.exists():
+            dump_json({}, self.obj_path)
     
     def commit(self, description=None, state_hash=None):
         """
@@ -735,8 +809,8 @@ class Ana:
             Must be unique and cannot be purely numeric.
         state_hash : str, optional
             Pre-computed SHA-256 hash of the current data state. If None,
-            will be computed from the data files. Used for idempotency
-            detection in update().
+            will be computed from the data files. A provided hash must match
+            the current state. Used for idempotency detection in update().
 
         Returns
         -------
@@ -753,29 +827,27 @@ class Ana:
         Each commit creates physical copies of data files and schema files.
         Uses circular file naming to prevent infinite filename number growth.
         """
-        assert isinstance(description, (str, type(None))), "Description must be a string or None"
+        self._ensure_state_files()
+        self._validate_state()
         # Load current metadata
         meta = load_json(self.commit_meta_path)
+        for key, value in self._default_system_meta().items():
+            meta.setdefault(key, value)
 
         # Generate commit ID and validate description
         commit_id = meta["last_commit_count"] + 1
-        if description is None:
-            description = str(commit_id)
-        elif any(c["description"] == description for c in meta["commits"]):
-            raise ValueError(f"Commit description '{description}' already exists")
-        else:
-            # Prevent ambiguous numeric descriptions that could conflict with commit IDs
-            stripped_description = description.strip()
-            if re.fullmatch(r'-?\d+', stripped_description):
-                raise ValueError("Commit description cannot be purely numeric")
+        description = self._validate_commit_description(description, meta=meta)
         meta["last_commit_count"] = commit_id
 
         # Get physical filename for this commit using circular naming
         commit_filename = self._get_commit_filename(commit_id)
 
-        # Compute state hash if not provided
+        # Compute and verify the hash before copying these exact bytes.
+        current_state_hash = self._compute_state_hash()
         if state_hash is None:
-            state_hash = self._compute_state_hash()
+            state_hash = current_state_hash
+        elif state_hash != current_state_hash:
+            raise ValueError("Provided state_hash does not match the current Ana state.")
 
         # Create commit metadata entry
         commit_entry = {
@@ -784,25 +856,24 @@ class Ana:
             "timestamp": datetime.now().isoformat(),
             "filename": commit_filename,
             "state_hash": state_hash,
+            "ana_system_version": meta.get("ana_system_version", ANA_SYSTEM_VERSION),
+            "axis": meta.get("axis", self._default_system_meta()["axis"]),
         }
+        pending_update_meta = getattr(self, "_pending_update_commit_meta", None)
+        if pending_update_meta:
+            commit_entry["update_plan"] = pending_update_meta
         meta["commits"].append(commit_entry)
         
         # Create physical snapshots of current data state
         commit_data_path = self.home / f"{commit_filename}.data.csv"
+        commit_schema_path = self.home / f"{commit_filename}.data_schema.json"
         commit_obj_path = self.home / f"{commit_filename}.obj.json"
-        
-        # Save current data with schema
-        try:
-            current_df = self._load_data_with_schema(self.data_path)
-        except (pd.errors.EmptyDataError, FileNotFoundError):
-            current_df = pd.DataFrame()
-        self._save_data_with_schema(current_df, commit_data_path)
-        
-        # Copy object file if it exists
-        if self.obj_path.exists():
-            shutil.copy(self.obj_path, commit_obj_path)
-        else:
-            dump_json({}, commit_obj_path)
+
+        # Snapshot the exact bytes covered by state_hash. Re-serializing through
+        # pandas can change floating-point text without changing logical values.
+        shutil.copyfile(self.data_path, commit_data_path)
+        shutil.copyfile(self.schema_path, commit_schema_path)
+        shutil.copyfile(self.obj_path, commit_obj_path)
         
         # Update file mapping
         meta["file_mapping"][str(commit_id)] = commit_filename
@@ -835,11 +906,12 @@ class Ana:
         return commit_id
     
     def update(
-        self, new_data, key=None, description=None, force=False,
+        self, new_data, key=None, description=None, intent="auto", force=False,
         column_descriptions=None,
         computed_by=None,
         depends_on=None,
         file_format=None,
+        schema_changes=None,
     ):
         """
         Update data storage and automatically commit changes.
@@ -856,6 +928,10 @@ class Ana:
             Specifies the column name (for dict/Series) or object key (for list).
         description : str, optional
             Custom description for the automatic commit.
+        intent : str, optional, default "auto"
+            Update intent. Supported values are ``"auto"``, ``"data_values"``,
+            ``"object"``, ``"add_samples"``, ``"drop_samples"``,
+            ``"rename_samples"``, and ``"replace_samples"``.
         force : bool, optional, default False
             If True, create a new commit even when the data state is identical
             to the last commit. Useful for recording explicit checkpoints during
@@ -876,88 +952,905 @@ class Ana:
         file_format : dict, optional
             ``{col_name: format_key}`` to override auto-detected file format
             (e.g., ``{"bam_paths": "bam"}``).
+        schema_changes : dict, optional
+            Explicit dtype changes, for example ``{"score": "Float64"}`` or
+            ``{"stage": pd.CategoricalDtype(["2c", "4c"])}``. Existing
+            column schemas never change implicitly. Incoming values that can be
+            losslessly represented by the existing schema are normalized to it;
+            incompatible values require an explicit entry here and a non-empty
+            ``description``.
 
         Returns
         -------
         int
             Commit ID of the new commit, or the last commit ID if the update
             was skipped due to idempotency.
+
+        Raises
+        ------
+        AnaUpdateError
+            If an update violates the sample axis or cannot be represented by
+            an existing column schema without an explicit ``schema_changes``
+            entry. Validation occurs before persistent state is replaced.
         """
-        # Process different data types
-        if isinstance(new_data, pd.DataFrame):
-            new_data_df = new_data.copy()
-        elif isinstance(new_data, pd.Series):
-            if key is not None:
-                new_data = new_data.copy().rename(key)
-            new_data_df = new_data.to_frame()
-        elif isinstance(new_data, dict):
-            assert key is not None, "Key must be provided for dict input."
-            new_data_df = pd.DataFrame(
-                {
-                    key: pd.Series(new_data)
-                }
+        if isinstance(intent, bool):
+            warnings.warn(
+                "Passing force as the fourth positional argument is deprecated; "
+                "use force=True.",
+                DeprecationWarning,
+                stacklevel=2,
             )
-        elif isinstance(new_data, list):
-            assert key is not None, "Key must be provided for list input."
-            obj = self.obj
-            obj[key] = new_data
-            dump_json(obj, self.obj_path)
+            force = intent
+            intent = "auto"
+
+        if schema_changes is None:
+            schema_changes = {}
+        if not isinstance(schema_changes, dict):
+            raise TypeError("schema_changes must be a dict mapping column names to dtypes.")
+        if schema_changes and (
+            not isinstance(description, str) or not description.strip()
+        ):
+            raise AnaUpdateError("Explicit schema_changes require a non-empty description.")
+
+        meta = {
+            "column_descriptions": column_descriptions,
+            "computed_by": computed_by,
+            "depends_on": depends_on,
+            "file_format": file_format,
+            "description": description,
+            "schema_changes": schema_changes,
+        }
+        plan = self._build_update_plan(new_data, key=key, intent=intent, meta=meta)
+        self._validate_plan(plan)
+        prepared = self._prepare_plan(plan, schema_changes=schema_changes)
+        try:
+            if not prepared["changed"] and not force:
+                return self._maybe_commit(description, force=False)
+
+            # Validate commit metadata before persistent state is replaced.
+            self._validate_commit_description(description)
+            touched = self._apply_plan(plan, prepared)
+            self._validate_state()
+
+            if touched["columns"]:
+                self._inject_column_meta(
+                    touched["columns"],
+                    column_descriptions=column_descriptions,
+                    computed_by=computed_by,
+                    depends_on=depends_on,
+                    file_format=file_format,
+                )
+
+            if touched["objects"]:
+                self._inject_column_meta(
+                    touched["objects"],
+                    column_descriptions=column_descriptions,
+                    computed_by=computed_by,
+                    depends_on=depends_on,
+                )
+
             if self.verbose:
-                print("Object data updated.")
-            # Inject column metadata for object keys
-            self._inject_column_meta(
-                {key: True},
-                column_descriptions=column_descriptions,
-                computed_by=computed_by,
-                depends_on=depends_on,
+                self._print_update_summary(plan, touched)
+                print("Data updated with schema preservation.")
+
+            self._pending_update_commit_meta = touched.get("commit_meta")
+            try:
+                return self._maybe_commit(description, force)
+            finally:
+                self._pending_update_commit_meta = None
+        finally:
+            self._discard_prepared_plan(prepared)
+
+    def _build_update_plan(self, payload, key=None, intent="auto", meta=None):
+        allowed = {
+            "auto",
+            "data_values",
+            "object",
+            "add_samples",
+            "drop_samples",
+            "rename_samples",
+            "replace_samples",
+        }
+        if intent not in allowed:
+            raise ValueError(f"Unsupported Ana update intent: {intent!r}")
+
+        current = self.data
+        meta = meta or {}
+
+        if intent == "drop_samples":
+            return {
+                "target": "drop_samples",
+                "payload": list(payload),
+                "key": key,
+                "intent": intent,
+                "meta": meta,
+            }
+        if intent == "rename_samples":
+            if not isinstance(payload, dict):
+                raise TypeError("rename_samples expects a dict mapping old sample IDs to new sample IDs.")
+            return {
+                "target": "rename_samples",
+                "payload": dict(payload),
+                "key": key,
+                "intent": intent,
+                "meta": meta,
+            }
+        if intent == "replace_samples":
+            df = self._payload_to_dataframe(payload, key=key)
+            df = self._promote_sample_id_column(df, "replace_samples")
+            return {
+                "target": "replace_samples",
+                "payload": df,
+                "key": key,
+                "intent": intent,
+                "meta": meta,
+            }
+        if intent == "object":
+            if key is None:
+                raise AssertionError("Key must be provided for object updates.")
+            if isinstance(payload, pd.DataFrame):
+                raise self._unsafe_dataframe_error(payload, key=key)
+            return {
+                "target": "object",
+                "payload": self._json_ready_object(payload),
+                "key": key,
+                "intent": intent,
+                "meta": meta,
+            }
+
+        if isinstance(payload, list):
+            if key is None:
+                raise AssertionError("Key must be provided for list input.")
+            return {
+                "target": "object",
+                "payload": payload,
+                "key": key,
+                "intent": intent,
+                "meta": meta,
+            }
+
+        df = self._payload_to_dataframe(payload, key=key)
+        if intent == "add_samples":
+            df = self._promote_sample_id_column(df, "add_samples")
+            return {
+                "target": "add_samples",
+                "payload": df,
+                "key": key,
+                "intent": intent,
+                "meta": meta,
+            }
+
+        if intent == "data_values":
+            return {
+                "target": "data_values",
+                "payload": df,
+                "key": key,
+                "intent": intent,
+                "meta": meta,
+            }
+
+        # Conservative auto routing.
+        if isinstance(payload, pd.DataFrame):
+            if self._dataframe_matches_existing_samples(df, current):
+                return {
+                    "target": "data_values",
+                    "payload": df,
+                    "key": key,
+                    "intent": intent,
+                    "meta": meta,
+                }
+            raise self._unsafe_dataframe_error(df, key=key)
+
+        if isinstance(payload, (pd.Series, dict)):
+            relation = self._index_relation(df.index, current.index)
+            if relation == "subset":
+                return {
+                    "target": "data_values",
+                    "payload": df,
+                    "key": key,
+                    "intent": intent,
+                    "meta": meta,
+                }
+            if relation == "disjoint":
+                if key is None:
+                    raise AssertionError("Key must be provided for dict or non-sample Series input.")
+                if self._looks_like_sample_ids(df.index, current.index):
+                    raise AnaUpdateError(
+                        "AnaUpdateError: refusing to add new sample IDs with intent='auto'.\n\n"
+                        "What Ana saw:\n"
+                        f"- payload type: {type(payload).__name__}\n"
+                        f"- key: {key}\n"
+                        f"- new sample IDs: {self._canonical_labels(df.index)[:10]}\n\n"
+                        "Why this is unsafe:\n"
+                        "- ana.data is sample-indexed.\n"
+                        "- sample-axis changes require an explicit intent.\n\n"
+                        "If this is intentional sample metadata:\n"
+                        "    ana.update(values, key='column_name', intent='add_samples', description='...')\n\n"
+                        "If this is a manifest or summary object:\n"
+                        "    ana.update(values, key='manifest_key', intent='object', description='...')"
+                    )
+                return {
+                    "target": "object",
+                    "payload": self._json_ready_object(payload),
+                    "key": key,
+                    "intent": intent,
+                    "meta": meta,
+                }
+            raise AnaUpdateError(
+                "AnaUpdateError: refusing partial sample-axis overlap.\n\n"
+                "What Ana saw:\n"
+                f"- payload type: {type(payload).__name__}\n"
+                f"- key: {key}\n"
+                f"- matched sample IDs: {len(set(map(str, df.index)) & set(map(str, current.index)))}\n\n"
+                "Why this is unsafe:\n"
+                "- some labels match ana.data sample IDs and some do not.\n"
+                "- Ana cannot infer whether this is sample metadata or an object manifest.\n\n"
+                "Use one of these explicit patterns:\n"
+                "    ana.update(values, key='column_name', intent='data_values', description='...')\n"
+                "    ana.update(values, key='manifest_key', intent='object', description='...')\n"
+                "    ana.update(values, key='column_name', intent='add_samples', description='...')"
             )
-            return self._maybe_commit(description, force)
+
+        raise TypeError(f"Unsupported data type: {type(payload)}")
+
+    def _validate_plan(self, plan):
+        target = plan["target"]
+        current = self.data
+
+        if target in {"data_values", "add_samples", "replace_samples"}:
+            df = plan["payload"]
+            self._validate_sample_index(df.index, context=target)
+
+        if target == "data_values":
+            missing = self._missing_labels(plan["payload"].index, current.index)
+            if missing:
+                raise AnaUpdateError(
+                    "AnaUpdateError: refusing to add sample IDs with intent='data_values'.\n\n"
+                    "What Ana saw:\n"
+                    f"- new sample IDs: {missing[:10]}\n\n"
+                    "Use explicit sample-axis intent instead:\n"
+                    "    ana.update(df, intent='add_samples', description='...')"
+                )
+
+        if target == "add_samples":
+            self._validate_add_samples_axis(plan["payload"].index, current.index)
+
+        if target == "drop_samples":
+            ids = plan["payload"]
+            self._validate_sample_labels(ids, context="drop_samples")
+            missing = self._missing_labels(ids, current.index)
+            if missing:
+                raise AnaUpdateError(f"Cannot drop missing sample IDs: {missing}")
+
+        if target == "rename_samples":
+            mapping = plan["payload"]
+            old_ids = list(mapping.keys())
+            new_ids = list(mapping.values())
+            self._validate_sample_labels(old_ids, context="rename_samples old IDs")
+            self._validate_sample_labels(new_ids, context="rename_samples new IDs")
+            missing = self._missing_labels(old_ids, current.index)
+            if missing:
+                raise AnaUpdateError(f"Cannot rename missing sample IDs: {missing}")
+            existing = set(self._canonical_labels(current.index))
+            old = set(self._canonical_labels(old_ids))
+            conflicts = sorted(set(self._canonical_labels(new_ids)) & (existing - old))
+            if conflicts:
+                raise AnaUpdateError(f"New sample IDs already exist: {conflicts}")
+            proposed = [mapping.get(label, label) for label in current.index]
+            self._validate_sample_labels(proposed, context="renamed sample axis")
+
+        if target == "replace_samples":
+            description = (plan.get("meta") or {}).get("description")
+            if not description:
+                raise AnaUpdateError("replace_samples requires a non-empty description.")
+
+        if target == "object" and plan.get("key") is None:
+            raise AssertionError("Key must be provided for object updates.")
+
+    def _prepare_plan(self, plan, schema_changes):
+        """Build and validate a proposed state without modifying Ana files."""
+        target = plan["target"]
+        if schema_changes and target not in {"data_values", "add_samples", "replace_samples"}:
+            raise AnaUpdateError(
+                f"schema_changes cannot be combined with intent={target!r}. "
+                "Apply the schema change with a data update."
+            )
+
+        if target == "object":
+            current_obj = self.obj
+            proposed_obj = dict(current_obj)
+            proposed_obj[plan["key"]] = plan["payload"]
+            return {
+                "kind": "object",
+                "changed": proposed_obj != current_obj,
+                "proposed_obj": proposed_obj,
+                "touched_columns": [],
+                "touched_objects": [plan["key"]],
+            }
+
+        current = self.data
+        original_index = list(current.index)
+        schema_overrides = self._locked_schema_overrides(current)
+        target_dtypes = {
+            col: self._dict_to_dtype(entry)
+            for col, entry in schema_overrides.items()
+        }
+        touched_columns = []
+
+        if target in {"data_values", "add_samples", "replace_samples"}:
+            incoming = plan["payload"].copy()
+            incoming.index = pd.Index(
+                self._canonical_labels(incoming.index),
+                name=incoming.index.name,
+                dtype=pd.StringDtype(),
+            )
+            current, incoming, target_dtypes, schema_overrides = self._normalize_update_schema(
+                current,
+                incoming,
+                target_dtypes,
+                schema_overrides,
+                schema_changes,
+            )
+            touched_columns = list(dict.fromkeys(
+                incoming.columns.tolist() + list(schema_changes)
+            ))
+            if target == "replace_samples":
+                proposed = incoming
+            else:
+                proposed = pd.concat([current, incoming], axis=0, join="outer")
+                proposed = proposed.groupby(level=0, observed=True).last()
+            proposed = self._cast_dataframe_columns(
+                proposed,
+                target_dtypes,
+                explicit_columns=set(schema_changes),
+            )
+        elif target == "drop_samples":
+            drop_ids = self._canonical_labels(plan["payload"])
+            proposed = current.drop(index=drop_ids)
+        elif target == "rename_samples":
+            mapping = {
+                str(old).strip(): str(new).strip()
+                for old, new in plan["payload"].items()
+            }
+            proposed = current.rename(index=mapping)
         else:
-            raise TypeError(f"Unsupported data type: {type(new_data)}")
+            raise ValueError(f"Unknown Ana update target: {target}")
 
-        # Record original data shape for comparison
-        original_shape = self.data.shape
-        original_rows, original_cols = original_shape
-
-        # Merge new data with existing data
-        res = pd.concat([self.data, new_data_df], axis=0, join="outer")
-        res = res.groupby(level=0, observed=True).last()
-
-        # Get new shape and compare
-        new_shape = res.shape
-        new_rows, new_cols = new_shape
-
-        # Print shape change information if rows changed
-        if original_rows != new_rows:
-            row_change = new_rows - original_rows
-            row_change_type = "added" if row_change > 0 else "removed"
-            print(f"Data shape changed: {original_shape} -> {new_shape}")
-            print(f"Rows {row_change_type}: {abs(row_change)}")
-
-        # Also print column changes if any
-        if original_cols != new_cols:
-            col_change = new_cols - original_cols
-            col_change_type = "added" if col_change > 0 else "removed"
-            print(f"Columns {col_change_type}: {abs(col_change)}")
-
-        # Save the updated data with schema
-        self._save_data_with_schema(res, self.data_path)
-
-        # Inject column metadata for new/updated columns
-        new_cols = [c for c in new_data_df.columns if c not in self.data.columns or c in new_data_df.columns]
-        # Use all columns from the new data
-        self._inject_column_meta(
-            new_data_df.columns.tolist(),
-            column_descriptions=column_descriptions,
-            computed_by=computed_by,
-            depends_on=depends_on,
-            file_format=file_format,
+        proposed.index = pd.Index(
+            self._canonical_labels(proposed.index),
+            name=proposed.index.name,
+            dtype=pd.StringDtype(),
         )
 
-        if self.verbose:
-            print("Data updated with schema preservation.")
+        staged = self._stage_dataframe(proposed, schema_overrides=schema_overrides)
+        try:
+            current_defs = self._current_schema_definitions(current)
+            proposed_defs = load_json(staged["schema_path"]).get("columns", {})
+            implicit_changes = {
+                col: {"from": current_defs[col], "to": proposed_defs[col]}
+                for col in set(current_defs) & set(proposed_defs)
+                if current_defs[col] != proposed_defs[col] and col not in schema_changes
+            }
+            if implicit_changes:
+                details = ", ".join(sorted(implicit_changes))
+                raise AnaUpdateError(
+                    "AnaUpdateError: update would change existing column schemas "
+                    f"without schema_changes: {details}."
+                )
 
-        return self._maybe_commit(description, force)
+            schema_delta = {}
+            for col in sorted(set(current_defs) | set(proposed_defs)):
+                old = current_defs.get(col)
+                new = proposed_defs.get(col)
+                if old != new:
+                    if col in schema_changes:
+                        reason = "explicit"
+                    elif old is None:
+                        reason = "added"
+                    else:
+                        reason = "removed"
+                    schema_delta[col] = {
+                        "from": old,
+                        "to": new,
+                        "reason": reason,
+                    }
+
+            changed = (
+                not self._dataframes_equal(current, staged["data"])
+                or current_defs != proposed_defs
+            )
+            commit_meta = {
+                "target": target,
+                "axis_delta": self._axis_delta(original_index, list(staged["data"].index)),
+            }
+            if target == "rename_samples":
+                commit_meta["axis_delta"] = self._axis_delta(
+                    original_index,
+                    list(staged["data"].index),
+                    rename_map=plan["payload"],
+                )
+            if schema_delta:
+                commit_meta["schema_delta"] = schema_delta
+
+            staged.update({
+                "kind": "data",
+                "changed": changed,
+                "commit_meta": commit_meta,
+                "schema_delta": schema_delta,
+                "touched_columns": touched_columns,
+                "touched_objects": [],
+            })
+            return staged
+        except Exception:
+            self._discard_prepared_plan(staged)
+            raise
+
+    def _locked_schema_overrides(self, current):
+        persisted = self.get_schema().get("columns", {})
+        return {
+            col: dict(persisted.get(col, self._dtype_to_dict(current[col].dtype)))
+            for col in current.columns
+        }
+
+    def _normalize_update_schema(
+        self,
+        current,
+        incoming,
+        target_dtypes,
+        schema_overrides,
+        schema_changes,
+    ):
+        known_columns = set(current.columns) | set(incoming.columns)
+        unknown = sorted(set(schema_changes) - known_columns)
+        if unknown:
+            raise AnaUpdateError(f"schema_changes refers to unknown columns: {unknown}")
+
+        current = current.copy()
+        incoming = incoming.copy()
+        for col, spec in schema_changes.items():
+            dtype, schema_entry = self._dtype_and_schema_from_change(spec, column=col)
+            target_dtypes[col] = dtype
+            schema_overrides[col] = schema_entry
+
+        for col, dtype in target_dtypes.items():
+            explicit = col in schema_changes
+            if explicit and col in current.columns:
+                current[col] = self._cast_series_to_dtype(
+                    current[col], dtype, column=col, explicit=True
+                )
+            if col in incoming.columns:
+                incoming[col] = self._cast_series_to_dtype(
+                    incoming[col], dtype, column=col, explicit=explicit
+                )
+
+        return current, incoming, target_dtypes, schema_overrides
+
+    def _dtype_and_schema_from_change(self, spec, column):
+        if isinstance(spec, dict):
+            schema_entry = dict(spec)
+            dtype = self._dict_to_dtype(schema_entry)
+        else:
+            try:
+                dtype = pd.api.types.pandas_dtype(spec)
+            except (TypeError, ValueError) as exc:
+                raise AnaUpdateError(
+                    f"Invalid schema_changes dtype for column {column!r}: {spec!r}"
+                ) from exc
+            schema_entry = self._dtype_to_dict(dtype)
+
+        if isinstance(dtype, pd.CategoricalDtype) and dtype.categories is None:
+            raise AnaUpdateError(
+                f"Categorical schema change for column {column!r} must declare categories, "
+                "for example pd.CategoricalDtype(['a', 'b'])."
+            )
+        return dtype, schema_entry
+
+    def _cast_dataframe_columns(self, df, target_dtypes, explicit_columns):
+        df = df.copy()
+        for col, dtype in target_dtypes.items():
+            if col in df.columns:
+                df[col] = self._cast_series_to_dtype(
+                    df[col],
+                    dtype,
+                    column=col,
+                    explicit=col in explicit_columns,
+                )
+        return df
+
+    def _cast_series_to_dtype(self, series, dtype, column, explicit):
+        try:
+            if isinstance(dtype, pd.CategoricalDtype):
+                converted = pd.Series(
+                    pd.Categorical(series, dtype=dtype),
+                    index=series.index,
+                    name=series.name,
+                )
+                lost = series.notna() & converted.isna()
+                if lost.any():
+                    unknown = series[lost].astype(str).drop_duplicates().head(5).tolist()
+                    raise ValueError(f"unknown categories: {unknown}")
+                return converted
+
+            if pd.api.types.is_bool_dtype(dtype):
+                converted_values = []
+                for value in series:
+                    if pd.isna(value):
+                        converted_values.append(pd.NA)
+                    elif isinstance(value, (bool, np.bool_)):
+                        converted_values.append(bool(value))
+                    elif isinstance(value, (int, float, np.number)) and value in (0, 1):
+                        converted_values.append(bool(value))
+                    elif str(value).strip().lower() in {"true", "1", "t", "y", "yes"}:
+                        converted_values.append(True)
+                    elif str(value).strip().lower() in {"false", "0", "f", "n", "no"}:
+                        converted_values.append(False)
+                    else:
+                        raise ValueError(f"invalid boolean value: {value!r}")
+                converted = pd.Series(
+                    pd.array(converted_values, dtype=pd.BooleanDtype()),
+                    index=series.index,
+                    name=series.name,
+                )
+                if not isinstance(dtype, pd.BooleanDtype):
+                    converted = converted.astype(dtype)
+                return converted
+
+            if pd.api.types.is_integer_dtype(dtype):
+                numeric = pd.to_numeric(series, errors="raise")
+                non_null = numeric.dropna()
+                if len(non_null) and not np.equal(non_null, np.floor(non_null)).all():
+                    raise ValueError("fractional values cannot be represented as integers")
+                return numeric.astype(dtype)
+
+            if pd.api.types.is_float_dtype(dtype):
+                return pd.to_numeric(series, errors="raise").astype(dtype)
+
+            if isinstance(dtype, pd.StringDtype):
+                return series.astype(dtype)
+
+            if pd.api.types.is_datetime64_any_dtype(dtype):
+                return pd.to_datetime(series, errors="raise").astype(dtype)
+
+            if pd.api.types.is_timedelta64_dtype(dtype):
+                return pd.to_timedelta(series, errors="raise").astype(dtype)
+
+            return series.astype(dtype)
+        except (TypeError, ValueError, OverflowError) as exc:
+            if explicit:
+                action = f"requested schema {dtype}"
+                hint = "Correct the values or choose another explicit dtype."
+            else:
+                action = f"existing schema {dtype}"
+                hint = (
+                    "Ana does not evolve existing schemas automatically. If this change is "
+                    f"intentional, pass schema_changes={{'{column}': '<new dtype>'}} and a description."
+                )
+            examples = series[series.notna()].head(5).tolist()
+            missing_ids = series.index[series.isna()].astype(str).tolist()[:5]
+            missing_note = f" Missing sample IDs: {missing_ids}." if missing_ids else ""
+            raise AnaUpdateError(
+                f"AnaUpdateError: column {column!r} cannot be represented by {action}. "
+                f"Example incoming values: {examples}.{missing_note} {hint}"
+            ) from exc
+
+    def _stage_dataframe(self, df, schema_overrides):
+        handle = tempfile.NamedTemporaryFile(
+            prefix=".ana-pending-",
+            suffix=".csv",
+            dir=self.home,
+            delete=False,
+        )
+        handle.close()
+        data_path = Path(handle.name)
+        schema_path = data_path.parent / f"{data_path.stem}_schema.json"
+        try:
+            self._save_data_with_schema(
+                df,
+                data_path,
+                schema_overrides=schema_overrides,
+            )
+            canonical = self._load_data_with_schema(data_path)
+            return {
+                "data_path": data_path,
+                "schema_path": schema_path,
+                "data": canonical,
+            }
+        except Exception:
+            data_path.unlink(missing_ok=True)
+            schema_path.unlink(missing_ok=True)
+            raise
+
+    def _current_schema_definitions(self, current):
+        return self._locked_schema_overrides(current)
+
+    @staticmethod
+    def _dataframes_equal(left, right):
+        try:
+            pd.testing.assert_frame_equal(
+                left,
+                right,
+                check_dtype=True,
+                check_exact=True,
+                check_categorical=True,
+            )
+            return True
+        except AssertionError:
+            return False
+
+    def _apply_plan(self, plan, prepared):
+        target = plan["target"]
+        touched = {
+            "columns": prepared["touched_columns"],
+            "objects": prepared["touched_objects"],
+        }
+
+        if prepared["changed"] and prepared["kind"] == "object":
+            self._write_json_atomic(prepared["proposed_obj"], self.obj_path)
+        elif prepared["changed"] and prepared["kind"] == "data":
+            os.replace(prepared["data_path"], self.data_path)
+            os.replace(prepared["schema_path"], self.schema_path)
+
+        if prepared.get("commit_meta"):
+            touched["commit_meta"] = prepared["commit_meta"]
+
+        if prepared["changed"] and target == "drop_samples":
+            self._sync_sample_objects(drop_ids=plan["payload"])
+        elif prepared["changed"] and target == "rename_samples":
+            self._sync_sample_objects(rename_map=plan["payload"])
+        elif prepared["changed"] and target == "replace_samples":
+            new_ids = self._canonical_labels(prepared["data"].index)
+            dropped = prepared["commit_meta"]["axis_delta"]["dropped"]
+            self._sync_sample_objects(valid_ids=new_ids, drop_ids=dropped)
+
+        return touched
+
+    def _write_json_atomic(self, obj, path):
+        handle = tempfile.NamedTemporaryFile(
+            prefix=f".{Path(path).stem}-pending-",
+            suffix=".json",
+            dir=Path(path).parent,
+            delete=False,
+        )
+        handle.close()
+        pending = Path(handle.name)
+        try:
+            dump_json(obj, pending)
+            os.replace(pending, path)
+        finally:
+            pending.unlink(missing_ok=True)
+
+    @staticmethod
+    def _discard_prepared_plan(prepared):
+        for key in ("data_path", "schema_path"):
+            path = prepared.get(key)
+            if path is not None:
+                Path(path).unlink(missing_ok=True)
+
+    def _payload_to_dataframe(self, payload, key=None):
+        if isinstance(payload, pd.DataFrame):
+            return payload.copy()
+        if isinstance(payload, pd.Series):
+            series = payload.copy()
+            if key is not None:
+                series = series.rename(key)
+            return series.to_frame()
+        if isinstance(payload, dict):
+            assert key is not None, "Key must be provided for dict input."
+            return pd.DataFrame({key: pd.Series(payload)})
+        raise TypeError(f"Unsupported data type: {type(payload)}")
+
+    def _json_ready_object(self, payload):
+        if isinstance(payload, pd.Series):
+            return payload.to_dict()
+        if isinstance(payload, dict):
+            return payload
+        if isinstance(payload, list):
+            return payload
+        return payload
+
+    def _promote_sample_id_column(self, df, context):
+        if "sample_id" in df.columns and isinstance(df.index, pd.RangeIndex):
+            warnings.warn(
+                f"{context}: promoting 'sample_id' column to the Ana sample axis.",
+                UserWarning,
+                stacklevel=3,
+            )
+            df = df.set_index("sample_id")
+        return df
+
+    def _validate_state(self):
+        df = self.data
+        if len(df.index) == 0:
+            return
+        self._validate_sample_index(df.index, context="ana.data")
+
+    def _validate_sample_index(self, index, context):
+        if len(index) == 0:
+            return
+        if isinstance(index, pd.RangeIndex):
+            raise AnaUpdateError(
+                f"AnaUpdateError: refusing RangeIndex as {context} sample IDs.\n\n"
+                "ana.data is sample-indexed. Set a real sample_id index or use "
+                "intent='object' for manifests/results."
+            )
+        self._validate_sample_labels(index, context=context)
+
+    def _validate_sample_labels(self, labels, context):
+        seen = {}
+        for label in labels:
+            if pd.isna(label):
+                raise AnaUpdateError(f"{context}: sample IDs cannot be null.")
+            text = str(label)
+            stripped = text.strip()
+            if stripped == "":
+                raise AnaUpdateError(f"{context}: sample IDs cannot be empty or whitespace-only.")
+            if text != stripped:
+                raise AnaUpdateError(
+                    f"{context}: sample ID {text!r} has leading/trailing whitespace. "
+                    "Canonicalize IDs before calling ana.update()."
+                )
+            if stripped in seen:
+                raise AnaUpdateError(
+                    f"{context}: sample IDs collide after CSV/string canonicalization: "
+                    f"{seen[stripped]!r} and {label!r}."
+                )
+            seen[stripped] = label
+
+    def _canonical_labels(self, labels):
+        return [str(label).strip() for label in labels]
+
+    def _missing_labels(self, labels, existing):
+        existing_set = set(self._canonical_labels(existing))
+        return [label for label in self._canonical_labels(labels) if label not in existing_set]
+
+    def _validate_add_samples_axis(self, incoming, existing):
+        existing_by_canon = {}
+        for label in existing:
+            existing_by_canon[str(label).strip()] = label
+        for label in incoming:
+            canon = str(label).strip()
+            if canon in existing_by_canon and label != existing_by_canon[canon]:
+                raise AnaUpdateError(
+                    "add_samples: incoming sample ID collides with an existing ID after "
+                    f"CSV/string canonicalization: {label!r} vs {existing_by_canon[canon]!r}."
+                )
+
+    def _index_relation(self, incoming, existing):
+        if len(incoming) == 0:
+            return "subset"
+        incoming_set = set(self._canonical_labels(incoming))
+        existing_set = set(self._canonical_labels(existing))
+        if incoming_set <= existing_set:
+            return "subset"
+        if incoming_set.isdisjoint(existing_set):
+            return "disjoint"
+        return "partial"
+
+    def _dataframe_matches_existing_samples(self, df, current):
+        if isinstance(df.index, pd.RangeIndex):
+            return False
+        return self._index_relation(df.index, current.index) == "subset"
+
+    def _looks_like_sample_ids(self, labels, existing):
+        labels = self._canonical_labels(labels)
+        existing = self._canonical_labels(existing)
+        if not labels:
+            return False
+        if all(re.match(r"^(sample|cell|s)[_-]?\w*\d+$", label, re.IGNORECASE) for label in labels):
+            return True
+        existing_prefixes = {
+            re.sub(r"\d+$", "", label)
+            for label in existing
+            if re.search(r"\d+$", label)
+        }
+        if existing_prefixes and all(re.sub(r"\d+$", "", label) in existing_prefixes for label in labels):
+            return True
+        return False
+
+    def _axis_delta(self, old_ids, new_ids, rename_map=None):
+        old = self._canonical_labels(old_ids)
+        new = self._canonical_labels(new_ids)
+        old_set = set(old)
+        new_set = set(new)
+        delta = {
+            "kept": sorted(old_set & new_set),
+            "added": sorted(new_set - old_set),
+            "dropped": sorted(old_set - new_set),
+        }
+        if rename_map:
+            delta["renamed"] = {str(k).strip(): str(v).strip() for k, v in rename_map.items()}
+        return delta
+
+    def _unsafe_dataframe_error(self, df, key=None):
+        index_desc = type(df.index).__name__
+        if isinstance(df.index, pd.RangeIndex):
+            index_desc = f"RangeIndex({df.index.start}..{df.index.stop - 1})"
+        return AnaUpdateError(
+            "AnaUpdateError: refusing to merge DataFrame into ana.data.\n\n"
+            "What Ana saw:\n"
+            "- payload type: DataFrame\n"
+            f"- shape: {df.shape}\n"
+            f"- index: {index_desc}\n"
+            f"- key: {key}\n\n"
+            "Why this is unsafe:\n"
+            "- ana.data is sample-indexed.\n"
+            "- DataFrame key is not a named-table registry.\n"
+            "- this would add non-sample row IDs to ana.data.\n\n"
+            "If this is sample-level metadata:\n"
+            "    df = df.set_index('sample_id')\n"
+            "    ana.update(df, intent='add_samples', description='...')\n\n"
+            "If this is an analysis result table:\n"
+            "    out = h.ddir / '...' / 'top_residuals.tsv'\n"
+            "    df.to_csv(out, sep='\\t', index=False)\n"
+            "    ana.update({'top_residuals_tsv': str(out)}, key='analysis_manifest', description='...')"
+        )
+
+    def _sync_sample_objects(self, valid_ids=None, drop_ids=None, rename_map=None):
+        obj = self.obj
+        if not obj:
+            return
+
+        current_ids = set(self._canonical_labels(self.data.index))
+        valid = set(self._canonical_labels(valid_ids)) if valid_ids is not None else current_ids
+        drop = set(self._canonical_labels(drop_ids or []))
+        rename = {str(k).strip(): v for k, v in (rename_map or {}).items()}
+        changed = False
+
+        for key, value in list(obj.items()):
+            if not isinstance(value, list):
+                if self._object_contains_labels(value, drop or set(rename)):
+                    warnings.warn(
+                        f"Object '{key}' contains sample IDs affected by the axis update; "
+                        "Ana did not rewrite this object automatically.",
+                        UserWarning,
+                        stacklevel=3,
+                    )
+                continue
+
+            labels = self._canonical_labels(value)
+            universe = current_ids | valid | drop | set(rename) | set(map(str, rename.values()))
+            if not set(labels) <= universe:
+                if self._object_contains_labels(value, drop or set(rename)):
+                    warnings.warn(
+                        f"Object '{key}' contains sample IDs affected by the axis update; "
+                        "Ana did not rewrite it because it is not a pure sample set.",
+                        UserWarning,
+                        stacklevel=3,
+                    )
+                continue
+
+            new_value = []
+            for item in value:
+                canon = str(item).strip()
+                if canon in drop:
+                    continue
+                item = rename.get(canon, item)
+                if str(item).strip() in valid:
+                    new_value.append(item)
+            if new_value != value:
+                obj[key] = new_value
+                changed = True
+
+        if changed:
+            dump_json(obj, self.obj_path)
+
+    def _object_contains_labels(self, value, labels):
+        if not labels:
+            return False
+        if isinstance(value, dict):
+            vals = list(value.keys()) + list(value.values())
+        elif isinstance(value, (list, tuple, set)):
+            vals = list(value)
+        else:
+            vals = [value]
+        return bool(set(self._canonical_labels(vals)) & set(labels))
+
+    def _print_update_summary(self, plan, touched):
+        print(f"Ana update plan: {plan['target']}")
+        if touched["columns"]:
+            print(f"columns updated: {touched['columns']}")
+        if touched["objects"]:
+            print(f"objects updated: {touched['objects']}")
 
     def _inject_column_meta(
         self,
@@ -1098,21 +1991,26 @@ class Ana:
         
         # Restore files from commit snapshot
         commit_data_path = self.home / f"{commit_filename}.data.csv"
+        commit_schema_path = self.home / f"{commit_filename}.data_schema.json"
         commit_obj_path = self.home / f"{commit_filename}.obj.json"
         
         if not commit_data_path.exists():
             raise ValueError(f"Commit data file for '{commit_repr}' not found on disk")
-        
-        # Load the commit data and save it as current (this will create schema file too)
-        commit_df = self._load_data_with_schema(commit_data_path)
-        self._save_data_with_schema(commit_df, self.data_path)
-        
-        # Restore object file
-        if commit_obj_path.exists():
-            shutil.copy(commit_obj_path, self.obj_path)
+        if not commit_schema_path.exists():
+            raise ValueError(f"Commit schema file for '{commit_repr}' not found on disk")
+        if not commit_obj_path.exists():
+            raise ValueError(f"Commit object file for '{commit_repr}' not found on disk")
+
+        revert_description = f"Reverted to commit {commit_id}"
+        self._validate_commit_description(revert_description, meta=meta)
+
+        # Restore the exact bytes identified by the selected commit.
+        shutil.copyfile(commit_data_path, self.data_path)
+        shutil.copyfile(commit_schema_path, self.schema_path)
+        shutil.copyfile(commit_obj_path, self.obj_path)
         
         # Create new commit to record the revert action
-        new_commit_id = self.commit(f"Reverted to commit {commit_id}")
+        new_commit_id = self.commit(revert_description)
         
         if self.verbose:
             print(f"Reverted to commit {commit_id} (file: {commit_filename}) and created new commit {new_commit_id}")

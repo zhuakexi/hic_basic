@@ -1,10 +1,11 @@
 import unittest
 import os
+import hashlib
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from hic_basic.ana import Ana, load_json, dump_json  # Replace with your actual module name
+from hic_basic.ana import Ana, AnaUpdateError, load_json, dump_json  # Replace with your actual module name
 
 class TestAna(unittest.TestCase):
     def setUp(self):
@@ -19,6 +20,24 @@ class TestAna(unittest.TestCase):
         Clean up the temporary directory after each test.
         """
         self.temp_dir.cleanup()
+
+    def _sample_index(self, df):
+        df.index = pd.Index([f"sample_{i}" for i in range(len(df))], dtype=pd.StringDtype())
+        return df
+
+    def _home_file_bytes(self):
+        return {
+            path.name: path.read_bytes()
+            for path in self.home.iterdir()
+            if path.is_file()
+        }
+
+    @staticmethod
+    def _combined_hash(paths):
+        digest = hashlib.sha256()
+        for path in paths:
+            digest.update(path.read_bytes())
+        return digest.hexdigest()
 
     def test_init_without_clear(self):
         """
@@ -63,7 +82,7 @@ class TestAna(unittest.TestCase):
         """
         Test initialization with data parameter.
         """
-        df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
+        df = self._sample_index(pd.DataFrame({"A": [1, 2], "B": [3, 4]}))
         ana = Ana(self.home, data=df)
         # With dtype preservation, the index type should be preserved
         pd.testing.assert_frame_equal(ana.data, df)
@@ -80,7 +99,7 @@ class TestAna(unittest.TestCase):
         """
         Test data property correctly reads and writes DataFrame.
         """
-        df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
+        df = self._sample_index(pd.DataFrame({"A": [1, 2], "B": [3, 4]}))
         ana = Ana(self.home, data=df)
         # With dtype preservation, the index type should be preserved
         pd.testing.assert_frame_equal(ana.data, df)
@@ -89,10 +108,10 @@ class TestAna(unittest.TestCase):
         """
         Test update method with DataFrame input.
         """
-        df1 = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
-        df2 = pd.DataFrame({"A": [3], "B": [4]}, index=["z"])
+        df1 = pd.DataFrame({"A": [1, 2]}, index=pd.Index(["x", "y"], dtype=pd.StringDtype()))
+        df2 = pd.DataFrame({"A": [3], "B": [4]}, index=pd.Index(["z"], dtype=pd.StringDtype()))
         ana = Ana(self.home, data=df1)
-        ana.update(df2)
+        ana.update(df2, intent="add_samples")
         expected = pd.concat([df1, df2], axis=0).groupby(level=0).last()
         # With dtype preservation, the index type should be preserved
         pd.testing.assert_frame_equal(ana.data, expected)
@@ -101,9 +120,9 @@ class TestAna(unittest.TestCase):
         """
         Test update method with Series input.
         """
-        ser = pd.Series([1, 2], index=["x", "y"], name="ser")
+        ser = pd.Series([1, 2], index=pd.Index(["x", "y"], dtype=pd.StringDtype()), name="ser")
         ana = Ana(self.home)
-        ana.update(ser, key="ser")
+        ana.update(ser, key="ser", intent="add_samples")
         expected = ser.to_frame()
         # With dtype preservation, the index type should be preserved
         pd.testing.assert_frame_equal(ana.data, expected)
@@ -114,8 +133,9 @@ class TestAna(unittest.TestCase):
         """
         d = {"a": 1, "b": 2}
         ana = Ana(self.home, clear=True)
-        ana.update(d, key="dict_key")
+        ana.update(d, key="dict_key", intent="add_samples")
         expected = pd.DataFrame({"dict_key": pd.Series(d)})
+        expected.index = pd.Index(expected.index, dtype=pd.StringDtype())
         # With dtype preservation, the index type should be preserved
         pd.testing.assert_frame_equal(ana.data, expected)
 
@@ -152,7 +172,7 @@ class TestAna(unittest.TestCase):
         """
         ana = Ana(self.home, clear=True, max_commits=10)
         df = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
-        ana.update(df)
+        ana.update(df, intent="add_samples")
         
         commit_id = ana.commit("Test commit")
         
@@ -180,7 +200,7 @@ class TestAna(unittest.TestCase):
         # Create more commits than max_commits
         for i in range(max_commits + 3):
             df = pd.DataFrame({"value": [i]}, index=[f"row_{i}"])
-            ana.update(df, description=f"Commit {i}")
+            ana.update(df, description=f"Commit {i}", intent="add_samples")
         
         meta = load_json(ana.commit_meta_path)
         
@@ -212,12 +232,12 @@ class TestAna(unittest.TestCase):
         
         # Create initial data
         df1 = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
-        ana.update(df1, description="Initial data")
+        ana.update(df1, description="Initial data", intent="add_samples")
         commit1_data = ana.data.copy()
         
         # Make a change
         df2 = pd.DataFrame({"A": [3, 4], "B": [5, 6]}, index=["z", "w"])
-        ana.update(df2, description="Second update")
+        ana.update(df2, description="Second update", intent="add_samples")
         
         # Revert to first commit
         new_commit_id = ana.revert(1)  # Revert to commit ID 1
@@ -236,12 +256,12 @@ class TestAna(unittest.TestCase):
         
         # Create initial data with specific description
         df1 = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
-        ana.update(df1, description="First state")
+        ana.update(df1, description="First state", intent="add_samples")
         first_state = ana.data.copy()
         
         # Make changes
         df2 = pd.DataFrame({"A": [3, 4]}, index=["z", "w"])
-        ana.update(df2, description="Second state")
+        ana.update(df2, description="Second state", intent="add_samples")
         
         # Revert using description
         new_commit_id = ana.revert("First state")
@@ -257,8 +277,7 @@ class TestAna(unittest.TestCase):
         ana = Ana(self.home, clear=True, verbose=False)
         
         # Create first commit
-        df = pd.DataFrame({"A": [1]})
-        ana.update(df, description="First commit")
+        ana.update(pd.DataFrame({"A": [1]}, index=["sample_1"]), description="First commit", intent="add_samples")
         
         # Should not allow duplicate descriptions
         with self.assertRaises(ValueError):
@@ -277,8 +296,8 @@ class TestAna(unittest.TestCase):
         # Create initial commits
         ana1 = Ana(self.home, clear=True, max_commits=5, verbose=False)
         for i in range(3):
-            df = pd.DataFrame({"value": [i]})
-            ana1.update(df, description=f"Commit {i}")
+            df = pd.DataFrame({"value": [i]}, index=[f"sample_{i}"])
+            ana1.update(df, description=f"Commit {i}", intent="add_samples")
         
         # Reload from same directory
         ana2 = Ana(self.home, clear=False, max_commits=5, verbose=False)
@@ -300,7 +319,7 @@ class TestAna(unittest.TestCase):
         df = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
 
         # First update should create a commit
-        cid1 = ana.update(df)
+        cid1 = ana.update(df, intent="add_samples")
         self.assertEqual(cid1, 1)
 
         # Second update with identical data should skip commit
@@ -318,7 +337,7 @@ class TestAna(unittest.TestCase):
         ana = Ana(self.home, clear=True, verbose=False)
         df = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
 
-        cid1 = ana.update(df)
+        cid1 = ana.update(df, intent="add_samples")
         self.assertEqual(cid1, 1)
 
         # force=True should create a new commit even with identical data
@@ -336,8 +355,8 @@ class TestAna(unittest.TestCase):
         df1 = pd.DataFrame({"A": [1, 2]}, index=["x", "y"])
         df2 = pd.DataFrame({"A": [3, 4]}, index=["z", "w"])
 
-        cid1 = ana.update(df1)
-        cid2 = ana.update(df2)
+        cid1 = ana.update(df1, intent="add_samples")
+        cid2 = ana.update(df2, intent="add_samples")
         self.assertGreater(cid2, cid1)
 
         meta = load_json(ana.commit_meta_path)
@@ -352,8 +371,7 @@ class TestAna(unittest.TestCase):
         
         # Create more commits than max_commits
         for i in range(max_commits + 2):
-            df = pd.DataFrame({"value": [i]})
-            ana.update(df)
+            ana.update(pd.DataFrame({"value": [i]}, index=[f"sample_{i}"]), intent="add_samples")
         
         meta = load_json(ana.commit_meta_path)
         self.assertEqual(len(meta["commits"]), max_commits)
@@ -385,7 +403,7 @@ class TestAna(unittest.TestCase):
         # Create first Ana object with some data
         ana1 = Ana(self.home)
         data = pd.DataFrame({"A": [1, 2], "B": [3, 4]}, index=["x", "y"])
-        ana1.update(data, key=None)
+        ana1.update(data, key=None, intent="add_samples")
         ana1.update([1, 2, 3], key="list_data")
         
         # Create a second temporary directory for the new Ana object
@@ -427,10 +445,10 @@ class TestAna(unittest.TestCase):
         Test that categorical dtypes are preserved when saving and loading.
         """
         # Create DataFrame with categorical column
-        df = pd.DataFrame({
+        df = self._sample_index(pd.DataFrame({
             'category': pd.Categorical(['a', 'b', 'c', 'a'], categories=['a', 'b', 'c', 'd'], ordered=True),
             'value': [1, 2, 3, 4]
-        })
+        }))
         
         ana = Ana(self.home, data=df)
         
@@ -448,10 +466,10 @@ class TestAna(unittest.TestCase):
         Test that string dtypes are preserved when saving and loading.
         """
         # Create DataFrame with string dtype column (pandas 1.0+)
-        df = pd.DataFrame({
+        df = self._sample_index(pd.DataFrame({
             'string_col': pd.Series(['hello', 'world', None, 'test'], dtype='string'),
             'value': [1, 2, 3, 4]
-        })
+        }))
         
         ana = Ana(self.home, data=df)
         
@@ -467,10 +485,10 @@ class TestAna(unittest.TestCase):
         Test that nullable integer dtypes (Int64, etc.) are preserved.
         """
         # Create DataFrame with nullable integer column
-        df = pd.DataFrame({
+        df = self._sample_index(pd.DataFrame({
             'nullable_int': pd.array([1, 2, None, 4], dtype='Int64'),
             'regular_int': [10, 20, 30, 40]
-        })
+        }))
         
         ana = Ana(self.home, data=df)
         
@@ -480,7 +498,7 @@ class TestAna(unittest.TestCase):
         self.assertEqual(str(loaded_df['nullable_int'].dtype), 'Int64')
         
         # Check for nullable behavior (None should be preserved)
-        self.assertTrue(pd.isna(loaded_df.loc[2, 'nullable_int']))
+        self.assertTrue(pd.isna(loaded_df.loc["sample_2", 'nullable_int']))
         
         # Check the actual values
         pd.testing.assert_series_equal(df['nullable_int'], loaded_df['nullable_int'])
@@ -490,10 +508,10 @@ class TestAna(unittest.TestCase):
         Test that nullable float dtypes (Float64) are preserved.
         """
         # Create DataFrame with nullable float column
-        df = pd.DataFrame({
+        df = self._sample_index(pd.DataFrame({
             'nullable_float': pd.array([1.1, None, 3.3, 4.4], dtype='Float64'),
             'regular_float': [1.1, 2.2, 3.3, 4.4]
-        })
+        }))
         
         ana = Ana(self.home, data=df)
         
@@ -503,7 +521,7 @@ class TestAna(unittest.TestCase):
         self.assertEqual(str(loaded_df['nullable_float'].dtype), 'Float64')
         
         # Check for nullable behavior
-        self.assertTrue(pd.isna(loaded_df.loc[1, 'nullable_float']))
+        self.assertTrue(pd.isna(loaded_df.loc["sample_1", 'nullable_float']))
         
         # Check the actual values
         pd.testing.assert_series_equal(df['nullable_float'], loaded_df['nullable_float'])
@@ -513,10 +531,10 @@ class TestAna(unittest.TestCase):
         Test that datetime dtypes are preserved.
         """
         # Create DataFrame with datetime column
-        df = pd.DataFrame({
+        df = self._sample_index(pd.DataFrame({
             'datetime': pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04']),
             'value': [1, 2, 3, 4]
-        })
+        }))
         
         ana = Ana(self.home, data=df)
         
@@ -532,10 +550,10 @@ class TestAna(unittest.TestCase):
         Test that boolean dtypes (including nullable boolean) are preserved.
         """
         # Create DataFrame with nullable boolean column
-        df = pd.DataFrame({
+        df = self._sample_index(pd.DataFrame({
             'nullable_bool': pd.array([True, False, None, True], dtype='boolean'),
             'regular_bool': [True, False, True, False]
-        })
+        }))
         
         ana = Ana(self.home, data=df)
         
@@ -544,7 +562,7 @@ class TestAna(unittest.TestCase):
         self.assertIsInstance(loaded_df['nullable_bool'].dtype, pd.BooleanDtype)
         
         # Check for nullable behavior
-        self.assertTrue(pd.isna(loaded_df.loc[2, 'nullable_bool']))
+        self.assertTrue(pd.isna(loaded_df.loc["sample_2", 'nullable_bool']))
         
         # Check the actual values
         pd.testing.assert_series_equal(df['nullable_bool'], loaded_df['nullable_bool'])
@@ -554,7 +572,7 @@ class TestAna(unittest.TestCase):
         Test that a DataFrame with multiple complex dtypes is fully preserved.
         """
         # Create DataFrame with various dtypes
-        df = pd.DataFrame({
+        df = self._sample_index(pd.DataFrame({
             'category': pd.Categorical(['a', 'b', 'c', 'a']),
             'string': pd.Series(['hello', 'world', 'test', 'data'], dtype='string'),
             'nullable_int': pd.array([1, 2, None, 4], dtype='Int64'),
@@ -564,7 +582,7 @@ class TestAna(unittest.TestCase):
             'regular_int': [10, 20, 30, 40],
             'regular_float': [1.1, 2.2, 3.3, 4.4],
             'regular_bool': [True, False, True, False]
-        })
+        }))
         
         ana = Ana(self.home, data=df)
         
@@ -586,11 +604,11 @@ class TestAna(unittest.TestCase):
         """
         Test that schema file is created when data is saved.
         """
-        df = pd.DataFrame({
+        df = self._sample_index(pd.DataFrame({
             'category': pd.Categorical(['a', 'b', 'c']),
             'string': pd.Series(['x', 'y', 'z'], dtype='string'),
             'nullable_int': pd.array([1, 2, 3], dtype='Int64')
-        })
+        }))
         
         ana = Ana(self.home, data=df)
         
@@ -629,7 +647,7 @@ class TestAna(unittest.TestCase):
             'nullable_int': pd.array([None, 4], dtype='Int64')
         }, index=['z', 'w'])
         
-        ana.update(df2)
+        ana.update(df2, intent="add_samples")
         
         # Check that dtypes are still preserved after update
         loaded_df = ana.data
@@ -652,7 +670,7 @@ class TestAna(unittest.TestCase):
             'string': pd.Series(['x', 'y'], dtype='string')
         }, index=['i1', 'i2'])
         
-        ana.update(df1, description="First state with dtypes")
+        ana.update(df1, description="First state with dtypes", intent="add_samples")
         
         # Second commit with different data
         df2 = pd.DataFrame({
@@ -660,7 +678,7 @@ class TestAna(unittest.TestCase):
             'other': [4, 5, 6]
         }, index=['j1', 'j2', 'j3'])
         
-        ana.update(df2, description="Second state")
+        ana.update(df2, description="Second state", intent="add_samples")
         
         # Revert to first commit
         ana.revert(1)
@@ -678,11 +696,11 @@ class TestAna(unittest.TestCase):
         """
         Test the get_schema method returns correct schema information.
         """
-        df = pd.DataFrame({
+        df = self._sample_index(pd.DataFrame({
             'category': pd.Categorical(['a', 'b', 'c']),
             'nullable_int': pd.array([1, 2, 3], dtype='Int64'),
             'regular': [1.1, 2.2, 3.3]
-        })
+        }))
         
         ana = Ana(self.home, data=df)
         
@@ -726,11 +744,10 @@ class TestAna(unittest.TestCase):
             self.assertIsInstance(loaded_df['string'].dtype, pd.StringDtype)
             self.assertEqual(str(loaded_df['nullable_int'].dtype), 'Int64')
 
-    def test_index_dtype_preservation(self):
+    def test_sample_index_canonical_string_dtype(self):
         """
-        Test that index dtypes are preserved when saving and loading.
+        Test that the sample axis is stored as canonical string dtype.
         """
-        # Create DataFrame with categorical index
         df = pd.DataFrame(
             {'value': [1, 2, 3, 4]},
             index=pd.CategoricalIndex(['a', 'b', 'c', 'd'], name='category_idx')
@@ -738,10 +755,9 @@ class TestAna(unittest.TestCase):
         
         ana = Ana(self.home, data=df)
         
-        # Check that index dtype is preserved
         loaded_df = ana.data
-        
-        self.assertTrue(isinstance(loaded_df.index, pd.CategoricalIndex))
+
+        self.assertIsInstance(loaded_df.index.dtype, pd.StringDtype)
         self.assertEqual(loaded_df.index.name, 'category_idx')
         self.assertEqual(list(loaded_df.index), ['a', 'b', 'c', 'd'])
 
@@ -750,7 +766,7 @@ class TestAna(unittest.TestCase):
         Test that data can still be loaded when schema file is missing (backward compatibility).
         """
         # Create a CSV file without schema
-        df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+        df = self._sample_index(pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]}))
         csv_path = self.home / "data.csv"
         df.to_csv(csv_path)
         
@@ -772,7 +788,7 @@ class TestAna(unittest.TestCase):
         Test that corrupted schema file doesn't break data loading.
         """
         # Create valid data
-        df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+        df = self._sample_index(pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]}))
         ana = Ana(self.home, data=df)
         
         # Corrupt the schema file
@@ -870,6 +886,362 @@ class TestAna(unittest.TestCase):
 
         # Unknown key
         self.assertIsNone(ana.file_format("nonexistent_format"))
+
+    def test_reject_rangeindex_dataframe_as_named_result_table(self):
+        """
+        DataFrames with non-sample RangeIndex must not be merged into ana.data.
+        """
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame({"cell_type": ["2c"]}, index=["sample_1"]),
+        )
+        df = pd.DataFrame({"gene_id": ["g1"], "score": [1.0]})
+
+        with self.assertRaises(AnaUpdateError) as ctx:
+            ana.update(df, key="top_genes")
+
+        self.assertIn("refusing to merge DataFrame into ana.data", str(ctx.exception))
+        self.assertIn("analysis result table", str(ctx.exception))
+        self.assertEqual(list(ana.data.index), ["sample_1"])
+        meta = load_json(ana.commit_meta_path)
+        self.assertEqual(len(meta["commits"]), 1)
+
+    def test_manifest_dict_auto_routes_to_object(self):
+        """
+        Dict keys that do not match sample IDs are treated as object manifests.
+        """
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame({"cell_type": ["2c"]}, index=["sample_1"]),
+        )
+
+        cid = ana.update(
+            {"top_residuals_tsv": "/tmp/top_residuals.tsv"},
+            key="analysis_manifest",
+            description="Register analysis manifest",
+        )
+
+        self.assertEqual(ana.obj["analysis_manifest"]["top_residuals_tsv"], "/tmp/top_residuals.tsv")
+        self.assertEqual(list(ana.data.index), ["sample_1"])
+        self.assertEqual(cid, 2)
+
+    def test_dict_auto_updates_existing_sample_column(self):
+        """
+        Dict keys matching existing sample IDs update a sample-level column.
+        """
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame({"cell_type": ["2c"]}, index=["sample_1"]),
+        )
+
+        ana.update({"sample_1": True}, key="qc_pass")
+
+        self.assertTrue(ana.data.loc["sample_1", "qc_pass"])
+        self.assertNotIn("qc_pass", ana.obj)
+
+    def test_dict_auto_refuses_accidental_new_sample(self):
+        """
+        Sample-looking dict keys must not add samples in auto mode.
+        """
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame({"cell_type": ["2c"]}, index=["sample_1"]),
+        )
+
+        with self.assertRaises(AnaUpdateError) as ctx:
+            ana.update({"sample_2": True}, key="qc_pass")
+
+        self.assertIn("refusing to add new sample IDs", str(ctx.exception))
+        self.assertNotIn("sample_2", ana.data.index)
+        self.assertNotIn("qc_pass", ana.obj)
+
+    def test_auto_dataframe_updates_existing_samples_only(self):
+        """
+        Auto DataFrame routing can update columns for existing sample IDs.
+        """
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame({"cell_type": ["2c", "4c"]}, index=["sample_1", "sample_2"]),
+        )
+
+        ana.update(pd.DataFrame({"qc_pass": [True]}, index=["sample_1"]))
+
+        self.assertTrue(ana.data.loc["sample_1", "qc_pass"])
+        self.assertTrue(pd.isna(ana.data.loc["sample_2", "qc_pass"]))
+
+    def test_auto_dataframe_partial_overlap_is_rejected(self):
+        """
+        Partial sample-axis overlap is ambiguous and must be explicit.
+        """
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame({"cell_type": ["2c", "4c"]}, index=["sample_1", "sample_2"]),
+        )
+        update = pd.DataFrame({"qc_pass": [True, False]}, index=["sample_1", "sample_3"])
+
+        with self.assertRaises(AnaUpdateError) as ctx:
+            ana.update(update)
+
+        self.assertIn("refusing to merge DataFrame", str(ctx.exception))
+        self.assertNotIn("sample_3", list(ana.data.index))
+
+    def test_sample_axis_operations(self):
+        """
+        Explicit add/drop/rename/replace intents maintain the sample axis.
+        """
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame({"cell_type": ["2c", "4c"]}, index=["sample_1", "sample_2"]),
+        )
+        ana.update(["sample_1", "sample_2"], key="all_samples")
+
+        ana.update(
+            pd.DataFrame({"sample_id": ["sample_3"], "cell_type": ["8c"]}),
+            intent="add_samples",
+            description="Add sample_3",
+        )
+        self.assertIn("sample_3", ana.data.index)
+        ana.update(["sample_1", "sample_2", "sample_3"], key="all_samples")
+
+        ana.update({"sample_3": "sample_03"}, intent="rename_samples", description="Rename sample_3")
+        self.assertIn("sample_03", ana.data.index)
+        self.assertIn("sample_03", ana.obj["all_samples"])
+
+        ana.update(["sample_2"], intent="drop_samples", description="Drop sample_2")
+        self.assertNotIn("sample_2", ana.data.index)
+        self.assertNotIn("sample_2", ana.obj["all_samples"])
+
+        replacement = pd.DataFrame({"cell_type": ["2c"]}, index=["sample_1"])
+        ana.update(replacement, intent="replace_samples", description="Rebuild sample axis")
+        self.assertEqual(list(ana.data.index), ["sample_1"])
+
+        meta = load_json(ana.commit_meta_path)
+        last_plan = meta["commits"][-1]["update_plan"]
+        self.assertEqual(last_plan["target"], "replace_samples")
+        self.assertIn("sample_03", last_plan["axis_delta"]["dropped"])
+
+    def test_sample_axis_canonical_collision_is_rejected(self):
+        """
+        Labels that collide after CSV/string canonicalization are unsafe.
+        """
+        ana = Ana(self.home, clear=True)
+        df = pd.DataFrame({"A": [1, 2]}, index=pd.Index([0, "0"], dtype=object))
+
+        with self.assertRaises(AnaUpdateError) as ctx:
+            ana.update(df, intent="add_samples")
+
+        self.assertIn("collide after CSV/string canonicalization", str(ctx.exception))
+
+    def test_add_samples_rejects_existing_canonical_collision_before_write(self):
+        """
+        Existing "0" and incoming 0 collide after CSV persistence.
+        """
+        ana = Ana(self.home, data=pd.DataFrame({"x": [1]}, index=["0"]))
+
+        with self.assertRaises(AnaUpdateError) as ctx:
+            ana.update(pd.DataFrame({"x": [2]}, index=pd.Index([0], dtype=object)), intent="add_samples")
+
+        self.assertIn("collides with an existing ID", str(ctx.exception))
+        expected = pd.DataFrame({"x": [1]}, index=pd.Index(["0"], dtype=pd.StringDtype()))
+        pd.testing.assert_frame_equal(ana.data, expected)
+
+    def test_commit_metadata_includes_ana_system_version(self):
+        """
+        Ana version metadata is persisted globally and per commit.
+        """
+        ana = Ana(self.home, clear=True)
+        ana.update(pd.DataFrame({"A": [1]}, index=["sample_1"]), intent="add_samples")
+
+        meta = load_json(ana.commit_meta_path)
+        self.assertEqual(meta["ana_system_version"], 3)
+        self.assertEqual(meta["axis"]["name"], "sample_id")
+        self.assertEqual(meta["commits"][-1]["ana_system_version"], 3)
+        self.assertEqual(meta["commits"][-1]["axis"]["role"], "sample_axis")
+        self.assertEqual(meta["commits"][-1]["update_plan"]["target"], "add_samples")
+        self.assertEqual(meta["commits"][-1]["update_plan"]["axis_delta"]["added"], ["sample_1"])
+
+    def test_add_samples_csv_roundtrip_is_semantic_noop(self):
+        """An independently loaded CSV must normalize to the locked schema."""
+        base = pd.DataFrame(
+            {
+                "batch": pd.array(["old"], dtype="string"),
+                "raw_reads": pd.array([10], dtype="Int64"),
+                "score": pd.array([1.5], dtype="Float64"),
+                "path": pd.array(["/old/a.cool"], dtype="string"),
+                "flag": pd.array([True], dtype="boolean"),
+                "all_missing": pd.array([pd.NA], dtype="Float64"),
+            },
+            index=["old_1"],
+        )
+        incoming = pd.DataFrame(
+            {
+                "batch": pd.array(["new", "new", "new"], dtype="string"),
+                "raw_reads": pd.array([100, 0, pd.NA], dtype="Int64"),
+                "score": pd.array([3.25, pd.NA, 5.75], dtype="Float64"),
+                "path": pd.array(
+                    ["/new/a.cool", "/new/b.cool", pd.NA], dtype="string"
+                ),
+                "flag": pd.array([True, pd.NA, False], dtype="boolean"),
+                "all_missing": pd.array([pd.NA, pd.NA, pd.NA], dtype="Float64"),
+            },
+            index=["new_1", "new_2", "new_3"],
+        )
+        ana = Ana(self.home, data=base, verbose=False)
+        description = "Add heterogeneous batch metadata"
+        commit_id = ana.update(
+            incoming,
+            intent="add_samples",
+            description=description,
+            computed_by={"file": "batch.ipynb"},
+        )
+
+        external_csv = self.home / "batch.csv"
+        incoming.to_csv(external_csv)
+        replay = pd.read_csv(external_csv, index_col=0)
+        before = self._home_file_bytes()
+
+        replay_commit_id = ana.update(
+            replay,
+            intent="add_samples",
+            description=description,
+            computed_by={"file": "batch.ipynb"},
+        )
+
+        self.assertEqual(replay_commit_id, commit_id)
+        self.assertEqual(self._home_file_bytes(), before)
+        self.assertEqual(str(ana.data["raw_reads"].dtype), "Int64")
+        self.assertEqual(str(ana.data["flag"].dtype), "boolean")
+        self.assertEqual(len(load_json(ana.commit_meta_path)["commits"]), 2)
+
+    def test_implicit_schema_change_is_rejected_without_writes(self):
+        """Existing column schemas cannot change through dtype inference."""
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame(
+                {"value": pd.array([1], dtype="Int64")},
+                index=["sample_1"],
+            ),
+            verbose=False,
+        )
+        before = self._home_file_bytes()
+
+        with self.assertRaises(AnaUpdateError) as ctx:
+            ana.update(
+                pd.DataFrame({"value": [1.5]}, index=["sample_1"]),
+                description="Introduce fractional values",
+            )
+
+        self.assertIn("does not evolve existing schemas automatically", str(ctx.exception))
+        self.assertIn("schema_changes", str(ctx.exception))
+        self.assertEqual(self._home_file_bytes(), before)
+
+    def test_explicit_schema_change_is_committed_and_auditable(self):
+        """Explicit dtype migration changes the schema and records its delta."""
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame(
+                {"value": pd.array([1], dtype="Int64")},
+                index=["sample_1"],
+            ),
+            verbose=False,
+        )
+
+        commit_id = ana.update(
+            pd.DataFrame({"value": [1.5]}, index=["sample_1"]),
+            description="Allow fractional values",
+            schema_changes={"value": "Float64"},
+        )
+
+        self.assertEqual(commit_id, 2)
+        self.assertEqual(str(ana.data["value"].dtype), "Float64")
+        commit = load_json(ana.commit_meta_path)["commits"][-1]
+        delta = commit["update_plan"]["schema_delta"]["value"]
+        self.assertEqual(delta["from"]["type"], "nullable_int")
+        self.assertEqual(delta["to"]["type"], "nullable_float")
+
+    def test_category_expansion_requires_explicit_schema_change(self):
+        """New category labels cannot silently alter an existing domain."""
+        dtype = pd.CategoricalDtype(["2c", "4c"], ordered=True)
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame(
+                {"stage": pd.Series(["2c"], dtype=dtype, index=["sample_1"])},
+                index=["sample_1"],
+            ),
+            verbose=False,
+        )
+        update = pd.DataFrame({"stage": ["8c"]}, index=["sample_2"])
+        before = self._home_file_bytes()
+
+        with self.assertRaises(AnaUpdateError):
+            ana.update(update, intent="add_samples", description="Add 8c sample")
+        self.assertEqual(self._home_file_bytes(), before)
+
+        expanded = pd.CategoricalDtype(["2c", "4c", "8c"], ordered=True)
+        ana.update(
+            update,
+            intent="add_samples",
+            description="Add 8c category and sample",
+            schema_changes={"stage": expanded},
+        )
+        self.assertEqual(list(ana.data["stage"].cat.categories), ["2c", "4c", "8c"])
+
+    def test_commit_snapshot_hash_and_revert_are_byte_exact(self):
+        """Recorded hashes identify exact snapshots, including float CSV text."""
+        ana = Ana(
+            self.home,
+            data=pd.DataFrame(
+                {"value": [-1.8507079234797329e-75]},
+                index=["sample_1"],
+            ),
+            verbose=False,
+        )
+        first = load_json(ana.commit_meta_path)["commits"][-1]
+        stem = first["filename"]
+        snapshot_paths = [
+            self.home / f"{stem}.data.csv",
+            self.home / f"{stem}.data_schema.json",
+            self.home / f"{stem}.obj.json",
+        ]
+        snapshot_bytes = [path.read_bytes() for path in snapshot_paths]
+
+        self.assertEqual(first["state_hash"], ana._compute_state_hash())
+        self.assertEqual(first["state_hash"], self._combined_hash(snapshot_paths))
+        self.assertEqual(ana.data_path.read_bytes(), snapshot_paths[0].read_bytes())
+        self.assertEqual(ana.update(ana.data.copy()), first["id"])
+
+        ana.update(
+            pd.DataFrame({"value": [-2.0]}, index=["sample_1"]),
+            description="Change float value",
+        )
+        ana.revert(first["id"])
+        current_bytes = [
+            ana.data_path.read_bytes(),
+            ana.schema_path.read_bytes(),
+            ana.obj_path.read_bytes(),
+        ]
+        self.assertEqual(current_bytes, snapshot_bytes)
+
+    def test_rotated_commit_snapshots_preserve_hash_invariant(self):
+        """Circular snapshot slots retain exact bytes for every live commit."""
+        ana = Ana(self.home, clear=True, max_commits=3, verbose=False)
+        for i in range(1, 7):
+            ana.update(
+                pd.DataFrame({"value": [i]}, index=[f"sample_{i}"]),
+                intent="add_samples",
+                description=f"Add sample {i}",
+            )
+
+        commits = load_json(ana.commit_meta_path)["commits"]
+        self.assertEqual([commit["id"] for commit in commits], [4, 5, 6])
+        for commit in commits:
+            stem = commit["filename"]
+            paths = [
+                self.home / f"{stem}.data.csv",
+                self.home / f"{stem}.data_schema.json",
+                self.home / f"{stem}.obj.json",
+            ]
+            self.assertEqual(commit["state_hash"], self._combined_hash(paths))
 
 if __name__ == "__main__":
     unittest.main()

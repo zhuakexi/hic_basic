@@ -3,6 +3,7 @@
 - 首次 update 自动创建 commit；相同数据重复调用自动跳过（幂等），`force=True` 可强制记录检查点。
 - 新列通过 `column_descriptions={"col": "短描述"}`、`depends_on={"col": {"columns": [...], "objects": [...]}}`、`computed_by={"file": "script.ipynb"}` 声明元数据。
 - 文件路径列自动识别类型（cool/bam/bed 等），也可 `file_format={"col": "bam"}` 显式指定。
+- 已有列的 schema 不会自动改变；兼容的 CSV 推断类型会自动转回现有类型。确需改变时使用 `schema_changes={"col": "Float64"}` 并提供非空 `description`。
 
 # 分析前查询有用的 Ana 输入
 - **CLI 准备/核查**：`hic_basic ana-describe <home>` 查看列名+类型+描述；`--column <key>` 打印完整元数据；`--file-format cool` 查看格式定义与 reader/writer。
