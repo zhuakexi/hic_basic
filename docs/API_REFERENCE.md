@@ -2,7 +2,7 @@
 
 *Auto-generated API documentation for public functions*
 
-Total modules with public functions: 93
+Total modules with public functions: 86
 
 ---
 
@@ -11,18 +11,15 @@ Total modules with public functions: 93
 - [DI](#di) (18 functions)
 - [Ps](#ps) (5 functions)
 - [TAD.IS](#tad-is) (2 functions)
-- [TAD.tad](#tad-tad) (8 functions)
+- [TAD.tad](#tad-tad) (7 functions)
 - [TI.circle](#ti-circle) (1 functions)
-- [TI.slingshot.lineage](#ti-slingshot-lineage) (2 functions)
 - [TI.slingshot.plot](#ti-slingshot-plot) (3 functions)
-- [TI.slingshot.slingshot](#ti-slingshot-slingshot) (22 functions)
 - [TI.slingshot.utils](#ti-slingshot-utils) (5 functions)
-- [ana](#ana) (15 functions)
 - [api_query](#api_query) (13 functions)
 - [atac](#atac) (6 functions)
 - [basic](#basic) (5 functions)
 - [binnify](#binnify) (1 functions)
-- [calculate](#calculate) (4 functions)
+- [calculate](#calculate) (2 functions)
 - [cli.ana_describe](#cli-ana_describe) (2 functions)
 - [cli.api](#cli-api) (2 functions)
 - [cli.download](#cli-download) (2 functions)
@@ -32,46 +29,42 @@ Total modules with public functions: 93
 - [compare_pixels](#compare_pixels) (5 functions)
 - [compartment](#compartment) (8 functions)
 - [coolstuff](#coolstuff) (32 functions)
-- [crossover.cache](#crossover-cache) (16 functions)
-- [crossover.detector](#crossover-detector) (5 functions)
-- [crossover.detector_mii](#crossover-detector_mii) (6 functions)
+- [crossover.detector_mii](#crossover-detector_mii) (5 functions)
 - [crossover.io](#crossover-io) (7 functions)
 - [crossover.pipeline](#crossover-pipeline) (4 functions)
-- [crossover.pipeline_mii](#crossover-pipeline_mii) (5 functions)
+- [crossover.pipeline_mii](#crossover-pipeline_mii) (8 functions)
 - [cycle_phasing](#cycle_phasing) (2 functions)
 - [data.file_formats](#data-file_formats) (2 functions)
 - [embedding](#embedding) (5 functions)
-- [feature](#feature) (10 functions)
-- [genome](#genome) (11 functions)
+- [genome](#genome) (3 functions)
 - [heuristic_ordering](#heuristic_ordering) (1 functions)
-- [hicbr](#hicbr) (6 functions)
-- [hicio](#hicio) (31 functions)
+- [hicbr](#hicbr) (2 functions)
+- [hicio](#hicio) (29 functions)
 - [impute.schicluster](#impute-schicluster) (3 functions)
-- [impute.simpute](#impute-simpute) (9 functions)
+- [impute.simpute](#impute-simpute) (6 functions)
 - [inter_contact](#inter_contact) (3 functions)
-- [interpolate](#interpolate) (5 functions)
+- [interpolate](#interpolate) (9 functions)
 - [lap_embedding](#lap_embedding) (3 functions)
-- [mchr](#mchr) (7 functions)
+- [mchr](#mchr) (1 functions)
 - [metrics](#metrics) (4 functions)
 - [nagano_cycle_phasing](#nagano_cycle_phasing) (6 functions)
-- [paracalc](#paracalc) (2 functions)
+- [paracalc](#paracalc) (1 functions)
 - [phasing](#phasing) (11 functions)
 - [pileup](#pileup) (6 functions)
 - [pipeline.rule](#pipeline-rule) (8 functions)
 - [plot.bar](#plot-bar) (1 functions)
-- [plot.gene_track_parser](#plot-gene_track_parser) (6 functions)
-- [plot.general](#plot-general) (8 functions)
+- [plot.gene_track_parser](#plot-gene_track_parser) (2 functions)
+- [plot.general](#plot-general) (6 functions)
 - [plot.hic](#plot-hic) (22 functions)
 - [plot.pca](#plot-pca) (2 functions)
 - [plot.plot](#plot-plot) (15 functions)
 - [plot.plotly_template](#plot-plotly_template) (1 functions)
-- [plot.render](#plot-render) (27 functions)
+- [plot.render](#plot-render) (21 functions)
 - [plot.rna](#plot-rna) (3 functions)
 - [plot.scanpy](#plot-scanpy) (5 functions)
-- [plot.scatter](#plot-scatter) (6 functions)
+- [plot.scatter](#plot-scatter) (5 functions)
 - [plot.tech](#plot-tech) (1 functions)
-- [plot.track](#plot-track) (27 functions)
-- [plot.track_composer](#plot-track_composer) (10 functions)
+- [plot.track](#plot-track) (9 functions)
 - [plot.utils](#plot-utils) (20 functions)
 - [pp](#pp) (1 functions)
 - [pymol.color_centelo](#pymol-color_centelo) (2 functions)
@@ -79,22 +72,22 @@ Total modules with public functions: 93
 - [pymol.sele_cent](#pymol-sele_cent) (2 functions)
 - [pymol.sele_telo](#pymol-sele_telo) (2 functions)
 - [pymol.utils](#pymol-utils) (2 functions)
-- [sam](#sam) (12 functions)
-- [scAB_embedding](#scab_embedding) (9 functions)
+- [sam](#sam) (7 functions)
+- [scAB_embedding](#scab_embedding) (8 functions)
 - [scripts.downsra](#scripts-downsra) (1 functions)
 - [scripts.rescue_jupyter](#scripts-rescue_jupyter) (2 functions)
-- [sequence](#sequence) (11 functions)
+- [sequence](#sequence) (10 functions)
 - [shuffle](#shuffle) (4 functions)
 - [spectral_ordering](#spectral_ordering) (1 functions)
 - [structure.align](#structure-align) (1 functions)
 - [structure.measure](#structure-measure) (15 functions)
 - [structure.pileup](#structure-pileup) (16 functions)
 - [structure.utils](#structure-utils) (6 functions)
-- [territory](#territory) (3 functions)
+- [territory](#territory) (2 functions)
 - [utils](#utils) (8 functions)
 - [wet.adtools](#wet-adtools) (7 functions)
-- [wet.afbb](#wet-afbb) (19 functions)
-- [wet.exp_record](#wet-exp_record) (10 functions)
+- [wet.afbb](#wet-afbb) (18 functions)
+- [wet.exp_record](#wet-exp_record) (6 functions)
 - [wet.gam](#wet-gam) (1 functions)
 - [wet.meta_trick](#wet-meta_trick) (3 functions)
 - [wet.paracalc](#wet-paracalc) (6 functions)
@@ -456,7 +449,7 @@ No documentation available.
 ---
 
 
-### `ps_curve(coolp, view_df=None, all_region=False, nproc=4, clr_weight_name='weight', drop2diags=False)`
+### `ps_curve(coolp, view_df=None, all_region=False, nproc=4, clr_weight_name='weight', drop2diags=False, **kwargs)`
 
 
 Get P(s) curve of a balanced clr.
@@ -534,7 +527,7 @@ proms : numpy.array
 
 **File:** `TAD/tad.py`
 
-**Public functions:** 8
+**Public functions:** 7
 
 
 ### `IS(R, length)`
@@ -604,23 +597,11 @@ Input:
     F: input contact matrix : np.ndarray
     reso: resolution of the matrix (kbp)
     min, max: tad mean size (kbp)
-    split: window size (kbp) 
+    split: window size (kbp)
     core: treads used
 
 
 **Source:** Line 215 in [TAD/tad.py](TAD/tad.py#L215)
-
-
----
-
-
-### `task(i)`
-
-
-No documentation available.
-
-
-**Source:** Line 167 in [TAD/tad.py](TAD/tad.py#L167)
 
 
 ---
@@ -661,37 +642,6 @@ Output:
 
 
 **Source:** Line 33 in [TI/circle.py](TI/circle.py#L33)
-
-
----
-
-
-## TI.slingshot.lineage
-
-**File:** `TI/slingshot/lineage.py`
-
-**Public functions:** 2
-
-
-### `end(self)`
-
-
-返回终止细胞类型
-
-
-**Source:** Line 39 in [TI/slingshot/lineage.py](TI/slingshot/lineage.py#L39)
-
-
----
-
-
-### `start(self)`
-
-
-返回起始细胞类型
-
-
-**Source:** Line 34 in [TI/slingshot/lineage.py](TI/slingshot/lineage.py#L34)
 
 
 ---
@@ -821,297 +771,17 @@ Examples
 --------
 >>> from hic_basic.TI.slingshot import Slingshot
 >>> from hic_basic.TI.slingshot.plot import plot_slingshot
->>> 
+>>>
 >>> # 初始化并拟合
 >>> slingshot = Slingshot(data=adata, celltype_key='celltype', start_node='SSC')
 >>> slingshot.fit(num_epochs=10)
->>> 
+>>>
 >>> # 绘图
 >>> fig = plot_slingshot(slingshot, title="Cell Trajectory")
 >>> fig.show()
 
 
 **Source:** Line 42 in [TI/slingshot/plot.py](TI/slingshot/plot.py#L42)
-
-
----
-
-
-## TI.slingshot.slingshot
-
-**File:** `TI/slingshot/slingshot.py`
-
-**Public functions:** 22
-
-
-### `avg_branch_curves(self, branch_curves)`
-
-
-计算分支曲线的平均曲线
-
-
-**Source:** Line 605 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L605)
-
-
----
-
-
-### `avg_curves(self)`
-
-
-从叶子到根计算分支的平均曲线
-
-
-**Source:** Line 516 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L516)
-
-
----
-
-
-### `build_pruned_tree(current_node)`
-
-
-No documentation available.
-
-
-**Source:** Line 189 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L189)
-
-
----
-
-
-### `build_pruned_tree(current_node)`
-
-
-No documentation available.
-
-
-**Source:** Line 234 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L234)
-
-
----
-
-
-### `calculate_cell_weights(self)`
-
-
-计算细胞权重
-
-
-**Source:** Line 480 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L480)
-
-
----
-
-
-### `construct_initial_curves(self)`
-
-
-使用分段线性初始化构建谱系主曲线
-
-
-**Source:** Line 427 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L427)
-
-
----
-
-
-### `construct_mst(self, start_node)`
-
-
-构建最小生成树
-
-参数:
-    start_node: 起始节点
-返回:
-    children: 字典映射聚类到子节点
-
-
-**Source:** Line 299 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L299)
-
-
----
-
-
-### `construct_tree_from_predefined(self)`
-
-
-从预定义树结构构建，处理缺失节点
-
-
-**Source:** Line 179 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L179)
-
-
----
-
-
-### `fit(self, num_epochs=10, debug_axes=None)`
-
-
-拟合主曲线
-
-参数:
-    num_epochs: 迭代次数
-    debug_axes: 调试绘图轴
-
-
-**Source:** Line 394 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L394)
-
-
----
-
-
-### `fit_lineage_curves(self)`
-
-
-使用三次样条和数据投影更新曲线
-
-
-**Source:** Line 450 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L450)
-
-
----
-
-
-### `flatten(li)`
-
-
-No documentation available.
-
-
-**Source:** Line 374 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L374)
-
-
----
-
-
-### `get_lineages(self)`
-
-
-从 MST 提取谱系
-
-
-**Source:** Line 359 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L359)
-
-
----
-
-
-### `label_tree(self)`
-
-
-返回带字符串标签的树结构
-
-
-**Source:** Line 165 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L165)
-
-
----
-
-
-### `list_lineages(self, cluster_to_label=None)`
-
-
-列出谱系（支持字符串标签）
-
-
-**Source:** Line 640 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L640)
-
-
----
-
-
-### `load_params(self, filepath)`
-
-
-加载参数
-
-
-**Source:** Line 275 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L275)
-
-
----
-
-
-### `recurse_branches(path, v)`
-
-
-No documentation available.
-
-
-**Source:** Line 364 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L364)
-
-
----
-
-
-### `save_params(self, filepath)`
-
-
-保存参数
-
-
-**Source:** Line 284 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L284)
-
-
----
-
-
-### `shrink_branch_curves(self, branch_curves, avg_curve, shrinkage_percent)`
-
-
-收缩分支曲线到平均曲线
-
-
-**Source:** Line 573 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L573)
-
-
----
-
-
-### `shrink_curves(self, cluster_children, shrinkage_percentages, cluster_avg_curves)`
-
-
-从根到叶收缩曲线
-
-
-**Source:** Line 561 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L561)
-
-
----
-
-
-### `shrinkage_percent(self, curve, common_ind)`
-
-
-确定曲线收缩百分比
-
-
-**Source:** Line 588 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L588)
-
-
----
-
-
-### `tree(self)`
-
-
-获取树结构（MST 或预定义树）
-
-
-**Source:** Line 155 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L155)
-
-
----
-
-
-### `unified_pseudotime(self)`
-
-
-获取统一的伪时间
-
-
-**Source:** Line 653 in [TI/slingshot/slingshot.py](TI/slingshot/slingshot.py#L653)
 
 
 ---
@@ -1202,330 +872,6 @@ No documentation available.
 
 
 **Source:** Line 46 in [TI/slingshot/utils.py](TI/slingshot/utils.py#L46)
-
-
----
-
-
-## ana
-
-**File:** `ana.py`
-
-**Public functions:** 15
-
-
-### `column_meta(self, key: str)`
-
-**Returns:** `dict`
-
-
-Get full metadata for a column or object key.
-
-Parameters
-----------
-key : str
-    Column name or object key.
-
-Returns
--------
-dict
-    Metadata dict (description, computed_by, depends_on,
-    file_structure, commit_id). Empty dict if not found.
-
-
-**Source:** Line 1250 in [ana.py](ana.py#L1250)
-
-
----
-
-
-### `commit(self, description=None, state_hash=None)`
-
-
-Create a new commit snapshot of the current data state.
-
-Parameters
-----------
-description : str, optional
-    Human-readable description of the commit. If None, uses commit ID.
-    Must be unique and cannot be purely numeric.
-state_hash : str, optional
-    Pre-computed SHA-256 hash of the current data state. If None,
-    will be computed from the data files. Used for idempotency
-    detection in update().
-
-Returns
--------
-int
-    Commit ID of the newly created commit.
-
-Raises
-------
-ValueError
-    If description already exists or is purely numeric.
-
-Notes
------
-Each commit creates physical copies of data files and schema files.
-Uses circular file naming to prevent infinite filename number growth.
-
-
-**Source:** Line 727 in [ana.py](ana.py#L727)
-
-
----
-
-
-### `convert_to_nullable_bool(val)`
-
-
-No documentation available.
-
-
-**Source:** Line 582 in [ana.py](ana.py#L582)
-
-
----
-
-
-### `create_empty_json_file(path)`
-
-
-Create an empty JSON file with empty dictionary content.
-
-
-**Source:** Line 219 in [ana.py](ana.py#L219)
-
-
----
-
-
-### `data(self)`
-
-
-Retrieve the current structured data as a pandas DataFrame with correct dtypes.
-
-Returns
--------
-pandas.DataFrame
-    Current data state with restored dtypes. Returns empty DataFrame if no data exists.
-    
-Notes
------
-Uses schema file to restore all pandas dtypes including categorical, string,
-nullable integers, etc. Falls back to standard CSV reading if schema is missing.
-
-
-**Source:** Line 674 in [ana.py](ana.py#L674)
-
-
----
-
-
-### `data_path(self)`
-
-
-Path to the CSV file storing structured data.
-
-
-**Source:** Line 246 in [ana.py](ana.py#L246)
-
-
----
-
-
-### `describe(self)`
-
-
-Print a compact, agent-friendly summary of columns and objects.
-
-Output includes column names, their schema type, and short
-descriptions (if available). Also lists stored objects.
-
-Example output::
-
-    Columns (3):
-      bam_paths        file         Aligned BAM paths per sample
-      norm_contact     standard     KR-normalized contact freq
-      raw_contact      standard     Raw contact counts
-
-    Objects (2):
-      peak_files       (no description)
-      sample_groups    Group assignments for 3 conditions
-
-
-**Source:** Line 1210 in [ana.py](ana.py#L1210)
-
-
----
-
-
-### `file_format(self, key: str)`
-
-**Returns:** `dict`
-
-
-Look up the file format definition for a file-type column.
-
-Searches instance-level overrides first, then falls back to the
-built-in ``hic_basic.data.file_formats`` registry.
-
-Parameters
-----------
-key : str
-    File format key (e.g., ``"cool"``, ``"bam"``) or column name
-    whose ``file_format`` schema value will be used for lookup.
-
-Returns
--------
-dict or None
-    Format definition, or None if not found.
-
-
-**Source:** Line 1267 in [ana.py](ana.py#L1267)
-
-
----
-
-
-### `get_schema(self)`
-
-
-Get the current data schema information.
-
-Returns
--------
-dict
-    Current schema information including column dtypes.
-
-
-**Source:** Line 1133 in [ana.py](ana.py#L1133)
-
-
----
-
-
-### `list_commits(self)`
-
-
-Display all available commits in chronological order.
-
-
-**Source:** Line 1122 in [ana.py](ana.py#L1122)
-
-
----
-
-
-### `obj(self)`
-
-
-Retrieve the current object storage data as a dictionary.
-
-Returns
--------
-dict
-    Current object storage state. Returns empty dict if no objects exist.
-
-
-**Source:** Line 695 in [ana.py](ana.py#L695)
-
-
----
-
-
-### `obj_path(self)`
-
-
-Path to the JSON file storing unstructured object data.
-
-
-**Source:** Line 256 in [ana.py](ana.py#L256)
-
-
----
-
-
-### `revert(self, commit_repr)`
-
-
-Revert the system state to a previous commit version.
-
-Parameters
-----------
-commit_repr : str or int
-    Commit identifier.
-    
-Returns
--------
-int
-    Commit ID of the new commit created after revert operation.
-
-
-**Source:** Line 1063 in [ana.py](ana.py#L1063)
-
-
----
-
-
-### `schema_path(self)`
-
-
-Path to the JSON schema file storing dtype information.
-
-
-**Source:** Line 251 in [ana.py](ana.py#L251)
-
-
----
-
-
-### `update(self, new_data, key=None, description=None, force=False, column_descriptions=None, computed_by=None, depends_on=None, file_format=None)`
-
-
-Update data storage and automatically commit changes.
-
-This operation is **idempotent**: calling update() with the same data
-will not create additional commits. Use ``force=True`` to override
-this behavior and create a new commit regardless.
-
-Parameters
-----------
-new_data : pandas.DataFrame, pandas.Series, dict, or list
-    New data to add to the database.
-key : str, optional
-    Specifies the column name (for dict/Series) or object key (for list).
-description : str, optional
-    Custom description for the automatic commit.
-force : bool, optional, default False
-    If True, create a new commit even when the data state is identical
-    to the last commit. Useful for recording explicit checkpoints during
-    iterative development.
-column_descriptions : dict, optional
-    ``{col_name: "short description"}`` for new or existing columns.
-    Used by ``describe()`` and for agent discoverability.
-computed_by : dict, optional
-    ``{"file": "/path/to/script.ipynb", "note": "optional context"}``.
-    If not provided, auto-detected from the calling frame.
-depends_on : dict, optional
-    Column/object dependencies. Format::
-
-        {"col_name": {"columns": ["a", "b"], "objects": ["x"]}}
-
-    Can also be a flat dict mapping col_name to a list of mixed deps
-    (the method will classify them automatically).
-file_format : dict, optional
-    ``{col_name: format_key}`` to override auto-detected file format
-    (e.g., ``{"bam_paths": "bam"}``).
-
-Returns
--------
-int
-    Commit ID of the new commit, or the last commit ID if the update
-    was skipped due to idempotency.
-
-
-**Source:** Line 837 in [ana.py](ana.py#L837)
 
 
 ---
@@ -1762,7 +1108,7 @@ Calculate fragment lengths from a BAM file with optional sampling.
 
 Parameters:
     bam_path (str): Path to the BAM file.
-    sampling (Optional[Union[float, int]]): 
+    sampling (Optional[Union[float, int]]):
         If float, sample this proportion of reads (0 < sampling <= 1).
         If int, sample this number of reads.
         If None, no sampling (default).
@@ -1819,7 +1165,7 @@ Output:
 ---
 
 
-### `plot_fragment_length_distribution(fragment_lengths: np.ndarray)`
+### `plot_fragment_length_distribution(fragment_lengths: np.ndarray, **kwargs)`
 
 **Returns:** `go.Figure`
 
@@ -1998,19 +1344,7 @@ Output:
 
 **File:** `calculate.py`
 
-**Public functions:** 4
-
-
-### `decorator(func)`
-
-
-No documentation available.
-
-
-**Source:** Line 43 in [calculate.py](calculate.py#L43)
-
-
----
+**Public functions:** 2
 
 
 ### `mt(module_name: str)`
@@ -2034,7 +1368,7 @@ Returns:
 ---
 
 
-### `task_wrapper(module_name, func_name)`
+### `task_wrapper(module_name, func_name, *args, **kwargs)`
 
 
 Wrapper function to import and execute a function from a module.
@@ -2044,53 +1378,12 @@ Parameters:
     func_name (str): Name of the function to execute
     *args: Positional arguments to pass to the function
     **kwargs: Keyword arguments to pass to the function
-    
+
 Returns:
     Result of the executed function
 
 
 **Source:** Line 10 in [calculate.py](calculate.py#L10)
-
-
----
-
-
-### `wrapper(input_data: pd.DataFrame, force=False, nproc=None, concat=False, new_cols=None)`
-
-
-Parallelized function wrapper with input/output pattern support.
-
-The function uses a pattern-based system for input and output file handling:
-- Input sources: input_cols, input_pattern, input_pattern1, input_pattern2, etc.
-- Output sources: output_cols, output_pattern, output_pattern1, output_pattern2, etc.
-
-Parameters are processed in order: input_cols first, then input_patterns.
-Patterns are formatted using {sample_name} placeholder which is replaced with
-the DataFrame index value for each row.
-
-Parameters:
-    input_data (pd.DataFrame): Input DataFrame containing data to process
-    force (bool): Whether to overwrite existing output files (default: False)
-    nproc (int): Number of parallel processes (default: all CPUs)
-    concat (bool): If True, concatenate Series results into a DataFrame
-    new_cols (list): Column names for pattern-based output files (non-concat mode only)
-    *args: Additional positional arguments passed to the decorated function
-    **kwargs: Additional keyword arguments including input/output patterns
-    
-Pattern Parameters (passed as kwargs):
-    input_cols: Column name(s) containing input paths (single or list)
-    output_cols: Column name(s) containing output paths (single or list)
-    input_pattern: Template for input file paths
-    input_pattern1, input_pattern2, ...: Additional input patterns
-    output_pattern: Template for output file paths  
-    output_pattern1, output_pattern2, ...: Additional output patterns
-    
-Returns:
-    If concat=True and results are pandas Series: DataFrame with concatenated results
-    Otherwise: DataFrame with pattern-based output paths and execution status
-
-
-**Source:** Line 45 in [calculate.py](calculate.py#L45)
 
 
 ---
@@ -2251,7 +1544,7 @@ No documentation available.
 ---
 
 
-### `run()`
+### `run(*args, **kwargs)`
 
 
 No documentation available.
@@ -2270,7 +1563,7 @@ No documentation available.
 **Public functions:** 1
 
 
-### `do_kmeans(adata: ad.AnnData, layer: str)`
+### `do_kmeans(adata: ad.AnnData, layer: str, **k)`
 
 **Returns:** `ad.AnnData`
 
@@ -2300,7 +1593,7 @@ Return:
 **Returns:** `pd.DataFrame`
 
 
-Extract and align pixels from two coolp files. 
+Extract and align pixels from two coolp files.
 Input:
     this_coolp: str, path to first coolp file
     ref_coolp: str, path to second coolp file
@@ -2342,7 +1635,7 @@ Output:
 ---
 
 
-### `pick_band_pixels(coolp, threshold=5000000)`
+### `pick_band_pixels(coolp, threshold=5000000, **kwargs)`
 
 **Returns:** `pd.DataFrame`
 
@@ -2385,7 +1678,7 @@ Output:
 ---
 
 
-### `plot_compare_pixels_density(this_coolp, ref_coolp, qrange=None, sample_titles=['THIS', 'REF'], bins=100, ignore_diags=0, clr_weight_name='weight', lognorm=False, vlognorm=False, retdata=False, vrange=None, label_x=0.01, label_y=0.015, debug=False)`
+### `plot_compare_pixels_density(this_coolp, ref_coolp, qrange=None, sample_titles=['THIS', 'REF'], bins=100, ignore_diags=0, clr_weight_name='weight', lognorm=False, vlognorm=False, retdata=False, vrange=None, label_x=0.01, label_y=0.015, debug=False, **kwargs)`
 
 
 Compare pixels between two coolp files and plot density plot.
@@ -2865,7 +2158,7 @@ Input:
 ---
 
 
-### `gam2cool(gam_filepat, bin_file, outfile, force=False, intra_only=True)`
+### `gam2cool(gam_filepat, bin_file, outfile, force=False, intra_only=True, **kwargs)`
 
 
 Transform gam result to cool format.
@@ -2903,7 +2196,7 @@ Input:
 ---
 
 
-### `gen_config(sample_table, cfg, assembly='mm10', bwa='/share/home/ychi/data/genome/GRCm38/bwa_index/mm10.*', chrom_size='/share/home/ychi/data/genome/GRCm38/mm10.len.forCool.tsv', template='/shareb/ychi/ana/distiller-nf/project.yml')`
+### `gen_config(sample_table, cfg, assembly='mm10', bwa='/share/home/ychi/data/genome/GRCm38/bwa_index/mm10.*', chrom_size='/share/home/ychi/data/genome/GRCm38/mm10.len.forCool.tsv', template='/shareb/ychi/ana/distiller-nf/project.yml', **args)`
 
 
 Generate distiller.nf project.yaml file from bubble_flow sample_table.csv.
@@ -2951,7 +2244,7 @@ No documentation available.
 ---
 
 
-### `mt_pairs2cool(sample_table, outdir, pairs_col='pairs_c123', suffix='.cool', nproc=16)`
+### `mt_pairs2cool(sample_table, outdir, pairs_col='pairs_c123', suffix='.cool', nproc=16, **kwargs)`
 
 
 TODO: Will still print first stdout and stderr message now. Fix this.
@@ -3042,7 +2335,7 @@ Output:
 ---
 
 
-### `pixels2cool(pixels: pd.DataFrame, bins: pd.DataFrame, outfile, columns: list=['count'], dtypes: dict={'count': int})`
+### `pixels2cool(pixels: pd.DataFrame, bins: pd.DataFrame, outfile, columns: list=['count'], dtypes: dict={'count': int}, **kwargs)`
 
 
 Dump pixels to cool file.
@@ -3140,7 +2433,7 @@ Input:
 ---
 
 
-### `schicluster2cool(filesp, fo, genome, binsize, ordered=True, ensure_sorted=True)`
+### `schicluster2cool(filesp, fo, genome, binsize, ordered=True, ensure_sorted=True, **args)`
 
 
 Dump schicluster imputed matrix to .cool file.
@@ -3159,20 +2452,20 @@ Example:
     import pandas as pd
     from hic_basic.data import mm10
     from hic_basic.coolstuff import schicluster2cool
-    
-    
+
+
     sample = "2021110112"
     ddir = "/shareb/ychi/repo/embryo_integrate/schicluster/imputed_matrix/100000/"
 
     chroms = [chrom for chrom in mm10.chromosomes.data.index if chrom not in ["chrX","chrY"]]
     filesp = pd.Series(
         data = [
-            Path(ddir)/ "{chrom}".format(chrom=chrom) / "{sample}_{chrom}_pad1_std1_rp0.5_sqrtvc.hdf5".format(sample=sample, chrom=chrom) 
+            Path(ddir)/ "{chrom}".format(chrom=chrom) / "{sample}_{chrom}_pad1_std1_rp0.5_sqrtvc.hdf5".format(sample=sample, chrom=chrom)
             for chrom in chroms
         ],
         index = chroms,
         name = sample)
-    
+
     schicluster2cool(filesp, "test.cool","mm10",100e3)
 ```
 
@@ -3218,490 +2511,11 @@ Output:
 ---
 
 
-## crossover.cache
-
-**File:** `crossover/cache.py`
-
-**Public functions:** 16
-
-
-### `cleanup(self)`
-
-**Returns:** `None`
-
-
-Clean up all shared memory files.
-
-
-**Source:** Line 616 in [crossover/cache.py](crossover/cache.py#L616)
-
-
----
-
-
-### `clear(self, key: Optional[str]=None, step_name: Optional[str]=None)`
-
-**Returns:** `int`
-
-
-Clear cached data.
-
-Args:
-    key: Optional cache key to clear (clear all if None)
-    step_name: Optional step name to filter (clear all steps if None)
-
-Returns:
-    Number of entries cleared
-
-
-**Source:** Line 346 in [crossover/cache.py](crossover/cache.py#L346)
-
-
----
-
-
-### `clear(self, key: Optional[str]=None)`
-
-**Returns:** `int`
-
-
-Clear shared memory.
-
-Args:
-    key: Optional key to clear (clear all if None)
-
-Returns:
-    Number of entries cleared
-
-
-**Source:** Line 588 in [crossover/cache.py](crossover/cache.py#L588)
-
-
----
-
-
-### `clear_flag(self, key: str, step_name: str)`
-
-**Returns:** `None`
-
-
-Clear the completion flag for a step.
-
-Args:
-    key: Cache key
-    step_name: Pipeline step name
-
-
-**Source:** Line 207 in [crossover/cache.py](crossover/cache.py#L207)
-
-
----
-
-
-### `compute_key(self, params: Dict[str, Any])`
-
-**Returns:** `str`
-
-
-Compute a unique key based on input parameters.
-
-Args:
-    params: Dictionary of input parameters
-
-Returns:
-    MD5 checksum as hex string
-
-
-**Source:** Line 125 in [crossover/cache.py](crossover/cache.py#L125)
-
-
----
-
-
-### `exists(self, key: str, step_name: str)`
-
-**Returns:** `bool`
-
-
-Check if cached data exists for a given key and step.
-
-Args:
-    key: Cache key (MD5 checksum)
-    step_name: Name of the pipeline step
-
-Returns:
-    True if cache exists and is valid
-
-
-**Source:** Line 157 in [crossover/cache.py](crossover/cache.py#L157)
-
-
----
-
-
-### `get(self, key: str)`
-
-**Returns:** `Optional[np.ndarray]`
-
-
-Retrieve a shared array.
-
-Args:
-    key: Array key
-
-Returns:
-    NumPy array or None if not found
-
-
-**Source:** Line 500 in [crossover/cache.py](crossover/cache.py#L500)
-
-
----
-
-
-### `get_dataframe(self, key: str)`
-
-**Returns:** `Optional[pd.DataFrame]`
-
-
-Retrieve a shared DataFrame.
-
-Args:
-    key: DataFrame key
-
-Returns:
-    DataFrame or None if not found
-
-
-**Source:** Line 564 in [crossover/cache.py](crossover/cache.py#L564)
-
-
----
-
-
-### `get_or_compute(self, key: str, step_name: str, compute_fn, params: Optional[Dict]=None)`
-
-
-Get cached data or compute it if not available.
-
-Args:
-    key: Cache key
-    step_name: Pipeline step name
-    compute_fn: Function to compute data if not cached
-    params: Parameters to pass to compute_fn and save as metadata
-
-Returns:
-    Cached or computed data
-
-
-**Source:** Line 315 in [crossover/cache.py](crossover/cache.py#L315)
-
-
----
-
-
-### `get_stats(self)`
-
-**Returns:** `Dict`
-
-
-Get cache statistics.
-
-Returns:
-    Dictionary with cache statistics
-
-
-**Source:** Line 392 in [crossover/cache.py](crossover/cache.py#L392)
-
-
----
-
-
-### `is_flagged(self, key: str, step_name: str)`
-
-**Returns:** `bool`
-
-
-Check if a step is marked as completed.
-
-Args:
-    key: Cache key
-    step_name: Pipeline step name
-
-Returns:
-    True if flag file exists
-
-
-**Source:** Line 171 in [crossover/cache.py](crossover/cache.py#L171)
-
-
----
-
-
-### `load(self, key: str, step_name: str)`
-
-**Returns:** `Union[pd.DataFrame, np.ndarray, Dict, None]`
-
-
-Load data from cache.
-
-Args:
-    key: Cache key
-    step_name: Pipeline step name
-
-Returns:
-    Loaded data or None if not found
-
-
-**Source:** Line 274 in [crossover/cache.py](crossover/cache.py#L274)
-
-
----
-
-
-### `save(self, data: Union[pd.DataFrame, np.ndarray, Dict], key: str, step_name: str, params: Optional[Dict]=None)`
-
-**Returns:** `str`
-
-
-Save data to cache.
-
-Args:
-    data: Data to cache (DataFrame, array, or dict)
-    key: Cache key
-    step_name: Pipeline step name
-    params: Optional parameters for metadata
-
-Returns:
-    Path to the cached file
-
-
-**Source:** Line 223 in [crossover/cache.py](crossover/cache.py#L223)
-
-
----
-
-
-### `set_flag(self, key: str, step_name: str, params: Optional[Dict]=None)`
-
-**Returns:** `None`
-
-
-Mark a step as completed.
-
-Args:
-    key: Cache key
-    step_name: Pipeline step name
-    params: Optional parameters to save with the flag
-
-
-**Source:** Line 184 in [crossover/cache.py](crossover/cache.py#L184)
-
-
----
-
-
-### `share(self, array: np.ndarray, name: str, sample_id: Optional[str]=None)`
-
-**Returns:** `str`
-
-
-Share an array via memory-mapped file.
-
-Args:
-    array: NumPy array to share
-    name: Name for the shared array
-    sample_id: Optional sample ID for namespacing
-
-Returns:
-    Key to retrieve the shared array
-
-
-**Source:** Line 462 in [crossover/cache.py](crossover/cache.py#L462)
-
-
----
-
-
-### `share_dataframe(self, df: pd.DataFrame, name: str, sample_id: Optional[str]=None)`
-
-**Returns:** `str`
-
-
-Share a DataFrame via parquet memory-mapping.
-
-Args:
-    df: DataFrame to share
-    name: Name for the shared DataFrame
-    sample_id: Optional sample ID for namespacing
-
-Returns:
-    Key to retrieve the shared DataFrame
-
-
-**Source:** Line 528 in [crossover/cache.py](crossover/cache.py#L528)
-
-
----
-
-
-## crossover.detector
-
-**File:** `crossover/detector.py`
-
-**Public functions:** 5
-
-
-### `detect(self, positions: np.ndarray, sperm_genotypes: List[str], haplotype_1: List[str], haplotype_2: List[str])`
-
-**Returns:** `Tuple[np.ndarray, List[int]]`
-
-
-Run complete crossover detection pipeline.
-
-Args:
-    positions: SNP positions (sorted)
-    sperm_genotypes: Sperm genotypes at each SNP
-    haplotype_1: Paternal haplotype alleles
-    haplotype_2: Maternal haplotype alleles
-
-Returns:
-    Tuple of (state_sequence, crossover_positions)
-
-
-**Source:** Line 331 in [crossover/detector.py](crossover/detector.py#L331)
-
-
----
-
-
-### `detect_crossovers(self, sperm_id: str, chromosome: Optional[str]=None)`
-
-**Returns:** `CrossoverResults`
-
-
-Detect crossovers for a specific sperm sample.
-
-Args:
-    sperm_id: ID of sperm sample to analyze
-    chromosome: Optional chromosome to analyze (default: all)
-
-Returns:
-    CrossoverResults object
-
-Raises:
-    ValueError: If SNP data not loaded
-
-
-**Source:** Line 449 in [crossover/detector.py](crossover/detector.py#L449)
-
-
----
-
-
-### `load_phasing_data(self, phasing_file: str)`
-
-**Returns:** `None`
-
-
-Load phasing information.
-
-Args:
-    phasing_file: Path to TSV file with haplotype phasing
-                  Expected columns: chromosome, position, snp_id, haplotype_1, haplotype_2
-
-
-**Source:** Line 437 in [crossover/detector.py](crossover/detector.py#L437)
-
-
----
-
-
-### `load_snp_data(self, snp_file: str)`
-
-**Returns:** `None`
-
-
-Load SNP genotype data.
-
-Args:
-    snp_file: Path to TSV file with SNP genotypes
-              Expected columns: chromosome, position, snp_id, sperm_genotype, diploid_genotype
-
-
-**Source:** Line 425 in [crossover/detector.py](crossover/detector.py#L425)
-
-
----
-
-
-### `save_results(self, output_dir: str, sperm_id: Optional[str]=None)`
-
-**Returns:** `None`
-
-
-Save detection results to files.
-
-Args:
-    output_dir: Output directory path
-    sperm_id: Optional specific sperm ID (default: all)
-
-
-**Source:** Line 612 in [crossover/detector.py](crossover/detector.py#L612)
-
-
----
-
-
 ## crossover.detector_mii
 
 **File:** `crossover/detector_mii.py`
 
-**Public functions:** 6
-
-
-### `decode(self, read_counts: pd.DataFrame)`
-
-**Returns:** `Tuple[List[str], float]`
-
-
-Decode the most likely state sequence from read counts.
-
-Args:
-    read_counts: DataFrame with columns 'ref', 'alt', 'other'
-                or 'r', 'a', 'x'
-
-Returns:
-    Tuple of (state_names, log_probability)
-
-
-**Source:** Line 312 in [crossover/detector_mii.py](crossover/detector_mii.py#L312)
-
-
----
-
-
-### `decode_with_blocks(self, read_counts: pd.DataFrame, chromosome: str, positions: np.ndarray, sample_id: str='unknown')`
-
-**Returns:** `SisterChromatidResults`
-
-
-Decode states and group into contiguous blocks.
-
-Args:
-    read_counts: DataFrame with read counts
-    chromosome: Chromosome name
-    positions: SNP positions
-    sample_id: Sample identifier
-
-Returns:
-    SisterChromatidResults object
-
-
-**Source:** Line 346 in [crossover/detector_mii.py](crossover/detector_mii.py#L346)
-
-
----
+**Public functions:** 5
 
 
 ### `estimate_emissions_from_counts(read_counts: pd.DataFrame, rough_labels: pd.Series)`
@@ -3719,7 +2533,7 @@ Returns:
     Dictionary mapping state name to (p_ref, p_alt, p_other)
 
 
-**Source:** Line 448 in [crossover/detector_mii.py](crossover/detector_mii.py#L448)
+**Source:** Line 463 in [crossover/detector_mii.py](crossover/detector_mii.py#L463)
 
 
 ---
@@ -3732,6 +2546,12 @@ Returns:
 
 Estimate transition probabilities from rough labels.
 
+Self transitions are included in the row totals so the returned parameters
+represent per-adjacent-observation probabilities, not conditional
+probabilities after a non-self jump has already occurred. The returned rho
+is the per-target U->biological-state probability used by the HMM; the
+total U exit probability is 3*rho.
+
 Args:
     rough_labels: Series with rough state labels
     pseudocount: Pseudocount for smoothing (deprecated, kept for API compatibility)
@@ -3740,7 +2560,7 @@ Returns:
     Tuple of (alpha, beta, gamma, rho)
 
 
-**Source:** Line 497 in [crossover/detector_mii.py](crossover/detector_mii.py#L497)
+**Source:** Line 512 in [crossover/detector_mii.py](crossover/detector_mii.py#L512)
 
 
 ---
@@ -3780,13 +2600,50 @@ Args:
     depth_threshold: Minimum total depth for confident call (default: 2)
     other_threshold: Maximum other fraction for confident call (default: 0.4)
     balance_threshold: Threshold for classifying as balanced (PM) (default: 0.25)
-                      PP: ref_frac > 0.75, MM: alt_frac > 0.75, PM: |ref-alt| < 0.25
+                      PP: ref_frac > 0.75, MM: alt_frac > 0.75, PM: |ref-alt| < 0.25.
+                      Ratio-intermediate observations are labeled AMBIG, not U.
 
 Returns:
-    Series with rough state labels
+    Series with rough state labels. U is reserved for low-depth or high-other
+    observations; AMBIG marks ratio-intermediate observations.
 
 
-**Source:** Line 587 in [crossover/detector_mii.py](crossover/detector_mii.py#L587)
+**Source:** Line 607 in [crossover/detector_mii.py](crossover/detector_mii.py#L607)
+
+
+---
+
+
+### `simulate_mii_crossover_counts(chromosome: str='chr1', chromosome_length: int=100000000, snp_spacing: int=1000, crossover_rate_per_mb: float=0.02, mean_depth: float=5.0, sequencing_error_rate: float=0.005, depth_cv: float=0.55, local_depth_window_snps: int=100, random_state: Optional[Union[int, np.random.Generator]]=None)`
+
+**Returns:** `MiiCrossoverSimulation`
+
+
+Simulate SNP read counts for mII sister-chromatid crossover inference.
+
+The simulated mII signal is the aggregate of two independent chromatid
+haplotype paths. Each chromatid starts as either P or M, switches haplotype
+at crossover events, and contributes equally to the observed read pool.
+Read counts are generated with WGS-like local depth variation, Poisson
+sampling, and random sequencing errors.
+
+Args:
+    chromosome: Chromosome name assigned to simulated SNPs.
+    chromosome_length: Chromosome length in bp.
+    snp_spacing: Distance between adjacent SNPs in bp.
+    crossover_rate_per_mb: Per-chromatid crossover probability per Mb.
+    mean_depth: Mean total read depth per SNP.
+    sequencing_error_rate: Per-read probability of observing the wrong base.
+    depth_cv: Coefficient of variation for local depth multipliers.
+    local_depth_window_snps: Number of SNPs sharing a local depth bias.
+    random_state: Optional seed or numpy Generator for reproducibility.
+
+Returns:
+    MiiCrossoverSimulation with read-count DataFrame, crossover positions,
+    and parameter metadata.
+
+
+**Source:** Line 662 in [crossover/detector_mii.py](crossover/detector_mii.py#L662)
 
 
 ---
@@ -4106,7 +2963,7 @@ Returns:
 ---
 
 
-### `resume_pipeline(sam_file: str, ref_snp_file: str, phasing_file: str, output_dir: str, sample_id: Optional[str]=None, cache_dir: Optional[str]=None)`
+### `resume_pipeline(sam_file: str, ref_snp_file: str, phasing_file: str, output_dir: str, sample_id: Optional[str]=None, cache_dir: Optional[str]=None, **kwargs)`
 
 **Returns:** `CrossoverResults`
 
@@ -4136,7 +2993,7 @@ Returns:
 
 **File:** `crossover/pipeline_mii.py`
 
-**Public functions:** 5
+**Public functions:** 8
 
 
 ### `bin_by_snp(read_counts_df: pd.DataFrame, n_snps: int=10)`
@@ -4154,7 +3011,7 @@ Returns:
     DataFrame with aggregated units, columns: [chromosome, start_pos, end_pos, ref, alt, other, n_snps, position]
 
 
-**Source:** Line 37 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L37)
+**Source:** Line 55 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L55)
 
 
 ---
@@ -4176,15 +3033,15 @@ Returns:
     SisterChromatidResults with SNP-level states
 
 
-**Source:** Line 81 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L81)
+**Source:** Line 1865 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L1865)
 
 
 ---
 
 
-### `detect_sister_chromatid_states_end2end(bam_file: str, snp_file: str, output_dir: str, sample_id: Optional[str]=None, chromosomes: Optional[List[str]]=None, cache_dir: Optional[str]=None, transition_params: str='default', alpha: float=0.01, beta: float=0.02, gamma: float=0.001, rho: float=0.1, depth_threshold: int=2, other_threshold: float=0.4, balance_threshold: float=0.25, binning_method: Optional[str]=None, binning_snp_number: int=250)`
+### `detect_sister_chromatid_states_end2end(bam_file: str, snp_file: str, output_dir: str, sample_id: Optional[str]=None, chromosomes: Optional[List[str]]=None, cache_dir: Optional[str]=None, transition_params: Union[str, Dict[str, float]]='default', emission_params: Optional[Dict[str, Tuple[float, float, float]]]=None, alpha: float=0.01, beta: float=0.02, gamma: float=0.001, rho: float=0.1, depth_threshold: int=2, other_threshold: float=0.4, balance_threshold: float=0.25, binning_method: Optional[str]=None, binning_snp_number: int=250, transition_param_unit: str='step', estimate_use: Union[str, List[str]]='all', transition_min_segment_bins: int=3, transition_u_gamma_prior: Optional[float]=None, transition_u_gamma_factor: float=0.1, transition_u_rho_prior: float=0.32, u_emission_other_prior: float=0.05, estimate_only: bool=False, params_vis_prefix: Optional[Union[str, Path]]=None, verbose: int=0)`
 
-**Returns:** `Union[SisterChromatidResults, Dict[str, SisterChromatidResults]]`
+**Returns:** `Union[SisterChromatidResults, Dict[str, SisterChromatidResults], Dict[str, Any]]`
 
 
 End-to-end sister chromatid state inference from BAM file.
@@ -4206,7 +3063,8 @@ Args:
     sample_id: Sample ID (default: derived from bam_file name)
     chromosomes: Optional list of chromosomes to analyze (default: all)
     cache_dir: Cache directory (default: output_dir/.cache)
-    transition_params: Transition parameter source ("default" | "estimated")
+    transition_params: Transition parameter source ("default" | "estimated") or alpha/beta/gamma/rho dict
+    emission_params: Optional specified emission probabilities by PP/PM/MM/U label
     alpha: PP<->PM transition probability (default: 0.01, used when transition_params="default")
     beta: PM->PP/MM transition probability (default: 0.02, used when transition_params="default")
     gamma: probability of entering U state (default: 0.001, used when transition_params="default")
@@ -4217,6 +3075,28 @@ Args:
                       PP: ref_frac > 0.75, MM: alt_frac > 0.75
     binning_method: Binning method (None for single-SNP mode, "by_snp" for merging by SNP count)
     binning_snp_number: Number of SNPs per unit (default: 250)
+    transition_param_unit: Unit for specified transition parameters:
+        "step", "mb", or "snp". Estimated parameters are always per-step.
+    estimate_use: Chromosomes used for parameter estimation when chromosomes
+        is provided. Use "all" for all extracted chromosomes, or a list of
+        chromosome names.
+    transition_min_segment_bins: Raw rough-label segments shorter than this
+        many bins are marked as gaps and skipped for transition estimation.
+    transition_u_gamma_prior: Optional fixed gamma prior used for U entry
+        when binning_method="by_snp" and transition_params="estimated". If
+        None, uses transition_u_gamma_factor * min(alpha, beta).
+    transition_u_gamma_factor: Factor for deriving the by-SNP U-entry prior
+        from estimated alpha/beta when transition_u_gamma_prior is None.
+    transition_u_rho_prior: By-SNP prior for U -> each biological state.
+    u_emission_other_prior: By-SNP fixed U-emission other probability
+        used when emission_params is not specified.
+    estimate_only: If True, stop after parameter estimation and return parameter diagnostics
+    params_vis_prefix: Prefix for parameter diagnostic PNG files when verbose >= 1.
+        Writes rough_label_classification, rough_decision_distributions,
+        rough_segment_lengths, rough_label_filtering, emission_matrix, and
+        transition_matrix PNGs. During full decoding it also writes
+        final_assigned_label_count PNGs.
+    verbose: If >=1, print parameter estimation diagnostics
 
 Returns:
     SisterChromatidResults object (single chromosome) or dictionary (multiple chromosomes)
@@ -4247,7 +3127,56 @@ Example:
     ... )
 
 
-**Source:** Line 498 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L498)
+**Source:** Line 2334 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L2334)
+
+
+---
+
+
+### `estimate_mii_hmm_parameters(read_counts_df: pd.DataFrame, emission_params: Optional[Dict[str, Tuple[float, float, float]]]=None, transition_params: Union[str, Dict[str, float]]='default', alpha: float=0.01, beta: float=0.02, gamma: float=0.001, rho: float=0.1, depth_threshold: int=2, other_threshold: float=0.4, balance_threshold: float=0.25, binning_method: Optional[str]=None, binning_snp_number: int=250, transition_param_unit: str='step', transition_min_segment_bins: int=3, transition_u_gamma_prior: Optional[float]=None, transition_u_gamma_factor: float=0.1, transition_u_rho_prior: float=0.32, u_emission_other_prior: float=0.05, params_vis_prefix: Optional[Union[str, Path]]=None, verbose: int=0)`
+
+**Returns:** `Dict[str, Any]`
+
+
+Estimate or resolve mII HMM parameters from read-count data.
+
+Args:
+    read_counts_df: DataFrame with chromosome, position, ref, alt, other.
+    emission_params: Optional specified emission probabilities by label.
+    transition_params: "default", "estimated", or a dict with alpha/beta/gamma/rho.
+    alpha, beta, gamma, rho: Fixed transition parameters used for "default".
+    depth_threshold: Minimum depth for rough classification.
+    other_threshold: Maximum other fraction for rough classification.
+    balance_threshold: Ref/alt balance threshold for rough classification.
+    binning_method: None or "by_snp".
+    binning_snp_number: Number of SNPs per bin when binning_method="by_snp".
+    transition_param_unit: Unit for caller-specified transition parameters:
+        "step" for per HMM observation, "mb" for per-Mb rates, or "snp" for
+        per-SNP probabilities. Estimated parameters are always per-step.
+    transition_min_segment_bins: Raw rough-label segments shorter than this
+        many bins are marked as gaps and skipped for transition estimation.
+    transition_u_gamma_prior: Optional fixed gamma prior used for U entry
+        when binning_method="by_snp" and transition_params="estimated". If
+        None, uses transition_u_gamma_factor * min(alpha, beta).
+    transition_u_gamma_factor: Factor for deriving the by-SNP U-entry prior
+        from estimated alpha/beta when transition_u_gamma_prior is None.
+    transition_u_rho_prior: By-SNP prior for U -> each biological state.
+    u_emission_other_prior: By-SNP fixed U-emission other probability
+        used when emission_params is None. Ref and alt share the remaining
+        probability equally.
+    params_vis_prefix: Prefix for diagnostic PNG files. When verbose >= 1,
+        writes rough_label_classification, rough_decision_distributions,
+        rough_segment_lengths, rough_label_filtering, emission_matrix, and
+        transition_matrix PNGs. During full decoding it also writes
+        final_assigned_label_count PNGs.
+    verbose: If >=1, print diagnostics and, when params_vis_prefix is set, write PNGs.
+
+Returns:
+    Dictionary containing binned counts, rough labels, emission parameters,
+    transition parameters, transition matrix, and diagnostic tables.
+
+
+**Source:** Line 1592 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L1592)
 
 
 ---
@@ -4271,7 +3200,75 @@ Returns:
     DataFrame with columns: chromosome, position, ref, alt, other
 
 
-**Source:** Line 153 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L153)
+**Source:** Line 1937 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L1937)
+
+
+---
+
+
+### `plot_mii_assignment_track(pipeline_output: Any, region: Optional[Union[str, List[Tuple[str, int]], Region, Tuple[Any, ...]]]=None, output_path: Optional[Union[str, Path]]=None, title: str='mII_final_assignment', width: int=1400, height: int=360)`
+
+
+Plot the mII final assignment label track.
+
+Parameters
+----------
+pipeline_output
+    Pipeline output as a DataFrame, tabular file, output directory, pipeline
+    result dictionary, or SisterChromatidResults. The resolved table must
+    contain chromosome, state, and position or start_pos/end_pos columns.
+region
+    Region to plot using hic_basic standard representations, such as
+    "chr1:1000000-2000000", [(chrom, start), (chrom, end)], or Region.
+    If None, all rows are shown.
+output_path
+    Optional PNG path. If provided, the Plotly figure is written to this path.
+title
+    Figure title.
+width, height
+    PNG export size in pixels when output_path is provided.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    The generated label track figure.
+
+
+**Source:** Line 1000 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L1000)
+
+
+---
+
+
+### `plot_mii_final_assignment(pipeline_output: Any, region: Optional[Union[str, List[Tuple[str, int]], Region, Tuple[Any, ...]]]=None, output_path: Optional[Union[str, Path]]=None, title: str='Final assigned labels: genome_wide_label + genome_wide_count', width: int=1400, height: int=760)`
+
+
+Plot final mII HMM labels together with ref/alt/other counts.
+
+Parameters
+----------
+pipeline_output
+    Pipeline output as a DataFrame, tabular file, output directory, pipeline
+    result dictionary. The resolved table must contain chromosome, position
+    (or start_pos/end_pos), state, ref, alt, and other columns.
+region
+    Region to plot using hic_basic standard representations, such as
+    "chr1:1000000-2000000", [(chrom, start), (chrom, end)], or Region.
+    If None, all rows are shown.
+output_path
+    Optional PNG path. If provided, the Plotly figure is written to this path.
+title
+    Figure title.
+width, height
+    PNG export size in pixels when output_path is provided.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    The generated Plotly figure.
+
+
+**Source:** Line 1093 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L1093)
 
 
 ---
@@ -4293,7 +3290,7 @@ Returns:
     Dictionary mapping output type to file path
 
 
-**Source:** Line 652 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L652)
+**Source:** Line 2641 in [crossover/pipeline_mii.py](crossover/pipeline_mii.py#L2641)
 
 
 ---
@@ -4466,7 +3463,7 @@ Return pca representation of data.
 Input:
     mat: m * n matrix
     n_components: number of components to keep
-    with_std: whether doing std scaling. No consensus but 
+    with_std: whether doing std scaling. No consensus but
         usually don't scale it in omic-biology.
     retmodel: whether return all related model objects.
 Output:
@@ -4491,254 +3488,11 @@ No documentation available.
 ---
 
 
-## feature
-
-**File:** `feature.py`
-
-**Public functions:** 10
-
-
-### `compile(self)`
-
-
-Process standardized genomic data formats (e.g., GTF, VCF) and convert them into simplified intermediate formats like BED or CSV.
-
-This abstract method serves two primary purposes:
-1. Data Transformation: Extracts core features from complex genomic annotations and restructures them into standardized intermediate formats for downstream analysis.
-2. Caching Mechanism: Generates reference files (stored in `self.fn`) that can be directly consumed by external tools like pybedtools, BEDTools, or other bioinformatics pipelines.
-
-The implementation must be customized by subclasses to handle specific genome assemblies and data formats.
-When processing new genomes, this method pre-processes the raw data to create optimized intermediate representations that improve computational efficiency for subsequent operations.
-
-Set the `self._is_compiled` attribute to True after successful compilation.
-
-
-**Source:** Line 84 in [feature.py](feature.py#L84)
-
-
----
-
-
-### `compile(self, size_file=None, force=False)`
-
-
-No documentation available.
-
-
-**Source:** Line 124 in [feature.py](feature.py#L124)
-
-
----
-
-
-### `compile(self, gtf_path, force=False)`
-
-
-Compile TSS regions from GTF file.
-
-
-**Source:** Line 200 in [feature.py](feature.py#L200)
-
-
----
-
-
-### `compile(self, fasta, force=False)`
-
-
-No documentation available.
-
-
-**Source:** Line 247 in [feature.py](feature.py#L247)
-
-
----
-
-
-### `data(self, fn=None)`
-
-
-Lazy-loaded data property.
-
-
-**Source:** Line 76 in [feature.py](feature.py#L76)
-
-
----
-
-
-### `get_tss_region_from_gtf(gtf_path, cache_file=None)`
-
-
-Get TSS region from GTF file.
-Input:
-    gtf_path: path to the GTF file; string
-    cache_file: path to the cache file; string or None
-Output:
-    TSS table; pd.DataFrame with columns:
-        gene_id, gene_name, transcript_id, seqname, txStart, source
-    Same gene will have multiple rows if it has multiple transcripts.
-
-
-**Source:** Line 170 in [feature.py](feature.py#L170)
-
-
----
-
-
-### `load(self, fn=None)`
-
-
-Load the feature data to inner data structure from the compiled file.
-
-Sets the `self.data` attribute to the loaded data.
-
-
-**Source:** Line 99 in [feature.py](feature.py#L99)
-
-
----
-
-
-### `load(self, fn=None)`
-
-
-Load chromosome sizes from compiled file.
-
-
-**Source:** Line 132 in [feature.py](feature.py#L132)
-
-
----
-
-
-### `load(self)`
-
-
-Load TSS regions from compiled file.
-
-
-**Source:** Line 227 in [feature.py](feature.py#L227)
-
-
----
-
-
-### `load(self)`
-
-
-Load CpG regions from compiled file.
-
-
-**Source:** Line 276 in [feature.py](feature.py#L276)
-
-
----
-
-
 ## genome
 
 **File:** `genome.py`
 
-**Public functions:** 11
-
-
-### `append_bins(self, df: pd.DataFrame, binsize: int, chr1_col: str='chr1', pos1_col: str='pos1', chr2_col: str=None, pos2_col: str=None, flavor: str='hickit')`
-
-
-Append bins to dataframe.
-
-Input:
-    df: input dataframe
-    binsize: binsize, see GenomeIdeograph.bins
-    chr1_col: column name for first chromosome
-    pos1_col: column name for first position
-    chr2_col: column name for second chromosome (optional)
-    pos2_col: column name for second position (optional)
-    flavor: flavor of the binning, see GenomeIdeograph.bins
-    
-Output:
-    df_e: dataframe with new bin columns
-        For pairs mode: adds "chrom1","start1","end1","chrom2","start2","end2"
-        For single mode: adds "chrom1","start1","end1"
-
-
-**Source:** Line 410 in [genome.py](genome.py#L410)
-
-
----
-
-
-### `bins(self, binsize: int, bed=False, order=False, flavor='hickit', within_chromosome=True)`
-
-
-Get binned reference(IntervalIndex version)
-Input:
-    binsize: int
-    bed: bool, if True, return bed format
-    order: bool, if True, sort by chromosome and start position
-    flavor: str, binning flavor
-    within_chromosome: bool, if True, bins are confined within chromosomes;
-        if False, bins can span multiple chromosomes
-Output:
-    If within_chromosome=True: intervals of each bin(dict of IntervalIndex)
-    If within_chromosome=False: list of regions, each as [(start_chrom, start_pos), (end_chrom, end_pos)]
-
-
-**Source:** Line 354 in [genome.py](genome.py#L354)
-
-
----
-
-
-### `breaks(self, binsize: int, flavor='hickit', within_chromosome=True)`
-
-
-Get binned reference(int version)
-Input:
-    binsize: int
-    flavor: str, "hickit", "bedtools", "cooler_compat", "default", or "nearest_boundary"
-    within_chromosome: bool, if True, each bin is confined within a chromosome;
-        if False, bins can span multiple chromosomes with boundary handling specified by flavor
-Return:
-    If within_chromosome=True: breaks of bins(dict of list)
-    If within_chromosome=False: list of regions, each as [(start_chrom, start_pos), (end_chrom, end_pos)]
-Note:
-    For hickit-flavored binning, the size of the last bin 
-    >= 0.5 * binsize and < 1.5 * binsize. For bedtools-flavored binning, 
-    the size of the last bin > 0 and <= binsize.
-    For cooler_compat-flavored binning, the size of the last bin
-    > binsize is trimmed to binsize.
-    When within_chromosome is False, flavor can be:
-        - "default": no boundary attachment
-        - "nearest_boundary": snap to nearest chromosome boundary
-
-
-**Source:** Line 236 in [genome.py](genome.py#L236)
-
-
----
-
-
-### `coarsen_grouper(self, binsize1: int, binsize2: int, flavor: str='hickit')`
-
-**Returns:** `pd.Series`
-
-
-Get grouper to map from binsize1 to a bigger binsize2.
-Input:
-    binsize1: int
-    binsize2: int
-    flavor: str, "hickit" or "bedtools"
-Output:
-    pd.Series, 2-level index (chrom, start) from binsize1 as index,
-        tuple (chrom, start) from binsize2 as value
-
-
-**Source:** Line 478 in [genome.py](genome.py#L478)
-
-
----
+**Public functions:** 3
 
 
 ### `index_merge_hom(df)`
@@ -4753,53 +3507,6 @@ Output:
 
 
 **Source:** Line 643 in [genome.py](genome.py#L643)
-
-
----
-
-
-### `join_pixel_id(self, df, binsize, intra=True, filep=None)`
-
-
-Add a 'pixel_id' column to the input DataFrame in a vectorized manner.
-Input:
-    df: DataFrame, bedpe-like with columns 'chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2'
-    binsize: int, size of the bins used in pixelation
-    intra: bool, if True, process intra-chromosomal pixels
-Output:
-    DataFrame with an additional 'pixel_id' column
-
-
-**Source:** Line 533 in [genome.py](genome.py#L533)
-
-
----
-
-
-### `join_positions(self, df, binsize, intra=True)`
-
-
-Add columns 'chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2' to the input DataFrame in a vectorized manner.
-Input:
-    df: DataFrame, bedpe-like with column 'pixel_id'
-    binsize: int, size of the bins used in pixelation
-Output:
-    DataFrame with additional columns 'chrom1', 'start1', 'end1', 'chrom2', 'start2', 'end2'
-
-
-**Source:** Line 562 in [genome.py](genome.py#L562)
-
-
----
-
-
-### `new_start(row, chrom_intervals=None)`
-
-
-No documentation available.
-
-
-**Source:** Line 489 in [genome.py](genome.py#L489)
 
 
 ---
@@ -4821,23 +3528,6 @@ Raises:
 
 
 **Source:** Line 12 in [genome.py](genome.py#L12)
-
-
----
-
-
-### `pixel_id(self, row, binsize: int, intra=True)`
-
-
-Get pixel_id from row
-Input:
-    row: pd.Series, assume bedpe format
-    binsize: int
-Output:
-    int
-
-
-**Source:** Line 511 in [genome.py](genome.py#L511)
 
 
 ---
@@ -4889,35 +3579,7 @@ Output:
 
 **File:** `hicbr.py`
 
-**Public functions:** 6
-
-
-### `dump(self, h5ad_file: str, output_dir: str, layers: Optional[List[str]]=None)`
-
-**Returns:** `Dict[str, Any]`
-
-
-Convert h5ad file to generic file formats.
-
-Parameters
-----------
-h5ad_file : str
-    Path to input h5ad file
-output_dir : str
-    Directory to save converted files
-layers : list, optional
-    List of layers to convert. If None, converts all supported layers.
-    
-Returns
--------
-dict
-    Metadata about the conversion process
-
-
-**Source:** Line 87 in [hicbr.py](hicbr.py#L87)
-
-
----
+**Public functions:** 2
 
 
 ### `files_to_anndata(input_dir: str, layers: Optional[List[str]]=None)`
@@ -4933,7 +3595,7 @@ input_dir : str
     Directory containing converted files
 layers : list, optional
     List of layers to load. If None, loads all available layers.
-    
+
 Returns
 -------
 anndata.AnnData
@@ -4961,7 +3623,7 @@ output_dir : str
     Directory to save converted files
 layers : list, optional
     List of layers to convert. If None, converts all supported layers.
-    
+
 Returns
 -------
 dict
@@ -4976,75 +3638,11 @@ TODO:
 ---
 
 
-### `load(self, input_dir: str, layers: Optional[List[str]]=None)`
-
-**Returns:** `Any`
-
-
-Load converted files back into an AnnData object.
-
-Parameters
-----------
-input_dir : str
-    Directory containing converted files
-layers : list, optional
-    List of layers to load. If None, loads all available layers.
-    
-Returns
--------
-anndata.AnnData
-    Reconstructed AnnData object
-
-
-**Source:** Line 155 in [hicbr.py](hicbr.py#L155)
-
-
----
-
-
-### `register_dump_handler(self, layer_name: str, handler_func)`
-
-
-Register a custom dump handler for a specific layer.
-
-Parameters
-----------
-layer_name : str
-    Name of the layer to register handler for
-handler_func : callable
-    Function that handles dumping this layer
-
-
-**Source:** Line 61 in [hicbr.py](hicbr.py#L61)
-
-
----
-
-
-### `register_load_handler(self, layer_name: str, handler_func)`
-
-
-Register a custom load handler for a specific layer.
-
-Parameters
-----------
-layer_name : str
-    Name of the layer to register handler for
-handler_func : callable
-    Function that handles loading this layer
-
-
-**Source:** Line 74 in [hicbr.py](hicbr.py#L74)
-
-
----
-
-
 ## hicio
 
 **File:** `hicio.py`
 
-**Public functions:** 31
+**Public functions:** 29
 
 
 ### `align_to_df(primary_views)`
@@ -5090,10 +3688,10 @@ Decode SAM bitwise FLAG into human-readable components.
 
 Args:
     flag: Integer FLAG value from SAM field 2
-    
+
 Returns:
     Dictionary with flag component names as keys and boolean values
-    
+
 Reference: SAM v1.6 specification
 
 
@@ -5134,18 +3732,6 @@ Dump to pickle shortcut.
 
 
 **Source:** Line 994 in [hicio.py](hicio.py#L994)
-
-
----
-
-
-### `flush(self)`
-
-
-No documentation available.
-
-
-**Source:** Line 28 in [hicio.py](hicio.py#L28)
 
 
 ---
@@ -5269,7 +3855,7 @@ Load and parse BED format files, automatically assigning BED12 column names.
 
 Inputs:
     bed_path (str): Path to the BED file.
-    
+
 Returns:
     pd.DataFrame: Parsed BED data with columns named according to BED12 specification:
         - chrom (str): Chromosome name.
@@ -5284,10 +3870,10 @@ Returns:
         - blockCount (int, optional): Number of blocks.
         - blockSizes (str, optional): Comma-separated block sizes.
         - blockStarts (str, optional): Comma-separated block start positions.
-        
+
 Notes:
     - Automatically detects the number of columns in the BED file
-    - Assigns BED12 column names in order: chrom, start, end, name, score, 
+    - Assigns BED12 column names in order: chrom, start, end, name, score,
       strand, thickStart, thickEnd, itemRgb, blockCount, blockSizes, blockStarts
     - If the file has fewer than 12 columns, only the first N columns are named
     - If the file has more than 12 columns, only the first 12 are read
@@ -5313,7 +3899,7 @@ Parsing gff file. Read all in memory. Extract ID(gene), and Name if set true.
 ---
 
 
-### `parse_gtf(file, ID=True, name=True, mgi_id=True)`
+### `parse_gtf(file, ID=True, name=True, mgi_id=True, **args)`
 
 
 Parsing gtf file. Read all in memory. Extract gene_id to df if set true.
@@ -5396,24 +3982,24 @@ SAM specification v1.6+.
 Args:
     sam_line: A SAM format line as a string or pre-split list of strings.
               If string, it will be split by tabs.
-              
+
 Returns:
     pd.Series: A pandas Series where:
                - Index includes: 'QNAME', 'FLAG', 'RNAME', 'POS', 'MAPQ', 'CIGAR',
                  'RNEXT', 'PNEXT', 'TLEN', 'SEQ', 'QUAL' (mandatory fields)
                - Additional indices for any optional tags (e.g., 'NM', 'MD', 'AS')
                - Values are appropriately typed (int, float, str) based on SAM type codes
-               
+
 Raises:
     ValueError: If the input doesn't contain at least 11 fields (mandatory SAM fields)
-    
+
 Notes:
     - POS, PNEXT: 1-based coordinates (0 indicates unmapped)
     - FLAG: Bitwise flag, returned as integer for further decoding
     - Optional tags follow pattern: TAG:TYPE:VALUE
     - TYPE codes: i (int), f (float), Z (string), A (char), H (hex), B (byte array)
     - For 'B' type (byte arrays), values are returned as list of appropriate type
-    
+
 Examples:
     >>> sam_line = "read1   16      chr1    100     255     30M     =       200     50      ACGT    IIII    NM:i:1  MD:Z:30"
     >>> series = parse_sam_line(sam_line)
@@ -5587,18 +4173,6 @@ Output:
 ---
 
 
-### `write(self, _)`
-
-
-No documentation available.
-
-
-**Source:** Line 25 in [hicio.py](hicio.py#L25)
-
-
----
-
-
 ### `write_triplet(sparseM, filep, max_coo=False, zipping=True)`
 
 
@@ -5678,7 +4252,7 @@ No documentation available.
 
 **File:** `impute/simpute.py`
 
-**Public functions:** 9
+**Public functions:** 6
 
 
 ### `DMimpute(_3dg_path, fo, genome='GRCh38', binsize=20000, agg_dip=False, flavor='cooler_compat', max_dist=None)`
@@ -5722,18 +4296,6 @@ Output:
 
 
 **Source:** Line 21 in [impute/simpute.py](impute/simpute.py#L21)
-
-
----
-
-
-### `chrom_dist_mat_long(chunk)`
-
-
-No documentation available.
-
-
-**Source:** Line 240 in [impute/simpute.py](impute/simpute.py#L240)
 
 
 ---
@@ -5833,30 +4395,6 @@ Output:
 ---
 
 
-### `process_chunk(chunk, chrom=None)`
-
-
-No documentation available.
-
-
-**Source:** Line 317 in [impute/simpute.py](impute/simpute.py#L317)
-
-
----
-
-
-### `process_chunk(chunk, chrom=None)`
-
-
-No documentation available.
-
-
-**Source:** Line 421 in [impute/simpute.py](impute/simpute.py#L421)
-
-
----
-
-
 ## inter_contact
 
 **File:** `inter_contact.py`
@@ -5910,7 +4448,69 @@ No documentation available.
 
 **File:** `interpolate.py`
 
-**Public functions:** 5
+**Public functions:** 9
+
+
+### `compute_center_of_mass(trajectory, grid_values)`
+
+
+Compute center of mass (weighted average time position) for each feature.
+
+The center of mass is computed as:
+    com = sum(grid_values * |trajectory|) / sum(|trajectory|)
+
+Using absolute values to handle both positive and negative trajectories.
+
+Parameters
+----------
+trajectory : np.ndarray
+    Trajectory matrix of shape (n_features, n_grid_points).
+grid_values : np.ndarray
+    Grid point values of shape (n_grid_points,).
+
+Returns
+-------
+com : np.ndarray
+    Center of mass for each feature, shape (n_features,).
+
+
+**Source:** Line 238 in [interpolate.py](interpolate.py#L238)
+
+
+---
+
+
+### `compute_continuous_peak_time(trajectory, grid_values)`
+
+
+Compute continuous peak time for each feature using parabolic interpolation.
+
+For each feature, fits a parabola through the peak grid point and its two
+neighbors, then computes the vertex position as the continuous peak time.
+
+Parameters
+----------
+trajectory : np.ndarray
+    Trajectory matrix of shape (n_features, n_grid_points).
+    Each row is the GP-smoothed trajectory for one feature.
+grid_values : np.ndarray
+    Grid point values of shape (n_grid_points,). The actual time/pseudotime
+    values at each grid point.
+
+Returns
+-------
+peak_time : np.ndarray
+    Continuous peak time for each feature, shape (n_features,).
+    If a feature has no clear peak (monotonic or flat), returns the grid
+    position of the maximum value.
+peak_value : np.ndarray
+    The interpolated peak value at the continuous peak time.
+
+
+**Source:** Line 144 in [interpolate.py](interpolate.py#L144)
+
+
+---
 
 
 ### `correct_pseudotime(adata, pseudotime_col, n_pcs=15, inplace=True)`
@@ -5925,7 +4525,7 @@ Output:
     new adata object
 
 
-**Source:** Line 943 in [interpolate.py](interpolate.py#L943)
+**Source:** Line 1495 in [interpolate.py](interpolate.py#L1495)
 
 
 ---
@@ -5945,19 +4545,7 @@ Output:
     new adata object numPts * adata.shape[1]
 
 
-**Source:** Line 684 in [interpolate.py](interpolate.py#L684)
-
-
----
-
-
-### `gaussian_weights(x, y)`
-
-
-No documentation available.
-
-
-**Source:** Line 641 in [interpolate.py](interpolate.py#L641)
+**Source:** Line 1230 in [interpolate.py](interpolate.py#L1230)
 
 
 ---
@@ -6020,19 +4608,20 @@ anndata.AnnData
     AnnData with GP interpolation results stored in ``adata.uns[result_key]``.
 
 
-**Source:** Line 801 in [interpolate.py](interpolate.py#L801)
+**Source:** Line 1347 in [interpolate.py](interpolate.py#L1347)
 
 
 ---
 
 
-### `plot_gp_heatmap(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_method='linspace', endpoint_mode='half-interval', scaling='z_score', figsize=(8, 6), dpi=100, save_path=None, show_grid=True, show_colorbar=True)`
+### `plot_gp_heatmap(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_method='linspace', endpoint_mode='half-interval', scaling='z_score', figsize=(8, 6), dpi=100, save_path=None, show_grid=True, show_colorbar=True, feature_order=None)`
 
 
 Plot a single heatmap for GP interpolation results.
 
-Shows raw expression (sorted by pseudotime) with grid point positions
-and GP-smoothed expression side-by-side.
+This is a convenience wrapper around plot_trajectory_heatmap() for AnnData-based
+RNA/gene expression data. For more control or for non-RNA data (e.g., loops),
+use plot_trajectory_heatmap() directly.
 
 Parameters
 ----------
@@ -6065,14 +4654,203 @@ show_grid : bool, optional
     Show vertical lines at grid point positions. Default is True.
 show_colorbar : bool, optional
     Show colorbar. Default is True.
+feature_order : np.ndarray, optional
+    Indices to reorder features (genes). If None, genes are shown in original order.
+    Typically obtained from sort_features_by_trajectory().
 
 Returns
 -------
 fig : matplotlib.figure.Figure
     The matplotlib figure object.
+axes : np.ndarray
+    Array of matplotlib axes objects.
+
+See Also
+--------
+plot_trajectory_heatmap : General-purpose trajectory heatmap for any feature type.
 
 
-**Source:** Line 284 in [interpolate.py](interpolate.py#L284)
+**Source:** Line 890 in [interpolate.py](interpolate.py#L890)
+
+
+---
+
+
+### `plot_trajectory_heatmap(adata, pseudotime_col, layer='X', gene_mask_key=None, numPts=14, grid_methods=None, endpoint_mode='half-interval', scaling='z_score', figsize=(10, 12), dpi=100)`
+
+
+Internal function: Visualize and compare multiple grid methods side-by-side.
+
+This is a debugging utility, not intended for production use.
+Use plot_gp_heatmap() for single-method visualization.
+
+Parameters
+----------
+adata : anndata.AnnData
+    AnnData object with expression data and pseudotime.
+pseudotime_col : str
+    Column name in adata.obs containing pseudotime values.
+layer : str, optional
+    Expression layer to use. Default is "X".
+gene_mask_key : str, optional
+    Boolean column in adata.var for gene selection.
+numPts : int, optional
+    Number of grid points. Default is 14.
+grid_methods : list, optional
+    List of grid methods to compare. Default is ["linspace", "quantile", "density"].
+endpoint_mode : str, optional
+    Endpoint handling mode. Default is "half-interval".
+scaling : str, optional
+    Color scaling: "z_score" or "zero_one". Default is "z_score".
+figsize : tuple, optional
+    Figure size (width, height) in inches. Default is (10, 12).
+dpi : int, optional
+    Figure DPI. Default is 100.
+
+Returns
+-------
+fig : matplotlib.figure.Figure
+    The matplotlib figure object.
+axes : np.ndarray
+    Array of matplotlib axes objects.
+
+
+**Source:** Line 341 in [interpolate.py](interpolate.py#L341)
+
+
+---
+
+
+### `plot_trajectory_heatmap(trajectory_raw, pseudotime, trajectory_gp=None, grid_values=None, grid_cell_positions=None, feature_order=None, feature_labels=None, scaling='z_score', cmap='RdBu_r', vmin=None, vmax=None, figsize=(8, 6), dpi=100, save_path=None, show_grid=True, grid_line_color='black', grid_line_style='--', grid_line_alpha=0.7, show_colorbar=True, left_title='Raw (cell space)', right_title='GP-smoothed (grid space)', suptitle=None)`
+
+
+Plot trajectory heatmap for features (genes, loops, etc.) with GP-smoothed trajectories.
+
+This is a context-agnostic visualization function that works with any feature type
+(RNA genes, chromatin loops, etc.) as long as the data is provided as numpy arrays.
+
+Parameters
+----------
+trajectory_raw : np.ndarray or pd.DataFrame
+    Raw trajectory matrix of shape (n_features, n_cells). Each row is a feature's
+    trajectory across cells. Can also be a DataFrame with feature names as index.
+pseudotime : np.ndarray or pd.Series
+    Pseudotime values for cells, shape (n_cells,). Used to sort cells and compute
+    grid line positions.
+trajectory_gp : np.ndarray, optional
+    GP-smoothed trajectory matrix of shape (n_features, n_grid_points).
+    If None, only the raw trajectory panel is shown.
+grid_values : np.ndarray, optional
+    Grid point values in pseudotime space, shape (n_grid_points,).
+    Used for right panel x-axis labels and to compute grid_cell_positions if needed.
+grid_cell_positions : np.ndarray, optional
+    Grid point positions in cell rank space [0, 1], shape (n_grid_points,).
+    If None but grid_values is provided, computed from pseudotime.
+feature_order : np.ndarray, optional
+    Indices to reorder features (rows). If None, features are shown in original order.
+    Typically obtained from sort_features_by_trajectory().
+feature_labels : list or np.ndarray, optional
+    Labels for features (rows). If None, uses integer indices.
+scaling : str, optional
+    Color scaling method. Options:
+    - "z_score": Z-score normalization per feature
+    - "zero_one": Min-max normalization to [0, 1]
+cmap : str or matplotlib.colors.Colormap, optional
+    Colormap for the heatmap. Default is "RdBu_r" (diverging).
+vmin, vmax : float, optional
+    Color scale limits. If None, computed from data based on scaling.
+figsize : tuple, optional
+    Figure size (width, height) in inches. Default is (8, 6).
+dpi : int, optional
+    Figure DPI. Default is 100.
+save_path : str, optional
+    Path to save the figure. If None, figure is not saved.
+show_grid : bool, optional
+    Show vertical lines at grid point positions. Default is True.
+grid_line_color : str, optional
+    Color of grid lines. Default is "black".
+grid_line_style : str, optional
+    Line style of grid lines. Default is "--".
+grid_line_alpha : float, optional
+    Alpha transparency of grid lines. Default is 0.7.
+show_colorbar : bool, optional
+    Show colorbar. Default is True.
+left_title : str, optional
+    Title for left panel (raw data). Default is "Raw (cell space)".
+right_title : str, optional
+    Title for right panel (GP-smoothed). Default is "GP-smoothed (grid space)".
+suptitle : str, optional
+    Figure super title. If None, auto-generated from parameters.
+
+Returns
+-------
+fig : matplotlib.figure.Figure
+    The matplotlib figure object.
+axes : np.ndarray
+    Array of matplotlib axes objects (1 or 2 elements depending on trajectory_gp).
+
+Examples
+--------
+>>> # RNA/gene trajectory visualization
+>>> gp_result = gp_interpolate(adata, pseudotime_col="pt")
+>>> gp_mean = gp_result.uns["gp_interpolate"]["mean"].values
+>>> grid_vals = gp_result.uns["gp_interpolate"]["time_grid"].values
+>>> sorted_idx, _ = sort_features_by_trajectory(gp_mean, grid_vals)
+>>> fig, axes = plot_trajectory_heatmap(
+...     trajectory_raw=adata.X.T,
+...     pseudotime=adata.obs["pt"],
+...     trajectory_gp=gp_mean,
+...     grid_values=grid_vals,
+...     feature_order=sorted_idx
+... )
+
+>>> # Loop trajectory visualization (same interface)
+>>> gp_result = gp_interpolate(loop_adata, pseudotime_col="pt")
+>>> gp_mean = gp_result.uns["gp_interpolate"]["mean"].values
+>>> sorted_idx, _ = sort_features_by_trajectory(gp_mean, grid_vals)
+>>> fig, axes = plot_trajectory_heatmap(
+...     trajectory_raw=loop_adata.X.T,
+...     pseudotime=loop_adata.obs["pt"],
+...     trajectory_gp=gp_mean,
+...     grid_values=grid_vals,
+...     feature_order=sorted_idx
+... )
+
+
+**Source:** Line 613 in [interpolate.py](interpolate.py#L613)
+
+
+---
+
+
+### `sort_features_by_trajectory(trajectory, grid_values, sort_keys=('peak_time', 'com', '-peak_value'))`
+
+
+Sort features based on trajectory dynamics characteristics.
+
+Parameters
+----------
+trajectory : np.ndarray
+    Trajectory matrix of shape (n_features, n_grid_points).
+grid_values : np.ndarray
+    Grid point values of shape (n_grid_points,).
+sort_keys : tuple of str
+    List of sort keys in priority order. Supported keys:
+    - "peak_time": continuous peak time (parabolic interpolation)
+    - "com": center of mass
+    - "peak_value": peak value at continuous peak time
+    - "-peak_value": negative peak value (for descending sort)
+    - "max_grid_idx": discrete grid index of maximum (fallback)
+
+Returns
+-------
+sorted_indices : np.ndarray
+    Indices that would sort the features.
+sort_values : pd.DataFrame
+    DataFrame with columns for each computed metric.
+
+
+**Source:** Line 274 in [interpolate.py](interpolate.py#L274)
 
 
 ---
@@ -6131,250 +4909,7 @@ No documentation available.
 
 **File:** `mchr.py`
 
-**Public functions:** 7
-
-
-### `DI(self, groupA_samples, groupB_samples, max_linear_dist=2000000, max_3d_dist=5, fdrcut=0.05, chrom_blacklist: list=['chrX', 'chrY'], n_jobs=None, mem: int=4)`
-
-**Returns:** `pd.DataFrame`
-
-
-Detect differential 3D interactions between sample groups.
-
-Compare 3D spatial distances between two groups using SimpleDiff method
-with Mann-Whitney U test and FDR correction. Identifies genomic regions
-with significantly different 3D structure organization.
-
-Parameters
-----------
-groupA_samples : list
-    Sample names in group A (e.g., control condition)
-groupB_samples : list
-    Sample names in group B (e.g., treatment condition)
-max_linear_dist : int
-    Maximum genomic distance to consider (default 2 Mb)
-max_3d_dist : float
-    Maximum 3D distance threshold; pixels with mean distance > this
-    in any group are filtered out
-fdrcut : float
-    FDR cutoff for significance. If None, returns all valid pixels
-    without multiple testing correction.
-chrom_blacklist : list
-    Chromosomes to exclude from analysis (default: chrX, chrY)
-n_jobs : int, optional
-    Number of parallel workers for dask distributed computation
-mem : int
-    Memory limit per worker in GB (default: 4)
-
-Returns
--------
-pd.DataFrame
-    Differential interactions with (chrom, start1, start2) multiindex,
-    columns include: p, A, B, diff, FDR (if fdrcut specified)
-
-Examples
---------
->>> mchr = Mchr.from_netcdf("structures.nc")
->>> di = mchr.DI(["ctrl1", "ctrl2"], ["treat1", "treat2"], fdrcut=0.05)
-
-
-**Source:** Line 502 in [mchr.py](mchr.py#L502)
-
-
----
-
-
-### `DM(self, samples: list, region_pair: list, min_samples=None, n_jobs=None)`
-
-**Returns:** `pd.DataFrame`
-
-
-Compute 3D distance matrix from single-cell Hi-C structures.
-
-Calculate pairwise Euclidean distances between genomic bins using
-.3dg structure coordinates. Supports inter-chromosome regions and
-multi-sample aggregation with parallel computation.
-
-Parameters
-----------
-samples : list
-    Sample names to include in aggregation
-region_pair : list
-    Genome regions as [[(chrom1,pos1),(chrom1,pos2)], [(chrom2,pos1),(chrom2,pos2)]]
-    Supports inter-chromosome regions and cross-chromosome analysis.
-min_samples : int, optional
-    Minimum samples required for valid pixel, filters low coverage bins
-n_jobs : int, optional
-    Number of parallel workers. Uses dask distributed if specified,
-    otherwise in-memory computation.
-
-Returns
--------
-pd.DataFrame
-    Distance matrix with (chrom, start) multiindex for rows and columns
-
-Examples
---------
->>> mchr = Mchr.from_netcdf("structures.nc")
->>> dm = mchr.DM(["sample1", "sample2"], [["chr1",0,100e6]])
-
-
-**Source:** Line 428 in [mchr.py](mchr.py#L428)
-
-
----
-
-
-### `IS(self, samples: list, region_pair: list, w: int)`
-
-**Returns:** `pd.DataFrame`
-
-
-Compute insulation score from 3D distance matrices.
-
-Calculate TAD boundary strength using insulation score on single-cell
-3D structure distance matrices. Transforms distances to proximity scores
-and applies sliding window insulation score calculation.
-
-Parameters
-----------
-samples : list
-    Sample names to compute insulation scores for
-region_pair : list
-    Genome region to compute insulation score, intra-chromosome only
-w : int
-    Window size for insulation score calculation in bins
-
-Returns
--------
-pd.DataFrame
-    Insulation scores with (chrom, start) multiindex, columns are sample names
-
-Notes
------
-Not recommended for large regions. Will be replaced by a more efficient method.
-
-
-**Source:** Line 382 in [mchr.py](mchr.py#L382)
-
-
----
-
-
-### `PM(self, samples: list, region_pair: list, proximity: int, min_samples=None, n_jobs=None)`
-
-**Returns:** `pd.DataFrame`
-
-
-Compute proximity matrix from 3D structure coordinates.
-
-Count genomic bins within a spatial proximity threshold in .3dg structures.
-Useful for contact frequency estimation from 3D models and spatial
-proximity analysis.
-
-Parameters
-----------
-samples : list
-    Sample names to include in aggregation
-region_pair : list
-    Genome regions as [[(chrom1,pos1),(chrom1,pos2)], [(chrom2,pos1),(chrom2,pos2)]]
-    Supports inter-chromosome regions and cross-chromosome analysis.
-proximity : int
-    Spatial distance threshold to count as proximal contacts
-min_samples : int, optional
-    Minimum samples required for valid pixel
-n_jobs : int, optional
-    Number of parallel workers. Uses dask distributed if specified.
-
-Returns
--------
-pd.DataFrame
-    Proximity matrix with (chrom, start) multiindex for rows and columns,
-    normalized by sample coverage.
-
-
-**Source:** Line 466 in [mchr.py](mchr.py#L466)
-
-
----
-
-
-### `from_netcdf(cls, _3dg_ds_fp: str, ddir=None, _3dg_files=None, samples=None, genome=None, binsize=None, flavor=None)`
-
-
-Load Mchr object from a saved netcdf file.
-
-Restore a previously saved Mchr 3D structure dataset from netcdf format.
-Useful for reusing processed .3dg structure data without re-ingestion.
-
-Parameters
-----------
-_3dg_ds_fp : str
-    Path to the netcdf file containing 3D structure dataset
-ddir : str, optional
-    Directory for intermediate files (default: alongside netcdf)
-_3dg_files : list, optional
-    Override original .3dg file paths stored in netcdf
-samples : list, optional
-    Override sample names stored in netcdf
-genome : str, optional
-    Override genome assembly name
-binsize : int, optional
-    Override bin resolution
-flavor : str, optional
-    Override bin flavor (e.g., 'hickit')
-
-Returns
--------
-Mchr
-    Mchr object ready for DM/PM/IS/DI analysis
-
-Examples
---------
->>> mchr = Mchr.from_netcdf("processed_structures.nc")
->>> dm = mchr.DM(["sample1"], [["chr1", 0, 50e6]])
-
-
-**Source:** Line 295 in [mchr.py](mchr.py#L295)
-
-
----
-
-
-### `multiDM(self, samples: list, region_pair: list)`
-
-**Returns:** `xr.DataArray`
-
-
-Compute 3D distance matrix for each single-cell sample.
-
-Calculate pairwise Euclidean distances between genomic bins from
-.3dg structure coordinates for each individual sample. Returns
-per-sample distance matrices as xarray DataArray.
-
-Parameters
-----------
-samples : list
-    Sample names to compute distance matrices for
-region_pair : list
-    Genome regions as [[(chrom1,pos1),(chrom1,pos2)], [(chrom2,pos1),(chrom2,pos2)]]
-    Supports inter-chromosome regions crossing chromosomes.
-
-Returns
--------
-xr.DataArray
-    Distance matrix with sample_name dimension, suitable for downstream analysis
-
-Notes
------
-Not recommended for large regions. Consider aggregating to 1D features
-using split-apply-combine pattern for better performance.
-
-
-**Source:** Line 349 in [mchr.py](mchr.py#L349)
-
-
----
+**Public functions:** 1
 
 
 ### `multiple_testing_correction(pvalues, correction_type='FDR')`
@@ -6563,7 +5098,7 @@ Output:
 
 **File:** `paracalc.py`
 
-**Public functions:** 2
+**Public functions:** 1
 
 
 ### `mt(func)`
@@ -6573,18 +5108,6 @@ No documentation available.
 
 
 **Source:** Line 22 in [paracalc.py](paracalc.py#L22)
-
-
----
-
-
-### `wrapper(iterable)`
-
-
-No documentation available.
-
-
-**Source:** Line 24 in [paracalc.py](paracalc.py#L24)
 
 
 ---
@@ -6625,7 +5148,7 @@ Returns:
 ---
 
 
-### `count_chrom_phased(filename: str)`
+### `count_chrom_phased(filename: str, *args)`
 
 **Returns:** `pd.Series`
 
@@ -6984,7 +5507,7 @@ Tolerate the pd.NA, None, math.nan, np.nan
 ---
 
 
-### `check_input(file_pat)`
+### `check_input(file_pat, **kwargs)`
 
 
 No documentation available.
@@ -6996,7 +5519,7 @@ No documentation available.
 ---
 
 
-### `check_key(file_pat, key_to_check)`
+### `check_key(file_pat, key_to_check, **kwargs)`
 
 
 Check one key against other keys in the file pattern.
@@ -7029,7 +5552,7 @@ No documentation available.
 ---
 
 
-### `safe_input(file_pat, with_key=False)`
+### `safe_input(file_pat, with_key=False, **kwargs)`
 
 
 Expand file_pat to see if the input files exist, if not, skip.
@@ -7119,7 +5642,7 @@ Output:
 
 **File:** `plot/gene_track_parser.py`
 
-**Public functions:** 6
+**Public functions:** 2
 
 
 ### `filter_genes_in_region(genes: Dict[str, Gene], seqid: str, start: int, end: int, padding: int=0)`
@@ -7154,62 +5677,6 @@ Dict[str, Gene]
 ---
 
 
-### `get_label(self)`
-
-**Returns:** `str`
-
-
-Get transcript label for display.
-
-
-**Source:** Line 40 in [plot/gene_track_parser.py](plot/gene_track_parser.py#L40)
-
-
----
-
-
-### `get_label(self)`
-
-**Returns:** `str`
-
-
-Get gene label for display.
-
-
-**Source:** Line 60 in [plot/gene_track_parser.py](plot/gene_track_parser.py#L60)
-
-
----
-
-
-### `parse(self)`
-
-**Returns:** `Dict[str, Gene]`
-
-
-Parse GTF file and return genes dictionary.
-
-
-**Source:** Line 75 in [plot/gene_track_parser.py](plot/gene_track_parser.py#L75)
-
-
----
-
-
-### `parse(self)`
-
-**Returns:** `Dict[str, Gene]`
-
-
-Parse GFF3 file and return genes dictionary.
-
-
-**Source:** Line 218 in [plot/gene_track_parser.py](plot/gene_track_parser.py#L218)
-
-
----
-
-
 ### `parse_annotation_file(filepath: Union[str, Path])`
 
 **Returns:** `Dict[str, Gene]`
@@ -7238,34 +5705,10 @@ Dict[str, Gene]
 
 **File:** `plot/general.py`
 
-**Public functions:** 8
+**Public functions:** 6
 
 
-### `extend(self, trace_names)`
-
-
-No documentation available.
-
-
-**Source:** Line 24 in [plot/general.py](plot/general.py#L24)
-
-
----
-
-
-### `get(self, trace_name=None)`
-
-
-No documentation available.
-
-
-**Source:** Line 19 in [plot/general.py](plot/general.py#L19)
-
-
----
-
-
-### `plot_colorbar(vmin, vmax, colorscale='Viridis', title='TITLE')`
+### `plot_colorbar(vmin, vmax, colorscale='Viridis', title='TITLE', **colorbar_kwargs)`
 
 
 Plot colorbar.
@@ -7286,7 +5729,7 @@ Output:
 ---
 
 
-### `plot_ols(data, x, y, title)`
+### `plot_ols(data, x, y, title, **kwargs)`
 
 
 Plot linear regression of dataframe
@@ -7298,7 +5741,7 @@ Plot linear regression of dataframe
 ---
 
 
-### `plot_points(array)`
+### `plot_points(array, **args)`
 
 
 Wrapping points (represent in numpy column arrays) to dataframe(treate x, y, z as features so in shape N * 3) and plot.
@@ -7423,7 +5866,7 @@ Output:
 ---
 
 
-### `pileup_IS(coolp, IS, genome='hg19', flank=800000)`
+### `pileup_IS(coolp, IS, genome='hg19', flank=800000, **args)`
 
 
 Pileup TAD boundaries from a cool file.
@@ -7442,7 +5885,7 @@ Output:
 ---
 
 
-### `plot_CM(cm, grid=True)`
+### `plot_CM(cm, grid=True, **kwargs)`
 
 
 Plot contact matrix.
@@ -7522,7 +5965,7 @@ Plot cooler with additional track files
 ---
 
 
-### `plot_compartment(coolp, eigs_file, region, title, eigen_col='E1', strip=False, balance=False, mask_eig_na=True, give_mat=False, quant=0.005, minmax='min', cmap='RdBu_r', eq_hist=False)`
+### `plot_compartment(coolp, eigs_file, region, title, eigen_col='E1', strip=False, balance=False, mask_eig_na=True, give_mat=False, quant=0.005, minmax='min', cmap='RdBu_r', eq_hist=False, **args)`
 
 
 Plot distance-normalized Hi-C correlation matrix with compartment track.
@@ -7563,7 +6006,7 @@ No documentation available.
 ---
 
 
-### `plot_compartment_trapezoid(coolp, vec_file, region, balance=True, strata=20, title='TITLE', quant=0.01, minmax='min', cmap='RdBu_r', eigen_col='E1', fillna=False, strip=False, mask_eig_na=True, add_track=False)`
+### `plot_compartment_trapezoid(coolp, vec_file, region, balance=True, strata=20, title='TITLE', quant=0.01, minmax='min', cmap='RdBu_r', eigen_col='E1', fillna=False, strip=False, mask_eig_na=True, add_track=False, **kwargs)`
 
 
 Plot compartment heatmap as a trapezoid shape by rotating the square contact matrix 45 degrees.
@@ -7680,7 +6123,7 @@ Example:
 ---
 
 
-### `plot_cool(coolp, title='', region='chr1', vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False, return_data=False)`
+### `plot_cool(coolp, title='', region='chr1', vmax=100, balance=False, ignore_diags=False, grid=True, donorm=False, return_data=False, **kwargs)`
 
 
 "
@@ -7708,7 +6151,7 @@ Output:
 ---
 
 
-### `plot_cool_track(coolp, track_files, region, title, balance=False)`
+### `plot_cool_track(coolp, track_files, region, title, balance=False, **args)`
 
 
 Plot cooler with additional track files.
@@ -7726,7 +6169,7 @@ Input:
 ---
 
 
-### `plot_cool_with_tracks(coolp1: Union[str, Path], coolp2: Optional[Union[str, Path]]=None, tracks: Optional[List]=None, region: str='chr1', track_heights: Optional[List[float]]=None, heatmap_height: float=10, square_heatmap: bool=False, title: str='', balance: bool=True, vmax: Optional[float]=None, cmap: str='fall', ignore_diags: bool=False, adjust_brightness: bool=True, marks: Optional[List[Dict]]=None)`
+### `plot_cool_with_tracks(coolp1: Union[str, Path], coolp2: Optional[Union[str, Path]]=None, tracks: Optional[List]=None, region: str='chr1', track_heights: Optional[List[float]]=None, heatmap_height: float=10, square_heatmap: bool=False, title: str='', balance: bool=True, vmax: Optional[float]=None, cmap: str='fall', ignore_diags: bool=False, adjust_brightness: bool=True, marks: Optional[List[Dict]]=None, **heatmap_kwargs)`
 
 **Returns:** `go.Figure`
 
@@ -7759,11 +6202,10 @@ track_heights : list of float, optional
     equal height of 2.0. Default is None.
 heatmap_height : float, optional
     Relative height of heatmap row. Default is 10.
-    Ignored if square_heatmap is True.
 square_heatmap : bool, optional
-    If True, automatically calculates heatmap_height to make the heatmap
-    region approximately square (width == height). This is recommended
-    for Hi-C contact matrices which are symmetric. Default is False.
+    If True, constrain the heatmap x/y axes to equal data-unit scaling
+    using Plotly scale anchors. This avoids row-height heuristics while
+    preserving the same genomic x-axis domain for tracks. Default is False.
 title : str, optional
     Plot title. Default is "".
 balance : bool, optional
@@ -7847,7 +6289,7 @@ Notes
 ---
 
 
-### `plot_cools(cools, regions, ncols=3, subplot_titles=None, sub_height=100, sub_width=100, margin=None)`
+### `plot_cools(cools, regions, ncols=3, subplot_titles=None, sub_height=100, sub_width=100, margin=None, **kwargs)`
 
 
 Plot multiple regions in multiple cooler files.
@@ -7869,7 +6311,7 @@ Input:
 ---
 
 
-### `plot_saddle(file, title, vmin=10 ** (-1), vmax=10 ** 1, strength_square_size=10)`
+### `plot_saddle(file, title, vmin=10 ** (-1), vmax=10 ** 1, strength_square_size=10, **kwargs)`
 
 
 Plot saddle plot.
@@ -7902,7 +6344,7 @@ No documentation available.
 ---
 
 
-### `plot_tiling_compartment(coolps: List[Union[str, Path]], eigs_files: List[Union[str, Path]], region: str, title: str='', corr: bool=True, strip: bool=True, balance: bool=False, cmap: str='RdBu', donorm: bool=False, Enames: List[str]=None)`
+### `plot_tiling_compartment(coolps: List[Union[str, Path]], eigs_files: List[Union[str, Path]], region: str, title: str='', corr: bool=True, strip: bool=True, balance: bool=False, cmap: str='RdBu', donorm: bool=False, Enames: List[str]=None, **args)`
 
 **Returns:** `go.Figure`
 
@@ -7946,7 +6388,7 @@ Example:
 ---
 
 
-### `plot_trapezoid_with_tracks(coolp: Union[str, Path], vec_file: Union[str, Path], region: str, tracks: List, track_heights: Optional[List[float]]=None, trapezoid_height: Optional[float]=None, strata: int=20, title: str='', balance: bool=True, cmap: str='RdBu_r', quant: float=0.01, minmax: str='min', eigen_col: str='E1', fillna: bool=False, strip: bool=False, mask_eig_na: bool=True, total_height: int=800, width: int=700, auto_scale: bool=True)`
+### `plot_trapezoid_with_tracks(coolp: Union[str, Path], vec_file: Union[str, Path], region: str, tracks: List, track_heights: Optional[List[float]]=None, trapezoid_height: Optional[float]=None, strata: int=20, title: str='', balance: bool=True, cmap: str='RdBu_r', quant: float=0.01, minmax: str='min', eigen_col: str='E1', fillna: bool=False, strip: bool=False, mask_eig_na: bool=True, total_height: int=800, width: int=700, auto_scale: bool=True, **heatmap_kwargs)`
 
 **Returns:** `go.Figure`
 
@@ -8252,7 +6694,7 @@ Output:
 ---
 
 
-### `plot_cdps_mark(cdps, orig_annote, sample_col='sample_name', order_col='index_order', group_col='group', color_map=None, hline=False)`
+### `plot_cdps_mark(cdps, orig_annote, sample_col='sample_name', order_col='index_order', group_col='group', color_map=None, hline=False, **kwargs)`
 
 
 # plot cdps heatmap with group marker in different color
@@ -8328,19 +6770,7 @@ fig : plotly.graph_objects.Figure
 
 **File:** `plot/render.py`
 
-**Public functions:** 27
-
-
-### `apply_rotation(df, R)`
-
-
-No documentation available.
-
-
-**Source:** Line 207 in [plot/render.py](plot/render.py#L207)
-
-
----
+**Public functions:** 21
 
 
 ### `apply_rotation_commands(df, commands_str)`
@@ -8367,7 +6797,7 @@ No documentation available.
 ---
 
 
-### `clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap='magenta green, all, 0.005, 0.02', turn_cmd='', tmpdir=None, conda='pymol')`
+### `clip_b_pymol(_3dg, b_factor, png, clip=0, slab=2, cmap='magenta green, all, 0.005, 0.02', turn_cmd='', tmpdir=None, conda='pymol', **args)`
 
 
 Render clip view, color by b factor.
@@ -8389,7 +6819,7 @@ Input:
 ---
 
 
-### `clip_centelo_pymol(_3dg_file, png, genome='mm10', clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda='pymol', turn_cmd='')`
+### `clip_centelo_pymol(_3dg_file, png, genome='mm10', clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda='pymol', turn_cmd='', **args)`
 
 
 Render clip view, color centromere-telomere.
@@ -8411,7 +6841,7 @@ Input:
 ---
 
 
-### `clip_single_centelo_pymol(_3dg_file, png, target_chroms=['chrX', 'chrY'], genome='mm10', clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda='pymol', turn_cmd='')`
+### `clip_single_centelo_pymol(_3dg_file, png, target_chroms=['chrX', 'chrY'], genome='mm10', clip=0, slab=2, tmpdir=None, cif_name=None, dupref=False, conda='pymol', turn_cmd='', **args)`
 
 
 Render clip view, color centromere-telomere of target chromosomes. Other chromosomes are set to 0.5/white.
@@ -8434,7 +6864,7 @@ Input:
 ---
 
 
-### `clip_single_territory_pymol(_3dg_file, png, target_chroms=['chrX', 'chrY'], clip=0, slab=2, tmpdir=None, conda=None, turn_cmd='')`
+### `clip_single_territory_pymol(_3dg_file, png, target_chroms=['chrX', 'chrY'], clip=0, slab=2, tmpdir=None, conda=None, turn_cmd='', **args)`
 
 
 Render clip view, only color target chromosomes.
@@ -8455,7 +6885,7 @@ Input:
 ---
 
 
-### `clip_territory_pymol(_3dg, png, clip=0, slab=2, tmpdir=None, conda='pymol', turn_cmd='')`
+### `clip_territory_pymol(_3dg, png, clip=0, slab=2, tmpdir=None, conda='pymol', turn_cmd='', **args)`
 
 
 Render clip view, color by each chromosome.
@@ -8496,30 +6926,6 @@ Output:
 ---
 
 
-### `gen_cif(self, _3dg)`
-
-
-Rewrite the intermediate cif file with the given kwargs.
-
-
-**Source:** Line 258 in [plot/render.py](plot/render.py#L258)
-
-
----
-
-
-### `gen_script(self)`
-
-
-Rewrite the intermediate pymol script with the given kwargs.
-
-
-**Source:** Line 264 in [plot/render.py](plot/render.py#L264)
-
-
----
-
-
 ### `get_rotation_commands(target_vector, retvec=False)`
 
 
@@ -8538,19 +6944,7 @@ Output:
 ---
 
 
-### `get_rotation_matrix(axis, theta)`
-
-
-No documentation available.
-
-
-**Source:** Line 189 in [plot/render.py](plot/render.py#L189)
-
-
----
-
-
-### `highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap='magenta green, chain {}, 0.005, 0.02', turn_cmd='', tmpdir=None, conda='pymol')`
+### `highlight_surface_b_pymol(_3dg, b_factor, chain, png, cmap='magenta green, chain {}, 0.005, 0.02', turn_cmd='', tmpdir=None, conda='pymol', **args)`
 
 
 Render surface, color by b factor, highlight only one chain, other chains are transparent.
@@ -8567,18 +6961,6 @@ Input:
 
 
 **Source:** Line 411 in [plot/render.py](plot/render.py#L411)
-
-
----
-
-
-### `parse_commands(commands_str)`
-
-
-No documentation available.
-
-
-**Source:** Line 167 in [plot/render.py](plot/render.py#L167)
 
 
 ---
@@ -8602,19 +6984,7 @@ Return:
 ---
 
 
-### `render(self)`
-
-
-No documentation available.
-
-
-**Source:** Line 281 in [plot/render.py](plot/render.py#L281)
-
-
----
-
-
-### `render_clip_b_primary_view(_3dg_file, b_factor, outpng, view='lr', targets=None)`
+### `render_clip_b_primary_view(_3dg_file, b_factor, outpng, view='lr', targets=None, **kwargs)`
 
 
 Rendering clip primary views of a single-cell structure with pymol, colored by territory.
@@ -8634,7 +7004,7 @@ Output:
 ---
 
 
-### `render_clip_centelo_primary_view(_3dg_file, outpng, genome, clip, slab, tmpdir, view='lr', targets=None)`
+### `render_clip_centelo_primary_view(_3dg_file, outpng, genome, clip, slab, tmpdir, view='lr', targets=None, **kwargs)`
 
 
 Color primary views of a single-cell structure with relative dist to centromeres and telomeres.
@@ -8656,7 +7026,7 @@ Output:
 ---
 
 
-### `render_clip_primary_view(_3dg_file, outpng, view='lr', targets=None)`
+### `render_clip_primary_view(_3dg_file, outpng, view='lr', targets=None, **kwargs)`
 
 
 Rendering clip primary views of a single-cell structure with pymol, colored by territory.
@@ -8675,7 +7045,7 @@ Output:
 ---
 
 
-### `render_surface_centelo_primary_view(_3dg_file, outpng, genome, tmpdir, view='lr', targets=None)`
+### `render_surface_centelo_primary_view(_3dg_file, outpng, genome, tmpdir, view='lr', targets=None, **kwargs)`
 
 
 Color primary views of a single-cell structure with relative dist to centromeres and telomeres.
@@ -8697,7 +7067,7 @@ Output:
 ---
 
 
-### `render_surface_primary_view(_3dg_file, outpng, tmpdir, view='lr', targets=None)`
+### `render_surface_primary_view(_3dg_file, outpng, tmpdir, view='lr', targets=None, **kwargs)`
 
 
 Rendering primary views of a single-cell structure with pymol.
@@ -8749,7 +7119,7 @@ No documentation available.
 ---
 
 
-### `surface_b_pymol(_3dg, b_factor, png, cmap='magenta green, all, 0.005, 0.02', tmpdir=None, conda='pymol', turn_cmd='')`
+### `surface_b_pymol(_3dg, b_factor, png, cmap='magenta green, all, 0.005, 0.02', tmpdir=None, conda='pymol', turn_cmd='', **args)`
 
 
 Render surface, color by b factor.
@@ -8770,7 +7140,7 @@ Input:
 ---
 
 
-### `surface_centelo_pymol(_3dg_file, png, genome='mm10', tmpdir=None, cif_name=None, dupref=False, conda='pymol', turn_cmd='')`
+### `surface_centelo_pymol(_3dg_file, png, genome='mm10', tmpdir=None, cif_name=None, dupref=False, conda='pymol', turn_cmd='', **args)`
 
 
 Render clip view, color centromere-telomere.
@@ -8821,7 +7191,7 @@ Input:
 ### `plot_gene_module_mean(adata, gene_sets, ps_col, layer='not_known', trends=False, points=True)`
 
 
-Plot mean expression of module along trajectory. 
+Plot mean expression of module along trajectory.
 Input:
     adata: anndata object, or dataframe
     gene_sets: dict, module names as keys, list of module gene names as values
@@ -8893,7 +7263,7 @@ No documentation available.
 ---
 
 
-### `plot_pca(adata, color: str, PCs: Optional[Union[List[int], List[List[int]]]]=None, ncols: int=2, background: Optional[str]=None)`
+### `plot_pca(adata, color: str, PCs: Optional[Union[List[int], List[List[int]]]]=None, ncols: int=2, background: Optional[str]=None, **kwargs)`
 
 
 Plot PCA results from AnnData object with flexible subplot configurations.
@@ -8965,7 +7335,7 @@ Plot scanpy tsne using plotly.
 ---
 
 
-### `plot_umap(adata, color, key='X_umap')`
+### `plot_umap(adata, color, key='X_umap', **kwargs)`
 
 
 Plot scanpy umap using plotly.
@@ -8981,36 +7351,41 @@ Plot scanpy umap using plotly.
 
 **File:** `plot/scatter.py`
 
-**Public functions:** 6
+**Public functions:** 5
 
 
-### `add_error_band(fig, df, orig_color=px.colors.qualitative.Plotly[0], debug=False)`
+### `add_error_band(fig, df, orig_color=px.colors.qualitative.Plotly[0], debug=False, error_type='ci')`
 
 
-Input:
-    df: must have x, upper, lower cols
-    orig_color: color of original line, will use a grayer version
+Add error visualization to a figure.
+
+Parameters
+----------
+fig : plotly.graph_objects.Figure
+    Figure to add error to.
+df : pandas.DataFrame
+    DataFrame with x, y_upper, y_lower columns.
+orig_color : str
+    Color of original line, will use a grayer version for the ribbon.
+debug : bool
+    If True, show ribbon outline.
+error_type : str
+    "ci" for pooled CI ribbon, "sem" for varying-width ribbon from
+    pre-computed SEM values.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    Figure with error added.
 
 
-**Source:** Line 93 in [plot/scatter.py](plot/scatter.py#L93)
+**Source:** Line 145 in [plot/scatter.py](plot/scatter.py#L145)
 
 
 ---
 
 
-### `build_hover_template(group_name=None)`
-
-
-Build hover template based on available data.
-
-
-**Source:** Line 229 in [plot/scatter.py](plot/scatter.py#L229)
-
-
----
-
-
-### `line(df, x, y, color=None, color_discrete_map=None, with_error=False, frac=0.3, ci=0.95, debug=False, gray_bg=False, hover_data=None, hover_format=None)`
+### `line(df, x, y, color=None, color_discrete_map=None, with_error=False, frac=0.3, ci=0.95, debug=False, gray_bg=False, hover_data=None, hover_format=None, skip_smooth=False, error_type='ci', sem_col=None, **kwargs)`
 
 
 Plot a single trend line with optional error bands and point coloring.
@@ -9019,14 +7394,14 @@ Creates a line plot for a single variable with optional confidence intervals.
 Points can be colored according to a specified column in the dataframe.
 
 Args:
-    df (pd.DataFrame): Input data.
+    df (pd.DataFrame): Input curve data with one row per x value.
     x (str): Column name for x-axis values.
-    y (str): Column name for y-axis values.
-    color (str, optional): Column name for point coloring. Points will be 
-                          colored according to this column's values. 
+    y (str): Column name for y-axis values. Must already be one-to-one with x.
+    color (str, optional): Column name for point coloring. Points will be
+                          colored according to this column's values.
                           Defaults to None (uniform color).
-    color_discrete_map (dict, optional): Color mapping for points when 
-                                        `color` is specified. Keys should be 
+    color_discrete_map (dict, optional): Color mapping for points when
+                                        `color` is specified. Keys should be
                                         values from the `color` column.
                                         Defaults to None.
     with_error (bool, optional): Whether to add confidence interval bands.
@@ -9034,32 +7409,76 @@ Args:
     frac (float, optional): Fraction of data to use for smoothing (LOESS).
                             Defaults to 0.3.
     ci (float, optional): Confidence interval level (0-1). Defaults to 0.95.
-    debug (bool, optional): Enable debug mode for error bands. 
+    debug (bool, optional): Enable debug mode for error bands.
                             Defaults to False.
     gray_bg (bool, optional): Use gray color for error bands. Defaults to False.
+    hover_data (list, optional): Additional columns to show in hover tooltip.
+    hover_format (dict, optional): Format specifiers for hover columns.
+    skip_smooth (bool, optional): If True, bypass LOESS and plot raw y values.
+                                  Defaults to False.
+    error_type (str, optional): "ci" for pooled CI ribbon, "sem" for
+                                ribbon from pre-computed SEM values at
+                                each x. Defaults to "ci".
+    sem_col (str, optional): Column name with pre-computed SEM values for
+                             each x value. Required when error_type="sem".
     **kwargs: Additional keyword arguments passed to fig.update_layout().
 
 Returns:
     plotly.graph_objs.Figure: Plotly figure object.
 
+Notes:
+    line() does not aggregate repeated observations. If your raw data has
+    multiple rows per x value, aggregate it upstream so that each x maps to
+    exactly one y, then pass SEM explicitly through sem_col if needed.
+
 Examples:
-    >>> line(df, x='time', y='value', color='group')
-    >>> line(df, x='x', y='y', with_error=True, color_discrete_map={'A': 'red', 'B': 'blue'})
+    >>> line(curve_df, x='time', y='value', color='group')
+    >>> line(curve_df, x='x', y='y', with_error=True, color_discrete_map={'A': 'red', 'B': 'blue'})
+    >>> line(agg_df, x='bin', y='mean', with_error=True, error_type="sem", sem_col="sem")
 
 
-**Source:** Line 179 in [plot/scatter.py](plot/scatter.py#L179)
+**Source:** Line 316 in [plot/scatter.py](plot/scatter.py#L316)
 
 
 ---
 
 
-### `lines(df, x, y, color_discrete_map=None, with_error=False, frac=0.3, ci=0.95, debug=False, gray_bg=False)`
+### `lines(df, x, y, color_discrete_map=None, with_error=False, frac=0.3, ci=0.95, debug=False, gray_bg=False, skip_smooth=False, error_type='ci', sem_col=None, **kwargs)`
 
 
-No documentation available.
+Plot multiple line trends with optional error visualization.
+
+Args:
+    df (pd.DataFrame): Input curve data with one row per x value.
+    x (str): Column name for x-axis values.
+    y (str or list): Column name(s) for y-axis values. Each y series must
+        already be aligned one-to-one with x.
+    color_discrete_map (dict, optional): Color mapping for each y column.
+    with_error (bool): Whether to add error visualization.
+    frac (float): Fraction of data for LOESS smoothing.
+    ci (float): Confidence interval level (0-1).
+    debug (bool): Enable debug mode for error bands.
+    gray_bg (bool): Use gray color for error bands.
+    skip_smooth (bool): If True, bypass LOESS and plot raw y values.
+    error_type (str): "ci" for pooled CI ribbon, "sem" for ribbon from
+        pre-computed SEM values at each x.
+    sem_col (str or list[str]): Column name containing pre-computed SEM
+        values for each x value, or a list aligned one-to-one with y when
+        y is a list. Required when error_type="sem".
+    **kwargs: Additional arguments passed to fig.update_layout().
+
+Returns:
+    plotly.graph_objects.Figure
+
+Notes:
+    lines() does not aggregate repeated observations. If your raw data has
+    multiple rows per x value, compute summary statistics upstream and pass
+    the aggregated curve plus an optional sem_col.
+    When y is a list and error_type="sem", sem_col may be a single shared
+    SEM column name or a list aligned one-to-one with y.
 
 
-**Source:** Line 125 in [plot/scatter.py](plot/scatter.py#L125)
+**Source:** Line 224 in [plot/scatter.py](plot/scatter.py#L224)
 
 
 ---
@@ -9078,37 +7497,58 @@ Returns:
     A string in "rgba(r, g, b, a)" format with adjusted color and opacity.
 
 
-**Source:** Line 69 in [plot/scatter.py](plot/scatter.py#L69)
+**Source:** Line 121 in [plot/scatter.py](plot/scatter.py#L121)
 
 
 ---
 
 
-### `smooth_with_ci(df, x, y, frac=0.3, ci=0.95)`
+### `smooth_with_ci(df, x, y, frac=0.3, ci=0.95, skip_smooth=False, error_type='ci', sem_col=None)`
 
 
-Apply LOESS smoothing to time-series data and estimate confidence intervals.
+Apply LOESS smoothing to one-row-per-x curve data and estimate ribbons.
 
 Parameters
 ----------
-x : array-like
-    Independent variable (e.g., time points).
-y : array-like
-    Dependent variable (e.g., gene expression values).
+df : pandas.DataFrame
+    Input DataFrame containing one y value for each x value. Repeated
+    observations must be aggregated upstream before calling this function.
+x : str
+    Column name for independent variable (e.g., time points).
+y : str
+    Column name for dependent variable (e.g., aggregated mean values).
 frac : float, optional
     Fraction of data used for each local regression (0 < frac <= 1).
+    Default is 0.3.
 ci : float, optional
     Confidence interval level (0 < ci < 1, e.g., 0.95 for 95% CI).
+    Default is 0.95.
+skip_smooth : bool, optional
+    If True, bypass LOESS smoothing and use raw y values directly.
+    Default is False.
+error_type : str, optional
+    Type of error estimation: "ci" for pooled residual CI, "sem" for
+    per-point SEM. Default is "ci". When "sem", requires sem_col to be
+    specified.
+sem_col : str, optional
+    Column name containing pre-computed SEM values for each x value.
+    Required when error_type="sem". SEM is not computed internally.
 
 Returns
 -------
 pandas.DataFrame
     DataFrame with columns:
-    - 'x': Original x values
+    - 'x': Original x values (sorted)
     - 'y': Original y values
-    - 'y_smooth': Smoothed y values
-    - 'y_upper': Upper bound of CI
-    - 'y_lower': Lower bound of CI
+    - 'y_smooth': Smoothed y values (or raw y if skip_smooth=True)
+    - 'y_upper': Upper bound of error band
+    - 'y_lower': Lower bound of error band
+    - 'y_sem': SEM values (if error_type="sem")
+
+Notes
+-----
+This function assumes df already describes a single curve. It does not
+group, bin, or aggregate repeated observations by x.
 
 
 **Source:** Line 11 in [plot/scatter.py](plot/scatter.py#L11)
@@ -9124,7 +7564,7 @@ pandas.DataFrame
 **Public functions:** 1
 
 
-### `tech_box(annote, grouping='condition', features=['defaults'], ncols=3, size=200, color_discrete_sequence=color_discrete_sequence, use_label=True, labels: dict=None)`
+### `tech_box(annote, grouping='condition', features=['defaults'], ncols=3, size=200, color_discrete_sequence=color_discrete_sequence, use_label=True, labels: dict=None, **kwargs)`
 
 **Returns:** `go.Figure`
 
@@ -9155,7 +7595,7 @@ TODO:
 
 **File:** `plot/track.py`
 
-**Public functions:** 27
+**Public functions:** 9
 
 
 ### `add_chrom_grid(df, fig, fig_type='scatter', x_extra_expansion=0, y_extra_expansion=0.1, value_cols=None, range_y=None)`
@@ -9163,7 +7603,7 @@ TODO:
 
 Add chromosome grid lines to an existing genome track figure.
 Input:
-    df: pd.DataFrame, the genome data used to plot the figure. Index is multiindex with level 0 as chromosome names 
+    df: pd.DataFrame, the genome data used to plot the figure. Index is multiindex with level 0 as chromosome names
         and level 1 as start position. First column is the data to plot.
         1. For scatter plot, use first value column to determine y axis title.
         2. For heatmap, df is `pos * samples`, use "Sample" as y axis title, each column is a sample.
@@ -9177,279 +7617,44 @@ Output:
     fig: plotly.graph_objs._figure.Figure, the figure with added grid lines.
 
 
-**Source:** Line 1325 in [plot/track.py](plot/track.py#L1325)
+**Source:** Line 2307 in [plot/track.py](plot/track.py#L2307)
 
 
 ---
 
 
-### `data(self)`
-
-**Returns:** `Optional[pd.DataFrame]`
-
-
-Get the track's data.
-
-
-**Source:** Line 131 in [plot/track.py](plot/track.py#L131)
-
-
----
-
-
-### `from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, config: Optional[TrackConfig]=None, marks: Optional[List[Dict]]=None)`
-
-**Returns:** `'HeatmapTrack'`
-
-
-Create HeatmapTrack from pre-computed matrix.
-
-Args:
-    matrix: Contact matrix as numpy array.
-    bins: DataFrame with bin positions (chrom, start, end).
-    config: Optional TrackConfig.
-    marks: List of mark dictionaries.
-    **heatmap_kwargs: Additional parameters for go.Heatmap.
-
-Returns:
-    HeatmapTrack: New instance with pre-computed data.
-
-
-**Source:** Line 747 in [plot/track.py](plot/track.py#L747)
-
-
----
-
-
-### `from_matrix(cls, matrix: np.ndarray, bins: pd.DataFrame, extent: Union[float, Tuple[float, float]], config: Optional[TrackConfig]=None, cmap: str='RdBu_r')`
-
-**Returns:** `'TrapezoidHeatmapTrack'`
-
-
-Create TrapezoidHeatmapTrack from pre-computed matrix.
-
-Args:
-    matrix: Trapezoid matrix as numpy array.
-    bins: DataFrame with bin positions.
-    extent: Color scale extent (single value or (min, max) tuple).
-    config: Optional TrackConfig.
-    cmap: Colormap name. Default 'RdBu_r'.
-    **heatmap_kwargs: Additional parameters for go.Heatmap.
-
-Returns:
-    TrapezoidHeatmapTrack: New instance with pre-computed data.
-
-
-**Source:** Line 1183 in [plot/track.py](plot/track.py#L1183)
-
-
----
-
-
-### `from_pixel_ids(cls, pixel_ids: List[int], clr: Cooler, binsize: int)`
-
-**Returns:** `'MarkTrack'`
-
-
-Create MarkTrack from pixel IDs.
-
-Args:
-    pixel_ids: List of pixel IDs to mark.
-    clr: Cooler object for coordinate conversion.
-    binsize: Bin size in base pairs.
-    **kwargs: Additional arguments passed to MarkTrack.
-
-Returns:
-    MarkTrack: New instance with marks at specified pixel IDs.
-
-
-**Source:** Line 978 in [plot/track.py](plot/track.py#L978)
-
-
----
-
-
-### `get_default_config(self)`
-
-**Returns:** `TrackConfig`
-
-
-Get default configuration for this track type.
-
-Returns:
-    TrackConfig: Default configuration.
-
-
-**Source:** Line 122 in [plot/track.py](plot/track.py#L122)
-
-
----
-
-
-### `load_data(self)`
-
-
-Load and prepare data for the track.
-
-Args:
-    **kwargs: Data loading parameters (e.g., cooler, region).
-
-Returns:
-    self: Returns self for method chaining.
-
-
-**Source:** Line 96 in [plot/track.py](plot/track.py#L96)
-
-
----
-
-
-### `load_data(self, clr: Cooler, region: str)`
-
-**Returns:** `'EigenTrack'`
-
-
-Load eigenvector data aligned with cooler bins.
-
-Args:
-    clr: Cooler object for bin information.
-    region: Genomic region (e.g., "chr1:1000000-5000000").
-
-Returns:
-    self: Returns self for method chaining.
-
-
-**Source:** Line 182 in [plot/track.py](plot/track.py#L182)
-
-
----
-
-
-### `load_data(self, region: str, chrom_sizes: Optional[Dict[str, int]]=None)`
-
-**Returns:** `'BigWigTrack'`
-
-
-Load bigWig signal data for a genomic region.
-
-Args:
-    region: Genomic region (e.g., "chr1:1000000-5000000").
-    chrom_sizes: Optional dict of chromosome sizes. If not provided,
-        will attempt to read from bigWig file.
-
-Returns:
-    self: Returns self for method chaining.
-
-Raises:
-    ImportError: If pyBigWig is not installed.
-
-
-**Source:** Line 333 in [plot/track.py](plot/track.py#L333)
-
-
----
-
-
-### `load_data(self, clr: Cooler, region: str)`
-
-**Returns:** `'ISTrack'`
-
-
-Load insulation score data aligned with cooler bins.
-
-Args:
-    clr: Cooler object for bin information.
-    region: Genomic region.
-
-Returns:
-    self: Returns self for method chaining.
-
-
-**Source:** Line 554 in [plot/track.py](plot/track.py#L554)
-
-
----
-
-
-### `load_data(self, region: str, clr: Optional[Cooler]=None)`
-
-**Returns:** `'HeatmapTrack'`
-
-
-Load contact matrix from cooler file.
-
-Args:
-    region: Genomic region.
-    clr: Optional Cooler object. If not provided, will create from cool_path.
-
-Returns:
-    self: Returns self for method chaining.
-
-
-**Source:** Line 690 in [plot/track.py](plot/track.py#L690)
-
-
----
-
-
-### `load_data(self, clr: Optional[Cooler]=None, region: Optional[str]=None, bins: Optional[pd.DataFrame]=None)`
-
-**Returns:** `'MarkTrack'`
-
-
-Load cooler data for coordinate conversion.
-
-Args:
-    clr: Cooler object.
-    region: Genomic region (used to filter marks).
-    bins: Optional bins DataFrame. If not provided, will fetch from clr.
-
-Returns:
-    self: Returns self for method chaining.
-
-
-**Source:** Line 836 in [plot/track.py](plot/track.py#L836)
-
-
----
-
-
-### `load_data(self, region: str, clr: Optional[Cooler]=None)`
-
-**Returns:** `'TrapezoidHeatmapTrack'`
-
-
-Load and process trapezoid heatmap data.
-
-Args:
-    region: Genomic region.
-    clr: Optional Cooler object. If not provided, will create from cool_path.
-
-Returns:
-    self: Returns self for method chaining.
-
-
-**Source:** Line 1097 in [plot/track.py](plot/track.py#L1097)
-
-
----
-
-
-### `load_data(self, region: str)`
-
-**Returns:** `'GeneTrack'`
-
-
-Load gene annotation data for a genomic region.
-
-Args:
-    region: Genomic region (e.g., "chr1:1000000-5000000").
-
-Returns:
-    self: Returns self for method chaining.
-
-
-**Source:** Line 1489 in [plot/track.py](plot/track.py#L1489)
+### `plot_arc_track(data: Union[str, Path, pd.DataFrame], region: str, title: Optional[str]=None, width: int=1000, height: int=260, output_path: Optional[Union[str, Path]]=None, **arc_kwargs)`
+
+**Returns:** `go.Figure`
+
+
+Plot BEDPE links as a standalone genomic arc track.
+
+Parameters
+----------
+data : str, Path, or pandas.DataFrame
+    BEDPE-like table accepted by :class:`ArcTrack`. The first six columns
+    are chrom1, start1, end1, chrom2, start2, and end2. Optional score
+    controls default arc width, and optional info supplies Plotly line
+    attributes as a dict/JSON/Python-literal string.
+region : str
+    Genomic region to show, for example "chr1:0-5000000".
+title : str, optional
+    Figure title. If None, a title is generated from region.
+width, height : int, optional
+    Figure size in pixels. Defaults are 1000 by 260.
+output_path : str or Path, optional
+    PNG output path. If provided, the figure is written to this path.
+**arc_kwargs
+    Additional keyword arguments passed to :class:`ArcTrack`.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    The generated arc track figure.
+
+
+**Source:** Line 957 in [plot/track.py](plot/track.py#L957)
 
 
 ---
@@ -9520,13 +7725,13 @@ implementation. Planned improvements include:
 - Better visual integration with exon/intron structures
 
 
-**Source:** Line 1997 in [plot/track.py](plot/track.py#L1997)
+**Source:** Line 2979 in [plot/track.py](plot/track.py#L2979)
 
 
 ---
 
 
-### `plot_gene_track_with_heatmap(annotation_file: Union[str, Path], region: str, heatmap_data: Optional[pd.DataFrame]=None, heatmap_title: Optional[str]=None, gene_track_height: int=300, heatmap_height: int=400)`
+### `plot_gene_track_with_heatmap(annotation_file: Union[str, Path], region: str, heatmap_data: Optional[pd.DataFrame]=None, heatmap_title: Optional[str]=None, gene_track_height: int=300, heatmap_height: int=400, **kwargs)`
 
 **Returns:** `go.Figure`
 
@@ -9556,13 +7761,13 @@ plotly.graph_objects.Figure
     Combined figure with heatmap and gene track.
 
 
-**Source:** Line 2198 in [plot/track.py](plot/track.py#L2198)
+**Source:** Line 3180 in [plot/track.py](plot/track.py#L3180)
 
 
 ---
 
 
-### `plot_genome_heatmap(genome_data, chromosomes=None)`
+### `plot_genome_heatmap(genome_data, chromosomes=None, **kwargs)`
 
 
 Heatmap genome wide data. Sepaarate chromosomes by vertical lines and add chromosome names.
@@ -9574,19 +7779,63 @@ Output:
     fig: plotly.graph_objs._figure.Figure
 
 
-**Source:** Line 1291 in [plot/track.py](plot/track.py#L1291)
+**Source:** Line 2273 in [plot/track.py](plot/track.py#L2273)
 
 
 ---
 
 
-### `plot_genome_scatter(genome_data, chromosomes=None, value_cols=None, shift_unit=0.05, shift_threshold=100, chorm_label_shift=0.05, y_extra_expansion=0.1, range_y=None)`
+### `plot_genome_phased_read_count_track(phased_read_counts, region=None, output_path: Optional[Union[str, Path]]=None, title: str='phased_read_count', count_cols: Tuple[str, ...]=('ref', 'alt', 'other'), colors: Optional[Dict[str, str]]=None, y_cap_quantile: float=0.995, width: int=1400, height: int=420)`
+
+
+Plot a genome-wide phased read-count track.
+
+This function is intended for internal phased-read count tables rather than
+standard signal files such as bigWig. The input table must contain
+chromosome/position coordinates and phased count columns.
+
+Parameters
+----------
+phased_read_counts : pandas.DataFrame
+    Table with chromosome, position, ref, alt, and other columns. The
+    aliases chrom and pos are accepted. Optional start_pos and end_pos
+    columns are used for interval hover text and region filtering.
+region : str or tuple, optional
+    Region to plot, either "chr:start-end" or (chrom, start, end). If None,
+    all rows are shown with a genome-wide bin index when multiple
+    chromosomes are present.
+output_path : str or Path, optional
+    PNG path. If provided, the figure is written to this path.
+title : str, optional
+    Figure title.
+count_cols : tuple of str, optional
+    Count columns to draw. Default is ("ref", "alt", "other").
+colors : dict, optional
+    Mapping from count column to trace color.
+y_cap_quantile : float, optional
+    Quantile used to cap the displayed y-axis. Default 0.995.
+width, height : int, optional
+    PNG export size in pixels when output_path is provided.
+
+Returns
+-------
+plotly.graph_objects.Figure
+    The generated read-count track figure.
+
+
+**Source:** Line 2084 in [plot/track.py](plot/track.py#L2084)
+
+
+---
+
+
+### `plot_genome_scatter(genome_data, chromosomes=None, value_cols=None, shift_unit=0.05, shift_threshold=100, chorm_label_shift=0.05, y_extra_expansion=0.1, range_y=None, **kwargs)`
 
 
 Scatter genome wide data. Sepaarate chromosomes by vertical lines and add chromosome names.
 TODO: add real positions, now only add 1,2,3,4... as x axis.
 Input:
-    genome_data: pd.DataFrame, index is multiindex with level 0 as chromosome names 
+    genome_data: pd.DataFrame, index is multiindex with level 0 as chromosome names
         and level 1 as start position. First column is the data to plot.
         Will sort the index first. To plot chromosome
         according to your desired order, set the index level 0 as ordered category.
@@ -9599,189 +7848,34 @@ Output:
     fig: plotly.graph_objs._figure.Figure
 
 
-**Source:** Line 1240 in [plot/track.py](plot/track.py#L1240)
+**Source:** Line 2222 in [plot/track.py](plot/track.py#L2222)
 
 
 ---
 
 
-### `render(self, fig, row: int, col: int)`
+### `resolve_state_palette(states: List[str], palette: Union[str, Dict[str, str]]='auto')`
 
+**Returns:** `Dict[str, str]`
 
-Render the track onto a figure.
 
-Args:
-    fig: Plotly figure to add traces to.
-    row: Row position in subplot grid.
-    col: Column position in subplot grid.
-    **kwargs: Additional rendering parameters.
+Resolve state labels to colors using a built-in or custom palette.
 
-Returns:
-    fig: Modified figure with track added.
+Parameters
+----------
+states : list of str
+    State labels in desired legend order.
+palette : {"auto", "chromhmm_15", "chromhmm_18"} or dict, optional
+    Named built-in palette or a custom state-to-color mapping. Missing
+    labels fall back to Plotly's G10 qualitative sequence.
 
+Returns
+-------
+dict
+    Mapping from every input state label to a hex color.
 
-**Source:** Line 108 in [plot/track.py](plot/track.py#L108)
 
-
----
-
-
-### `render(self, fig, row: int, col: int)`
-
-**Returns:** `go.Figure`
-
-
-Render eigenvector track as bar plot.
-
-Args:
-    fig: Plotly figure to add traces to.
-    row: Row position in subplot grid.
-    col: Column position in subplot grid.
-    **kwargs: Additional parameters (width, showlegend, etc.).
-
-Returns:
-    fig: Modified figure with track added.
-
-
-**Source:** Line 207 in [plot/track.py](plot/track.py#L207)
-
-
----
-
-
-### `render(self, fig, row: int, col: int)`
-
-**Returns:** `go.Figure`
-
-
-Render bigWig signal as bar plot.
-
-Args:
-    fig: Plotly figure to add traces to.
-    row: Row position in subplot grid.
-    col: Column position in subplot grid.
-    **kwargs: Additional parameters (width, showlegend, etc.).
-
-Returns:
-    fig: Modified figure with track added.
-
-
-**Source:** Line 414 in [plot/track.py](plot/track.py#L414)
-
-
----
-
-
-### `render(self, fig, row: int, col: int)`
-
-**Returns:** `go.Figure`
-
-
-Render insulation score track as line plot.
-
-Args:
-    fig: Plotly figure to add traces to.
-    row: Row position in subplot grid.
-    col: Column position in subplot grid.
-    **kwargs: Additional parameters (line width, etc.).
-
-Returns:
-    fig: Modified figure with track added.
-
-
-**Source:** Line 577 in [plot/track.py](plot/track.py#L577)
-
-
----
-
-
-### `render(self, fig, row: int, col: int)`
-
-**Returns:** `go.Figure`
-
-
-Render contact matrix as heatmap.
-
-Args:
-    fig: Plotly figure to add traces to.
-    row: Row position in subplot grid.
-    col: Column position in subplot grid.
-    **kwargs: Additional parameters for go.Heatmap.
-
-Returns:
-    fig: Modified figure with track added.
-
-
-**Source:** Line 708 in [plot/track.py](plot/track.py#L708)
-
-
----
-
-
-### `render(self, fig, row: int, col: int)`
-
-**Returns:** `go.Figure`
-
-
-Render marks as shapes on the figure.
-
-Args:
-    fig: Plotly figure to add shapes to.
-    row: Row position in subplot grid.
-    col: Column position in subplot grid.
-    **kwargs: Additional parameters (ignored).
-
-Returns:
-    fig: Modified figure with marks added.
-
-
-**Source:** Line 860 in [plot/track.py](plot/track.py#L860)
-
-
----
-
-
-### `render(self, fig, row: int, col: int)`
-
-**Returns:** `go.Figure`
-
-
-Render trapezoid heatmap.
-
-Args:
-    fig: Plotly figure to add traces to.
-    row: Row position in subplot grid.
-    col: Column position in subplot grid.
-    **kwargs: Additional parameters for go.Heatmap.
-
-Returns:
-    fig: Modified figure with track added.
-
-
-**Source:** Line 1143 in [plot/track.py](plot/track.py#L1143)
-
-
----
-
-
-### `render(self, fig, row: int, col: int)`
-
-**Returns:** `go.Figure`
-
-
-Render gene track as shapes and annotations.
-
-Args:
-    fig: Plotly figure to add traces to.
-    row: Row position in subplot grid.
-    col: Column position in subplot grid.
-    **kwargs: Additional parameters.
-
-Returns:
-    fig: Modified figure with track added.
-
-
-**Source:** Line 1623 in [plot/track.py](plot/track.py#L1623)
+**Source:** Line 432 in [plot/track.py](plot/track.py#L432)
 
 
 ---
@@ -9793,304 +7887,7 @@ Returns:
 No documentation available.
 
 
-**Source:** Line 1222 in [plot/track.py](plot/track.py#L1222)
-
-
----
-
-
-## plot.track_composer
-
-**File:** `plot/track_composer.py`
-
-**Public functions:** 10
-
-
-### `add_track(self, track: 'Track', row: int, col: int, height_ratio: Optional[float]=None)`
-
-**Returns:** `'TrackComposer'`
-
-
-Add a track to the composer at specified position.
-
-Args:
-    track: Track instance to add.
-    row: Row position (1-indexed).
-    col: Column position (1-indexed).
-    height_ratio: Optional height ratio override for the track's row.
-
-Returns:
-    self: Returns self for method chaining.
-
-Example:
-    >>> eigen = EigenTrack("sample.vecs")
-    >>> composer.add_track(eigen, row=2, col=1)
-
-
-**Source:** Line 100 in [plot/track_composer.py](plot/track_composer.py#L100)
-
-
----
-
-
-### `build(self, region: str, title: str='', clr: Optional['Cooler']=None)`
-
-**Returns:** `Figure`
-
-
-Build the complete figure with all tracks.
-
-Args:
-    region: Genomic region for all tracks (e.g., "chr1:1000000-5000000").
-    title: Figure title.
-    clr: Optional Cooler object shared across tracks.
-    **layout_kwargs: Additional layout parameters.
-
-Returns:
-    Figure: Assembled plotly figure.
-
-Raises:
-    ValueError: If no tracks have been added.
-
-Example:
-    >>> fig = composer.build(
-    ...     region="chr1:1000000-5000000",
-    ...     title="Hi-C Analysis"
-    ... )
-
-
-**Source:** Line 131 in [plot/track_composer.py](plot/track_composer.py#L131)
-
-
----
-
-
-### `fig(self)`
-
-**Returns:** `Optional[Figure]`
-
-
-Get the assembled figure.
-
-Returns:
-    The assembled plotly figure, or None if build() has not been called.
-
-
-**Source:** Line 461 in [plot/track_composer.py](plot/track_composer.py#L461)
-
-
----
-
-
-### `for_cool_with_tracks(cls, n_tracks: int, heatmap_height: float=10, track_heights: Optional[List[float]]=None)`
-
-**Returns:** `'TrackComposer'`
-
-
-Create composer for Hi-C contact heatmap (with optional tiling) + tracks.
-
-Creates a vertical layout with:
-- Row 1: Hi-C contact matrix heatmap (can be tiling of two samples)
-- Rows 2 to n_tracks+1: Additional tracks (BigWig, Gene, Eigen, IS, etc.)
-
-This is similar to for_heatmap_with_tracks() but with different default
-spacing optimized for Hi-C contact matrix visualization.
-
-Args:
-    n_tracks: Number of tracks below the heatmap.
-    heatmap_height: Relative height of heatmap row. Default 10.
-    track_heights: List of height ratios for each track.
-        If None, all tracks have equal height of 2.
-    **kwargs: Additional LayoutConfig parameters.
-
-Returns:
-    TrackComposer: Configured composer instance.
-
-Example:
-    >>> composer = TrackComposer.for_cool_with_tracks(
-    ...     n_tracks=3,
-    ...     heatmap_height=10,
-    ...     track_heights=[2, 2, 3]  # gene track taller
-    ... )
-    >>> composer.add_track(heatmap, row=1, col=1)
-    >>> composer.add_track(bw_track1, row=2, col=1)
-    >>> composer.add_track(bw_track2, row=3, col=1)
-    >>> composer.add_track(gene_track, row=4, col=1)
-
-
-**Source:** Line 404 in [plot/track_composer.py](plot/track_composer.py#L404)
-
-
----
-
-
-### `for_heatmap_with_tracks(cls, n_tracks: int, heatmap_height: float=10, track_height: float=2)`
-
-**Returns:** `'TrackComposer'`
-
-
-Create composer for heatmap with multiple tracks below.
-
-Creates a vertical layout with heatmap on top and specified
-number of tracks below.
-
-Args:
-    n_tracks: Number of tracks below the heatmap.
-    heatmap_height: Relative height of heatmap row. Default 10.
-    track_height: Relative height of each track row. Default 2.
-    **kwargs: Additional LayoutConfig parameters.
-
-Returns:
-    TrackComposer: Configured composer instance.
-
-Example:
-    >>> composer = TrackComposer.for_heatmap_with_tracks(n_tracks=3)
-    >>> composer.add_track(heatmap, row=1, col=1)
-    >>> composer.add_track(track1, row=2, col=1)
-    >>> composer.add_track(track2, row=3, col=1)
-    >>> composer.add_track(track3, row=4, col=1)
-
-
-**Source:** Line 365 in [plot/track_composer.py](plot/track_composer.py#L365)
-
-
----
-
-
-### `for_tiling_compartment(cls, row_heights: Optional[List[float]]=None, col_widths: Optional[List[float]]=None)`
-
-**Returns:** `'TrackComposer'`
-
-
-Create composer for tiling compartment layout.
-
-Creates a 2x2 grid optimized for displaying two triangular
-contact matrices with eigenvector tracks on left and bottom.
-
-Args:
-    row_heights: Optional override for row heights. Default [10, 1].
-    col_widths: Optional override for column widths. Default [1, 10].
-    **kwargs: Additional LayoutConfig parameters.
-
-Returns:
-    TrackComposer: Configured composer instance.
-
-Example:
-    >>> composer = TrackComposer.for_tiling_compartment()
-    >>> composer.add_track(heatmap, row=1, col=2)
-    >>> composer.add_track(eigen_left, row=1, col=1)
-    >>> composer.add_track(eigen_bottom, row=2, col=2)
-
-
-**Source:** Line 238 in [plot/track_composer.py](plot/track_composer.py#L238)
-
-
----
-
-
-### `for_trapezoid_2tracks(cls, row_heights: Optional[List[float]]=None)`
-
-**Returns:** `'TrackComposer'`
-
-
-Create composer for trapezoid heatmap with two tracks.
-
-Creates a 3-row vertical layout for trapezoid compartment
-heatmap with two eigenvector tracks below.
-
-Args:
-    row_heights: Optional override for row heights. Default [6, 2, 2].
-    **kwargs: Additional LayoutConfig parameters.
-
-Returns:
-    TrackComposer: Configured composer instance.
-
-Example:
-    >>> composer = TrackComposer.for_trapezoid_2tracks()
-    >>> composer.add_track(trapezoid, row=1, col=1)
-    >>> composer.add_track(eigen1, row=2, col=1)
-    >>> composer.add_track(eigen2, row=3, col=1)
-
-
-**Source:** Line 274 in [plot/track_composer.py](plot/track_composer.py#L274)
-
-
----
-
-
-### `for_trapezoid_with_tracks(cls, n_tracks: int, trapezoid_height: float=6, track_heights: Optional[List[float]]=None, vertical_spacing: float=0.05)`
-
-**Returns:** `'TrackComposer'`
-
-
-Create composer for trapezoid heatmap with arbitrary tracks.
-
-Creates a vertical layout with:
-- Row 1: Trapezoid compartment heatmap
-- Rows 2 to n_tracks+1: Additional tracks (bigWig, gene, etc.)
-
-Args:
-    n_tracks: Number of additional tracks below the trapezoid.
-    trapezoid_height: Height ratio for trapezoid row. Default 6.
-    track_heights: List of height ratios for each track.
-        If None, all tracks have equal height of 2.
-    vertical_spacing: Spacing between rows. Default 0.05.
-    **kwargs: Additional LayoutConfig parameters.
-
-Returns:
-    TrackComposer: Configured composer instance.
-
-Example:
-    >>> composer = TrackComposer.for_trapezoid_with_tracks(
-    ...     n_tracks=3,
-    ...     trapezoid_height=6,
-    ...     track_heights=[2, 2, 3]  # gene track taller
-    ... )
-    >>> composer.add_track(trapezoid, row=1, col=1)
-    >>> composer.add_track(bw_track1, row=2, col=1)
-    >>> composer.add_track(bw_track2, row=3, col=1)
-    >>> composer.add_track(gene_track, row=4, col=1)
-
-
-**Source:** Line 308 in [plot/track_composer.py](plot/track_composer.py#L308)
-
-
----
-
-
-### `get_track(self, row: int, col: int)`
-
-**Returns:** `Optional['Track']`
-
-
-Get track at specified position.
-
-Args:
-    row: Row position.
-    col: Column position.
-
-Returns:
-    Track at position, or None if no track exists.
-
-
-**Source:** Line 469 in [plot/track_composer.py](plot/track_composer.py#L469)
-
-
----
-
-
-### `list_tracks(self)`
-
-**Returns:** `List[Tuple[int, int, str]]`
-
-
-List all tracks with their positions.
-
-Returns:
-    List of (row, col, track_name) tuples.
-
-
-**Source:** Line 481 in [plot/track_composer.py](plot/track_composer.py#L481)
+**Source:** Line 2204 in [plot/track.py](plot/track.py#L2204)
 
 
 ---
@@ -10219,7 +8016,7 @@ Output:
 ### `filling_l2r_mpl(rows, cols, features)`
 
 
-Helper to iterate within row-cols. 
+Helper to iterate within row-cols.
 Mpl_flavor, starts with 0.
 
 
@@ -10346,7 +8143,7 @@ TODO:
 ---
 
 
-### `pcolormesh_45deg(ax, matrix_c, start=0, resolution=1)`
+### `pcolormesh_45deg(ax, matrix_c, start=0, resolution=1, *args, **kwargs)`
 
 
 Helper to plot a matrix with 45 degree angle.
@@ -10476,7 +8273,7 @@ Return scaled dataframe.
 Input:
     df: pandas dataframe
     axis: 0 or 1. 0 to scale each col(col as feature), 1 to scale each row(row as feature).
-    with_std: whether doing std scaling. No consensus but 
+    with_std: whether doing std scaling. No consensus but
         usually don't scale it in omic-biology.
 Output:
     scaled dataframe.
@@ -10655,7 +8452,7 @@ Return a path to src's ref
 
 **File:** `sam.py`
 
-**Public functions:** 12
+**Public functions:** 7
 
 
 ### `convert_alignment_to_entry(alignment)`
@@ -10778,49 +8575,6 @@ Returns:
 ---
 
 
-### `find_intv(a: List, x: int)`
-
-**Returns:** `int`
-
-
-Find the interval containing a given value using binary search.
-
-Args:
-    a: List of intervals
-    x: Value to search for
-
-Returns:
-    Index of the interval containing x, or -1 if not found
-
-
-**Source:** Line 97 in [sam.py](sam.py#L97)
-
-
----
-
-
-### `find_ovlp(a: List, st: int, en: int)`
-
-**Returns:** `List`
-
-
-Find intervals overlapping with a given range.
-
-Args:
-    a: List of intervals [start, end, ...]
-    st: Start of the query range
-    en: End of the query range
-
-Returns:
-    List of overlapping intervals
-
-
-**Source:** Line 138 in [sam.py](sam.py#L138)
-
-
----
-
-
 ### `get_file_type(file_path)`
 
 
@@ -10834,24 +8588,6 @@ Returns:
 
 
 **Source:** Line 181 in [sam.py](sam.py#L181)
-
-
----
-
-
-### `index_end(a: List, sorted: bool=True)`
-
-**Returns:** `None`
-
-
-Add index information for efficient overlap finding.
-
-Args:
-    a: List of intervals [start, end, ...]
-    sorted: Whether the intervals are already sorted
-
-
-**Source:** Line 63 in [sam.py](sam.py#L63)
 
 
 ---
@@ -10871,24 +8607,6 @@ Returns:
 
 
 **Source:** Line 248 in [sam.py](sam.py#L248)
-
-
----
-
-
-### `merge(a: List, sorted: bool=True)`
-
-**Returns:** `None`
-
-
-Merge overlapping intervals.
-
-Args:
-    a: List of intervals to merge, each interval is [start, end]
-    sorted: Whether the intervals are already sorted
-
-
-**Source:** Line 34 in [sam.py](sam.py#L34)
 
 
 ---
@@ -10914,46 +8632,11 @@ Returns:
 ---
 
 
-### `sort(a: List)`
-
-**Returns:** `None`
-
-
-Sort intervals based on their coordinates.
-
-Args:
-    a: List of intervals to sort. Each interval can be a number or [start, end] pair.
-
-
-**Source:** Line 17 in [sam.py](sam.py#L17)
-
-
----
-
-
 ## scAB_embedding
 
 **File:** `scAB_embedding.py`
 
-**Public functions:** 9
-
-
-### `CpG_stat(acc, x)`
-
-
-Add value to CpG sum and neighbor count.
-Input:
-    acc: original stat, 2-tuple, (CpG_sum, n_neighbors)
-    x: input_line, (index, neighbor CpG value)
-Ouput:
-    new_acc: updated stat
-Note: if nan, will be ignored
-
-
-**Source:** Line 186 in [scAB_embedding.py](scAB_embedding.py#L186)
-
-
----
+**Public functions:** 8
 
 
 ### `calc_color2(filesp, file_col, color_file, binsize, rank_norm=True, merge_haplotypes=True, dropXY=True, dupref=False, col_thresh=0.9, row_thresh=0.9, color_fill=True, threads=24)`
@@ -11152,7 +8835,7 @@ No documentation available.
 
 **File:** `sequence.py`
 
-**Public functions:** 11
+**Public functions:** 10
 
 
 ### `add_suffix_to_fastq(input_file: str, output_file: str, skip_incomplete=True)`
@@ -11186,7 +8869,7 @@ Compare paired-end FASTQ files and return statistics.
 Args:
     fq1_path (str): Path to FASTQ file 1 (R1)
     fq2_path (str): Path to FASTQ file 2 (R2)
-    
+
 Returns:
     dict: Statistics including:
         'total_fq1' (int): Total reads in FQ1
@@ -11221,18 +8904,6 @@ Note:
 
 
 **Source:** Line 147 in [sequence.py](sequence.py#L147)
-
-
----
-
-
-### `count_cg(seq)`
-
-
-No documentation available.
-
-
-**Source:** Line 166 in [sequence.py](sequence.py#L166)
 
 
 ---
@@ -11282,7 +8953,7 @@ Parse a FASTQ ID line into (prefix, end) tuple or None if invalid.
 
 Args:
     line (str): The FASTQ ID line (e.g., '@M06168:... 1:N:0:1' or '@E250109998L1C001R00300005452/1')
-    
+
 Returns:
     tuple or None: (prefix, end) if valid, else None.
         prefix: The read identifier prefix (e.g., '@M06168:...' or '@E250109998L1C001R00300005452').
@@ -11343,7 +9014,7 @@ This function correctly identifies ID lines by tracking the 4-line FASTQ structu
 
 Args:
     file_path (str): Path to the FASTQ file (can be gzipped)
-    
+
 Returns:
     dict: {prefix: end} mapping for all valid ID lines
 
@@ -11508,7 +9179,7 @@ Args:
     ret3d (bool, optional): If True, return transformed coordinates instead of the transformation matrix. Defaults to False.
 
 Returns:
-    np.ndarray: 
+    np.ndarray:
         - If ret3d=False: 4x4 homogeneous transformation matrix M
         - If ret3d=True: Transformed coordinates of structure 2 (n_points × 3)
 
@@ -11518,10 +9189,10 @@ Raises:
 Example:
     # Return transformation matrix
     M = align_structures(df1, df2)
-    
+
     # Return transformed coordinates (aggregated by chromosome)
     Q_aligned = align_structures(df1, df2, ret3d=True, agg_chrom=True)
-    
+
     # Verify equivalence
     assert np.allclose(Q_aligned, (M @ np.hstack([df2.values, np.ones((len(df2),1))]).T).T[:,:3])
 
@@ -11683,7 +9354,7 @@ Process multiple samples in parallel to calculate strong constraint violations.
 TODO: make explicit cache
 
 Input:
-    sample_table (pd.DataFrame): DataFrame containing sample metadata with columns 
+    sample_table (pd.DataFrame): DataFrame containing sample metadata with columns
                                '20k_g_struct1' and 'pairs_c12' for file paths.
     genome (str): Genome assembly identifier (e.g., 'mm10').
     binsize (int): Chromosome bin size in base pairs.
@@ -11833,7 +9504,7 @@ Take a photo. The plate way!
 **Public functions:** 16
 
 
-### `consecutive_slice_pileup_bf(primary_views, targets, sample_table, features, step=2, upper=6, lower=-6, axis='ht')`
+### `consecutive_slice_pileup_bf(primary_views, targets, sample_table, features, step=2, upper=6, lower=-6, axis='ht', **args)`
 
 
 No documentation available.
@@ -11845,7 +9516,7 @@ No documentation available.
 ---
 
 
-### `consecutive_slice_pileup_bf_parallel(primary_views, targets, sample_table, features, step=2, upper=6, lower=-6, axis='ht', prefix=None, threads=8)`
+### `consecutive_slice_pileup_bf_parallel(primary_views, targets, sample_table, features, step=2, upper=6, lower=-6, axis='ht', prefix=None, threads=8, **args)`
 
 
 No documentation available.
@@ -11970,7 +9641,7 @@ Input:
     pb_readers:
         reader of feature files := dict(pb_feature name = reader function)
         reader function give a 2-level index series := (chr,pos):value
-        will use a default reader for keys in pb_features that 
+        will use a default reader for keys in pb_features that
     agg: aggregation method; find key in pb_features or columns of features.
     sub: epression for primary views, used for slicing.
     step: bin size
@@ -12002,7 +9673,7 @@ No documentation available.
 ---
 
 
-### `pileup_bf_parallel_task(primary_views, targets, sample_table, features, step, grouping, sub, axis, prefix, key)`
+### `pileup_bf_parallel_task(primary_views, targets, sample_table, features, step, grouping, sub, axis, prefix, key, *args)`
 
 
 No documentation available.
@@ -12091,7 +9762,7 @@ Input:
     sig: 3 iterable, ht,dv, lr
     _3dg: xyz of sample
 Output:
-    new _3dg; columns as head_tail coordinates, 
+    new _3dg; columns as head_tail coordinates,
         dorsal_ventral coordinates,
         left_right coordinates; range 0-1
 
@@ -12215,7 +9886,7 @@ Input:
     extent: size of the box.
     num: number of grids to sampling in each directon.
 Output:
-    dim(num, num, num, 3) ndarray, first three dims represent relative position of the grid point, 
+    dim(num, num, num, 3) ndarray, first three dims represent relative position of the grid point,
     last dim is the real 3D coords of that grid point.
 TODO:
     1. surpport any dim
@@ -12244,24 +9915,7 @@ Check if two vectors are close to each other in same direction or opposite direc
 
 **File:** `territory.py`
 
-**Public functions:** 3
-
-
-### `chrom_stat(acc, x)`
-
-
-Add value to chromosome frequency stat.
-Input:
-    acc: original stat, dict, {chrom: count}, must be well initiated (has all possible chrom names as keys)
-    x: input_line, (index, chromosome name), chromosome name must be in o.keys()
-Ouput:
-    new_acc: updated stat
-
-
-**Source:** Line 54 in [territory.py](territory.py#L54)
-
-
----
+**Public functions:** 2
 
 
 ### `intermingle(_3dg, min_dist=3, n_jobs=12, table=False)`
@@ -12391,7 +10045,7 @@ No documentation available.
 ---
 
 
-### `read_chromsizes(filepath_or, name_patterns=('^chr[0-9]+$', '^chr[XY]$', '^chrM$'), all_names=False)`
+### `read_chromsizes(filepath_or, name_patterns=('^chr[0-9]+$', '^chr[XY]$', '^chrM$'), all_names=False, **kwargs)`
 
 
 Parse a ``<db>.chrom.sizes`` or ``<db>.chromInfo.txt`` file from the UCSC
@@ -12537,7 +10191,7 @@ e.g. 220110_embryo_8EZD5:2021123110 -> 2021123110.
 ---
 
 
-### `gen_adata(qc, cache_dir, rewrite=[], debug=False)`
+### `gen_adata(qc, cache_dir, rewrite=[], debug=False, **args)`
 
 
 Generate anndata object from the QC data.
@@ -12550,7 +10204,7 @@ Input:
     expr: expression matrix
         Generate single expression matrix that contains all (has valid task directory) qc passed samples from qc file.
         qc file must contain "task_dirp" col and use sample ID as index.
-        fix sample ID with "_" for umi_tools limitation. 
+        fix sample ID with "_" for umi_tools limitation.
     g1: phase 0 expression matrix
     g2: phase 1 expression matrix
     velo: velocity matrix
@@ -12592,7 +10246,7 @@ Generate compartment strength table from pre-computed files.
 
 **File:** `wet/afbb.py`
 
-**Public functions:** 19
+**Public functions:** 18
 
 
 ### `add_extra(annote)`
@@ -12618,7 +10272,7 @@ Add sample information from JSON files to an existing annotation DataFrame.
 Args:
     annote: Existing annotation DataFrame
     rd: Directory containing JSON files with additional sample information
-    
+
 Returns:
     Combined DataFrame with original annotations and new sample information
 
@@ -12775,7 +10429,7 @@ Each JSON file should contain sample information as key-value pairs.
 
 Args:
     log_d: Directory containing JSON files with sample information
-    
+
 Returns:
     DataFrame where columns are sample IDs and rows are attributes
 
@@ -12793,7 +10447,7 @@ List all files in a directory sorted by modification time (oldest first).
 
 Args:
     folder: Path to directory to scan
-    
+
 Returns:
     List of full file paths sorted by modification time
 
@@ -12843,18 +10497,6 @@ Output:
 
 
 **Source:** Line 151 in [wet/afbb.py](wet/afbb.py#L151)
-
-
----
-
-
-### `multi_re_(logfile)`
-
-
-No documentation available.
-
-
-**Source:** Line 163 in [wet/afbb.py](wet/afbb.py#L163)
 
 
 ---
@@ -13003,7 +10645,7 @@ int
 
 **File:** `wet/exp_record.py`
 
-**Public functions:** 10
+**Public functions:** 6
 
 
 ### `add_cell_type(annote)`
@@ -13047,18 +10689,6 @@ Input must have a "group" col.
 ---
 
 
-### `d2(time_str)`
-
-
-No documentation available.
-
-
-**Source:** Line 126 in [wet/exp_record.py](wet/exp_record.py#L126)
-
-
----
-
-
 ### `drange(a, b, seats)`
 
 
@@ -13066,42 +10696,6 @@ No documentation available.
 
 
 **Source:** Line 12 in [wet/exp_record.py](wet/exp_record.py#L12)
-
-
----
-
-
-### `find_day(group)`
-
-
-Find day mark.
-
-
-**Source:** Line 147 in [wet/exp_record.py](wet/exp_record.py#L147)
-
-
----
-
-
-### `find_time_str(group)`
-
-
-Find time substring in sample's group_string.
-
-
-**Source:** Line 133 in [wet/exp_record.py](wet/exp_record.py#L133)
-
-
----
-
-
-### `get_cell_type(grp)`
-
-
-No documentation available.
-
-
-**Source:** Line 220 in [wet/exp_record.py](wet/exp_record.py#L220)
 
 
 ---
@@ -13129,7 +10723,7 @@ Plot experiment time with pseudotime.
 (adata plot; scatter plot;)
 Input:
     adata: AnnData object with "group" col in obs.
-    ps_col: obs col storing pseudotime to plot real time with. 
+    ps_col: obs col storing pseudotime to plot real time with.
     hour: sort by real experiment hour; False to use relative ordering.
 
 
@@ -13185,7 +10779,7 @@ Find last batch number.
 ---
 
 
-### `merge_meta()`
+### `merge_meta(*dfs)`
 
 
 Merging metadata object.
@@ -13321,7 +10915,7 @@ Output:
 ---
 
 
-### `plot_qc(meta, ccol='contacts', ucol='umis', c_threshold=[150000, 1000000], u_threshold=[10000, 600000])`
+### `plot_qc(meta, ccol='contacts', ucol='umis', c_threshold=[150000, 1000000], u_threshold=[10000, 600000], **kwargs)`
 
 
 No documentation available.
@@ -13333,7 +10927,7 @@ No documentation available.
 ---
 
 
-### `plot_qc(meta, ccol='contacts', ucol='umis', c_threshold=[150000, 1000000], u_threshold=[10000, 600000])`
+### `plot_qc(meta, ccol='contacts', ucol='umis', c_threshold=[150000, 1000000], u_threshold=[10000, 600000], **kwargs)`
 
 
 No documentation available.

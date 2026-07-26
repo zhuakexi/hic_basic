@@ -27,8 +27,8 @@ This directory contains a **complete, auto-generated API reference** for the hic
 
 ## 🔢 Statistics
 
-- **76 modules** documented
-- **528 public functions** indexed
+- **86 modules** documented
+- **510 public functions** indexed
 - **~10,000 lines** of documentation
 - **Auto-generated** from source code
 
@@ -111,7 +111,7 @@ This will:
 
 ```
 hic_basic/
-├── hic_basic/           # Source code (76 modules)
+├── hic_basic/           # Source code
 │   ├── coolstuff.py     # Core functions
 │   ├── hicio.py
 │   ├── plot/
@@ -154,9 +154,9 @@ hic_basic/
 ## 📊 Top Modules by Function Count
 
 1. **coolstuff** (32) - Cooler file operations
-2. **hicio** (31) - I/O and file parsing  
-3. **plot.render** (27) - Rendering utilities
-4. **phasing** (21) - Cell cycle phasing
+2. **hicio** (29) - I/O and file parsing
+3. **plot.hic** (22) - Hi-C plotting
+4. **plot.render** (21) - Legacy rendering utilities
 5. **plot.utils** (20) - Plotting helpers
 
 [See full list in search_api.py --list-modules]

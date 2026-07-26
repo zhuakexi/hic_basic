@@ -80,11 +80,11 @@ This will:
 Popular modules with many public functions:
 
 - **coolstuff** (32 functions) - Cooler file conversions and utilities
-- **hicio** (31 functions) - I/O operations and file parsing
-- **plot.render** (27 functions) - Rendering and visualization
-- **phasing** (21 functions) - Cell cycle phasing analysis
+- **hicio** (29 functions) - I/O operations and file parsing
+- **plot.render** (21 functions) - Legacy rendering and visualization
+- **phasing** (11 functions) - Cell cycle phasing analysis
 - **plot.utils** (20 functions) - Plotting utilities
-- **plot.hic** (18 functions) - Hi-C heatmap plotting
+- **plot.hic** (22 functions) - Hi-C heatmap plotting
 - **data** (18 functions) - Data structures and genome references
 - **DI** (18 functions) - Directionality Index calculations
 
