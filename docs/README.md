@@ -7,6 +7,7 @@ This directory contains auto-generated API reference documentation for the `hic_
 - **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API reference with all public functions
 - **[api_index.json](api_index.json)** - Machine-readable JSON index for programmatic access
 - **[search_api.py](search_api.py)** - Repo-local compatibility wrapper for API search
+- **[STRUCTURE_VIEWER.md](STRUCTURE_VIEWER.md)** - Standalone 3dg viewer, direct renderer, profiles, and Remote SSH usage
 - **[ENVIRONMENT.md](ENVIRONMENT.md)** - Locked Conda setup and dependency maintenance
 - **[CONTAINER.md](CONTAINER.md)** - Minimal container contract and maintained image source
 
@@ -87,7 +88,7 @@ Popular modules with many public functions:
 - **phasing** (11 functions) - Cell cycle phasing analysis
 - **plot.utils** (20 functions) - Plotting utilities
 - **plot.hic** (22 functions) - Hi-C heatmap plotting
-- **data** (18 functions) - Data structures and genome references
+- **visualize.structure** and **visualize.html** - Native 3dg scenes and standalone HTML
 - **DI** (18 functions) - Directionality Index calculations
 
 ## 💡 Tips

@@ -47,6 +47,13 @@ dependencies:
   - {id: open3d, manager: conda, spec: "open3d=0.19.0", distribution: open3d, imports: [open3d], scope: runtime, feature: structure, reason: "3D geometry analysis"}
   - {id: configargparse, manager: conda, spec: "configargparse=1.7.1", distribution: ConfigArgParse, imports: [configargparse], scope: runtime, feature: structure, reason: "Runtime requirement declared by Open3D but omitted from its Conda dependency metadata"}
   - {id: nbformat, manager: conda, spec: "nbformat=5.10.4", distribution: nbformat, imports: [nbformat], scope: runtime, feature: structure, reason: "Runtime requirement declared by Open3D but omitted from its Conda dependency metadata"}
+  - {id: playwright, manager: conda, spec: "playwright=1.58.1", scope: external-tool, feature: structure-render, reason: "Pinned Node driver for deterministic standalone-HTML and 3DG PNG rendering"}
+  - {id: alsa-lib, manager: conda, spec: "alsa-lib=1.2.16.1", scope: external-tool, feature: structure-render, reason: "Runtime library required by Playwright Chromium headless shell"}
+  - {id: at-spi2-atk, manager: conda, spec: "at-spi2-atk=2.38.0", scope: external-tool, feature: structure-render, reason: "ATK bridge required by Playwright Chromium headless shell"}
+  - {id: libgbm, manager: conda, spec: "libgbm=1.0.7", scope: external-tool, feature: structure-render, reason: "Software WebGL buffer management for Playwright Chromium"}
+  - {id: libxkbcommon, manager: conda, spec: "libxkbcommon=1.13.2", scope: external-tool, feature: structure-render, reason: "Keyboard/runtime library required by Playwright Chromium"}
+  - {id: xorg-libxcomposite, manager: conda, spec: "xorg-libxcomposite=0.4.7", scope: external-tool, feature: structure-render, reason: "X11 composition library required by Playwright Chromium"}
+  - {id: xorg-libxdamage, manager: conda, spec: "xorg-libxdamage=1.1.6", scope: external-tool, feature: structure-render, reason: "X11 damage library required by Playwright Chromium"}
   - {id: pymol-open-source, manager: conda, spec: "pymol-open-source=3.1.0", distribution: pymol-open-source, imports: [pymol], scope: runtime, feature: structure, reason: "Headless molecular rendering"}
   - {id: upsetplot, manager: conda, spec: "upsetplot=0.9.0", distribution: UpSetPlot, imports: [upsetplot], scope: runtime, feature: plotting, reason: "Set-intersection plots"}
   - {id: cytoolz, manager: conda, spec: "cytoolz=1.0.1", distribution: cytoolz, imports: [cytoolz], scope: runtime, feature: core, reason: "Iterator utilities"}

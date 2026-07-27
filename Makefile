@@ -1,7 +1,7 @@
 OFFICIAL_ENV := $(shell sed -n '1p' envs/official-name.txt)
 ENV ?= $(shell ./run_in_env.sh python scripts/envctl.py name 2>/dev/null | tail -n 1)
 
-.PHONY: env-bootstrap env-render env-lock env-pip-lock env-create env-install env-check env-test env-snapshot
+.PHONY: env-bootstrap env-render env-lock env-pip-lock env-create env-install env-check env-test env-snapshot renderer-bootstrap
 
 env-bootstrap:
 	./run_in_env.sh --create-env --env $(OFFICIAL_ENV) --file envs/locks/hic-basic-linux-64.lock
@@ -31,3 +31,6 @@ env-test:
 
 env-snapshot:
 	./run_in_env.sh --env $(ENV) python scripts/envctl.py snapshot --output .env-backups/$(ENV).json
+
+renderer-bootstrap:
+	./run_in_env.sh --network internet playwright install --only-shell chromium

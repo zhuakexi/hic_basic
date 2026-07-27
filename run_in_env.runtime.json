@@ -1,6 +1,6 @@
 {
   "backup_path": null,
-  "deployed_at": "2026-07-27T09:44:44.413095Z",
+  "deployed_at": "2026-07-27T12:40:20.585508Z",
   "files": {
     "canonical_driver.py": {
       "role": "canonical_driver",
@@ -20,7 +20,7 @@
     },
     "run_in_env.local.sh": {
       "role": "existing_local_config",
-      "sha256": "454446168dd36a4707888478d1c0ad46a0429fa56e200a31e955a4e6fa0ee592"
+      "sha256": "77dde62a5c47d8819468c7c92ed0dc220ec557896e06bf0e90a9aed1a2931665"
     },
     "run_in_env.sh": {
       "role": "runner",

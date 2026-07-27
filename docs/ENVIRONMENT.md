@@ -75,6 +75,22 @@ pip from replacing Conda-owned NumPy, pandas, xarray, or other compiled stacks.
 Snapshots under `.env-backups/` record actual Conda and Python distribution
 metadata. They are local audit/rollback evidence and are not committed.
 
+## Browser renderer asset
+
+The `structure-render` feature registers and locks Playwright plus Chromium's
+runtime libraries as normal Conda dependencies. The matching headless Chromium
+binary is maintained by Playwright in its user cache rather than inside a Conda
+prefix. Install that binary explicitly after environment creation:
+
+```bash
+make renderer-bootstrap
+```
+
+Direct rendering never performs this download implicitly. A missing or
+incompatible browser therefore fails with the bootstrap command instead of
+changing the environment during a scientific run. The renderer reports the
+Playwright, browser, protocol, Three.js, and WebGL versions with every result.
+
 ## Promotion and rollback
 
 Candidates use `hic_basic-candidate-<lock-sha>`. A promoted environment is

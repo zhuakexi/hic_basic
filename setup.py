@@ -5,7 +5,7 @@ setup(
     version='0.1',
     packages=find_packages(),
     package_data={
-        'hic_basic': ['data/*.json'],
+        'hic_basic': ['data/*.json', 'data/viewer/*'],
     },
     install_requires=[
         # Core dependencies

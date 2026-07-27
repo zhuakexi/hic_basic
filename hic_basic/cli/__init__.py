@@ -6,6 +6,8 @@ from . import (
     download,
     ana_describe,
     api,
+    view3d,
+    render3d,
 )
 
 # To register a new command, append the module to the list below (2/3).
@@ -15,6 +17,8 @@ modules = [
     download,
     ana_describe,
     api,
+    view3d,
+    render3d,
 ]
 
 # To register a new command, define add_arguments and run functions in the module (3/3).

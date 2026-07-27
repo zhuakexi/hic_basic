@@ -2,7 +2,7 @@
 
 *Auto-generated API documentation for public functions*
 
-Total modules with public functions: 86
+Total modules with public functions: 92
 
 ---
 
@@ -24,7 +24,9 @@ Total modules with public functions: 86
 - [cli.api](#cli-api) (2 functions)
 - [cli.download](#cli-download) (2 functions)
 - [cli.render](#cli-render) (3 functions)
+- [cli.render3d](#cli-render3d) (2 functions)
 - [cli.version](#cli-version) (2 functions)
+- [cli.view3d](#cli-view3d) (2 functions)
 - [clustering](#clustering) (1 functions)
 - [compare_pixels](#compare_pixels) (5 functions)
 - [compartment](#compartment) (8 functions)
@@ -85,6 +87,10 @@ Total modules with public functions: 86
 - [structure.utils](#structure-utils) (6 functions)
 - [territory](#territory) (2 functions)
 - [utils](#utils) (8 functions)
+- [visualize.config](#visualize-config) (1 functions)
+- [visualize.html](#visualize-html) (2 functions)
+- [visualize.render](#visualize-render) (1 functions)
+- [visualize.structure](#visualize-structure) (1 functions)
 - [wet.adtools](#wet-adtools) (7 functions)
 - [wet.afbb](#wet-afbb) (18 functions)
 - [wet.exp_record](#wet-exp_record) (6 functions)
@@ -1525,6 +1531,37 @@ No documentation available.
 ---
 
 
+## cli.render3d
+
+**File:** `cli/render3d.py`
+
+**Public functions:** 2
+
+
+### `add_arguments(subparser)`
+
+
+No documentation available.
+
+
+**Source:** Line 24 in [cli/render3d.py](cli/render3d.py#L24)
+
+
+---
+
+
+### `run(args)`
+
+
+No documentation available.
+
+
+**Source:** Line 67 in [cli/render3d.py](cli/render3d.py#L67)
+
+
+---
+
+
 ## cli.version
 
 **File:** `cli/version.py`
@@ -1551,6 +1588,37 @@ No documentation available.
 
 
 **Source:** Line 5 in [cli/version.py](cli/version.py#L5)
+
+
+---
+
+
+## cli.view3d
+
+**File:** `cli/view3d.py`
+
+**Public functions:** 2
+
+
+### `add_arguments(subparser)`
+
+
+No documentation available.
+
+
+**Source:** Line 16 in [cli/view3d.py](cli/view3d.py#L16)
+
+
+---
+
+
+### `run(args)`
+
+
+No documentation available.
+
+
+**Source:** Line 60 in [cli/view3d.py](cli/view3d.py#L60)
 
 
 ---
@@ -10105,6 +10173,190 @@ No documentation available.
 
 
 **Source:** Line 194 in [utils.py](utils.py#L194)
+
+
+---
+
+
+## visualize.config
+
+**File:** `visualize/config.py`
+
+**Public functions:** 1
+
+
+### `load_render_config(value: RenderConfigInput=None)`
+
+**Returns:** `StructureRenderConfig`
+
+
+Load and validate a structure render configuration.
+
+``value`` may be an existing config, a mapping, a JSON string, a JSON file,
+or ``None`` for defaults. Unknown fields and invalid values are rejected.
+
+
+**Source:** Line 350 in [visualize/config.py](visualize/config.py#L350)
+
+
+---
+
+
+## visualize.html
+
+**File:** `visualize/html.py`
+
+**Public functions:** 2
+
+
+### `view_structure(scene: StructureScene, *, title: Optional[str]=None, regions: Optional[Sequence[str]]=None, background: str='#151918', particle_size: float=1.0, bond_size: float=1.0, export_profile: str='molecular-studio-v1', render_config: RenderConfigInput=None)`
+
+**Returns:** `StructureViewer`
+
+
+Create a configurable offline browser viewer for a structure scene.
+
+The returned object is lightweight and does not start a server or renderer.
+Call ``write_html`` to create one portable HTML file. ``regions`` accepts
+chromosome names or inclusive ranges such as ``chr1(mat):0-50Mb``; multiple
+entries are displayed as a union. When supplied, ``render_config`` is the
+authoritative region/profile request embedded for direct PNG rendering;
+the older ``regions`` and ``export_profile`` arguments remain compatible.
+
+
+**Source:** Line 121 in [visualize/html.py](visualize/html.py#L121)
+
+
+---
+
+
+### `write_structure_html(structure: StructureInput, output: Union[str, os.PathLike], *, color: ColorInput='chrom', palette: Optional[Mapping[Any, Any]]=None, cmap: str='viridis', vmin: Optional[float]=None, vmax: Optional[float]=None, missing_color: Any='#aeb7ba', polymer_bonds: bool=True, max_bond_gap: int=1000000, dataset_name: Optional[str]=None, metadata: Optional[Mapping[str, Any]]=None, title: Optional[str]=None, regions: Optional[Sequence[str]]=None, background: str='#151918', particle_size: float=1.0, bond_size: float=1.0, export_profile: str='molecular-studio-v1', render_config: RenderConfigInput=None, overwrite: bool=True)`
+
+**Returns:** `Path`
+
+
+Build a 3D genome scene and write it as one portable interactive HTML.
+
+This convenience API performs no external process invocation. JavaScript,
+CSS, typed arrays, colors, and polymer bonds are embedded in the output, so
+the result can be downloaded and opened directly or served over Remote SSH.
+``render_config`` embeds the same typed request accepted by
+``render_structure_png``.
+
+Returns
+-------
+pathlib.Path
+    Path to the atomically written HTML artifact.
+
+
+**Source:** Line 153 in [visualize/html.py](visualize/html.py#L153)
+
+
+---
+
+
+## visualize.render
+
+**File:** `visualize/render.py`
+
+**Public functions:** 1
+
+
+### `render_structure_png(source: RenderSource, output: Union[str, os.PathLike], *, config: RenderConfigInput=None, backend: Optional[BrowserBackendConfig]=None, overwrite: bool=True)`
+
+**Returns:** `RenderResult`
+
+
+Render a 3dg structure, scene, viewer, or standalone HTML to PNG.
+
+The function uses the repository-pinned Playwright runtime and a cached
+headless Chromium. It does not start a server, open a GUI, use the network,
+or download browser assets. ``config`` accepts a ``StructureRenderConfig``,
+a strict mapping, JSON text, or a JSON file path. A ``StructureViewer``
+supplies its embedded config when ``config`` is omitted.
+
+Parameters
+----------
+source
+    A 3dg path, native structure DataFrame, ``StructureScene``,
+    ``StructureViewer``, or compatible standalone viewer HTML.
+output
+    Destination PNG path. The image is validated before atomic replacement.
+config
+    Reproducible view, region, layer, profile, style, and raster settings.
+backend
+    Optional browser executable/module paths, timeout, viewport, and
+    software-rendering policy. These execution details are kept separate
+    from the scientific render configuration.
+overwrite
+    Whether an existing output may be replaced.
+
+Returns
+-------
+RenderResult
+    Output dimensions, file size, scene checksum, and backend/render report.
+
+Notes
+-----
+Install the matching Chromium asset once with
+``./run_in_env.sh --network internet playwright install --only-shell chromium``
+when the backend reports that its executable is missing.
+
+
+**Source:** Line 54 in [visualize/render.py](visualize/render.py#L54)
+
+
+---
+
+
+## visualize.structure
+
+**File:** `visualize/structure.py`
+
+**Public functions:** 1
+
+
+### `structure_scene(structure: StructureInput, *, color: ColorInput='chrom', palette: Optional[Mapping[Any, Any]]=None, cmap: str='viridis', vmin: Optional[float]=None, vmax: Optional[float]=None, missing_color: Any='#aeb7ba', polymer_bonds: bool=True, max_bond_gap: int=1000000, dataset_name: Optional[str]=None, metadata: Optional[Mapping[str, Any]]=None)`
+
+**Returns:** `StructureScene`
+
+
+Build a renderer-independent scene from a 3dg path or native DataFrame.
+
+Parameters
+----------
+structure
+    A five-column ``.3dg`` path or a DataFrame. DataFrames may use a
+    ``(chr, pos)`` MultiIndex with ``x, y, z`` columns, or flat
+    ``chrom/chr, pos, x, y, z`` columns.
+color
+    ``"chrom"`` for chromosome territory colors, a DataFrame column name,
+    an ``N x 3`` RGB array, or a length-N sequence of color specifications.
+    Numeric columns use ``cmap``; categorical columns use ``palette`` or a
+    deterministic categorical palette.
+palette
+    Optional category-to-color mapping. With ``color="chrom"``, keys are
+    chromosome names.
+cmap, vmin, vmax, missing_color
+    Continuous color normalization and missing-value controls.
+polymer_bonds
+    Whether to connect adjacent genome-bin particles into polymer chains.
+max_bond_gap
+    Maximum genomic separation in base pairs for an adjacent-bin bond.
+    Bonds never cross chromosome or haplotype boundaries.
+dataset_name
+    Display name stored in the scene. Defaults to the input file name.
+metadata
+    Additional JSON-compatible dataset metadata.
+
+Returns
+-------
+StructureScene
+    Validated positions, colors, genomic identity, and polymer bonds. The
+    scene does not contain Three.js or other renderer-specific objects.
+
+
+**Source:** Line 53 in [visualize/structure.py](visualize/structure.py#L53)
 
 
 ---
