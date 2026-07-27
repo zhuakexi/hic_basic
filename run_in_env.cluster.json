@@ -1,0 +1,19 @@
+{
+  "bootstrap_exit_code": 78,
+  "dynamic_quarantine_seconds": 3600,
+  "hard_exclude_nodes": [
+    "node01"
+  ],
+  "preflight_timeout_seconds": 2,
+  "required_paths": [
+    {
+      "kind": "directory",
+      "path": "/share/home/ychi"
+    },
+    {
+      "kind": "directory",
+      "path": "/shared/ychi"
+    }
+  ],
+  "schema_version": 1
+}

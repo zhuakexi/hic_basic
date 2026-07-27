@@ -1,0 +1,39 @@
+{
+  "backup_path": "/share/home/ychi/dev/hic_basic/.run_in_env/deployment-backups/20260727T074407Z",
+  "deployed_at": "2026-07-27T07:44:07.910323Z",
+  "files": {
+    "canonical_driver.py": {
+      "role": "canonical_driver",
+      "sha256": "63b0492af9d050239fb0ad3e1a991636d22b0e0c4624db77bd69e39682ab86e4"
+    },
+    "durable_policy.py": {
+      "role": "durable_policy",
+      "sha256": "257b522a9c6877f29ea8cb374209c52216137b21105b49ff7e29365d9689010c"
+    },
+    "run_in_env.cluster.json": {
+      "role": "cluster_policy",
+      "sha256": "756ae1122a9f66fb585dae7c22b3345da7cbf5a7eeb0f1ec5e94f92d5bf8b2dc"
+    },
+    "run_in_env.execution_rules.md": {
+      "role": "execution_rules",
+      "sha256": "cd882a9288e43e973cb047b56b34e2bec28751494300217086e1f7fc24b9bb76"
+    },
+    "run_in_env.local.sh": {
+      "role": "existing_local_config",
+      "sha256": "ea9178f1f3e35597fb964f32e24e411cc0a29281fa5659f9896f827a13cd3a83"
+    },
+    "run_in_env.sh": {
+      "role": "runner",
+      "sha256": "a26014fc8f0ac11bbc713513100029478803c72e3efd0648d7e1c89e4e63abd1"
+    },
+    "run_in_env.site.sh": {
+      "role": "site_profile",
+      "sha256": "5a0fbf6f60c1a39d866555520ee1766058c1e855bb4a2041961c43faf894c8bb"
+    }
+  },
+  "runtime_repository": "git@github.com:zhuakexi/omic_skills.git",
+  "runtime_version": "1.5.2",
+  "schema_version": 1,
+  "source_repository": "git@github.com:zhuakexi/docker_files.git",
+  "source_revision": "5ea0fd7f88d54ea1cb4cf61f8ff16cb301e2a714"
+}

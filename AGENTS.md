@@ -22,12 +22,13 @@ This repository is a Python library and CLI for Hi-C / 3D genome data processing
 - Docs tooling: `scripts/generate_api_reference.py`
 
 ## Environment and execution
-- **Entrypoint script**: `./run_in_env.sh` — the only project-supported compute entrypoint
-- **Run commands**: `./run_in_env.sh <command>` (e.g., `./run_in_env.sh python -m hic_basic`)
-- **Install editable**: `./run_in_env.sh pip install -e .`
-- **Run tests**: `./run_in_env.sh pytest -q tests`
-- **Self-check**: `./run_in_env.sh --self-check` (verifies environment and container setup)
-- **Under the hood**: Runs commands in a Singularity container (`light_base_1_1.sif`) with the `hic_basic_v096` mamba environment
+- Run all compute through `./run_in_env.sh`; do not bypass it with raw Python, Conda, container, SSH, or SLURM commands.
+- Normal command: `./run_in_env.sh <command>` (for example, `./run_in_env.sh python -m hic_basic`).
+- Install editable: `./run_in_env.sh pip install -e .`.
+- Run tests: `./run_in_env.sh pytest -q tests`.
+- Use `./run_in_env.sh --self-check` only to diagnose the execution setup.
+- The default remains Singularity with `light_base_1_1.sif` and the `hic_basic_v096` environment.
+- Only when a task needs resource selection, another environment, network access, GPU/node03, SLURM, durable jobs, or canonical execution, read `run_in_env.execution_rules.md` and then consult `./run_in_env.sh --help` for the full interface.
 
 ## Documentation workflow
 - Public functions are auto-indexed; keep docstrings accurate.

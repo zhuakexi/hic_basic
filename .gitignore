@@ -16,5 +16,14 @@ tests/output
 notebooks/
 # on dask
 dask-worker-space/
+# on run_in_env runtime state
+.run_in_env/jobs/
+.run_in_env/executions/
+.run_in_env/cluster-health/
+.run_in_env/validation/
+.run_in_env/deployment-backups/
+.run_in_env_slurm_*.slurm
+slurm-*.out
+.tmp/
 # on issues
 issues/
