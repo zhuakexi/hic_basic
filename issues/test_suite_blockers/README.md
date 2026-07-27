@@ -1,6 +1,14 @@
 # Issue: 测试套件长时阻塞与 GenomeIdeograph 导入断裂
 
-状态：Open
+状态：Resolved
+
+解决日期：2026-07-27
+
+实现说明：ATAC correctness 测试现使用临时 synthetic BAM/TSS 数据，真实 BAM
+测试通过 `integration`/`slow` marker 显式运行；coverage 复用单个 indexed BAM handle。
+`DI` 与 `impute.simpute` 已迁移到 `hic_basic.genome`，旧 `binnify` 导入保留至
+`hic_basic 0.2` 并发出弃用警告。未引入可选的 `pytest-xdist`，因为仓库其余共享输出和
+机器数据测试尚未完成并行安全审计。
 
 日期：2026-07-27
 

@@ -5,7 +5,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask import delayed
-from hic_basic.binnify import GenomeIdeograph
+from hic_basic.genome import GenomeIdeograph
 from hic_basic.plot.hic import _plot_mat
 from plotly.subplots import make_subplots
 from scipy.stats import mannwhitneyu

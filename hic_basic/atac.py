@@ -167,11 +167,6 @@ def get_tss_regions(tss_bed_path=None, chrom_size_path=None, window_size: int = 
     tss_ext = tss_bed.slop(b=window_size, g=chrom_size_path)
     return tss_ext
 
-import numpy as np
-import random
-import pysam
-from typing import Tuple, List
-
 def calculate_coverage(
     bam_path: str, 
     tss_regions, 
@@ -179,25 +174,33 @@ def calculate_coverage(
     sampling=None
 ):
     """
-    Computes coverage across TSS regions using pysam.depth, with optional sampling.
+    Compute per-base coverage across TSS regions with optional sampling.
 
     Input
-       bam_path (str): Path to the BAM file (must be indexed).
+       bam_path (str): Path to a coordinate-sorted, indexed BAM file.
        tss_regions (BedTool): Expanded TSS regions (output of `get_tss_regions`).
-       read_length (int): Length of sequencing reads (used for alignment centering).
+       read_length (int): Sequencing read length. Retained for API compatibility.
        sampling (float or int, optional): Sampling strategy.
            - If float: Fraction of regions to sample (0 < value <= 1).
            - If int: Exact number of regions to sample.
            - If None: Process all regions.
 
     Output
-       Tuple[np.ndarray, List[float]]:
-           coverage_array (np.ndarray): 2D array of coverage values (shape: [n_TSS, bins]).
-           distances (List[float]): Distance from TSS for each bin (in base pairs).
+       Tuple[np.ndarray, List[int]]:
+           coverage_array (np.ndarray): Integer array with shape (n_TSS, region_width).
+               Uncovered positions are represented by zeros.
+           distances (List[int]): Per-base offsets from the center of each region.
+
+    Notes
+       Regions clipped at chromosome boundaries are padded with zeros to the
+       widest selected region. The BAM file is opened once for the complete
+       operation, avoiding one `pysam.depth` process per region.
     """
+    regions = list(tss_regions)
+
     # Validate sampling parameter
     if sampling is not None:
-        total_regions = len(tss_regions)
+        total_regions = len(regions)
         if isinstance(sampling, float):
             if not (0 < sampling <= 1):
                 raise ValueError("sampling ratio must be between 0 and 1")
@@ -214,41 +217,101 @@ def calculate_coverage(
         n_samples = max(n_samples, 0)
 
         # Randomly sample regions
-        sampled_regions = random.sample(list(tss_regions), n_samples)
+        sampled_regions = random.sample(regions, n_samples)
     else:
-        sampled_regions = tss_regions
+        sampled_regions = regions
 
-    # Process sampled regions
+    if not regions:
+        return np.empty((0, 0), dtype=np.int64), []
+
+    region_width = max(
+        int(interval.end) - int(interval.start) for interval in regions
+    )
+    if region_width <= 0:
+        raise ValueError("TSS regions must have positive width")
+
+    # The argument was part of the original public API but coverage is already
+    # expressed in reference-base coordinates, so no read-length shift is needed.
+    if not isinstance(read_length, int) or read_length <= 0:
+        raise ValueError("read_length must be a positive integer")
+
     coverage_list = []
-    for interval in tqdm(sampled_regions, desc="Calculating coverage", total=len(sampled_regions)):
-        chrom, start, end = interval.chrom, int(interval.start), int(interval.end)
-        depth = pysam.depth("-b", "-", bam_path, input=f"{chrom}\t{start}\t{end}")
-        depths = [int(line.split()[2]) for line in depth.strip().splitlines()]
-        coverage_list.append(depths)
+    with pysam.AlignmentFile(bam_path, "rb") as bam:
+        if not bam.has_index():
+            raise ValueError(f"BAM file must be indexed: {bam_path}")
+        for interval in tqdm(
+            sampled_regions,
+            desc="Calculating coverage",
+            total=len(sampled_regions),
+        ):
+            chrom, start, end = interval.chrom, int(interval.start), int(interval.end)
+            base_counts = bam.count_coverage(
+                chrom,
+                start,
+                end,
+                quality_threshold=0,
+                read_callback="all",
+            )
+            coverage = np.sum(base_counts, axis=0, dtype=np.int64)
+            missing = region_width - len(coverage)
+            if missing:
+                chrom_length = bam.get_reference_length(chrom)
+                if start == 0 and end < chrom_length:
+                    padding = (missing, 0)
+                elif end == chrom_length and start > 0:
+                    padding = (0, missing)
+                else:
+                    left = missing // 2
+                    padding = (left, missing - left)
+                coverage = np.pad(coverage, padding)
+            coverage_list.append(coverage)
 
-    # Convert to numpy array
-    coverage_array = np.array(coverage_list)
-    distances = np.linspace(-2000, 2000, coverage_array.shape[1]).tolist()
+    if coverage_list:
+        coverage_array = np.stack(coverage_list)
+    else:
+        coverage_array = np.empty((0, region_width), dtype=np.int64)
+    distances = (np.arange(region_width) - region_width // 2).tolist()
     return coverage_array, distances
-def normalize_coverage(coverage_array: np.ndarray, read_length: int, greenleaf_norm: bool = True) -> np.ndarray:
+
+
+def normalize_coverage(
+    coverage_array: np.ndarray,
+    read_length: int,
+    greenleaf_norm: bool = True,
+    bam_path: Optional[str] = None,
+) -> np.ndarray:
     """
     Normalizes coverage using Greenleaf-style or per million mapped reads normalization.
 
     Input:
        coverage_array (np.ndarray): 2D coverage array (shape: [n_TSS, bins]).
-       read_length (int): Read length (used for centering adjustment).
+       read_length (int): Sequencing read length. Retained for API compatibility.
        greenleaf_norm (bool): Whether to apply Greenleaf-style normalization (default: True).
+       bam_path (str, optional): Indexed BAM used to calculate mapped-read scaling
+           when `greenleaf_norm` is False.
 
     Output:
        np.ndarray: Normalized coverage array.
     """
+    if coverage_array.ndim != 2 or coverage_array.shape[1] < 2:
+        raise ValueError("coverage_array must be a 2D array with at least two columns")
+    if not isinstance(read_length, int) or read_length <= 0:
+        raise ValueError("read_length must be a positive integer")
+
     if greenleaf_norm:
-        edge_bins = int(100 / (2 * 2000 / coverage_array.shape[1]))
+        edge_bins = min(100, coverage_array.shape[1] // 2)
         means = np.mean(coverage_array, axis=0)
         avg_noise = (sum(means[:edge_bins]) + sum(means[-edge_bins:])) / (2 * edge_bins)
+        if avg_noise == 0:
+            raise ValueError("cannot normalize coverage with zero mean edge signal")
         normalized = coverage_array / avg_noise
     else:
-        total_mapped = pysam.AlignmentFile(bam_path, "rb").count()
+        if bam_path is None:
+            raise ValueError("bam_path is required when greenleaf_norm is False")
+        with pysam.AlignmentFile(bam_path, "rb") as bam:
+            total_mapped = bam.count()
+        if total_mapped == 0:
+            raise ValueError("cannot normalize coverage from a BAM with no mapped reads")
         normalized = coverage_array / (total_mapped / 1e6)
     return normalized
 
@@ -278,7 +341,11 @@ def process_tss_enrichment(
     """
     tss_ext = get_tss_regions(tss_bed_path, chrom_size_path, window_size)
     coverage_array, _ = calculate_coverage(bam_path, tss_ext, read_length)
-    normalized_array = normalize_coverage(coverage_array, read_length, greenleaf_norm)
+    normalized_array = normalize_coverage(
+        coverage_array,
+        read_length,
+        greenleaf_norm,
+        bam_path=bam_path,
+    )
     max_signal = np.max(np.mean(normalized_array, axis=0))
     return normalized_array, max_signal
-

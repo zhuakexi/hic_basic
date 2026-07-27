@@ -1,60 +1,124 @@
-import json
-import unittest
-from pathlib import Path
+import random
 
 import numpy as np
-from unittest.mock import patch, MagicMock
+import pysam
+import pytest
 
 from hic_basic.atac import (
-    calculate_fragment_lengths,
-    plot_fragment_length_distribution,
-    get_tss_regions,
     calculate_coverage,
-    normalize_coverage
+    calculate_fragment_lengths,
+    get_tss_regions,
+    normalize_coverage,
+    plot_fragment_length_distribution,
 )
 
-class TestATACFunctions(unittest.TestCase):
-    def setUp(self):
-        # Setup code if needed
-        self.chrom_size = "/share/home/ychi/dev/hic_basic/hic_basic/ref/hg38.chrom.sizes.txt"
-        self.bam_path = "/shared/ychi/repo/hsv_15/mapping/E250083200_L01_DYJ-kd3h.filtered_markeddup.bam"
-        self.bam_path1 = "/shared/ychi/repo/hsv_15/mapping/E250083200_L01_DYJ-wt3h.filtered_markeddup.bam"
-        self.gtf = "/share/Data/ychi/genome/GRCh38/gencode.v33.primary_assembly.annotation.gtf"
-        self.out_dir = Path(__file__).parent / "output" / "atac"
-        if not self.out_dir.exists():
-            self.out_dir.mkdir(parents=True)
-    # def test_calculate_fragment_lengths(self):
-    #     fragment_lengths = calculate_fragment_lengths(
-    #         self.bam_path,
-    #         sampling = 10000
-    #     )
-    #     with open(self.out_dir / "fragment_lengths.json", "w") as f:
-    #         json.dump(fragment_lengths.tolist(), f)
-    #     print(f"Fragment lengths: {fragment_lengths}")
-    def test_plot_fragment_length_distribution(self):
-        fragment_lengths = np.random.randint(50, 5000, size=1000)
-        fig = plot_fragment_length_distribution(fragment_lengths)
-        fig.write_image(self.out_dir / "fragment_length_distribution.png")
-        print("Fragment length distribution plot saved.")
-    def test_plot_fragment_length_distribution_real(self):
-        with open(self.out_dir / "fragment_lengths.json", "r") as f:
-            fragment_lengths = np.array(json.load(f))
-        fig = plot_fragment_length_distribution(
-            fragment_lengths,
-            range_x = [0, 800]
-            )
-        fig.write_image(self.out_dir / "fragment_length_distribution_real.png")
-        print("Real fragment length distribution plot saved.")
-    def test_calculate_tss_enrichment(self):
-        tss_ext = get_tss_regions(
-            "/share/home/ychi/dev/hic_basic/hic_basic/ref/cache/GRCh38.TSS.bed",
-            self.chrom_size, window_size=2000)
-        coverage_array, _ = calculate_coverage(
-            self.bam_path, tss_ext, 150, sampling=100
-            )
-        normalized_array = normalize_coverage(
-            coverage_array,
-            read_length,
-            greenleaf_norm=True)
-if __name__ == "__main__":
-    unittest.main()
+
+@pytest.fixture
+def atac_inputs(tmp_path):
+    bam_path = tmp_path / "reads.bam"
+    header = {
+        "HD": {"VN": "1.6", "SO": "coordinate"},
+        "SQ": [{"SN": "chr1", "LN": 100}],
+    }
+
+    with pysam.AlignmentFile(bam_path, "wb", header=header) as bam:
+        for name, start, length in (
+            ("boundary_read", 0, 1),
+            ("read1", 48, 5),
+            ("read2", 50, 3),
+        ):
+            read = pysam.AlignedSegment()
+            read.query_name = name
+            read.query_sequence = "A" * length
+            read.flag = 0
+            read.reference_id = 0
+            read.reference_start = start
+            read.mapping_quality = 60
+            read.cigar = ((0, length),)
+            read.query_qualities = pysam.qualitystring_to_array("I" * length)
+            bam.write(read)
+    pysam.index(str(bam_path))
+
+    chrom_sizes = tmp_path / "chrom.sizes"
+    chrom_sizes.write_text("chr1\t100\n")
+    tss_bed = tmp_path / "tss.bed"
+    tss_bed.write_text("chr1\t50\t51\nchr1\t70\t71\n")
+    return bam_path, tss_bed, chrom_sizes
+
+
+def test_calculate_coverage_uses_indexed_bam_and_fills_zeros(atac_inputs):
+    bam_path, tss_bed, chrom_sizes = atac_inputs
+    regions = get_tss_regions(tss_bed, chrom_sizes, window_size=2)
+
+    coverage, distances = calculate_coverage(bam_path, regions, read_length=5)
+
+    np.testing.assert_array_equal(
+        coverage,
+        np.array([[1, 1, 2, 2, 2], [0, 0, 0, 0, 0]]),
+    )
+    assert distances == [-2, -1, 0, 1, 2]
+
+
+def test_calculate_coverage_sampling_is_reproducible(atac_inputs):
+    bam_path, tss_bed, chrom_sizes = atac_inputs
+    regions = get_tss_regions(tss_bed, chrom_sizes, window_size=2)
+    random.seed(7)
+
+    coverage, distances = calculate_coverage(
+        bam_path,
+        regions,
+        read_length=5,
+        sampling=1,
+    )
+
+    assert coverage.shape == (1, 5)
+    np.testing.assert_array_equal(coverage[0], [0, 0, 0, 0, 0])
+    assert distances == [-2, -1, 0, 1, 2]
+
+
+def test_calculate_coverage_pads_chromosome_boundary(atac_inputs, tmp_path):
+    bam_path, _, chrom_sizes = atac_inputs
+    tss_bed = tmp_path / "boundary_tss.bed"
+    tss_bed.write_text("chr1\t0\t1\nchr1\t50\t51\n")
+    regions = get_tss_regions(tss_bed, chrom_sizes, window_size=2)
+
+    coverage, distances = calculate_coverage(bam_path, regions, read_length=5)
+
+    np.testing.assert_array_equal(coverage[0], [0, 0, 1, 0, 0])
+    assert coverage.shape == (2, 5)
+    assert distances == [-2, -1, 0, 1, 2]
+
+
+def test_normalize_coverage_greenleaf():
+    coverage = np.array([[1, 1, 2, 2, 2], [0, 0, 0, 0, 0]])
+
+    normalized = normalize_coverage(coverage, read_length=5)
+
+    np.testing.assert_allclose(
+        normalized,
+        np.array([[4 / 3, 4 / 3, 8 / 3, 8 / 3, 8 / 3], [0, 0, 0, 0, 0]]),
+    )
+
+
+def test_normalize_coverage_per_million_reads(atac_inputs):
+    bam_path, _, _ = atac_inputs
+    coverage = np.array([[1, 2]])
+
+    normalized = normalize_coverage(
+        coverage,
+        read_length=5,
+        greenleaf_norm=False,
+        bam_path=bam_path,
+    )
+
+    np.testing.assert_allclose(normalized, [[1_000_000 / 3, 2_000_000 / 3]])
+
+
+def test_calculate_fragment_lengths_and_plot(atac_inputs):
+    bam_path, _, _ = atac_inputs
+
+    fragment_lengths = calculate_fragment_lengths(bam_path)
+    figure = plot_fragment_length_distribution(np.array([50, 100, 150]))
+
+    np.testing.assert_array_equal(fragment_lengths, [0, 0, 0])
+    assert len(figure.data) == 1

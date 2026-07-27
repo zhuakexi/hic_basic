@@ -1082,24 +1082,30 @@ Rank API entries using deterministic keyword matching.
 ### `calculate_coverage(bam_path: str, tss_regions, read_length: int, sampling=None)`
 
 
-Computes coverage across TSS regions using pysam.depth, with optional sampling.
+Compute per-base coverage across TSS regions with optional sampling.
 
 Input
-   bam_path (str): Path to the BAM file (must be indexed).
+   bam_path (str): Path to a coordinate-sorted, indexed BAM file.
    tss_regions (BedTool): Expanded TSS regions (output of `get_tss_regions`).
-   read_length (int): Length of sequencing reads (used for alignment centering).
+   read_length (int): Sequencing read length. Retained for API compatibility.
    sampling (float or int, optional): Sampling strategy.
        - If float: Fraction of regions to sample (0 < value <= 1).
        - If int: Exact number of regions to sample.
        - If None: Process all regions.
 
 Output
-   Tuple[np.ndarray, List[float]]:
-       coverage_array (np.ndarray): 2D array of coverage values (shape: [n_TSS, bins]).
-       distances (List[float]): Distance from TSS for each bin (in base pairs).
+   Tuple[np.ndarray, List[int]]:
+       coverage_array (np.ndarray): Integer array with shape (n_TSS, region_width).
+           Uncovered positions are represented by zeros.
+       distances (List[int]): Per-base offsets from the center of each region.
+
+Notes
+   Regions clipped at chromosome boundaries are padded with zeros to the
+   widest selected region. The BAM file is opened once for the complete
+   operation, avoiding one `pysam.depth` process per region.
 
 
-**Source:** Line 175 in [atac.py](atac.py#L175)
+**Source:** Line 170 in [atac.py](atac.py#L170)
 
 
 ---
@@ -1149,7 +1155,7 @@ Output
 ---
 
 
-### `normalize_coverage(coverage_array: np.ndarray, read_length: int, greenleaf_norm: bool=True)`
+### `normalize_coverage(coverage_array: np.ndarray, read_length: int, greenleaf_norm: bool=True, bam_path: Optional[str]=None)`
 
 **Returns:** `np.ndarray`
 
@@ -1158,14 +1164,16 @@ Normalizes coverage using Greenleaf-style or per million mapped reads normalizat
 
 Input:
    coverage_array (np.ndarray): 2D coverage array (shape: [n_TSS, bins]).
-   read_length (int): Read length (used for centering adjustment).
+   read_length (int): Sequencing read length. Retained for API compatibility.
    greenleaf_norm (bool): Whether to apply Greenleaf-style normalization (default: True).
+   bam_path (str, optional): Indexed BAM used to calculate mapped-read scaling
+       when `greenleaf_norm` is False.
 
 Output:
    np.ndarray: Normalized coverage array.
 
 
-**Source:** Line 233 in [atac.py](atac.py#L233)
+**Source:** Line 277 in [atac.py](atac.py#L277)
 
 
 ---
@@ -1213,7 +1221,7 @@ Output:
        max_signal (float): Maximum signal value across all TSS regions.
 
 
-**Source:** Line 255 in [atac.py](atac.py#L255)
+**Source:** Line 318 in [atac.py](atac.py#L318)
 
 
 ---
@@ -1340,7 +1348,7 @@ Output:
     DataFrame with additional column 'center'
 
 
-**Source:** Line 11 in [binnify.py](binnify.py#L11)
+**Source:** Line 29 in [binnify.py](binnify.py#L29)
 
 
 ---
@@ -10196,7 +10204,7 @@ Load and validate a structure render configuration.
 or ``None`` for defaults. Unknown fields and invalid values are rejected.
 
 
-**Source:** Line 350 in [visualize/config.py](visualize/config.py#L350)
+**Source:** Line 375 in [visualize/config.py](visualize/config.py#L375)
 
 
 ---

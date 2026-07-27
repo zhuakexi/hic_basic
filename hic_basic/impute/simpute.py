@@ -8,7 +8,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask.delayed import delayed
-from hic_basic.binnify import GenomeIdeograph
+from hic_basic.genome import GenomeIdeograph
 from hires_utils.hires_io import parse_3dg
 from hires_utils.mmcif import chrom_rm_suffix
 from scipy.sparse import triu

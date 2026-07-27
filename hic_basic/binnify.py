@@ -8,6 +8,24 @@ import pandas as pd, numpy as np
 from .feature import Chromosomes
 
 
+def __getattr__(name):
+    """Provide deprecated access to APIs moved out of this module."""
+    if name == "GenomeIdeograph":
+        import warnings
+
+        warnings.warn(
+            "hic_basic.binnify.GenomeIdeograph is deprecated; import "
+            "GenomeIdeograph from hic_basic.genome instead. The compatibility "
+            "alias will be removed in hic_basic 0.2.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from .genome import GenomeIdeograph
+
+        return GenomeIdeograph
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 def bed_center(bed_df):
     """
     Get center of each bin

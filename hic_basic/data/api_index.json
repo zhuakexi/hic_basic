@@ -775,15 +775,15 @@
     {
       "name": "calculate_coverage",
       "signature": "calculate_coverage(bam_path: str, tss_regions, read_length: int, sampling=None)",
-      "summary": "Computes coverage across TSS regions using pysam.depth, with optional sampling.",
-      "docstring": "Computes coverage across TSS regions using pysam.depth, with optional sampling.\n\nInput\n   bam_path (str): Path to the BAM file (must be indexed).\n   tss_regions (BedTool): Expanded TSS regions (output of `get_tss_regions`).\n   read_length (int): Length of sequencing reads (used for alignment centering).\n   sampling (float or int, optional): Sampling strategy.\n       - If float: Fraction of regions to sample (0 < value <= 1).\n       - If int: Exact number of regions to sample.\n       - If None: Process all regions.\n\nOutput\n   Tuple[np.ndarray, List[float]]:\n       coverage_array (np.ndarray): 2D array of coverage values (shape: [n_TSS, bins]).\n       distances (List[float]): Distance from TSS for each bin (in base pairs).",
+      "summary": "Compute per-base coverage across TSS regions with optional sampling.",
+      "docstring": "Compute per-base coverage across TSS regions with optional sampling.\n\nInput\n   bam_path (str): Path to a coordinate-sorted, indexed BAM file.\n   tss_regions (BedTool): Expanded TSS regions (output of `get_tss_regions`).\n   read_length (int): Sequencing read length. Retained for API compatibility.\n   sampling (float or int, optional): Sampling strategy.\n       - If float: Fraction of regions to sample (0 < value <= 1).\n       - If int: Exact number of regions to sample.\n       - If None: Process all regions.\n\nOutput\n   Tuple[np.ndarray, List[int]]:\n       coverage_array (np.ndarray): Integer array with shape (n_TSS, region_width).\n           Uncovered positions are represented by zeros.\n       distances (List[int]): Per-base offsets from the center of each region.\n\nNotes\n   Regions clipped at chromosome boundaries are padded with zeros to the\n   widest selected region. The BAM file is opened once for the complete\n   operation, avoiding one `pysam.depth` process per region.",
       "return_type": null,
-      "lineno": 175,
+      "lineno": 170,
       "symbol": "hic_basic.atac.calculate_coverage",
       "import": "from hic_basic.atac import calculate_coverage",
       "source": {
         "module_path": "hic_basic/atac.py",
-        "lineno": 175
+        "lineno": 170
       }
     },
     {
@@ -816,16 +816,16 @@
     },
     {
       "name": "normalize_coverage",
-      "signature": "normalize_coverage(coverage_array: np.ndarray, read_length: int, greenleaf_norm: bool=True)",
+      "signature": "normalize_coverage(coverage_array: np.ndarray, read_length: int, greenleaf_norm: bool=True, bam_path: Optional[str]=None)",
       "summary": "Normalizes coverage using Greenleaf-style or per million mapped reads normalization.",
-      "docstring": "Normalizes coverage using Greenleaf-style or per million mapped reads normalization.\n\nInput:\n   coverage_array (np.ndarray): 2D coverage array (shape: [n_TSS, bins]).\n   read_length (int): Read length (used for centering adjustment).\n   greenleaf_norm (bool): Whether to apply Greenleaf-style normalization (default: True).\n\nOutput:\n   np.ndarray: Normalized coverage array.",
+      "docstring": "Normalizes coverage using Greenleaf-style or per million mapped reads normalization.\n\nInput:\n   coverage_array (np.ndarray): 2D coverage array (shape: [n_TSS, bins]).\n   read_length (int): Sequencing read length. Retained for API compatibility.\n   greenleaf_norm (bool): Whether to apply Greenleaf-style normalization (default: True).\n   bam_path (str, optional): Indexed BAM used to calculate mapped-read scaling\n       when `greenleaf_norm` is False.\n\nOutput:\n   np.ndarray: Normalized coverage array.",
       "return_type": "np.ndarray",
-      "lineno": 233,
+      "lineno": 277,
       "symbol": "hic_basic.atac.normalize_coverage",
       "import": "from hic_basic.atac import normalize_coverage",
       "source": {
         "module_path": "hic_basic/atac.py",
-        "lineno": 233
+        "lineno": 277
       }
     },
     {
@@ -848,12 +848,12 @@
       "summary": "Full TSS enrichment analysis pipeline: region expansion, coverage calculation, and normalization.",
       "docstring": "Full TSS enrichment analysis pipeline: region expansion, coverage calculation, and normalization.\n\nInput:\n   bam_path (str): Path to the BAM file.\n   tss_bed_path (str): Path to the TSS BED file.\n   chrom_size_path (str): Path to the chromosome sizes file.\n   read_length (int): Sequencing read length.\n   window_size (int): TSS region extension size (default: 2000).\n   greenleaf_norm (bool): Use Greenleaf-style normalization (default: True).\n\nOutput:\n   Tuple[np.ndarray, float]:\n       normalized_array (np.ndarray): Normalized coverage array (shape: [n_TSS, bins]).\n       max_signal (float): Maximum signal value across all TSS regions.",
       "return_type": "Tuple[np.ndarray, float]",
-      "lineno": 255,
+      "lineno": 318,
       "symbol": "hic_basic.atac.process_tss_enrichment",
       "import": "from hic_basic.atac import process_tss_enrichment",
       "source": {
         "module_path": "hic_basic/atac.py",
-        "lineno": 255
+        "lineno": 318
       }
     }
   ],
@@ -936,12 +936,12 @@
       "summary": "Get center of each bin",
       "docstring": "Get center of each bin\nInput:\n    bed_df: DataFrame, bed-like with columns 'chrom', 'start', 'end'\nOutput:\n    DataFrame with additional column 'center'",
       "return_type": null,
-      "lineno": 11,
+      "lineno": 29,
       "symbol": "hic_basic.binnify.bed_center",
       "import": "from hic_basic.binnify import bed_center",
       "source": {
         "module_path": "hic_basic/binnify.py",
-        "lineno": 11
+        "lineno": 29
       }
     }
   ],
@@ -6632,12 +6632,12 @@
       "summary": "Load and validate a structure render configuration.",
       "docstring": "Load and validate a structure render configuration.\n\n``value`` may be an existing config, a mapping, a JSON string, a JSON file,\nor ``None`` for defaults. Unknown fields and invalid values are rejected.",
       "return_type": "StructureRenderConfig",
-      "lineno": 350,
+      "lineno": 375,
       "symbol": "hic_basic.visualize.config.load_render_config",
       "import": "from hic_basic.visualize.config import load_render_config",
       "source": {
         "module_path": "hic_basic/visualize/config.py",
-        "lineno": 350
+        "lineno": 375
       }
     }
   ],
