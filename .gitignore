@@ -2,6 +2,9 @@
 __pycache__/
 hic_basic.egg-info/
 .project
+.codex/
+.qwen/
+.vscode/
 # on cache
 hic_basic/ref/cache/
 #on debug
