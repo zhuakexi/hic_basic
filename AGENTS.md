@@ -27,8 +27,9 @@ This repository is a Python library and CLI for Hi-C / 3D genome data processing
 - Install editable: `./run_in_env.sh pip install -e .`.
 - Run tests: `./run_in_env.sh pytest -q tests`.
 - Use `./run_in_env.sh --self-check` only to diagnose the execution setup.
-- The default remains Singularity with `light_base_1_1.sif` and the `hic_basic_v096` environment.
+- The default is Singularity with `light_base_1_1.sif` and the repository-owned `hic_basic-env-612bc1f10152` environment.
 - Only when a task needs resource selection, another environment, network access, GPU/node03, SLURM, durable jobs, or canonical execution, read `run_in_env.execution_rules.md` and then consult `./run_in_env.sh --help` for the full interface.
+- For first-time setup run `make env-bootstrap`. For dependency changes or repair, do not install into the active prefix; read `docs/ENVIRONMENT.md` and use a content-addressed candidate.
 
 ## Documentation workflow
 - Public functions are auto-indexed; keep docstrings accurate.

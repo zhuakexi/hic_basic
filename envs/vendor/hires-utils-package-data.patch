@@ -1,0 +1,15 @@
+diff --git a/setup.py b/setup.py
+index 92058d7..469bb21 100644
+--- a/setup.py
++++ b/setup.py
+@@ -3,8 +3,9 @@ from setuptools import setup, find_packages
+
+ setup(
+     name='hires_utils',
+-    version='0.1',
++    version='0.1+hicbasic.45eab4f',
+     packages=find_packages(),
++    package_data={'hires_utils.reference': ['chrom_alias.csv']},
+     install_requires=[
+         'numpy',
+         'pandas',

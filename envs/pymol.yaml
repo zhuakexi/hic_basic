@@ -1,3 +1,5 @@
+# HISTORICAL ONLY: old standalone PyMOL export, not a hic_basic install input.
+# PyMOL is maintained in ../environment.yml and the exact linux-64 lock.
 name: pymol
 channels:
   - https://mirrors.pku.edu.cn/anaconda/cloud/conda-forge

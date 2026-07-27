@@ -1,0 +1,37 @@
+diff --git a/python_tsp-0.4.2.dist-info/METADATA b/python_tsp-0.4.2+hicbasic.1.dist-info/METADATA
+similarity index 98%
+rename from python_tsp-0.4.2.dist-info/METADATA
+rename to python_tsp-0.4.2+hicbasic.1.dist-info/METADATA
+index f59593b..a384871 100644
+--- a/python_tsp-0.4.2.dist-info/METADATA
++++ b/python_tsp-0.4.2+hicbasic.1.dist-info/METADATA
+@@ -1,7 +1,7 @@
+ Metadata-Version: 2.1
+ Name: python_tsp
+-Version: 0.4.2
++Version: 0.4.2+hicbasic.1
+ Summary: Library to solve the Traveling Salesperson Problem in pure Python.
+ Home-page: https://github.com/fillipe-gsm/python-tsp
+ License: MIT
+@@ -15,7 +15,6 @@ Classifier: Programming Language :: Python :: 3.12
+ Requires-Dist: numpy (>=1.26.3,<2.0.0)
+ Requires-Dist: requests (>=2.28.0,<3.0.0)
+-Requires-Dist: tsplib95 (>=0.7.1,<0.8.0)
+ Project-URL: Repository, https://github.com/fillipe-gsm/python-tsp
+ Description-Content-Type: text/x-rst
+
+diff --git a/python_tsp/distances/__init__.py b/python_tsp/distances/__init__.py
+index ca8a37b..2fd29e1 100644
+--- a/python_tsp/distances/__init__.py
++++ b/python_tsp/distances/__init__.py
+@@ -6,4 +6,10 @@ from .euclidean_distance import euclidean_distance_matrix  # noqa: F401
+ from .great_circle_distance import great_circle_distance_matrix  # noqa: F401
+ from .osrm_distance import osrm_distance_matrix  # noqa: F401
+-from .tsplib_distance import tsplib_distance_matrix  # noqa: F401
++
++
++def tsplib_distance_matrix(*args, **kwargs):
++    """Load optional TSPLIB support only when it is explicitly requested."""
++    from .tsplib_distance import tsplib_distance_matrix as implementation
++
++    return implementation(*args, **kwargs)

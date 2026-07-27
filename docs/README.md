@@ -7,6 +7,8 @@ This directory contains auto-generated API reference documentation for the `hic_
 - **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API reference with all public functions
 - **[api_index.json](api_index.json)** - Machine-readable JSON index for programmatic access
 - **[search_api.py](search_api.py)** - Repo-local compatibility wrapper for API search
+- **[ENVIRONMENT.md](ENVIRONMENT.md)** - Locked Conda setup and dependency maintenance
+- **[CONTAINER.md](CONTAINER.md)** - Minimal container contract and maintained image source
 
 ## 🚀 Quick Start
 

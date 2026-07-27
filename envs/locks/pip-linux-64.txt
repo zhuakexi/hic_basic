@@ -1,0 +1,7 @@
+# Non-Conda exceptions. Install only with --require-hashes --no-deps.
+pcurvepy2==0.1.5 \
+    --hash=sha256:30e0d62c5637c1b6287dfee12af33d27f6b31e01a7a1ef84c0b5e833fa47c702
+./envs/vendor/hires_utils-0.1+hicbasic.45eab4f.tar.gz \
+    --hash=sha256:2a8076ab463dc91309f642f2c3271366dbd5c98a11da56e1d5be3ef20305a35c
+./envs/vendor/python_tsp-0.4.2+hicbasic.1-py3-none-any.whl \
+    --hash=sha256:24c4f40c7a5b7db7f4feee5c2e6948d647a13453ba7193220e521a0e29e72ca0

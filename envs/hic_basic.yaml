@@ -1,7 +1,6 @@
-# Minimal conda environment for hic_basic
-# Generated from hic_basic_v096.yaml by analyzing actual imports
-# This is a subset containing only the packages directly used by the codebase
-# All versions are tested and match hic_basic_v096
+# HISTORICAL ONLY: do not create an official environment from this file.
+# It was derived from the mixed hic_basic_v096 prefix and has no exact lock.
+# Use ../environment.yml plus envs/locks/ through make env-bootstrap/env-create.
 
 name: hic_basic
 channels:

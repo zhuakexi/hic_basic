@@ -1,0 +1,95 @@
+schema_version: 1
+environment_name: hic_basic-dev
+platforms:
+  - linux-64
+channels:
+  - conda-forge
+  - bioconda
+
+# This registry owns direct dependencies for the repository. Transitive packages
+# belong only in the generated explicit lock. Set default: false for documented
+# feature dependencies that are intentionally excluded from the standard env.
+dependencies:
+  - {id: python, manager: conda, spec: "python=3.10.16", scope: runtime, feature: core, reason: "Supported interpreter"}
+  - {id: pip, manager: conda, spec: "pip=25.0.1", scope: tooling, feature: environment, reason: "Install controlled pip exceptions and editable hic_basic"}
+  - {id: setuptools, manager: conda, spec: "setuptools=75.8.2", scope: tooling, feature: environment, reason: "Editable package build backend"}
+  - {id: wheel, manager: conda, spec: "wheel=0.45.1", scope: tooling, feature: environment, reason: "Wheel build support"}
+  - {id: numpy, manager: conda, spec: "numpy=1.26.4", distribution: numpy, imports: [numpy], scope: runtime, feature: core, reason: "Array and numerical foundation"}
+  - {id: pandas, manager: conda, spec: "pandas=2.2.3", distribution: pandas, imports: [pandas], scope: runtime, feature: core, reason: "Tabular data foundation"}
+  - {id: scipy, manager: conda, spec: "scipy=1.13.1", distribution: scipy, imports: [scipy], scope: runtime, feature: core, reason: "Statistics, sparse matrices, and numerical routines"}
+  - {id: h5py, manager: conda, spec: "h5py=3.13.0", distribution: h5py, imports: [h5py], scope: runtime, feature: io, reason: "HDF5 data access"}
+  - {id: pyarrow, manager: conda, spec: "pyarrow=19.0.1", distribution: pyarrow, imports: [pyarrow], scope: runtime, feature: io, reason: "Parquet engine used throughout the library"}
+  - {id: xarray, manager: conda, spec: "xarray=2024.7.0", distribution: xarray, imports: [xarray], scope: runtime, feature: io, reason: "3D genome datasets"}
+  - {id: h5netcdf, manager: conda, spec: "h5netcdf=1.6.1", distribution: h5netcdf, imports: [h5netcdf], scope: runtime, feature: io, reason: "xarray NetCDF/HDF5 backend"}
+  - {id: netcdf4, manager: conda, spec: "netcdf4=1.7.2", distribution: netCDF4, imports: [netCDF4], scope: runtime, feature: io, reason: "xarray NetCDF backend"}
+  - {id: matplotlib, manager: conda, spec: "matplotlib=3.10.1", distribution: matplotlib, imports: [matplotlib], scope: runtime, feature: plotting, reason: "Static plotting"}
+  - {id: seaborn, manager: conda, spec: "seaborn=0.13.2", distribution: seaborn, imports: [seaborn], scope: runtime, feature: plotting, reason: "Statistical plotting"}
+  - {id: plotly, manager: conda, spec: "plotly=6.0.1", distribution: plotly, imports: [plotly], scope: runtime, feature: plotting, reason: "Interactive plotting"}
+  - {id: python-kaleido, manager: conda, spec: "python-kaleido=0.2.1", distribution: kaleido, imports: [kaleido], scope: runtime, feature: plotting, reason: "Plotly static export"}
+  - {id: pillow, manager: conda, spec: "pillow=11.1.0", distribution: Pillow, imports: [PIL], scope: runtime, feature: plotting, reason: "Image IO"}
+  - {id: cooler, manager: conda, spec: "cooler=0.10.2", distribution: cooler, imports: [cooler], scope: runtime, feature: hic, reason: "Contact matrix storage and CLI"}
+  - {id: cooltools, manager: conda, spec: "cooltools=0.7.1", distribution: cooltools, imports: [cooltools], scope: runtime, feature: hic, reason: "Hi-C analysis algorithms and CLI"}
+  - {id: bioframe, manager: conda, spec: "bioframe=0.7.2", distribution: bioframe, imports: [bioframe], scope: runtime, feature: genomics, reason: "Genomic interval operations"}
+  - {id: pysam, manager: conda, spec: "pysam=0.23.0", distribution: pysam, imports: [pysam], scope: runtime, feature: genomics, reason: "SAM/BAM/VCF IO"}
+  - {id: pybedtools, manager: conda, spec: "pybedtools=0.12.0", distribution: pybedtools, imports: [pybedtools], scope: runtime, feature: genomics, reason: "Python interval operations"}
+  - {id: bedtools, manager: conda, spec: "bedtools=2.31.1", scope: external-tool, feature: genomics, reason: "Backend executable required by pybedtools"}
+  - {id: pybigwig, manager: conda, spec: "pybigwig=0.3.22", distribution: pyBigWig, imports: [pyBigWig], scope: runtime, feature: genomics, reason: "BigWig tracks"}
+  - {id: anndata, manager: conda, spec: "anndata=0.11.3", distribution: anndata, imports: [anndata], scope: runtime, feature: single-cell, reason: "Annotated single-cell matrices"}
+  - {id: scanpy, manager: conda, spec: "scanpy=1.10.4", distribution: scanpy, imports: [scanpy], scope: runtime, feature: single-cell, reason: "Single-cell utilities"}
+  - {id: scvelo, manager: conda, spec: "scvelo=0.3.3", distribution: scvelo, imports: [scvelo], scope: runtime, feature: single-cell, reason: "RNA velocity helpers"}
+  - {id: loompy, manager: conda, spec: "loompy=3.0.6", distribution: loompy, imports: [loompy], scope: runtime, feature: single-cell, reason: "Loom file support"}
+  - {id: dask, manager: conda, spec: "dask=2024.8.2", distribution: dask, imports: [dask], scope: runtime, feature: parallel, reason: "Lazy and parallel dataframes"}
+  - {id: distributed, manager: conda, spec: "distributed=2024.8.2", distribution: distributed, imports: [distributed], scope: runtime, feature: parallel, reason: "Dask distributed scheduler"}
+  - {id: scikit-learn, manager: conda, spec: "scikit-learn=1.5.2", distribution: scikit-learn, imports: [sklearn], scope: runtime, feature: statistics, reason: "Machine learning and embeddings"}
+  - {id: scikit-image, manager: conda, spec: "scikit-image=0.24.0", distribution: scikit-image, imports: [skimage], scope: runtime, feature: plotting, reason: "Image transforms and exposure"}
+  - {id: statsmodels, manager: conda, spec: "statsmodels=0.14.4", distribution: statsmodels, imports: [statsmodels], scope: runtime, feature: statistics, reason: "LOWESS and statistical models"}
+  - {id: umap-learn, manager: conda, spec: "umap-learn=0.5.7", distribution: umap-learn, imports: [umap], scope: runtime, feature: statistics, reason: "UMAP embedding"}
+  - {id: open3d, manager: conda, spec: "open3d=0.19.0", distribution: open3d, imports: [open3d], scope: runtime, feature: structure, reason: "3D geometry analysis"}
+  - {id: configargparse, manager: conda, spec: "configargparse=1.7.1", distribution: ConfigArgParse, imports: [configargparse], scope: runtime, feature: structure, reason: "Runtime requirement declared by Open3D but omitted from its Conda dependency metadata"}
+  - {id: nbformat, manager: conda, spec: "nbformat=5.10.4", distribution: nbformat, imports: [nbformat], scope: runtime, feature: structure, reason: "Runtime requirement declared by Open3D but omitted from its Conda dependency metadata"}
+  - {id: pymol-open-source, manager: conda, spec: "pymol-open-source=3.1.0", distribution: pymol-open-source, imports: [pymol], scope: runtime, feature: structure, reason: "Headless molecular rendering"}
+  - {id: upsetplot, manager: conda, spec: "upsetplot=0.9.0", distribution: UpSetPlot, imports: [upsetplot], scope: runtime, feature: plotting, reason: "Set-intersection plots"}
+  - {id: cytoolz, manager: conda, spec: "cytoolz=1.0.1", distribution: cytoolz, imports: [cytoolz], scope: runtime, feature: core, reason: "Iterator utilities"}
+  - {id: toolz, manager: conda, spec: "toolz=1.0.0", distribution: toolz, imports: [toolz], scope: runtime, feature: core, reason: "Iterator utilities"}
+  - {id: threadpoolctl, manager: conda, spec: "threadpoolctl=3.6.0", distribution: threadpoolctl, imports: [threadpoolctl], scope: runtime, feature: parallel, reason: "Native thread limits"}
+  - {id: tqdm, manager: conda, spec: "tqdm=4.67.1", distribution: tqdm, imports: [tqdm], scope: runtime, feature: core, reason: "Progress reporting"}
+  - {id: click, manager: conda, spec: "click=8.1.8", distribution: click, imports: [click], scope: runtime, feature: cli, reason: "Command-line interfaces"}
+  - {id: pyyaml, manager: conda, spec: "pyyaml=6.0.2", distribution: PyYAML, imports: [yaml], scope: runtime, feature: io, reason: "YAML configuration"}
+  - {id: requests, manager: conda, spec: "requests=2.32.3", distribution: requests, imports: [requests], scope: runtime, feature: download, reason: "HTTP downloads"}
+  - {id: rmsd, manager: conda, spec: "rmsd=1.5.1", distribution: rmsd, imports: [rmsd], scope: runtime, feature: structure, reason: "hires_utils structure dependency"}
+  - {id: six, manager: conda, spec: "six=1.17.0", distribution: six, imports: [six], scope: runtime, feature: compatibility, reason: "Compatibility helper imported by the library"}
+  - {id: pytest, manager: conda, spec: "pytest=9.0.1", distribution: pytest, imports: [pytest], scope: test, feature: test, reason: "Repository test runner"}
+  - {id: cython, manager: conda, spec: "cython=3.0.12", distribution: Cython, imports: [Cython], scope: runtime, feature: hic, reason: "Runtime requirement declared by cooltools but omitted from its Conda dependency metadata"}
+  - id: pcurvepy2
+    manager: pip
+    requirement: pcurvepy2==0.1.5
+    distribution: pcurvepy2
+    expected_version: 0.1.5
+    imports: [pcurvepy2]
+    scope: runtime
+    feature: trajectory
+    reason: Principal curves used by the Slingshot implementation; unavailable from configured Conda channels
+  - id: hires-utils
+    manager: pip
+    requirement: ./envs/vendor/hires_utils-0.1+hicbasic.45eab4f.tar.gz
+    distribution: hires-utils
+    expected_version: 0.1+hicbasic.45eab4f
+    imports: [hires_utils]
+    scope: runtime
+    feature: hic-io
+    source_revision: 45eab4f32f61ea9d895d5196744917355bafec4d
+    reason: Shared 3DG/pairs/mmCIF IO; hashed source backup includes the package-data fix required for non-editable installs
+  - id: python-tsp
+    manager: pip
+    requirement: ./envs/vendor/python_tsp-0.4.2+hicbasic.1-py3-none-any.whl
+    distribution: python-tsp
+    expected_version: 0.4.2+hicbasic.1
+    imports: [python_tsp]
+    scope: runtime
+    feature: ordering
+    source_revision: "upstream wheel 0.4.2"
+    reason: Hashed wheel makes unused TSPLIB support lazy; the Conda artifact forces obsolete NetworkX and tabulate constraints
+  - {id: optbinning, manager: pip, requirement: optbinning, distribution: optbinning, imports: [optbinning], scope: optional-feature, feature: interpolation, default: false, reason: "Only required for interpolation method='optimal'"}
+  - {id: ipynbname, manager: conda, spec: ipynbname, distribution: ipynbname, imports: [ipynbname], scope: optional-feature, feature: notebook, default: false, reason: "Optional notebook provenance fallback"}
+  - {id: sra-tools, manager: conda, spec: sra-tools, scope: optional-feature, feature: download, default: false, reason: "Optional SRA Toolkit download backend"}
+  - {id: mirnylib, manager: external, scope: legacy-optional, feature: compartment, default: false, reason: "Legacy normalization backend; not maintained in configured channels"}

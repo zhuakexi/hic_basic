@@ -1,30 +1,22 @@
-# hic_basic Environment Files
+# hic_basic environment files
 
-This directory contains conda environment files for the `hic_basic` project.
+The repository-owned environment starts at [`../environment.yml`](../environment.yml).
+It is generated from `dependencies.yml`, resolved to exact locks under `locks/`,
+and managed only through `../run_in_env.sh` plus `../scripts/envctl.py`.
 
-## Available Environments
+For normal maintenance:
 
-### `hic_basic.yaml` (Recommended for most users)
-
-**Minimal, sufficient environment** containing only the packages that are directly imported and used by the `hic_basic` codebase.
-
-- **33 conda packages** + **2 pip packages**
-- **93.4% smaller** than the full environment
-- All versions tested and match `hic_basic_v096`
-- Python 3.10.16
-
-**Installation:**
 ```bash
-micromamba env create -f envs/hic_basic.yaml
-micromamba activate hic_basic
-pip install -e .
+make env-create
+make env-check
+make env-test
 ```
 
-**Core dependencies included:**
-- Hi-C processing: `cooler`, `cooltools`, `bioframe`
-- Data science: `numpy`, `pandas`, `scipy`, `matplotlib`
-- Bioinformatics: `pysam`, `pybedtools`, `h5py`
-- Single-cell: `anndata`, `scanpy`, `scvelo`
-- Machine learning: `scikit-learn`, `scikit-image`, `umap-learn`
-- Visualization: `plotly`, `seaborn`, `pymol-open-source`
-- Utilities: `dask`, `xarray`, `tqdm`, `click`, `pytest`
+See [`../docs/ENVIRONMENT.md`](../docs/ENVIRONMENT.md) before changing a
+dependency. It documents candidate creation, lock review, verification, and
+promotion.
+
+`hic_basic.yaml` and `pymol.yaml` are retained as historical compatibility
+evidence. They are not current install inputs and must not be used as the base
+for a new official environment. In particular, `hic_basic.yaml` was derived
+from the mixed `hic_basic_v096` prefix and has no exact transitive lock.

@@ -1,6 +1,6 @@
 {
-  "backup_path": "/share/home/ychi/dev/hic_basic/.run_in_env/deployment-backups/20260727T074407Z",
-  "deployed_at": "2026-07-27T07:44:07.910323Z",
+  "backup_path": null,
+  "deployed_at": "2026-07-27T09:44:44.413095Z",
   "files": {
     "canonical_driver.py": {
       "role": "canonical_driver",
@@ -20,7 +20,7 @@
     },
     "run_in_env.local.sh": {
       "role": "existing_local_config",
-      "sha256": "ea9178f1f3e35597fb964f32e24e411cc0a29281fa5659f9896f827a13cd3a83"
+      "sha256": "454446168dd36a4707888478d1c0ad46a0429fa56e200a31e955a4e6fa0ee592"
     },
     "run_in_env.sh": {
       "role": "runner",

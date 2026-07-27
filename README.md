@@ -2,6 +2,21 @@
 
 A Python library for processing Hi-C and 3D genome data.
 
+## Environment setup
+
+The supported setup uses the repository runtime and exact linux-64 locks:
+
+```bash
+make env-bootstrap
+./run_in_env.sh python -m hic_basic --help
+```
+
+The package is installed editable, so source changes are immediately visible.
+Dependency changes must be tested in a content-addressed candidate instead of
+the active environment. See [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for the
+maintenance workflow and [docs/CONTAINER.md](docs/CONTAINER.md) for the minimal
+Singularity/container contract and known-working image source.
+
 ## 📚 Documentation
 
 **Complete API Reference**: [docs/API_REFERENCE.md](docs/API_REFERENCE.md)

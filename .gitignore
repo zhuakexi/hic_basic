@@ -25,5 +25,7 @@ dask-worker-space/
 .run_in_env_slurm_*.slurm
 slurm-*.out
 .tmp/
+.env-backups/
+.env-cache/
 # on issues
 issues/
