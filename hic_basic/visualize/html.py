@@ -29,7 +29,7 @@ from .scene import StructureScene
 from .structure import ColorInput, StructureInput, structure_scene
 
 
-RENDERER_PROTOCOL_VERSION = 1
+RENDERER_PROTOCOL_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -328,6 +328,8 @@ def _html_document(
 ) -> str:
     profile_options = [
         ("molecular-studio-v1", "Molecular studio v1"),
+        ("section-studio-v1", "Section studio v1"),
+        ("section-pymol-v1", "Section PyMOL v1"),
         ("xu2025-v2", "Xu 2025 v2"),
         ("xu2025-v1", "Xu 2025 v1 (legacy)"),
         ("publication-v1", "Publication v1 (legacy)"),
@@ -360,6 +362,15 @@ def _html_document(
       <div class="controls" aria-label="Viewer controls">
         <label class="toggle"><input id="particles-toggle" type="checkbox" checked><span>Particles</span></label>
         <label class="toggle"><input id="bonds-toggle" type="checkbox" checked><span>Polymer bonds</span></label>
+        <label class="toggle"><input id="section-toggle" type="checkbox"><span>Section</span></label>
+        <label class="field field-section"><span>Thickness</span>
+          <input id="section-thickness" type="range" min="0.1" max="10" step="0.1" value="2">
+          <output id="section-thickness-value">2</output>
+        </label>
+        <label class="field field-section"><span>Offset</span>
+          <input id="section-offset" type="range" min="-10" max="10" step="0.1" value="0">
+          <output id="section-offset-value">0</output>
+        </label>
         <button id="regions-button" class="region-button" type="button"
                 aria-expanded="false" aria-controls="region-panel">
           Regions <span id="region-summary" class="control-value">All</span>

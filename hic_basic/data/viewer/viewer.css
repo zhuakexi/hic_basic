@@ -159,6 +159,19 @@ input[type="range"] {
   accent-color: var(--accent);
 }
 
+.field-section output {
+  width: 36px;
+  overflow: hidden;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-overflow: ellipsis;
+}
+
+.field-section[data-disabled="true"] {
+  opacity: 0.48;
+}
+
 input[type="color"] {
   width: 28px;
   height: 28px;

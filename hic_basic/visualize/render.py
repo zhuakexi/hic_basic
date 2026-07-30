@@ -75,7 +75,8 @@ def render_structure_png(
     output
         Destination PNG path. The image is validated before atomic replacement.
     config
-        Reproducible view, region, layer, profile, style, and raster settings.
+        Reproducible region, camera, cross-section slab, layer, profile,
+        colorbar, style, and raster settings.
     backend
         Optional browser executable/module paths, timeout, viewport, and
         software-rendering policy. These execution details are kept separate
@@ -277,6 +278,8 @@ def _normalize_metadata(metadata: Mapping[str, Any]) -> dict:
         "geometry": metadata.get("geometryStats"),
         "request": metadata.get("request", {}),
         "selection": metadata.get("selection", {}),
+        "section": metadata.get("section"),
+        "colorbar": metadata.get("colorbar"),
         "camera": metadata.get("camera", {}),
         "renderer": {
             "three_revision": renderer.get("threeRevision"),

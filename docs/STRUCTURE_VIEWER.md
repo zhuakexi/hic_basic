@@ -64,32 +64,36 @@ from hic_basic.visualize import (
     ExportStyle,
     LayerConfig,
     RasterConfig,
+    SectionConfig,
     StructureRenderConfig,
     ViewConfig,
     render_structure_png,
-    structure_scene,
+    structure_scene_with_feature,
 )
 
-scene = structure_scene(
-    structure_df,
-    color="score",
-    cmap="viridis",
+scene = structure_scene_with_feature(
+    "sample.20k.3dg",
+    "hg19.cpg.20k.txt",
+    feature_name="CpG density",
+    cmap="pymol-cpg",
+    vmin=0.005,
+    vmax=0.020,
+    max_bond_gap=20_000,
 )
 config = StructureRenderConfig(
     view=ViewConfig(
         regions=("chr1(mat):0-50Mb", "chr8(pat)"),
-        camera=CameraConfig(mode="fit", fov=34),
+        camera=CameraConfig(mode="fit", direction=(0, 0, 1), fov=34),
+        section=SectionConfig(enabled=True, thickness=2, offset=0),
     ),
     layers=LayerConfig(show_particles=False, show_bonds=True),
     style=ExportStyle(
-        profile="xu2025-v2",
-        tube_width=4.5,
-        silhouette_width=5.25,
-        background="#ffffff",
+        profile="section-studio-v1",
+        show_colorbar=True,
     ),
-    raster=RasterConfig(width=2400, height=1600),
+    raster=RasterConfig(width=2000, height=2000),
 )
-result = render_structure_png(scene, "cell12.png", config=config)
+result = render_structure_png(scene, "cell12.cpg-section.png", config=config)
 print(result.to_dict())
 ```
 
@@ -107,6 +111,11 @@ The CLI uses the same API:
 
 ./run_in_env.sh hic_basic render3d sample.20k.html \
   -o sample.from-html.png --config render.json
+
+./run_in_env.sh hic_basic render3d sample.20k.3dg \
+  --feature hg19.cpg.20k.txt --feature-name "CpG density" \
+  --cmap pymol-cpg --vmin 0.005 --vmax 0.020 \
+  --max-bond-gap 20000 -o sample.cpg-section.png --config section.json
 ```
 
 `render.json` is a strict, versioned document. Unknown fields and invalid
@@ -122,7 +131,13 @@ camera or width values fail before the browser starts:
       "position": [92.0, 61.0, 118.0],
       "target": [0.0, 0.0, 0.0],
       "up": [0.0, 1.0, 0.0],
-      "fov": 34.0
+      "fov": 34.0,
+      "direction": null
+    },
+    "section": {
+      "enabled": true,
+      "thickness": 2.0,
+      "offset": 0.0
     }
   },
   "layers": {
@@ -130,11 +145,12 @@ camera or width values fail before the browser starts:
     "show_bonds": true
   },
   "style": {
-    "profile": "molecular-studio-v1",
-    "tube_width": 4.5,
-    "silhouette_width": 5.0,
+    "profile": "section-studio-v1",
+    "tube_width": null,
+    "silhouette_width": null,
     "particle_size": null,
-    "background": "#111716"
+    "background": "#f7f9f7",
+    "show_colorbar": true
   },
   "raster": {
     "long_edge": 2400,
@@ -145,9 +161,16 @@ camera or width values fail before the browser starts:
 ```
 
 Use `camera.mode="fit"` with `position` and `target` set to `null` for a
-deterministic fitted view. Explicit `width` and `height` give the strongest
-reproducibility. If they are `null`, `long_edge` is combined with the headless
-viewport aspect ratio.
+deterministic fitted view. `direction` is the direction from the camera target
+toward the camera; `[0, 0, 1]` matches the default PyMOL section orientation.
+For an explicit camera, set `direction` to `null`. Explicit `width` and
+`height` give the strongest reproducibility. If they are `null`, `long_edge`
+is combined with the headless viewport aspect ratio.
+
+`section.thickness` and `section.offset` use the spatial coordinate units of
+the 3dg file. The slab is perpendicular to the viewing direction and centered
+on the camera target; positive offset moves it toward the camera. Both clipping
+planes are applied to particles and polymer bonds.
 
 ## Opening the HTML
 
@@ -204,12 +227,38 @@ scene = structure_scene(
 )
 ```
 
+For a haploid genome-bin track such as the legacy CpG reference, use
+`structure_scene_with_feature`. It normalizes optional `chr` prefixes and maps
+each reference row to both homologs by default:
+
+```python
+from hic_basic.visualize import structure_scene_with_feature
+
+scene = structure_scene_with_feature(
+    "sample.20k.3dg",
+    "hg19.cpg.20k.txt",  # headerless: chrom, pos, value
+    feature_name="CpG density",
+    cmap="pymol-cpg",
+    vmin=0.005,
+    vmax=0.020,
+    max_bond_gap=20_000,
+)
+```
+
+Every particle receives its feature color; every bond interpolates the colors
+of its endpoint particles. The scene stores the color mapping and match count
+for provenance and colorbar generation. Set `duplicate_haplotypes=False` when
+the track already contains separate `(mat)` and `(pat)` rows. Duplicate feature
+keys are rejected.
+
 ## Viewer and Export
 
 The monitor provides orbit, pan, zoom, particle picking, particle and bond
 visibility, particle and bond size, background color, fit-to-selection, and a
-union of multiple chromosome or genomic-region selections. An unphased region
-such as `chr1:0-20Mb` expands to both homologs when the scene contains
+union of multiple chromosome or genomic-region selections. It also provides a
+section toggle plus thickness and offset sliders; the slab remains aligned to
+the current camera while orbiting. An unphased region such as `chr1:0-20Mb`
+expands to both homologs when the scene contains
 `chr1(mat)` and `chr1(pat)`.
 
 The PNG button and `render_structure_png` call the same versioned browser
@@ -220,16 +269,19 @@ Available stable profiles are:
 | Profile | Intended use |
 | --- | --- |
 | `molecular-studio-v1` | Default dark, opaque PBR tube rendering |
+| `section-pymol-v1` | Flat PyMOL CpG-section baseline with Min/Max colorbar |
+| `section-studio-v1` | Preferred clean bond rendering with depth cue and numeric colorbar |
 | `xu2025-v2` | Preferred light publication rendering |
 | `xu2025-v1` | Versioned Xu 2025 baseline compatibility |
 | `publication-v1` | Versioned legacy light rendering |
 
 Parameters under an existing profile name are treated as a visual compatibility
 contract. New aesthetics require a new versioned profile name. `tube_width`,
-`silhouette_width`, `particle_size`, and `background` are explicit overrides;
-the returned report records their resolved values. Mesh profiles default to
-opaque polymer tubes without embedded particle spheres. Legacy line profiles
-default to both bonds and particles for old-result compatibility.
+`silhouette_width`, `particle_size`, `background`, and `show_colorbar` are
+explicit overrides; the returned report records their resolved values. Mesh
+profiles default to opaque polymer tubes without embedded particle spheres.
+Legacy line profiles default to both bonds and particles for old-result
+compatibility.
 
 ## Rendering Environment
 
@@ -291,7 +343,8 @@ operation and is expected to be slower under software rendering.
 
 Existing PyMOL/ChimeraX APIs and the legacy `hic_basic render` command remain
 unchanged. `hic_basic render3d` is the direct browser renderer. Renderer
-protocol version 1 accepts HTML produced by this implementation; older concept
-demo HTML files without the protocol fail with an actionable mismatch instead
-of relying on private page functions. A server-side path tracer and arbitrary
+protocol version 2 accepts HTML produced by this implementation. Protocol 1
+HTML predates cross-section semantics and is rejected instead of silently
+ignoring `view.section`; older concept demo HTML files without a protocol also
+fail with an actionable mismatch. A server-side path tracer and arbitrary
 annotation-edge layers are not part of this API version.

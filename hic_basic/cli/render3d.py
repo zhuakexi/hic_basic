@@ -6,7 +6,12 @@ import json
 import argparse
 from pathlib import Path
 
-from ..visualize import BrowserBackendConfig, render_structure_png, structure_scene
+from ..visualize import (
+    BrowserBackendConfig,
+    render_structure_png,
+    structure_scene,
+    structure_scene_with_feature,
+)
 
 
 name = "render3d"
@@ -35,6 +40,21 @@ def add_arguments(subparser):
         help="Versioned JSON render config; controls regions, camera, layers, style, and size",
     )
     subparser.add_argument("--color", default="chrom", help="3dg territory colors or a numeric/categorical field")
+    subparser.add_argument(
+        "--feature",
+        type=Path,
+        help="Headerless chrom/pos/value TSV used for per-particle and polymer-bond colors",
+    )
+    subparser.add_argument(
+        "--feature-name",
+        default="feature",
+        help="Scientific feature label used by the exported color bar",
+    )
+    subparser.add_argument(
+        "--no-duplicate-haplotypes",
+        action="store_true",
+        help="Require feature chromosome names to match haplotype suffixes exactly",
+    )
     subparser.add_argument("--cmap", default="viridis", help="Matplotlib colormap for numeric 3dg fields")
     subparser.add_argument("--vmin", type=float, help="Lower continuous-color bound")
     subparser.add_argument("--vmax", type=float, help="Upper continuous-color bound")
@@ -67,7 +87,24 @@ def add_arguments(subparser):
 def run(args):
     output = args.output or args.input.with_suffix(".png")
     if args.input.suffix.lower() in {".html", ".htm"}:
+        if args.feature is not None:
+            raise ValueError("--feature cannot be applied to an archived standalone HTML")
         source = args.input
+    elif args.feature is not None:
+        if args.color != "chrom":
+            raise ValueError("--color and --feature are mutually exclusive")
+        source = structure_scene_with_feature(
+            args.input,
+            args.feature,
+            feature_name=args.feature_name,
+            duplicate_haplotypes=not args.no_duplicate_haplotypes,
+            cmap=args.cmap,
+            vmin=args.vmin,
+            vmax=args.vmax,
+            missing_color=args.missing_color,
+            polymer_bonds=not args.no_bonds,
+            max_bond_gap=args.max_bond_gap,
+        )
     else:
         source = structure_scene(
             args.input,

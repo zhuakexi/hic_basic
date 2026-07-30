@@ -6,6 +6,7 @@ import colorsys
 import hashlib
 import os
 import re
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 
@@ -18,6 +19,7 @@ from .scene import ChromosomeGroup, ParticleLayer, PolymerBondLayer, StructureSc
 
 
 StructureInput = Union[str, os.PathLike, pd.DataFrame]
+FeatureInput = Union[str, os.PathLike, pd.DataFrame, pd.Series]
 ColorInput = Union[str, Sequence[Any], np.ndarray]
 
 
@@ -103,7 +105,15 @@ def structure_scene(
         raise ValueError("max_bond_gap must be non-negative")
 
     frame, source, default_name, source_checksum = _read_structure(structure)
-    input_colors = _resolve_colors(frame, color, palette, cmap, vmin, vmax, missing_color)
+    input_colors, color_mapping = _resolve_colors(
+        frame,
+        color,
+        palette,
+        cmap,
+        vmin,
+        vmax,
+        missing_color,
+    )
     frame = frame.copy()
     frame["_r"] = input_colors[:, 0]
     frame["_g"] = input_colors[:, 1]
@@ -180,6 +190,8 @@ def structure_scene(
 
     scene_metadata = dict(metadata or {})
     scene_metadata.setdefault("source_checksum", source_checksum)
+    if color_mapping is not None:
+        scene_metadata.setdefault("color_mapping", color_mapping)
     return StructureScene(
         particles=ParticleLayer(positions, colors, chromosome_codes, genomic_positions),
         bonds=PolymerBondLayer(endpoints, max_bond_gap),
@@ -193,6 +205,117 @@ def structure_scene(
         base_point_size=base_point_size,
         metadata=scene_metadata,
     )
+
+
+def structure_scene_with_feature(
+    structure: StructureInput,
+    feature: FeatureInput,
+    *,
+    feature_name: str = "feature",
+    feature_value: Optional[str] = None,
+    duplicate_haplotypes: bool = True,
+    cmap: str = "pymol-cpg",
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+    missing_color: Any = "#aeb7ba",
+    polymer_bonds: bool = True,
+    max_bond_gap: int = 1_000_000,
+    dataset_name: Optional[str] = None,
+    metadata: Optional[Mapping[str, Any]] = None,
+) -> StructureScene:
+    """Build a scene colored by a genome-bin feature track.
+
+    Parameters
+    ----------
+    structure
+        A five-column 3dg path or native structure DataFrame.
+    feature
+        A headerless ``chrom, pos, value`` TSV path, a DataFrame, or a
+        two-level-indexed Series. DataFrames may use ``pos`` or ``start``.
+    feature_name
+        Scientific label stored with the continuous color mapping and used by
+        exported color bars.
+    feature_value
+        Value column for a feature DataFrame. It may be omitted when exactly
+        one non-coordinate column exists.
+    duplicate_haplotypes
+        Match a haploid reference row to both ``(mat)`` and ``(pat)`` chains,
+        while also normalizing optional ``chr`` prefixes.
+    cmap, vmin, vmax, missing_color
+        Continuous feature color mapping. ``"pymol-cpg"`` reproduces the
+        magenta-gray-green mapping used by the legacy PyMOL CpG workflow.
+    polymer_bonds, max_bond_gap
+        Polymer-chain construction controls passed to :func:`structure_scene`.
+    dataset_name, metadata
+        Optional scene identity and JSON-compatible metadata.
+
+    Returns
+    -------
+    StructureScene
+        A renderer-independent scene with per-particle colors. Polymer bonds
+        interpolate the colors of their endpoint particles.
+
+    Notes
+    -----
+    Missing feature rows use ``missing_color``. Duplicate feature keys are
+    rejected because their mapping to a particle would be ambiguous.
+    """
+    label = str(feature_name).strip()
+    if not label:
+        raise ValueError("feature_name must not be empty")
+
+    frame, source, default_name, source_checksum = _read_structure(structure)
+    feature_frame, feature_source = _read_genome_feature(
+        feature,
+        feature_name=label,
+        feature_value=feature_value,
+    )
+    structure_keys = frame["chrom"].map(
+        lambda value: _feature_chromosome_key(value, duplicate_haplotypes)
+    )
+    feature_frame = feature_frame.copy()
+    feature_frame["_chrom_key"] = feature_frame["chrom"].map(
+        lambda value: _feature_chromosome_key(value, duplicate_haplotypes)
+    )
+    if feature_frame.duplicated(["_chrom_key", "pos"]).any():
+        raise ValueError("feature track contains duplicate chromosome-position keys")
+
+    annotated = frame.copy()
+    annotated["_chrom_key"] = structure_keys
+    annotated = annotated.merge(
+        feature_frame[["_chrom_key", "pos", label]],
+        on=["_chrom_key", "pos"],
+        how="left",
+        validate="many_to_one",
+        sort=False,
+    ).drop(columns="_chrom_key")
+    matched = int(annotated[label].notna().sum())
+    scene_metadata = dict(metadata or {})
+    scene_metadata.update(
+        {
+            "source_checksum": source_checksum,
+            "feature": {
+                "name": label,
+                "source": feature_source,
+                "matched_particles": matched,
+                "missing_particles": int(len(annotated) - matched),
+                "duplicate_haplotypes": bool(duplicate_haplotypes),
+            },
+        }
+    )
+    scene = structure_scene(
+        annotated,
+        color=label,
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        missing_color=missing_color,
+        polymer_bonds=polymer_bonds,
+        max_bond_gap=max_bond_gap,
+        dataset_name=dataset_name or default_name,
+        metadata=scene_metadata,
+    )
+    return replace(scene, source=source)
 
 
 def _read_structure(structure: StructureInput) -> Tuple[pd.DataFrame, str, str, str]:
@@ -265,6 +388,90 @@ def _normalize_frame(frame: pd.DataFrame) -> pd.DataFrame:
     return frame
 
 
+def _read_genome_feature(
+    feature: FeatureInput,
+    *,
+    feature_name: str,
+    feature_value: Optional[str],
+) -> Tuple[pd.DataFrame, str]:
+    if isinstance(feature, pd.Series):
+        value_name = feature_value or feature.name or feature_name
+        frame = feature.rename(value_name).to_frame()
+        source = "<series>"
+    elif isinstance(feature, pd.DataFrame):
+        frame = feature.copy()
+        source = "<dataframe>"
+    else:
+        path = Path(feature).expanduser()
+        if not path.is_file():
+            raise FileNotFoundError(f"genome feature track does not exist: {path}")
+        frame = pd.read_csv(path, sep="\t", comment="#", header=None)
+        if frame.shape[1] != 3:
+            raise ValueError(
+                "feature track path must have exactly three tab-separated columns: chrom, pos, value"
+            )
+        frame.columns = ["chrom", "pos", feature_name]
+        source = str(path)
+
+    if isinstance(frame.index, pd.MultiIndex) and frame.index.nlevels >= 2:
+        index_names = list(frame.index.names)
+        frame = frame.reset_index()
+        chrom_index = index_names[0] if index_names[0] is not None else frame.columns[0]
+        pos_index = index_names[1] if index_names[1] is not None else frame.columns[1]
+        frame = frame.rename(columns={chrom_index: "chrom", pos_index: "pos"})
+    else:
+        frame = frame.reset_index(drop=True)
+
+    lower_columns = {str(column).lower(): column for column in frame.columns}
+    chrom_column = next(
+        (lower_columns[name] for name in ("chrom", "chr", "chromosome") if name in lower_columns),
+        None,
+    )
+    pos_column = next(
+        (lower_columns[name] for name in ("pos", "position", "start") if name in lower_columns),
+        None,
+    )
+    if chrom_column is None or pos_column is None:
+        raise ValueError("feature DataFrame needs chrom/chr and pos/start fields")
+
+    if feature_value is not None:
+        if feature_value not in frame.columns:
+            raise ValueError(f"feature value field not found: {feature_value}")
+        value_column = feature_value
+    elif feature_name in frame.columns and feature_name not in {chrom_column, pos_column}:
+        value_column = feature_name
+    else:
+        candidates = [column for column in frame.columns if column not in {chrom_column, pos_column}]
+        if len(candidates) != 1:
+            raise ValueError(
+                "feature DataFrame must contain one value field or specify feature_value"
+            )
+        value_column = candidates[0]
+
+    normalized = frame[[chrom_column, pos_column, value_column]].rename(
+        columns={chrom_column: "chrom", pos_column: "pos", value_column: feature_name}
+    )
+    if normalized[["chrom", "pos"]].isna().any(axis=None):
+        raise ValueError("feature track contains missing chromosome or position values")
+    normalized["chrom"] = normalized["chrom"].astype(str)
+    positions = pd.to_numeric(normalized["pos"], errors="coerce")
+    if positions.isna().any() or not np.equal(positions, np.floor(positions)).all():
+        raise ValueError("feature positions must be integers")
+    if (positions < 0).any() or (positions > np.iinfo(np.uint32).max).any():
+        raise ValueError("feature positions must fit an unsigned 32-bit integer")
+    normalized["pos"] = positions.astype(np.int64)
+    normalized[feature_name] = pd.to_numeric(normalized[feature_name], errors="coerce")
+    return normalized, source
+
+
+def _feature_chromosome_key(value: Any, duplicate_haplotypes: bool) -> str:
+    chromosome = str(value).strip()
+    if duplicate_haplotypes:
+        chromosome = re.sub(r"(?:\((?:mat|pat)\)|_(?:mat|pat)_?)$", "", chromosome, flags=re.I)
+    chromosome = re.sub(r"^chr", "", chromosome, flags=re.I)
+    return chromosome.upper()
+
+
 def _resolve_colors(
     frame: pd.DataFrame,
     color: ColorInput,
@@ -273,16 +480,19 @@ def _resolve_colors(
     vmin: Optional[float],
     vmax: Optional[float],
     missing_color: Any,
-) -> np.ndarray:
+) -> Tuple[np.ndarray, Optional[Mapping[str, Any]]]:
     if isinstance(color, str) and color == "chrom":
         supplied_palette = palette or {}
         resolved = {
             chromosome: _color_to_uint8(supplied_palette.get(chromosome, _chromosome_color(chromosome)))
             for chromosome in frame["chrom"].unique()
         }
-        return np.asarray(
-            [resolved[chromosome] for chromosome in frame["chrom"]],
-            dtype=np.uint8,
+        return (
+            np.asarray(
+                [resolved[chromosome] for chromosome in frame["chrom"]],
+                dtype=np.uint8,
+            ),
+            None,
         )
 
     if isinstance(color, str):
@@ -290,14 +500,14 @@ def _resolve_colors(
             raise ValueError(f"color field not found in structure DataFrame: {color}")
         values = frame[color]
         if pd.api.types.is_numeric_dtype(values):
-            return _continuous_colors(values, cmap, vmin, vmax, missing_color)
-        return _categorical_colors(values, palette, missing_color)
+            return _continuous_colors(values, cmap, vmin, vmax, missing_color, field=color)
+        return _categorical_colors(values, palette, missing_color), None
 
     array = np.asarray(color)
     if len(array) != len(frame):
         raise ValueError(f"direct colors must have length {len(frame)}; got {len(array)}")
     if array.ndim == 1:
-        return np.asarray([_color_to_uint8(value) for value in array], dtype=np.uint8)
+        return np.asarray([_color_to_uint8(value) for value in array], dtype=np.uint8), None
     if array.ndim == 2 and array.shape[1] in (3, 4):
         numeric = np.asarray(array[:, :3], dtype=np.float64)
         if not np.isfinite(numeric).all():
@@ -306,7 +516,7 @@ def _resolve_colors(
             numeric = numeric * 255
         if numeric.min() < 0 or numeric.max() > 255:
             raise ValueError("direct RGB colors must be in the 0..1 or 0..255 range")
-        return np.round(numeric).astype(np.uint8)
+        return np.round(numeric).astype(np.uint8), None
     raise ValueError("color must be 'chrom', a DataFrame column, color sequence, or N x 3 RGB array")
 
 
@@ -316,7 +526,9 @@ def _continuous_colors(
     vmin: Optional[float],
     vmax: Optional[float],
     missing_color: Any,
-) -> np.ndarray:
+    *,
+    field: str,
+) -> Tuple[np.ndarray, Mapping[str, Any]]:
     numeric = pd.to_numeric(values, errors="coerce").to_numpy(dtype=np.float64)
     finite = np.isfinite(numeric)
     if not finite.any():
@@ -328,10 +540,32 @@ def _continuous_colors(
     normalized = np.full(len(numeric), 0.5, dtype=np.float64)
     if upper > lower:
         normalized[finite] = np.clip((numeric[finite] - lower) / (upper - lower), 0, 1)
-    color_map = matplotlib.colormaps.get_cmap(cmap)
+    color_map = _continuous_colormap(cmap)
     rgb = np.round(color_map(normalized)[:, :3] * 255).astype(np.uint8)
     rgb[~finite] = _color_to_uint8(missing_color)
-    return rgb
+    stops = []
+    for position in np.linspace(0, 1, 9):
+        stops.append([float(position), mpl_colors.to_hex(color_map(float(position)), keep_alpha=False)])
+    mapping = {
+        "kind": "continuous",
+        "field": str(field),
+        "label": str(field),
+        "cmap": str(cmap),
+        "vmin": lower,
+        "vmax": upper,
+        "missing_color": mpl_colors.to_hex(missing_color, keep_alpha=False),
+        "stops": stops,
+    }
+    return rgb, mapping
+
+
+def _continuous_colormap(name: str):
+    if str(name).lower() == "pymol-cpg":
+        return mpl_colors.LinearSegmentedColormap.from_list(
+            "pymol-cpg",
+            ("#ff00ff", "#808080", "#00ff00"),
+        )
+    return matplotlib.colormaps.get_cmap(name)
 
 
 def _categorical_colors(values: pd.Series, palette: Optional[Mapping[Any, Any]], missing_color: Any) -> np.ndarray:

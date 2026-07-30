@@ -90,7 +90,7 @@ Total modules with public functions: 92
 - [visualize.config](#visualize-config) (1 functions)
 - [visualize.html](#visualize-html) (2 functions)
 - [visualize.render](#visualize-render) (1 functions)
-- [visualize.structure](#visualize-structure) (1 functions)
+- [visualize.structure](#visualize-structure) (2 functions)
 - [wet.adtools](#wet-adtools) (7 functions)
 - [wet.afbb](#wet-afbb) (18 functions)
 - [wet.exp_record](#wet-exp_record) (6 functions)
@@ -1552,7 +1552,7 @@ No documentation available.
 No documentation available.
 
 
-**Source:** Line 24 in [cli/render3d.py](cli/render3d.py#L24)
+**Source:** Line 29 in [cli/render3d.py](cli/render3d.py#L29)
 
 
 ---
@@ -1564,7 +1564,7 @@ No documentation available.
 No documentation available.
 
 
-**Source:** Line 67 in [cli/render3d.py](cli/render3d.py#L67)
+**Source:** Line 87 in [cli/render3d.py](cli/render3d.py#L87)
 
 
 ---
@@ -1626,7 +1626,7 @@ No documentation available.
 No documentation available.
 
 
-**Source:** Line 60 in [cli/view3d.py](cli/view3d.py#L60)
+**Source:** Line 75 in [cli/view3d.py](cli/view3d.py#L75)
 
 
 ---
@@ -10204,7 +10204,7 @@ Load and validate a structure render configuration.
 or ``None`` for defaults. Unknown fields and invalid values are rejected.
 
 
-**Source:** Line 375 in [visualize/config.py](visualize/config.py#L375)
+**Source:** Line 454 in [visualize/config.py](visualize/config.py#L454)
 
 
 ---
@@ -10291,7 +10291,8 @@ source
 output
     Destination PNG path. The image is validated before atomic replacement.
 config
-    Reproducible view, region, layer, profile, style, and raster settings.
+    Reproducible region, camera, cross-section slab, layer, profile,
+    colorbar, style, and raster settings.
 backend
     Optional browser executable/module paths, timeout, viewport, and
     software-rendering policy. These execution details are kept separate
@@ -10321,7 +10322,7 @@ when the backend reports that its executable is missing.
 
 **File:** `visualize/structure.py`
 
-**Public functions:** 1
+**Public functions:** 2
 
 
 ### `structure_scene(structure: StructureInput, *, color: ColorInput='chrom', palette: Optional[Mapping[Any, Any]]=None, cmap: str='viridis', vmin: Optional[float]=None, vmax: Optional[float]=None, missing_color: Any='#aeb7ba', polymer_bonds: bool=True, max_bond_gap: int=1000000, dataset_name: Optional[str]=None, metadata: Optional[Mapping[str, Any]]=None)`
@@ -10364,7 +10365,56 @@ StructureScene
     scene does not contain Three.js or other renderer-specific objects.
 
 
-**Source:** Line 53 in [visualize/structure.py](visualize/structure.py#L53)
+**Source:** Line 55 in [visualize/structure.py](visualize/structure.py#L55)
+
+
+---
+
+
+### `structure_scene_with_feature(structure: StructureInput, feature: FeatureInput, *, feature_name: str='feature', feature_value: Optional[str]=None, duplicate_haplotypes: bool=True, cmap: str='pymol-cpg', vmin: Optional[float]=None, vmax: Optional[float]=None, missing_color: Any='#aeb7ba', polymer_bonds: bool=True, max_bond_gap: int=1000000, dataset_name: Optional[str]=None, metadata: Optional[Mapping[str, Any]]=None)`
+
+**Returns:** `StructureScene`
+
+
+Build a scene colored by a genome-bin feature track.
+
+Parameters
+----------
+structure
+    A five-column 3dg path or native structure DataFrame.
+feature
+    A headerless ``chrom, pos, value`` TSV path, a DataFrame, or a
+    two-level-indexed Series. DataFrames may use ``pos`` or ``start``.
+feature_name
+    Scientific label stored with the continuous color mapping and used by
+    exported color bars.
+feature_value
+    Value column for a feature DataFrame. It may be omitted when exactly
+    one non-coordinate column exists.
+duplicate_haplotypes
+    Match a haploid reference row to both ``(mat)`` and ``(pat)`` chains,
+    while also normalizing optional ``chr`` prefixes.
+cmap, vmin, vmax, missing_color
+    Continuous feature color mapping. ``"pymol-cpg"`` reproduces the
+    magenta-gray-green mapping used by the legacy PyMOL CpG workflow.
+polymer_bonds, max_bond_gap
+    Polymer-chain construction controls passed to :func:`structure_scene`.
+dataset_name, metadata
+    Optional scene identity and JSON-compatible metadata.
+
+Returns
+-------
+StructureScene
+    A renderer-independent scene with per-particle colors. Polymer bonds
+    interpolate the colors of their endpoint particles.
+
+Notes
+-----
+Missing feature rows use ``missing_color``. Duplicate feature keys are
+rejected because their mapping to a particle would be ambiguous.
+
+
+**Source:** Line 210 in [visualize/structure.py](visualize/structure.py#L210)
 
 
 ---

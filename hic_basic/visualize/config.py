@@ -16,6 +16,8 @@ from matplotlib import colors as mpl_colors
 RENDER_CONFIG_SCHEMA_VERSION = 1
 EXPORT_PROFILES = (
     "molecular-studio-v1",
+    "section-studio-v1",
+    "section-pymol-v1",
     "xu2025-v2",
     "xu2025-v1",
     "publication-v1",
@@ -74,8 +76,9 @@ def _positive_width(value: Optional[float], name: str) -> Optional[float]:
 class CameraConfig:
     """Camera state for a structure render.
 
-    ``mode="fit"`` deterministically fits the selected structure. With
-    ``mode="explicit"``, ``position`` and ``target`` are required.
+    ``mode="fit"`` deterministically fits the selected structure, optionally
+    viewing it from ``direction``. With ``mode="explicit"``, ``position`` and
+    ``target`` are required.
     """
 
     mode: str = "fit"
@@ -83,6 +86,7 @@ class CameraConfig:
     target: Optional[Tuple[float, float, float]] = None
     up: Tuple[float, float, float] = (0.0, 1.0, 0.0)
     fov: float = 34.0
+    direction: Optional[Tuple[float, float, float]] = None
 
     def __post_init__(self) -> None:
         if self.mode not in {"fit", "explicit"}:
@@ -90,6 +94,7 @@ class CameraConfig:
         position = _vector3(self.position, "camera position")
         target = _vector3(self.target, "camera target")
         up = _vector3(self.up, "camera up")
+        direction = _vector3(self.direction, "camera direction")
         if up is None:
             raise ValueError("camera up must contain exactly three numbers")
         fov = _finite_number(self.fov, "camera fov")
@@ -97,25 +102,39 @@ class CameraConfig:
             raise ValueError("camera fov must be between 1 and 179 degrees")
         if up == (0.0, 0.0, 0.0):
             raise ValueError("camera up vector must be non-zero")
+        if direction == (0.0, 0.0, 0.0):
+            raise ValueError("camera direction vector must be non-zero")
         if self.mode == "explicit":
+            if direction is not None:
+                raise ValueError("explicit camera does not accept direction")
             if position is None or target is None:
                 raise ValueError("explicit camera requires position and target")
             if position == target:
                 raise ValueError("camera position and target must differ")
-            direction = tuple(left - right for left, right in zip(position, target))
+            view_vector = tuple(left - right for left, right in zip(position, target))
             cross = (
-                direction[1] * up[2] - direction[2] * up[1],
-                direction[2] * up[0] - direction[0] * up[2],
-                direction[0] * up[1] - direction[1] * up[0],
+                view_vector[1] * up[2] - view_vector[2] * up[1],
+                view_vector[2] * up[0] - view_vector[0] * up[2],
+                view_vector[0] * up[1] - view_vector[1] * up[0],
             )
             if sum(value * value for value in cross) <= 1e-20:
                 raise ValueError("camera up vector must not be parallel to the viewing direction")
-        elif position is not None or target is not None:
-            raise ValueError("fit camera does not accept position or target")
+        else:
+            if position is not None or target is not None:
+                raise ValueError("fit camera does not accept position or target")
+            if direction is not None:
+                cross = (
+                    direction[1] * up[2] - direction[2] * up[1],
+                    direction[2] * up[0] - direction[0] * up[2],
+                    direction[0] * up[1] - direction[1] * up[0],
+                )
+                if sum(value * value for value in cross) <= 1e-20:
+                    raise ValueError("camera up vector must not be parallel to the viewing direction")
         object.__setattr__(self, "position", position)
         object.__setattr__(self, "target", target)
         object.__setattr__(self, "up", up)
         object.__setattr__(self, "fov", fov)
+        object.__setattr__(self, "direction", direction)
 
     def to_dict(self) -> dict:
         return {
@@ -124,20 +143,62 @@ class CameraConfig:
             "target": list(self.target) if self.target is not None else None,
             "up": list(self.up),
             "fov": self.fov,
+            "direction": list(self.direction) if self.direction is not None else None,
         }
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "CameraConfig":
-        data = _strict_mapping(value, {"mode", "position", "target", "up", "fov"}, "camera config")
+        data = _strict_mapping(
+            value,
+            {"mode", "position", "target", "up", "fov", "direction"},
+            "camera config",
+        )
+        return cls(**dict(data))
+
+
+@dataclass(frozen=True)
+class SectionConfig:
+    """Camera-aligned slab used for cross-section rendering.
+
+    ``thickness`` and ``offset`` use the coordinate units of the 3dg input.
+    The slab is centered on the camera target plus ``offset`` toward the
+    camera. A disabled section preserves the complete surface view.
+    """
+
+    enabled: bool = False
+    thickness: float = 2.0
+    offset: float = 0.0
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.enabled, bool):
+            raise TypeError("section enabled must be bool")
+        thickness = _finite_number(self.thickness, "section thickness")
+        offset = _finite_number(self.offset, "section offset")
+        if thickness <= 0:
+            raise ValueError("section thickness must be greater than 0")
+        object.__setattr__(self, "thickness", thickness)
+        object.__setattr__(self, "offset", offset)
+
+    def to_dict(self) -> dict:
+        return {
+            "enabled": self.enabled,
+            "thickness": self.thickness,
+            "offset": self.offset,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "SectionConfig":
+        data = _strict_mapping(value, {"enabled", "thickness", "offset"}, "section config")
         return cls(**dict(data))
 
 
 @dataclass(frozen=True)
 class ViewConfig:
-    """Genome selection and camera used for rendering."""
+    """Genome selection, camera, and optional cross-section slab."""
 
     regions: Tuple[str, ...] = ()
     camera: CameraConfig = field(default_factory=CameraConfig)
+    section: SectionConfig = field(default_factory=SectionConfig)
 
     def __post_init__(self) -> None:
         if isinstance(self.regions, (str, bytes)):
@@ -147,16 +208,23 @@ class ViewConfig:
             raise ValueError("render regions must not contain empty values")
         if not isinstance(self.camera, CameraConfig):
             raise TypeError("camera must be a CameraConfig")
+        if not isinstance(self.section, SectionConfig):
+            raise TypeError("section must be a SectionConfig")
         object.__setattr__(self, "regions", regions)
 
     def to_dict(self) -> dict:
-        return {"regions": list(self.regions), "camera": self.camera.to_dict()}
+        return {
+            "regions": list(self.regions),
+            "camera": self.camera.to_dict(),
+            "section": self.section.to_dict(),
+        }
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "ViewConfig":
-        data = _strict_mapping(value, {"regions", "camera"}, "view config")
+        data = _strict_mapping(value, {"regions", "camera", "section"}, "view config")
         camera = CameraConfig.from_dict(data.get("camera", {}))
-        return cls(regions=tuple(data.get("regions", ())), camera=camera)
+        section = SectionConfig.from_dict(data.get("section", {}))
+        return cls(regions=tuple(data.get("regions", ())), camera=camera, section=section)
 
 
 @dataclass(frozen=True)
@@ -195,6 +263,7 @@ class ExportStyle:
     silhouette_width: Optional[float] = None
     particle_size: Optional[float] = None
     background: Optional[str] = None
+    show_colorbar: Optional[bool] = None
 
     def __post_init__(self) -> None:
         if self.profile not in EXPORT_PROFILES:
@@ -203,6 +272,8 @@ class ExportStyle:
         background = None
         if self.background is not None:
             background = mpl_colors.to_hex(self.background, keep_alpha=False)
+        if self.show_colorbar is not None and not isinstance(self.show_colorbar, bool):
+            raise TypeError("show_colorbar must be bool or None")
         object.__setattr__(self, "tube_width", _positive_width(self.tube_width, "tube_width"))
         object.__setattr__(
             self,
@@ -223,11 +294,19 @@ class ExportStyle:
             "silhouette_width": self.silhouette_width,
             "particle_size": self.particle_size,
             "background": self.background,
+            "show_colorbar": self.show_colorbar,
         }
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "ExportStyle":
-        allowed = {"profile", "tube_width", "silhouette_width", "particle_size", "background"}
+        allowed = {
+            "profile",
+            "tube_width",
+            "silhouette_width",
+            "particle_size",
+            "background",
+            "show_colorbar",
+        }
         data = _strict_mapping(value, allowed, "export style")
         return cls(**dict(data))
 

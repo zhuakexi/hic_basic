@@ -7,10 +7,14 @@ import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js
 const payloadNode = document.getElementById("scene-data");
 const payload = JSON.parse(payloadNode.textContent);
 payloadNode.remove();
-const RENDERER_PROTOCOL_VERSION = 1;
+const RENDERER_PROTOCOL_VERSION = 2;
 const embeddedRenderConfig = payload.viewer.render_config || {
   schema_version: 1,
-  view: { regions: payload.viewer.initial_regions || [], camera: { mode: "fit", fov: 34, up: [0, 1, 0] } },
+  view: {
+    regions: payload.viewer.initial_regions || [],
+    camera: { mode: "fit", fov: 34, up: [0, 1, 0] },
+    section: { enabled: false, thickness: 2, offset: 0 },
+  },
   layers: { show_particles: null, show_bonds: null },
   style: { profile: payload.viewer.export_profile || "molecular-studio-v1" },
   raster: { long_edge: 2400, width: null, height: null },
@@ -22,6 +26,11 @@ const particlesToggle = document.getElementById("particles-toggle");
 const bondsToggle = document.getElementById("bonds-toggle");
 const pointSizeInput = document.getElementById("point-size");
 const bondSizeInput = document.getElementById("bond-size");
+const sectionToggle = document.getElementById("section-toggle");
+const sectionThicknessInput = document.getElementById("section-thickness");
+const sectionThicknessValue = document.getElementById("section-thickness-value");
+const sectionOffsetInput = document.getElementById("section-offset");
+const sectionOffsetValue = document.getElementById("section-offset-value");
 const backgroundInput = document.getElementById("background-color");
 const exportProfileSelect = document.getElementById("export-profile");
 const fitButton = document.getElementById("fit-view");
@@ -56,6 +65,12 @@ if (embeddedRenderConfig.layers.show_particles !== null) {
 if (embeddedRenderConfig.layers.show_bonds !== null) {
   bondsToggle.checked = embeddedRenderConfig.layers.show_bonds;
 }
+const embeddedSection = embeddedRenderConfig.view.section || {};
+sectionToggle.checked = Boolean(embeddedSection.enabled);
+if (embeddedSection.thickness !== undefined) {
+  sectionThicknessInput.value = String(embeddedSection.thickness);
+}
+if (embeddedSection.offset !== undefined) sectionOffsetInput.value = String(embeddedSection.offset);
 
 function decodeBase64(value, Type) {
   const raw = atob(value);
@@ -108,6 +123,7 @@ renderer.setPixelRatio(softwareRenderer ? 0.72 : Math.min(window.devicePixelRati
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(backgroundInput.value, 1);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.localClippingEnabled = sectionToggle.checked;
 viewport.appendChild(renderer.domElement);
 
 const positions = decodeSceneArray(payload.arrays.positions, Float32Array);
@@ -128,6 +144,7 @@ controls.screenSpacePanning = true;
 
 const positionAttribute = new THREE.BufferAttribute(positions, 3);
 const colorAttribute = new THREE.BufferAttribute(colors, 3, true);
+const monitorSectionPlanes = [new THREE.Plane(), new THREE.Plane()];
 
 const particleGeometry = new THREE.BufferGeometry();
 particleGeometry.setAttribute("position", positionAttribute);
@@ -141,6 +158,7 @@ const particleMaterial = new THREE.PointsMaterial({
   vertexColors: true,
   transparent: false,
   depthWrite: true,
+  clippingPlanes: monitorSectionPlanes,
 });
 const particles = new THREE.Points(particleGeometry, particleMaterial);
 particles.frustumCulled = true;
@@ -158,6 +176,7 @@ const thinBondMaterial = new THREE.LineBasicMaterial({
   transparent: true,
   opacity: 0.58,
   depthWrite: false,
+  clippingPlanes: monitorSectionPlanes,
 });
 const thinBonds = new THREE.LineSegments(thinBondGeometry, thinBondMaterial);
 const bonds = new THREE.Group();
@@ -177,6 +196,7 @@ const haloMaterial = new THREE.MeshBasicMaterial({
   transparent: true,
   opacity: 0.95,
   depthTest: false,
+  clippingPlanes: monitorSectionPlanes,
 });
 const selectionHalo = new THREE.Mesh(haloGeometry, haloMaterial);
 selectionHalo.visible = false;
@@ -202,6 +222,89 @@ let lastFrameTime = performance.now();
 let fpsWindowStart = lastFrameTime;
 let fpsFrames = 0;
 let firstFrameTime = null;
+
+function sectionState(sectionConfig, targetCamera, target) {
+  const enabled = Boolean(sectionConfig && sectionConfig.enabled);
+  const thickness = finiteNumber(sectionConfig && sectionConfig.thickness === undefined
+    ? 2
+    : sectionConfig.thickness, "section thickness");
+  const offset = finiteNumber(sectionConfig && sectionConfig.offset === undefined
+    ? 0
+    : sectionConfig.offset, "section offset");
+  if (!(thickness > 0)) throw new Error("section thickness must be greater than 0");
+  const normal = targetCamera.position.clone().sub(target).normalize();
+  const center = target.clone().addScaledVector(normal, offset);
+  const half = thickness * 0.5;
+  const lower = center.clone().addScaledVector(normal, -half);
+  const upper = center.clone().addScaledVector(normal, half);
+  return {
+    enabled,
+    thickness,
+    offset,
+    normal,
+    center,
+    planes: [
+      new THREE.Plane().setFromNormalAndCoplanarPoint(normal, lower),
+      new THREE.Plane().setFromNormalAndCoplanarPoint(normal.clone().negate(), upper),
+    ],
+  };
+}
+
+function updateMonitorSectionPlanes() {
+  const state = sectionState(
+    {
+      enabled: sectionToggle.checked,
+      thickness: sectionThicknessInput.value,
+      offset: sectionOffsetInput.value,
+    },
+    camera,
+    controls.target,
+  );
+  monitorSectionPlanes[0].copy(state.planes[0]);
+  monitorSectionPlanes[1].copy(state.planes[1]);
+  renderer.localClippingEnabled = state.enabled;
+  return state;
+}
+
+function configureSectionInputs(selection = activeSelection) {
+  const currentThickness = Number(sectionThicknessInput.value);
+  const currentOffset = Number(sectionOffsetInput.value);
+  const minimum = new THREE.Vector3(...selection.bbox[0]);
+  const maximum = new THREE.Vector3(...selection.bbox[1]);
+  const diagonal = Math.max(maximum.distanceTo(minimum), 1e-3);
+  const minimumThickness = Math.max(diagonal / 500, 1e-4);
+  const maximumThickness = Math.max(diagonal * 1.25, Number(embeddedSection.thickness) || 0);
+  sectionThicknessInput.min = String(minimumThickness);
+  sectionThicknessInput.max = String(maximumThickness);
+  sectionThicknessInput.step = "any";
+  sectionOffsetInput.min = String(-diagonal);
+  sectionOffsetInput.max = String(diagonal);
+  sectionOffsetInput.step = "any";
+  sectionThicknessInput.value = String(THREE.MathUtils.clamp(
+    currentThickness,
+    minimumThickness,
+    maximumThickness,
+  ));
+  sectionOffsetInput.value = String(THREE.MathUtils.clamp(currentOffset, -diagonal, diagonal));
+}
+
+function formatSectionValue(value) {
+  const numeric = Number(value);
+  if (Math.abs(numeric) >= 100) return numeric.toFixed(0);
+  if (Math.abs(numeric) >= 10) return numeric.toFixed(1);
+  return numeric.toFixed(2).replace(/\.00$/, "");
+}
+
+function updateSectionControls() {
+  document.querySelectorAll(".field-section").forEach((field) => {
+    field.dataset.disabled = String(!sectionToggle.checked);
+  });
+  sectionThicknessInput.disabled = !sectionToggle.checked;
+  sectionOffsetInput.disabled = !sectionToggle.checked;
+  sectionThicknessValue.textContent = formatSectionValue(sectionThicknessInput.value);
+  sectionOffsetValue.textContent = formatSectionValue(sectionOffsetInput.value);
+  updateMonitorSectionPlanes();
+}
 
 function lowerBound(array, value, start, end) {
   let left = start;
@@ -448,6 +551,7 @@ function rebuildWideBonds() {
     opacity: 0.70,
     depthWrite: false,
     alphaToCoverage: true,
+    clippingPlanes: monitorSectionPlanes,
   });
   wideBondMaterial.resolution.set(window.innerWidth, window.innerHeight);
   wideBonds = new LineSegments2(wideBondGeometry, wideBondMaterial);
@@ -483,6 +587,8 @@ function applySelection(selection, fit = true) {
   selectionStatus.textContent = `${selection.name}: ${selection.particleCount.toLocaleString()} particles, ${selection.bondCount.toLocaleString()} bonds`;
   applyBondSize();
   if (fit) fitView(selection);
+  configureSectionInputs(selection);
+  updateSectionControls();
 }
 
 function frameCamera(selection, targetCamera, target, directionOverride = null) {
@@ -606,6 +712,9 @@ pointSizeInput.addEventListener("input", () => {
 });
 
 bondSizeInput.addEventListener("input", applyBondSize);
+sectionToggle.addEventListener("change", updateSectionControls);
+sectionThicknessInput.addEventListener("input", updateSectionControls);
+sectionOffsetInput.addEventListener("input", updateSectionControls);
 
 backgroundInput.addEventListener("input", () => {
   renderer.setClearColor(backgroundInput.value, 1);
@@ -614,6 +723,46 @@ backgroundInput.addEventListener("input", () => {
 fitButton.addEventListener("click", () => fitView(activeSelection));
 
 const EXPORT_PROFILES = {
+  "section-pymol-v1": {
+    label: "section-pymol-v1",
+    mode: "layered-section",
+    background: "#ffffff",
+    innerWidth: 4.6,
+    outlineWidth: 4.6,
+    highlightWidth: 0.1,
+    pointSize: 2.2,
+    outline: 0xffffff,
+    outlineOpacity: 0,
+    highlightOpacity: 0,
+    saturationScale: 1.0,
+    saturationRange: [0, 1],
+    lightnessScale: 1.0,
+    lightnessRange: [0, 1],
+    depthCue: 0,
+    exposure: 1.0,
+    defaultParticles: false,
+    showColorbar: true,
+  },
+  "section-studio-v1": {
+    label: "section-studio-v1",
+    mode: "layered-section",
+    background: "#f7f9f7",
+    innerWidth: 4.0,
+    outlineWidth: 4.0,
+    highlightWidth: 0.72,
+    pointSize: 2.5,
+    outline: 0x263335,
+    outlineOpacity: 0,
+    highlightOpacity: 0,
+    saturationScale: 0.92,
+    saturationRange: [0.18, 0.92],
+    lightnessScale: 0.93,
+    lightnessRange: [0.20, 0.78],
+    depthCue: 0.08,
+    exposure: 1.02,
+    defaultParticles: false,
+    showColorbar: true,
+  },
   "xu2025-v1": {
     label: "xu2025-v1",
     mode: "layered-legacy",
@@ -736,10 +885,34 @@ function normalizeRenderConfig(config) {
     target: cameraConfig.target || null,
     up: cameraConfig.up || [0, 1, 0],
     fov: finiteNumber(cameraConfig.fov === undefined ? 34 : cameraConfig.fov, "camera fov"),
+    direction: cameraConfig.direction || null,
   };
+  if (cameraState.direction) {
+    if (!Array.isArray(cameraState.direction) || cameraState.direction.length !== 3) {
+      throw new Error("Camera direction must contain three numbers");
+    }
+    cameraState.direction = cameraState.direction.map((value) => finiteNumber(value, "camera direction"));
+    if (new THREE.Vector3(...cameraState.direction).lengthSq() <= 1e-20) {
+      throw new Error("Camera direction must be non-zero");
+    }
+  }
   if (cameraMode === "explicit" && (!cameraState.position || !cameraState.target)) {
     throw new Error("Explicit camera requires position and target");
   }
+  if (cameraMode === "explicit" && cameraState.direction) {
+    throw new Error("Explicit camera does not accept direction");
+  }
+  const sectionConfig = view.section || {};
+  const sectionThickness = finiteNumber(
+    sectionConfig.thickness === undefined ? 2 : sectionConfig.thickness,
+    "section thickness",
+  );
+  if (!(sectionThickness > 0)) throw new Error("section thickness must be greater than 0");
+  const section = {
+    enabled: Boolean(sectionConfig.enabled),
+    thickness: sectionThickness,
+    offset: finiteNumber(sectionConfig.offset === undefined ? 0 : sectionConfig.offset, "section offset"),
+  };
 
   const width = raster.width === null || raster.width === undefined ? null : Number(raster.width);
   const height = raster.height === null || raster.height === undefined ? null : Number(raster.height);
@@ -748,7 +921,9 @@ function normalizeRenderConfig(config) {
   const profileParticleDefault = profile.pointSize || 3.0;
   const particlesSpecified = layers.show_particles !== null && layers.show_particles !== undefined;
   const showParticles = !particlesSpecified
-    ? profile.mode === "layered-legacy"
+    ? Boolean(profile.defaultParticles === undefined
+      ? profile.mode === "layered-legacy"
+      : profile.defaultParticles)
     : Boolean(layers.show_particles);
   const showBonds = layers.show_bonds === null || layers.show_bonds === undefined
     ? true
@@ -759,6 +934,7 @@ function normalizeRenderConfig(config) {
     view: {
       regions: Array.isArray(view.regions) ? view.regions.map(String) : [],
       camera: cameraState,
+      section,
     },
     layers: { show_particles: showParticles, show_bonds: showBonds },
     particlesSpecified,
@@ -767,15 +943,18 @@ function normalizeRenderConfig(config) {
       background: style.background || profile.background,
       tube_width: positiveWidth(
         style.tube_width,
-        profile.mode === "layered-legacy" ? profile.innerWidth : profile.tubeWidth,
+        profile.mode.startsWith("layered") ? profile.innerWidth : profile.tubeWidth,
         "tube_width",
       ),
       silhouette_width: positiveWidth(
         style.silhouette_width,
-        profile.mode === "layered-legacy" ? profile.outlineWidth : profile.silhouetteWidth,
+        profile.mode.startsWith("layered") ? profile.outlineWidth : profile.silhouetteWidth,
         "silhouette_width",
       ),
       particle_size: positiveWidth(style.particle_size, profileParticleDefault, "particle_size"),
+      show_colorbar: style.show_colorbar === null || style.show_colorbar === undefined
+        ? Boolean(profile.showColorbar)
+        : Boolean(style.show_colorbar),
     },
     raster: { long_edge: longEdge, width, height },
     profile,
@@ -791,6 +970,11 @@ function interactiveRenderConfig() {
     target: controls.target.toArray(),
     up: camera.up.toArray(),
     fov: camera.fov,
+  };
+  config.view.section = {
+    enabled: sectionToggle.checked,
+    thickness: Number(sectionThicknessInput.value),
+    offset: Number(sectionOffsetInput.value),
   };
   config.layers = {
     show_particles: particlesToggle.checked,
@@ -828,11 +1012,14 @@ function configuredCamera(cameraConfig, selection, aspect) {
     targetCamera.lookAt(target);
     targetCamera.updateProjectionMatrix();
   } else {
+    const fitDirection = cameraConfig.direction
+      ? new THREE.Vector3(...cameraConfig.direction).normalize()
+      : new THREE.Vector3(1.08, 0.76, 1.32).normalize();
     frameCamera(
       selection,
       targetCamera,
       target,
-      new THREE.Vector3(1.08, 0.76, 1.32).normalize(),
+      fitDirection,
     );
   }
   targetCamera.updateMatrixWorld(true);
@@ -849,6 +1036,7 @@ function makeLineLayer(geometry, width, resolution, options) {
     depthTest: true,
     depthWrite: options.depthWrite,
     alphaToCoverage: true,
+    clippingPlanes: options.clippingPlanes || null,
   });
   material.resolution.copy(resolution);
   const line = new LineSegments2(geometry, material);
@@ -1052,13 +1240,14 @@ function addStudioLights(targetScene, targetCamera, selection, profile) {
   targetScene.add(hemisphere);
 }
 
-function makeTubeSilhouette(geometry, expansion, color) {
+function makeTubeSilhouette(geometry, expansion, color, clippingPlanes = null) {
   const material = new THREE.MeshBasicMaterial({
     color,
     side: THREE.BackSide,
     depthTest: true,
     depthWrite: true,
     toneMapped: true,
+    clippingPlanes,
   });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.outlineExpansion = { value: expansion };
@@ -1079,26 +1268,31 @@ function makeTubeSilhouette(geometry, expansion, color) {
   return { mesh, material };
 }
 
-function makeParticleMaterial(pointSize) {
+function makeParticleMaterial(pointSize, clippingPlanes = null) {
   return new THREE.ShaderMaterial({
     uniforms: {
       pointSize: { value: pointSize },
       lightDirection: { value: new THREE.Vector3(-0.42, 0.56, 0.72).normalize() },
     },
     vertexShader: `
+      #include <clipping_planes_pars_vertex>
       uniform float pointSize;
       attribute vec3 color;
       varying vec3 vColor;
       void main() {
         vColor = color;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
         gl_PointSize = pointSize;
+        #include <clipping_planes_vertex>
       }
     `,
     fragmentShader: `
+      #include <clipping_planes_pars_fragment>
       uniform vec3 lightDirection;
       varying vec3 vColor;
       void main() {
+        #include <clipping_planes_fragment>
         vec2 point = gl_PointCoord * 2.0 - 1.0;
         float radius2 = dot(point, point);
         if (radius2 > 1.0) discard;
@@ -1115,7 +1309,104 @@ function makeParticleMaterial(pointSize) {
     transparent: true,
     depthTest: true,
     depthWrite: true,
+    clipping: true,
+    clippingPlanes,
   });
+}
+
+function sectionStatistics(state, selection) {
+  if (!state.enabled) return null;
+  const selected = selection.particleIndices;
+  const particleCount = selected ? selected.length : payload.stats.particles;
+  const signedDistance = (particle) => {
+    const offset = particle * 3;
+    return state.normal.x * (positions[offset] - state.center.x)
+      + state.normal.y * (positions[offset + 1] - state.center.y)
+      + state.normal.z * (positions[offset + 2] - state.center.z);
+  };
+  const half = state.thickness * 0.5;
+  let visibleParticles = 0;
+  for (let index = 0; index < particleCount; index += 1) {
+    const particle = selected ? selected[index] : index;
+    if (Math.abs(signedDistance(particle)) <= half) visibleParticles += 1;
+  }
+  let intersectingBonds = 0;
+  for (let index = 0; index < selection.bondIndices.length; index += 2) {
+    const left = signedDistance(selection.bondIndices[index]);
+    const right = signedDistance(selection.bondIndices[index + 1]);
+    if (Math.min(left, right) <= half && Math.max(left, right) >= -half) {
+      intersectingBonds += 1;
+    }
+  }
+  return {
+    enabled: true,
+    thickness: state.thickness,
+    offset: state.offset,
+    normal: state.normal.toArray(),
+    center: state.center.toArray(),
+    particles: visibleParticles,
+    bonds: intersectingBonds,
+  };
+}
+
+function formatFeatureValue(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "";
+  const absolute = Math.abs(numeric);
+  if (absolute !== 0 && (absolute < 0.001 || absolute >= 10000)) return numeric.toExponential(2);
+  return Number(numeric.toPrecision(4)).toString();
+}
+
+function compositeExportCanvas(exportCanvas, request) {
+  const finalCanvas = document.createElement("canvas");
+  finalCanvas.width = exportCanvas.width;
+  finalCanvas.height = exportCanvas.height;
+  const context = finalCanvas.getContext("2d");
+  context.drawImage(exportCanvas, 0, 0);
+  const mapping = payload.dataset.metadata && payload.dataset.metadata.color_mapping;
+  if (!request.style.show_colorbar || !mapping || mapping.kind !== "continuous") {
+    return { canvas: finalCanvas, colorbar: null };
+  }
+
+  const scale = Math.max(finalCanvas.width / 1400, 0.5);
+  const barWidth = Math.round(190 * scale);
+  const barHeight = Math.max(Math.round(14 * scale), 8);
+  const margin = Math.round(42 * scale);
+  const x = finalCanvas.width - margin - barWidth;
+  const y = finalCanvas.height - margin - barHeight;
+  const gradient = context.createLinearGradient(x, 0, x + barWidth, 0);
+  mapping.stops.forEach(([position, color]) => gradient.addColorStop(position, color));
+  context.fillStyle = gradient;
+  context.fillRect(x, y, barWidth, barHeight);
+  context.strokeStyle = "rgba(26, 35, 37, 0.72)";
+  context.lineWidth = Math.max(1, scale);
+  context.strokeRect(x, y, barWidth, barHeight);
+
+  const fontSize = Math.max(Math.round(12 * scale), 10);
+  context.font = `${fontSize}px Inter, Arial, sans-serif`;
+  context.fillStyle = "#172126";
+  context.textBaseline = "bottom";
+  const baselineMode = request.style.profile === "section-pymol-v1";
+  const minimum = baselineMode ? "Min" : formatFeatureValue(mapping.vmin);
+  const maximum = baselineMode ? "Max" : formatFeatureValue(mapping.vmax);
+  context.textAlign = "left";
+  context.fillText(minimum, x, y - Math.round(5 * scale));
+  context.textAlign = "right";
+  context.fillText(maximum, x + barWidth, y - Math.round(5 * scale));
+  if (!baselineMode) {
+    context.textAlign = "left";
+    context.fillStyle = "#34434a";
+    context.fillText(mapping.label || mapping.field || "Feature", x, y - Math.round(24 * scale));
+  }
+  return {
+    canvas: finalCanvas,
+    colorbar: {
+      label: mapping.label || mapping.field || null,
+      cmap: mapping.cmap,
+      vmin: mapping.vmin,
+      vmax: mapping.vmax,
+    },
+  };
 }
 
 async function renderHighQuality(configOrProfile = null, options = {}) {
@@ -1153,6 +1444,9 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
   const configured = configuredCamera(request.view.camera, selection, width / height);
   const exportCamera = configured.camera;
   const exportTarget = configured.target;
+  const exportSection = sectionState(request.view.section, exportCamera, exportTarget);
+  const clippingPlanes = exportSection.enabled ? exportSection.planes : null;
+  exportRenderer.localClippingEnabled = exportSection.enabled;
   const resolution = new THREE.Vector2(width, height);
   const profileScale = width / 1400;
   const exportColors = profileColorArray(profileName, exportCamera, selection);
@@ -1168,7 +1462,10 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
     if (selection.particleIndices) {
       exportParticleGeometry.setIndex(new THREE.BufferAttribute(selection.particleIndices, 1));
     }
-    const exportParticleMaterial = makeParticleMaterial(request.style.particle_size * profileScale);
+    const exportParticleMaterial = makeParticleMaterial(
+      request.style.particle_size * profileScale,
+      clippingPlanes,
+    );
     const exportParticles = new THREE.Points(exportParticleGeometry, exportParticleMaterial);
     exportParticles.renderOrder = 3;
     exportScene.add(exportParticles);
@@ -1179,7 +1476,7 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
 
   const hasBonds = request.layers.show_bonds && selection.bondIndices.length > 0;
   if (!hasBonds && !request.particlesSpecified) request.layers.show_particles = true;
-  if (hasBonds && profile.mode === "layered-legacy") {
+  if (hasBonds && profile.mode.startsWith("layered")) {
     const arrays = lineArrays(selection.bondIndices, exportColors, false);
     const exportLineGeometry = new LineSegmentsGeometry();
     exportLineGeometry.setPositions(arrays.linePositions);
@@ -1192,6 +1489,7 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
         opacity: profile.outlineOpacity,
         depthWrite: true,
         renderOrder: 0,
+        clippingPlanes,
       })
       : null;
     const inner = makeLineLayer(exportLineGeometry, request.style.tube_width * profileScale, resolution, {
@@ -1200,22 +1498,31 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
       opacity: 0.96,
       depthWrite: false,
       renderOrder: 1,
+      clippingPlanes,
     });
-    const highlight = makeLineLayer(exportLineGeometry, profile.highlightWidth * profileScale, resolution, {
-      vertexColors: false,
-      color: 0xffffff,
-      opacity: profile.highlightOpacity,
-      depthWrite: false,
-      renderOrder: 2,
-    });
+    const highlight = profile.highlightOpacity > 0
+      ? makeLineLayer(exportLineGeometry, profile.highlightWidth * profileScale, resolution, {
+        vertexColors: false,
+        color: 0xffffff,
+        opacity: profile.highlightOpacity,
+        depthWrite: false,
+        renderOrder: 2,
+        clippingPlanes,
+      })
+      : null;
     if (outline) {
       exportScene.add(outline.line);
       exportMaterials.push(outline.material);
       renderPasses += 1;
     }
-    exportScene.add(inner.line, highlight.line);
-    exportMaterials.push(inner.material, highlight.material);
-    renderPasses += 2;
+    exportScene.add(inner.line);
+    exportMaterials.push(inner.material);
+    renderPasses += 1;
+    if (highlight) {
+      exportScene.add(highlight.line);
+      exportMaterials.push(highlight.material);
+      renderPasses += 1;
+    }
   } else if (hasBonds) {
     const targetDistance = exportCamera.position.distanceTo(exportTarget);
     const worldHeight = 2 * targetDistance * Math.tan(THREE.MathUtils.degToRad(exportCamera.fov) / 2);
@@ -1235,7 +1542,12 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
       (request.style.silhouette_width - request.style.tube_width) * profileScale * worldPerPixel * 0.5,
     );
     if (outlineExpansion > 0) {
-      const silhouette = makeTubeSilhouette(tubeGeometry, outlineExpansion, profile.silhouette);
+      const silhouette = makeTubeSilhouette(
+        tubeGeometry,
+        outlineExpansion,
+        profile.silhouette,
+        clippingPlanes,
+      );
       exportScene.add(silhouette.mesh);
       exportMaterials.push(silhouette.material);
       renderPasses += 1;
@@ -1246,6 +1558,7 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
       roughness: profile.lighting.roughness,
       metalness: 0,
       side: THREE.FrontSide,
+      clippingPlanes,
     });
     tubeMaterial.dithering = true;
     const tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
@@ -1264,8 +1577,9 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
   await new Promise((resolve) => requestAnimationFrame(resolve));
   exportRenderer.render(exportScene, exportCamera);
   exportRenderer.render(exportScene, exportCamera);
+  const composited = compositeExportCanvas(exportCanvas, request);
   const blob = await new Promise((resolve, reject) => {
-    exportCanvas.toBlob((result) => {
+    composited.canvas.toBlob((result) => {
       if (result) resolve(result);
       else reject(new Error("PNG encoder returned no data"));
     }, "image/png");
@@ -1282,6 +1596,7 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
     profile: profile.label,
     renderPasses,
     geometryStats,
+    colorbar: composited.colorbar,
     request: {
       schema_version: request.schema_version,
       view: request.view,
@@ -1294,6 +1609,7 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
       particles: selection.particleCount,
       bonds: selection.bondCount,
     },
+    section: sectionStatistics(exportSection, selection),
     camera: {
       mode: request.view.camera.mode,
       position: exportCamera.position.toArray(),
@@ -1337,6 +1653,8 @@ async function downloadPng(config = null) {
       size: result.blob.size,
       request: result.request,
       selection: result.selection,
+      section: result.section,
+      colorbar: result.colorbar,
       camera: result.camera,
       sceneSha256: result.sceneSha256,
       renderer: result.renderer,
@@ -1361,6 +1679,9 @@ controls.addEventListener("start", () => {
 });
 controls.addEventListener("end", () => {
   controlsActive = false;
+});
+controls.addEventListener("change", () => {
+  if (sectionToggle.checked) updateMonitorSectionPlanes();
 });
 
 const raycaster = new THREE.Raycaster();
@@ -1472,8 +1793,20 @@ if (initialCameraConfig.mode === "explicit") {
 } else {
   camera.fov = initialCameraConfig.fov || 34;
   camera.up.fromArray(initialCameraConfig.up || [0, 1, 0]);
-  fitView(activeSelection);
+  if (initialCameraConfig.direction) {
+    frameCamera(
+      activeSelection,
+      camera,
+      controls.target,
+      new THREE.Vector3(...initialCameraConfig.direction).normalize(),
+    );
+    controls.update();
+  } else {
+    fitView(activeSelection);
+  }
 }
+configureSectionInputs(activeSelection);
+updateSectionControls();
 rendererStatus.textContent = `Three.js r${THREE.REVISION} | ${softwareRenderer ? "Software WebGL 2" : "WebGL 2"}`;
 renderer.setAnimationLoop(animate);
 
@@ -1506,6 +1839,11 @@ window.__demo = {
       regionCount: activeRegions.length,
       regionLabels: activeRegions.map((region) => region.raw),
       bondSize: Number(bondSizeInput.value),
+      section: {
+        enabled: sectionToggle.checked,
+        thickness: Number(sectionThicknessInput.value),
+        offset: Number(sectionOffsetInput.value),
+      },
       wideBondMode: Boolean(wideBonds && wideBonds.visible),
       background: `#${renderer.getClearColor(new THREE.Color()).getHexString()}`,
       drawCalls: renderer.info.render.calls,

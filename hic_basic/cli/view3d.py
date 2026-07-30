@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..visualize import structure_scene, view_structure
+from ..visualize import structure_scene, structure_scene_with_feature, view_structure
 from ..visualize.html import EXPORT_PROFILES
 
 
@@ -25,6 +25,21 @@ def add_arguments(subparser):
         "--color",
         default="chrom",
         help="Territory colors ('chrom') or a numeric/categorical input field",
+    )
+    subparser.add_argument(
+        "--feature",
+        type=Path,
+        help="Headerless chrom/pos/value TSV used for per-particle and polymer-bond colors",
+    )
+    subparser.add_argument(
+        "--feature-name",
+        default="feature",
+        help="Scientific feature label stored with the continuous color mapping",
+    )
+    subparser.add_argument(
+        "--no-duplicate-haplotypes",
+        action="store_true",
+        help="Require feature chromosome names to match haplotype suffixes exactly",
     )
     subparser.add_argument("--cmap", default="viridis", help="Matplotlib colormap for numeric fields")
     subparser.add_argument("--vmin", type=float, help="Lower continuous-color bound")
@@ -59,16 +74,32 @@ def add_arguments(subparser):
 
 def run(args):
     output = args.output or args.input.with_suffix(".html")
-    scene = structure_scene(
-        args.input,
-        color=args.color,
-        cmap=args.cmap,
-        vmin=args.vmin,
-        vmax=args.vmax,
-        missing_color=args.missing_color,
-        polymer_bonds=not args.no_bonds,
-        max_bond_gap=args.max_bond_gap,
-    )
+    if args.feature is not None:
+        if args.color != "chrom":
+            raise ValueError("--color and --feature are mutually exclusive")
+        scene = structure_scene_with_feature(
+            args.input,
+            args.feature,
+            feature_name=args.feature_name,
+            duplicate_haplotypes=not args.no_duplicate_haplotypes,
+            cmap=args.cmap,
+            vmin=args.vmin,
+            vmax=args.vmax,
+            missing_color=args.missing_color,
+            polymer_bonds=not args.no_bonds,
+            max_bond_gap=args.max_bond_gap,
+        )
+    else:
+        scene = structure_scene(
+            args.input,
+            color=args.color,
+            cmap=args.cmap,
+            vmin=args.vmin,
+            vmax=args.vmax,
+            missing_color=args.missing_color,
+            polymer_bonds=not args.no_bonds,
+            max_bond_gap=args.max_bond_gap,
+        )
     viewer = view_structure(
         scene,
         title=args.title,

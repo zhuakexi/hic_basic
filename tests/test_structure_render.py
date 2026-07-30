@@ -1,7 +1,10 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 from PIL import Image
 
@@ -11,11 +14,13 @@ from hic_basic.visualize import (
     ExportStyle,
     LayerConfig,
     RasterConfig,
+    SectionConfig,
     StructureRenderConfig,
     ViewConfig,
     load_render_config,
     render_structure_png,
     structure_scene,
+    structure_scene_with_feature,
     view_structure,
 )
 
@@ -33,6 +38,7 @@ def test_render_config_round_trip_and_strict_validation(tmp_path):
                 target=(0, 0, 0),
                 fov=38,
             ),
+            section=SectionConfig(enabled=True, thickness=1.2, offset=0.25),
         ),
         layers=LayerConfig(show_particles=True, show_bonds=True),
         style=ExportStyle(
@@ -50,6 +56,7 @@ def test_render_config_round_trip_and_strict_validation(tmp_path):
     assert load_render_config(path) == config
     assert load_render_config(config.to_json()) == config
     assert config.to_dict()["style"]["background"] == "#fefefe"
+    assert config.to_dict()["view"]["section"]["thickness"] == 1.2
     with pytest.raises(ValueError, match="unknown structure render config fields"):
         load_render_config({"unknown": True})
     with pytest.raises(ValueError, match="tube_width"):
@@ -60,6 +67,11 @@ def test_render_config_round_trip_and_strict_validation(tmp_path):
         CameraConfig(mode="explicit", position=(1, 2, 3), target=(1, 2, 3))
     with pytest.raises(ValueError, match="parallel"):
         CameraConfig(mode="explicit", position=(0, 0, 3), target=(0, 0, 0), up=(0, 0, 1))
+    assert CameraConfig(direction=(0, 0, 1)).to_dict()["direction"] == [0.0, 0.0, 1.0]
+    with pytest.raises(ValueError, match="parallel"):
+        CameraConfig(direction=(0, 1, 0))
+    with pytest.raises(ValueError, match="thickness"):
+        SectionConfig(enabled=True, thickness=0)
 
 
 def _render_or_skip(source, output, config):
@@ -100,7 +112,7 @@ def test_direct_render_applies_width_regions_layers_and_reports_backend(tmp_path
     assert thin.metadata["request"]["layers"] == {"show_particles": False, "show_bonds": True}
     assert thin.metadata["request"]["style"]["tube_width"] == 2
     assert thin.metadata["renderer"]["software"] is True
-    assert thin.metadata["backend"]["protocol_version"] == 1
+    assert thin.metadata["backend"]["protocol_version"] == 2
 
     thin_pixels = np.asarray(Image.open(thin.output).convert("RGB"))
     thick_pixels = np.asarray(Image.open(thick.output).convert("RGB"))
@@ -146,3 +158,119 @@ def test_render_result_is_json_serializable(tmp_path):
     report = result.to_dict()
     assert json.loads(json.dumps(report))["output"] == str(result.output)
     assert report["size_bytes"] == result.output.stat().st_size
+
+
+def test_direct_render_clips_feature_colored_section_and_draws_colorbar(tmp_path):
+    frame = pd.read_csv(
+        DATA,
+        sep="\t",
+        header=None,
+        names=["chrom", "pos", "x", "y", "z"],
+    )
+    feature = frame[["chrom", "pos"]].copy()
+    feature["CpG density"] = np.linspace(0.005, 0.020, len(feature))
+    scene = structure_scene_with_feature(
+        frame,
+        feature,
+        feature_name="CpG density",
+        duplicate_haplotypes=False,
+        cmap="pymol-cpg",
+        vmin=0.005,
+        vmax=0.020,
+    )
+    full_config = StructureRenderConfig(
+        layers=LayerConfig(show_particles=False, show_bonds=True),
+        style=ExportStyle(profile="section-pymol-v1", show_colorbar=True),
+        raster=RasterConfig(width=560, height=420),
+    )
+    section_config = StructureRenderConfig(
+        view=ViewConfig(
+            camera=CameraConfig(direction=(0, 0, 1)),
+            section=SectionConfig(enabled=True, thickness=0.45, offset=0),
+        ),
+        layers=full_config.layers,
+        style=full_config.style,
+        raster=full_config.raster,
+    )
+
+    full = _render_or_skip(scene, tmp_path / "full.png", full_config)
+    section = _render_or_skip(scene, tmp_path / "section.png", section_config)
+
+    assert section.metadata["section"]["enabled"] is True
+    assert section.metadata["section"]["thickness"] == 0.45
+    assert section.metadata["section"]["particles"] < scene.particle_count
+    assert section.metadata["section"]["bonds"] < scene.bond_count
+    assert section.metadata["colorbar"] == {
+        "label": "CpG density",
+        "cmap": "pymol-cpg",
+        "vmin": 0.005,
+        "vmax": 0.02,
+    }
+    full_pixels = np.asarray(Image.open(full.output).convert("RGB"))
+    section_pixels = np.asarray(Image.open(section.output).convert("RGB"))
+    full_ink = np.any(full_pixels < 245, axis=2).sum()
+    section_ink = np.any(section_pixels < 245, axis=2).sum()
+    assert section_ink < full_ink * 0.8
+
+
+def test_render3d_cli_accepts_genome_feature_track(tmp_path):
+    frame = pd.read_csv(
+        DATA,
+        sep="\t",
+        header=None,
+        names=["chrom", "pos", "x", "y", "z"],
+    )
+    feature_path = tmp_path / "feature.tsv"
+    frame.assign(value=np.linspace(0.005, 0.020, len(frame)))[
+        ["chrom", "pos", "value"]
+    ].to_csv(feature_path, sep="\t", index=False, header=False)
+    config_path = tmp_path / "section.json"
+    config_path.write_text(
+        StructureRenderConfig(
+            view=ViewConfig(
+                camera=CameraConfig(direction=(0, 0, 1)),
+                section=SectionConfig(enabled=True, thickness=0.5),
+            ),
+            layers=LayerConfig(show_particles=False, show_bonds=True),
+            style=ExportStyle(profile="section-pymol-v1", show_colorbar=True),
+            raster=RasterConfig(width=360, height=300),
+        ).to_json(),
+        encoding="utf-8",
+    )
+    output = tmp_path / "section.png"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "hic_basic",
+            "render3d",
+            str(DATA),
+            "--feature",
+            str(feature_path),
+            "--feature-name",
+            "CpG density",
+            "--no-duplicate-haplotypes",
+            "--cmap",
+            "pymol-cpg",
+            "--vmin",
+            "0.005",
+            "--vmax",
+            "0.020",
+            "--config",
+            str(config_path),
+            "-o",
+            str(output),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert output.is_file()
+    assert report["section"]["enabled"] is True
+    assert report["colorbar"]["label"] == "CpG density"
+    assert report["backend"]["protocol_version"] == 2

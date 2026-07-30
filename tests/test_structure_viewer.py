@@ -12,9 +12,11 @@ import pytest
 from hic_basic.visualize import (
     ExportStyle,
     PolymerBondLayer,
+    SectionConfig,
     StructureRenderConfig,
     ViewConfig,
     structure_scene,
+    structure_scene_with_feature,
     view_structure,
     write_structure_html,
 )
@@ -83,6 +85,36 @@ def test_structure_scene_accepts_native_multiindex_and_field_colors():
     assert scene.particles.colors[missing_output_index].tolist() == [17, 34, 51]
 
 
+def test_structure_scene_with_feature_duplicates_haploid_track_and_records_colorbar(tmp_path):
+    feature_path = tmp_path / "cpg.tsv"
+    pd.DataFrame(
+        [
+            ("1", 0, 0.005),
+            ("1", 20_000, 0.008),
+            ("1", 40_000, 0.011),
+            ("1", 2_000_000, 0.020),
+            ("2", 0, 0.014),
+            ("2", 20_000, 0.017),
+        ]
+    ).to_csv(feature_path, sep="\t", index=False, header=False)
+
+    scene = structure_scene_with_feature(
+        synthetic_structure(),
+        feature_path,
+        feature_name="CpG density",
+        vmin=0.005,
+        vmax=0.020,
+    )
+
+    assert scene.metadata["feature"]["matched_particles"] == 8
+    assert scene.metadata["feature"]["missing_particles"] == 0
+    assert scene.metadata["color_mapping"]["label"] == "CpG density"
+    assert scene.metadata["color_mapping"]["cmap"] == "pymol-cpg"
+    assert scene.metadata["color_mapping"]["vmin"] == 0.005
+    assert scene.metadata["color_mapping"]["vmax"] == 0.020
+    assert scene.particles.colors[0].tolist() == scene.particles.colors[4].tolist()
+
+
 def test_viewer_writes_standalone_versioned_payload(tmp_path):
     scene = structure_scene(synthetic_structure())
     output = tmp_path / "portable.html"
@@ -104,7 +136,7 @@ def test_viewer_writes_standalone_versioned_payload(tmp_path):
     assert '<script src=' not in document
     assert '<link rel="stylesheet"' not in document
     assert payload["schema_version"] == 1
-    assert payload["renderer_protocol_version"] == 1
+    assert payload["renderer_protocol_version"] == 2
     assert payload["render_config_schema_version"] == 1
     assert payload["viewer"]["initial_regions"] == ["chr1:0-40kb", "chr2"]
     assert payload["viewer"]["bond_size"] == 2.5
@@ -134,6 +166,22 @@ def test_typed_render_config_is_embedded_as_authoritative_export_request():
     assert viewer.regions == ("chr2",)
     assert viewer.export_profile == "publication-v1"
     assert payload["viewer"]["render_config"] == config.to_dict()
+
+
+def test_section_config_is_embedded_for_monitor_and_export():
+    scene = structure_scene(synthetic_structure())
+    config = StructureRenderConfig(
+        view=ViewConfig(section=SectionConfig(enabled=True, thickness=1.5, offset=-0.25)),
+        style=ExportStyle(profile="section-studio-v1", show_colorbar=True),
+    )
+
+    payload = embedded_payload(view_structure(scene, render_config=config).to_html())
+
+    assert payload["viewer"]["render_config"]["view"]["section"] == {
+        "enabled": True,
+        "thickness": 1.5,
+        "offset": -0.25,
+    }
 
 
 def test_write_structure_html_convenience_api(tmp_path):

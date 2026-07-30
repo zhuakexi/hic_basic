@@ -53,10 +53,18 @@ Render the same structure directly and reproducibly, without interactive steps:
 hic_basic render3d sample.20k.3dg -o sample.20k.png --config render.json
 ```
 
+Render a camera-aligned genome-feature cross-section without PyMOL:
+
+```bash
+hic_basic render3d sample.20k.3dg --feature hg19.cpg.20k.txt \
+  --feature-name "CpG density" --cmap pymol-cpg \
+  --vmin 0.005 --vmax 0.020 -o sample.cpg-section.png --config section.json
+```
+
 The HTML contains its renderer and data and can be opened directly in a local
 browser. See [docs/STRUCTURE_VIEWER.md](docs/STRUCTURE_VIEWER.md) for Python API,
 custom colors, polymer-bond semantics, direct PNG rendering, publication
-profiles, and Remote SSH use.
+profiles, genome-feature cross-sections, and Remote SSH use.
 
 See [docs/README.md](docs/README.md) for detailed usage.
 
