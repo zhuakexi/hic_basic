@@ -142,7 +142,8 @@ camera or width values fail before the browser starts:
   },
   "layers": {
     "show_particles": false,
-    "show_bonds": true
+    "show_bonds": true,
+    "show_annotations": true
   },
   "style": {
     "profile": "section-studio-v1",
@@ -210,6 +211,8 @@ hires_utils/mmCIF conversion behavior.
 `structure_scene(..., color=...)` accepts:
 
 - `"chrom"`: deterministic chromosome territory colors;
+- one Matplotlib color specification such as `"#708087"`: one constant color
+  for the complete base polymer;
 - a numeric DataFrame column: continuous `cmap`, `vmin`, and `vmax` mapping;
 - a categorical DataFrame column: deterministic categories or an explicit
   `palette` mapping;
@@ -251,15 +254,97 @@ for provenance and colorbar generation. Set `duplicate_haplotypes=False` when
 the track already contains separate `(mat)` and `(pat)` rows. Duplicate feature
 keys are rejected.
 
+## Structure Annotations
+
+Annotations are first-class scene content, separate from base-polymer colors
+and export profiles. Python resolves each genomic target once against the
+scene's stable particle and bond order. The standalone HTML and direct PNG
+renderer consume the same resolved indices, so they cannot disagree about
+interval endpoints or polymer gaps.
+
+```python
+from hic_basic.visualize import (
+    annotate_structure,
+    genomic_segment_annotation,
+    render_structure_png,
+    structure_scene,
+    view_structure,
+)
+
+scene = structure_scene(
+    "sample.10k.3dg",
+    color="#708087",
+    max_bond_gap=10_000,
+)
+scene = annotate_structure(
+    scene,
+    [
+        genomic_segment_annotation(
+            "chr1(pat):20000-30000",
+            id="anchor-1",
+            label="Anchor 1",
+            color="#ff0000",
+            material="unlit",
+            tube_width=10,
+            outline_width=13,
+            outline_color="#7f0000",
+        ),
+        genomic_segment_annotation(
+            "chr1(pat):60000-70000",
+            id="anchor-2",
+            label="Anchor 2",
+            color="#00d000",
+            material="unlit",
+            tube_width=10,
+            outline_width=13,
+            outline_color="#006800",
+        ),
+    ],
+    layer="loop-anchors",
+    layer_label="Loop anchors",
+)
+
+view_structure(scene).write_html("sample.annotated.html")
+result = render_structure_png(scene, "sample.annotated.png")
+```
+
+Genome-region selectors are inclusive: a 10-kb selector on a 10-kb structure
+includes both edge particles and the real bond between them. Resolution only
+selects bonds already present in `scene.bonds`; it never bridges a chromosome,
+haplotype, missing bin, or `max_bond_gap` boundary. Adjacent annotations may
+share an endpoint particle, but annotations sharing a polymer bond are rejected
+to avoid accidental insertion-order precedence.
+
+The initial typed mark is `TubeMark`. `material="unlit"` bypasses profile
+saturation, lightness, depth cue, PBR lighting, and tone mapping, preserving an
+opaque semantic sRGB color apart from antialiased boundary pixels.
+`material="profile"` opts into the active profile. `occlusion="depth_tested"`
+is the scientific default; `"always_visible"` is an explicit overlay policy.
+Tube and outline widths are diameters in reference pixels at a 1400-pixel PNG
+width and do not alter the base polymer. An optional outline remains an unlit
+semantic halo even when the primary tube uses `material="profile"`.
+
+`StructureScene.annotation_layers` provides the common extension point for
+future text, arrow, point, and emphasis marks. An annotation owns one resolved
+target and one or more typed marks, so future marks can reuse the same genome
+membership. Unknown mark kinds are rejected rather than silently ignored.
+`LayerConfig.show_annotations` is a global render visibility override; layer
+identity, annotation styles, and resolved target membership remain scene data.
+
+`RenderResult.to_dict()` reports each layer and annotation, including its stable
+id, original selector, resolved and rendered counts, requested and resolved
+colors, widths, material, opacity, occlusion, and whether profile transforms and
+tone mapping were bypassed.
+
 ## Viewer and Export
 
-The monitor provides orbit, pan, zoom, particle picking, particle and bond
-visibility, particle and bond size, background color, fit-to-selection, and a
-union of multiple chromosome or genomic-region selections. It also provides a
-section toggle plus thickness and offset sliders; the slab remains aligned to
-the current camera while orbiting. An unphased region such as `chr1:0-20Mb`
-expands to both homologs when the scene contains
-`chr1(mat)` and `chr1(pat)`.
+The monitor provides orbit, pan, zoom, particle picking, particle, bond, and
+annotation visibility, particle and bond size, background color,
+fit-to-selection, and a union of multiple chromosome or genomic-region
+selections. It also provides a section toggle plus thickness and offset
+sliders; the slab remains aligned to the current camera while orbiting. An
+unphased region such as `chr1:0-20Mb` expands to both homologs when the scene
+contains `chr1(mat)` and `chr1(pat)`.
 
 The PNG button and `render_structure_png` call the same versioned browser
 protocol and high-quality renderer. The button captures the current camera,
@@ -316,7 +401,7 @@ the standalone HTML and scene data remain offline.
             |
             v
 structure_scene -> StructureScene
-  particles + genomic identity + polymer bond endpoints
+  particles + genomic identity + polymer bonds + annotation layers
             |                         |
             v                         v
 view_structure                 render_structure_png
@@ -329,9 +414,10 @@ standalone HTML ----------------------+
 Playwright + headless Chromium -> validated PNG + RenderResult
 ```
 
-`StructureScene` contains only NumPy arrays and JSON-compatible metadata. It
-does not expose Three.js objects. Arrays are serialized with explicit dtype,
-shape, byte order, and checksum descriptors. Writes are atomic.
+`StructureScene` contains validated NumPy arrays, typed renderer-independent
+annotations, and JSON-compatible metadata. It does not expose Three.js objects.
+Arrays are serialized with explicit dtype, shape, byte order, and checksum
+descriptors. Writes are atomic.
 
 The 20 kb concept dataset used for acceptance contains 285,395 particles and
 285,309 bonds. It was checked in Chromium with SwiftShader software WebGL, so a
@@ -346,5 +432,5 @@ unchanged. `hic_basic render3d` is the direct browser renderer. Renderer
 protocol version 2 accepts HTML produced by this implementation. Protocol 1
 HTML predates cross-section semantics and is rejected instead of silently
 ignoring `view.section`; older concept demo HTML files without a protocol also
-fail with an actionable mismatch. A server-side path tracer and arbitrary
-annotation-edge layers are not part of this API version.
+fail with an actionable mismatch. A server-side path tracer and custom
+non-polymer contact-edge topology are not part of this API version.

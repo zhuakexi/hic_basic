@@ -39,7 +39,11 @@ def add_arguments(subparser):
         type=Path,
         help="Versioned JSON render config; controls regions, camera, layers, style, and size",
     )
-    subparser.add_argument("--color", default="chrom", help="3dg territory colors or a numeric/categorical field")
+    subparser.add_argument(
+        "--color",
+        default="chrom",
+        help="3dg territory colors, one constant color, or a numeric/categorical field",
+    )
     subparser.add_argument(
         "--feature",
         type=Path,

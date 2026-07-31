@@ -2,7 +2,7 @@
 
 *Auto-generated API documentation for public functions*
 
-Total modules with public functions: 92
+Total modules with public functions: 93
 
 ---
 
@@ -87,6 +87,7 @@ Total modules with public functions: 92
 - [structure.utils](#structure-utils) (6 functions)
 - [territory](#territory) (2 functions)
 - [utils](#utils) (8 functions)
+- [visualize.annotations](#visualize-annotations) (2 functions)
 - [visualize.config](#visualize-config) (1 functions)
 - [visualize.html](#visualize-html) (2 functions)
 - [visualize.render](#visualize-render) (1 functions)
@@ -1564,7 +1565,7 @@ No documentation available.
 No documentation available.
 
 
-**Source:** Line 87 in [cli/render3d.py](cli/render3d.py#L87)
+**Source:** Line 91 in [cli/render3d.py](cli/render3d.py#L91)
 
 
 ---
@@ -10186,6 +10187,93 @@ No documentation available.
 ---
 
 
+## visualize.annotations
+
+**File:** `visualize/annotations.py`
+
+**Public functions:** 2
+
+
+### `annotate_structure(scene: StructureScene, annotations: AnnotationInput, *, layer: str='annotations', layer_label: Optional[str]=None, visible: bool=True, layer_order: int=0)`
+
+**Returns:** `StructureScene`
+
+
+Resolve and add typed annotations to an immutable structure scene.
+
+Genome targets are resolved once in Python against the scene's stable
+chromosome, particle, and polymer-bond order. The resulting scene embeds
+the same resolved membership for interactive HTML and direct PNG output.
+Calling the function again with the same layer id appends annotations to
+that layer; annotation ids remain unique across the complete scene.
+
+Parameters
+----------
+scene
+    Existing validated structure scene.
+annotations
+    One annotation or a sequence of annotations. Genome-region targets may
+    be unresolved; already resolved targets are retained and revalidated.
+layer, layer_label, visible, layer_order
+    Stable annotation-layer identity, display label, default visibility,
+    and composition ordering key.
+
+Returns
+-------
+StructureScene
+    New scene containing resolved, immutable annotation membership and an
+    annotation-aware checksum.
+
+
+**Source:** Line 90 in [visualize/annotations.py](visualize/annotations.py#L90)
+
+
+---
+
+
+### `genomic_segment_annotation(region: str, *, id: str, label: Optional[str]=None, color: str='#ff0000', tube_width: float=8.0, outline_width: Optional[float]=None, outline_color: Optional[str]=None, material: str='unlit', opacity: float=1.0, occlusion: str='depth_tested', order: int=0)`
+
+**Returns:** `StructureAnnotation`
+
+
+Describe a polymer-segment annotation before scene resolution.
+
+Parameters
+----------
+region
+    Inclusive genome region such as ``chr1(pat):20000-30000``. A complete
+    interval includes both endpoint particles and only real polymer bonds
+    already present in the scene.
+id, label
+    Stable annotation identifier and optional display label.
+color
+    Requested semantic display color. It is preserved in ``unlit`` mode.
+tube_width, outline_width, outline_color
+    Independent annotation diameters and optional outline color in
+    reference pixels at a 1400-pixel export width.
+material
+    ``"unlit"`` bypasses profile color transforms and lighting;
+    ``"profile"`` opts into the active base-polymer profile.
+opacity
+    Annotation opacity in the interval ``(0, 1]``.
+occlusion
+    ``"depth_tested"`` for geometry-aware occlusion or the explicit
+    ``"always_visible"`` overlay policy.
+order
+    Stable ordering key within the annotation layer.
+
+Returns
+-------
+StructureAnnotation
+    Unresolved typed annotation accepted by :func:`annotate_structure`.
+
+
+**Source:** Line 26 in [visualize/annotations.py](visualize/annotations.py#L26)
+
+
+---
+
+
 ## visualize.config
 
 **File:** `visualize/config.py`
@@ -10204,7 +10292,7 @@ Load and validate a structure render configuration.
 or ``None`` for defaults. Unknown fields and invalid values are rejected.
 
 
-**Source:** Line 454 in [visualize/config.py](visualize/config.py#L454)
+**Source:** Line 464 in [visualize/config.py](visualize/config.py#L464)
 
 
 ---
@@ -10232,7 +10320,7 @@ authoritative region/profile request embedded for direct PNG rendering;
 the older ``regions`` and ``export_profile`` arguments remain compatible.
 
 
-**Source:** Line 121 in [visualize/html.py](visualize/html.py#L121)
+**Source:** Line 122 in [visualize/html.py](visualize/html.py#L122)
 
 
 ---
@@ -10257,7 +10345,7 @@ pathlib.Path
     Path to the atomically written HTML artifact.
 
 
-**Source:** Line 153 in [visualize/html.py](visualize/html.py#L153)
+**Source:** Line 154 in [visualize/html.py](visualize/html.py#L154)
 
 
 ---
@@ -10340,9 +10428,11 @@ structure
     ``chrom/chr, pos, x, y, z`` columns.
 color
     ``"chrom"`` for chromosome territory colors, a DataFrame column name,
-    an ``N x 3`` RGB array, or a length-N sequence of color specifications.
-    Numeric columns use ``cmap``; categorical columns use ``palette`` or a
-    deterministic categorical palette.
+    one constant color specification, an ``N x 3`` RGB array, or a
+    length-N sequence of color specifications. Numeric columns use
+    ``cmap``; categorical columns use ``palette`` or a deterministic
+    categorical palette. A string matching a column name takes precedence
+    over interpreting that string as a color.
 palette
     Optional category-to-color mapping. With ``color="chrom"``, keys are
     chromosome names.
@@ -10414,7 +10504,7 @@ Missing feature rows use ``missing_color``. Duplicate feature keys are
 rejected because their mapping to a particle would be ambiguous.
 
 
-**Source:** Line 210 in [visualize/structure.py](visualize/structure.py#L210)
+**Source:** Line 212 in [visualize/structure.py](visualize/structure.py#L212)
 
 
 ---

@@ -17,6 +17,8 @@ from hic_basic.visualize import (
     SectionConfig,
     StructureRenderConfig,
     ViewConfig,
+    annotate_structure,
+    genomic_segment_annotation,
     load_render_config,
     render_structure_png,
     structure_scene,
@@ -109,7 +111,11 @@ def test_direct_render_applies_width_regions_layers_and_reports_backend(tmp_path
     assert (thin.width, thin.height) == (640, 400)
     assert thin.scene_sha256 == scene.checksum
     assert thin.metadata["selection"] == {"regions": ["chr1"], "particles": 10, "bonds": 8}
-    assert thin.metadata["request"]["layers"] == {"show_particles": False, "show_bonds": True}
+    assert thin.metadata["request"]["layers"] == {
+        "show_particles": False,
+        "show_bonds": True,
+        "show_annotations": False,
+    }
     assert thin.metadata["request"]["style"]["tube_width"] == 2
     assert thin.metadata["renderer"]["software"] is True
     assert thin.metadata["backend"]["protocol_version"] == 2
@@ -119,6 +125,50 @@ def test_direct_render_applies_width_regions_layers_and_reports_backend(tmp_path
     thin_ink = np.any(thin_pixels < 245, axis=2).sum()
     thick_ink = np.any(thick_pixels < 245, axis=2).sum()
     assert thick_ink > thin_ink * 1.8
+
+
+def test_direct_render_draws_unlit_annotation_with_exact_membership_and_color(tmp_path):
+    scene = annotate_structure(
+        structure_scene(DATA, color="#708087", max_bond_gap=20_000),
+        genomic_segment_annotation(
+            "chr1(mat):20kb-40kb",
+            id="anchor-1",
+            label="Anchor 1",
+            color="#ff0000",
+            tube_width=12,
+            outline_width=15,
+            outline_color="#7f0000",
+            material="unlit",
+        ),
+        layer="loop-anchors",
+    )
+    config = StructureRenderConfig(
+        layers=LayerConfig(show_particles=False, show_bonds=True, show_annotations=True),
+        style=ExportStyle(
+            profile="xu2025-v2",
+            tube_width=3,
+            silhouette_width=4,
+            background="#ffffff",
+        ),
+        raster=RasterConfig(width=640, height=480),
+    )
+
+    result = _render_or_skip(scene, tmp_path / "annotated.png", config)
+    layer = result.metadata["annotations"][0]
+    annotation = layer["annotations"][0]
+    mark = annotation["marks"][0]
+
+    assert layer["id"] == "loop-anchors"
+    assert annotation["target"]["selector"] == "chr1(mat):20kb-40kb"
+    assert annotation["target"]["resolved_particles"] == 2
+    assert annotation["target"]["resolved_bonds"] == 1
+    assert annotation["target"]["rendered_bonds"] == 1
+    assert mark["resolved_color"] == "#ff0000"
+    assert mark["profile_color_transforms_bypassed"] is True
+    assert mark["tone_mapping_bypassed"] is True
+    pixels = np.asarray(Image.open(result.output).convert("RGB"), dtype=np.int16)
+    near_red = np.all(np.abs(pixels - np.array([255, 0, 0])) <= 2, axis=2)
+    assert near_red.sum() >= 10
 
 
 def test_direct_render_accepts_standalone_html_and_explicit_camera(tmp_path):

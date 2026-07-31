@@ -15,7 +15,7 @@ const embeddedRenderConfig = payload.viewer.render_config || {
     camera: { mode: "fit", fov: 34, up: [0, 1, 0] },
     section: { enabled: false, thickness: 2, offset: 0 },
   },
-  layers: { show_particles: null, show_bonds: null },
+  layers: { show_particles: null, show_bonds: null, show_annotations: null },
   style: { profile: payload.viewer.export_profile || "molecular-studio-v1" },
   raster: { long_edge: 2400, width: null, height: null },
 };
@@ -24,6 +24,7 @@ const viewport = document.getElementById("viewport");
 const errorState = document.getElementById("error-state");
 const particlesToggle = document.getElementById("particles-toggle");
 const bondsToggle = document.getElementById("bonds-toggle");
+const annotationsToggle = document.getElementById("annotations-toggle");
 const pointSizeInput = document.getElementById("point-size");
 const bondSizeInput = document.getElementById("bond-size");
 const sectionToggle = document.getElementById("section-toggle");
@@ -131,6 +132,27 @@ const colors = decodeSceneArray(payload.arrays.colors, Uint8Array);
 const chromosomeCodes = decodeSceneArray(payload.arrays.chromosome_codes, Uint8Array);
 const genomicPositions = decodeSceneArray(payload.arrays.genomic_positions, Uint32Array);
 const bondIndices = decodeSceneArray(payload.arrays.bond_indices, Uint32Array);
+const annotationPayload = payload.annotations || { schema_version: 1, layers: [] };
+if (annotationPayload.schema_version !== 1) {
+  throw new Error(`Unsupported annotation schema version: ${annotationPayload.schema_version}`);
+}
+const annotationLayers = annotationPayload.layers.map((layer) => ({
+  ...layer,
+  annotations: layer.annotations.map((annotation) => ({
+    ...annotation,
+    target: {
+      ...annotation.target,
+      particleIndices: decodeSceneArray(annotation.target.particle_indices, Uint32Array),
+      bondIndices: decodeSceneArray(annotation.target.bond_indices, Uint32Array),
+    },
+  })),
+}));
+const hasAnnotations = annotationLayers.some((layer) => layer.annotations.length > 0);
+annotationsToggle.checked = embeddedRenderConfig.layers.show_annotations === null
+  || embeddedRenderConfig.layers.show_annotations === undefined
+  ? annotationLayers.some((layer) => layer.visible)
+  : Boolean(embeddedRenderConfig.layers.show_annotations);
+annotationsToggle.disabled = !hasAnnotations;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(34, window.innerWidth / window.innerHeight, 0.01, 5000);
@@ -175,7 +197,7 @@ const thinBondMaterial = new THREE.LineBasicMaterial({
   vertexColors: true,
   transparent: true,
   opacity: 0.58,
-  depthWrite: false,
+  depthWrite: true,
   clippingPlanes: monitorSectionPlanes,
 });
 const thinBonds = new THREE.LineSegments(thinBondGeometry, thinBondMaterial);
@@ -184,10 +206,16 @@ bonds.renderOrder = -1;
 bonds.add(thinBonds);
 scene.add(bonds);
 
+const monitorAnnotations = new THREE.Group();
+monitorAnnotations.renderOrder = 5;
+scene.add(monitorAnnotations);
+let monitorAnnotationResources = [];
+
 let wideBonds = null;
 let wideBondGeometry = null;
 let wideBondMaterial = null;
 let wideBondGeometryDirty = true;
+let monitorBondIndices = bondIndices;
 
 const haloGeometry = new THREE.SphereGeometry(payload.viewer.base_point_size * 1.9, 14, 10);
 const haloMaterial = new THREE.MeshBasicMaterial({
@@ -511,6 +539,62 @@ function profileColorArray(profileName, targetCamera, selection) {
   return output;
 }
 
+function annotationColorWriter(mark, profile, targetCamera, selection) {
+  const color = new THREE.Color(mark.color);
+  if (mark.material === "unlit") {
+    return (particleIndex, target, offset) => {
+      target[offset] = color.r;
+      target[offset + 1] = color.g;
+      target[offset + 2] = color.b;
+    };
+  }
+
+  const hsl = {};
+  color.getHSL(hsl);
+  hsl.s = THREE.MathUtils.clamp(
+    hsl.s * profile.saturationScale,
+    profile.saturationRange[0],
+    profile.saturationRange[1],
+  );
+  hsl.l = THREE.MathUtils.clamp(
+    hsl.l * profile.lightnessScale,
+    profile.lightnessRange[0],
+    profile.lightnessRange[1],
+  );
+  color.setHSL(hsl.h, hsl.s, hsl.l);
+  targetCamera.updateMatrixWorld(true);
+  targetCamera.matrixWorldInverse.copy(targetCamera.matrixWorld).invert();
+  const matrix = targetCamera.matrixWorldInverse.elements;
+  const selected = selection.particleIndices;
+  const count = selected ? selected.length : payload.stats.particles;
+  let nearDepth = Infinity;
+  let farDepth = -Infinity;
+  const particleDepth = (particle) => {
+    const index = particle * 3;
+    return -(matrix[2] * positions[index]
+      + matrix[6] * positions[index + 1]
+      + matrix[10] * positions[index + 2]
+      + matrix[14]);
+  };
+  for (let offset = 0; offset < count; offset += 1) {
+    const depth = particleDepth(selected ? selected[offset] : offset);
+    nearDepth = Math.min(nearDepth, depth);
+    farDepth = Math.max(farDepth, depth);
+  }
+  const depthSpan = Math.max(farDepth - nearDepth, 1e-6);
+  return (particleIndex, target, offset) => {
+    const depthFraction = THREE.MathUtils.clamp(
+      (particleDepth(particleIndex) - nearDepth) / depthSpan,
+      0,
+      1,
+    );
+    const shade = 1 - profile.depthCue * depthFraction;
+    target[offset] = color.r * shade;
+    target[offset + 1] = color.g * shade;
+    target[offset + 2] = color.b * shade;
+  };
+}
+
 function lineArrays(indices, colorSource = colors, normalizedBytes = true) {
   const linePositions = new Float32Array(indices.length * 3);
   const lineColors = new Float32Array(indices.length * 3);
@@ -528,6 +612,115 @@ function lineArrays(indices, colorSource = colors, normalizedBytes = true) {
   return { linePositions, lineColors };
 }
 
+function annotationBondEndpoints(annotation, selection) {
+  let membership = null;
+  if (selection.particleIndices) {
+    membership = new Uint8Array(payload.stats.particles);
+    for (let index = 0; index < selection.particleIndices.length; index += 1) {
+      membership[selection.particleIndices[index]] = 1;
+    }
+  }
+  const endpoints = [];
+  for (let index = 0; index < annotation.target.bondIndices.length; index += 1) {
+    const bondIndex = annotation.target.bondIndices[index] * 2;
+    const left = bondIndices[bondIndex];
+    const right = bondIndices[bondIndex + 1];
+    if (!membership || (membership[left] && membership[right])) endpoints.push(left, right);
+  }
+  return Uint32Array.from(endpoints);
+}
+
+function baseMonitorBondEndpoints(selection) {
+  if (!annotationsToggle.checked || !hasAnnotations) return selection.bondIndices;
+  const annotated = new Set();
+  annotationLayers.forEach((layer) => {
+    if (!layer.visible) return;
+    layer.annotations.forEach((annotation) => {
+      const endpoints = annotationBondEndpoints(annotation, selection);
+      for (let index = 0; index < endpoints.length; index += 2) {
+        annotated.add(`${endpoints[index]}:${endpoints[index + 1]}`);
+      }
+    });
+  });
+  if (!annotated.size) return selection.bondIndices;
+  const remaining = [];
+  for (let index = 0; index < selection.bondIndices.length; index += 2) {
+    const left = selection.bondIndices[index];
+    const right = selection.bondIndices[index + 1];
+    if (!annotated.has(`${left}:${right}`)) remaining.push(left, right);
+  }
+  return Uint32Array.from(remaining);
+}
+
+function updateMonitorBondSelection() {
+  monitorBondIndices = baseMonitorBondEndpoints(activeSelection);
+  thinBondGeometry.setIndex(new THREE.BufferAttribute(monitorBondIndices, 1));
+  wideBondGeometryDirty = true;
+  applyBondSize();
+}
+
+function disposeMonitorAnnotations() {
+  monitorAnnotations.clear();
+  monitorAnnotationResources.forEach(({ geometry, materials }) => {
+    geometry.dispose();
+    materials.forEach((material) => material.dispose());
+  });
+  monitorAnnotationResources = [];
+}
+
+function rebuildMonitorAnnotations() {
+  disposeMonitorAnnotations();
+  monitorAnnotations.visible = annotationsToggle.checked && hasAnnotations;
+  if (!monitorAnnotations.visible) return;
+  const resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
+  const scale = Math.max(window.innerWidth / 1400, 0.5);
+  annotationLayers.forEach((layer, layerIndex) => {
+    if (!layer.visible) return;
+    layer.annotations.forEach((annotation, annotationIndex) => {
+      const endpoints = annotationBondEndpoints(annotation, activeSelection);
+      if (!endpoints.length) return;
+      annotation.marks.forEach((mark, markIndex) => {
+        if (mark.kind !== "tube") throw new Error(`Unsupported annotation mark: ${mark.kind}`);
+        const arrays = lineArrays(endpoints);
+        const geometry = new LineSegmentsGeometry();
+        geometry.setPositions(arrays.linePositions);
+        const depthTest = mark.occlusion === "depth_tested";
+        const renderOrder = 10 + layerIndex * 100 + annotationIndex * 4 + markIndex * 2;
+        const materials = [];
+        if (mark.outline_width > mark.tube_width && mark.outline_color) {
+          const outline = makeLineLayer(geometry, mark.outline_width * scale, resolution, {
+            vertexColors: false,
+            color: mark.outline_color,
+            opacity: mark.opacity,
+            transparent: true,
+            depthTest,
+            depthWrite: false,
+            toneMapped: mark.material !== "unlit",
+            renderOrder,
+            clippingPlanes: monitorSectionPlanes,
+          });
+          monitorAnnotations.add(outline.line);
+          materials.push(outline.material);
+        }
+        const tube = makeLineLayer(geometry, mark.tube_width * scale, resolution, {
+          vertexColors: false,
+          color: mark.color,
+          opacity: mark.opacity,
+          transparent: true,
+          depthTest,
+          depthWrite: false,
+          toneMapped: mark.material !== "unlit",
+          renderOrder: renderOrder + 1,
+          clippingPlanes: monitorSectionPlanes,
+        });
+        monitorAnnotations.add(tube.line);
+        materials.push(tube.material);
+        monitorAnnotationResources.push({ geometry, materials });
+      });
+    });
+  });
+}
+
 function disposeWideBonds() {
   if (wideBonds) bonds.remove(wideBonds);
   if (wideBondGeometry) wideBondGeometry.dispose();
@@ -540,7 +733,7 @@ function disposeWideBonds() {
 
 function rebuildWideBonds() {
   disposeWideBonds();
-  const arrays = lineArrays(activeSelection.bondIndices);
+  const arrays = lineArrays(monitorBondIndices);
   wideBondGeometry = new LineSegmentsGeometry();
   wideBondGeometry.setPositions(arrays.linePositions);
   wideBondGeometry.setColors(arrays.lineColors);
@@ -549,7 +742,7 @@ function rebuildWideBonds() {
     vertexColors: true,
     transparent: true,
     opacity: 0.70,
-    depthWrite: false,
+    depthWrite: true,
     alphaToCoverage: true,
     clippingPlanes: monitorSectionPlanes,
   });
@@ -577,15 +770,13 @@ function applySelection(selection, fit = true) {
   activeSelection = selection;
   if (selection.particleIndices) {
     particleGeometry.setIndex(new THREE.BufferAttribute(selection.particleIndices, 1));
-    thinBondGeometry.setIndex(new THREE.BufferAttribute(selection.bondIndices, 1));
   } else {
     particleGeometry.setIndex(null);
-    thinBondGeometry.setIndex(new THREE.BufferAttribute(bondIndices, 1));
   }
-  wideBondGeometryDirty = true;
   selectionHalo.visible = false;
   selectionStatus.textContent = `${selection.name}: ${selection.particleCount.toLocaleString()} particles, ${selection.bondCount.toLocaleString()} bonds`;
-  applyBondSize();
+  updateMonitorBondSelection();
+  rebuildMonitorAnnotations();
   if (fit) fitView(selection);
   configureSectionInputs(selection);
   updateSectionControls();
@@ -704,6 +895,11 @@ particlesToggle.addEventListener("change", () => {
 
 bondsToggle.addEventListener("change", () => {
   bonds.visible = bondsToggle.checked;
+});
+
+annotationsToggle.addEventListener("change", () => {
+  updateMonitorBondSelection();
+  rebuildMonitorAnnotations();
 });
 
 pointSizeInput.addEventListener("input", () => {
@@ -928,6 +1124,9 @@ function normalizeRenderConfig(config) {
   const showBonds = layers.show_bonds === null || layers.show_bonds === undefined
     ? true
     : Boolean(layers.show_bonds);
+  const showAnnotations = layers.show_annotations === null || layers.show_annotations === undefined
+    ? annotationLayers.some((layer) => layer.visible)
+    : Boolean(layers.show_annotations);
 
   return {
     schema_version: 1,
@@ -936,7 +1135,11 @@ function normalizeRenderConfig(config) {
       camera: cameraState,
       section,
     },
-    layers: { show_particles: showParticles, show_bonds: showBonds },
+    layers: {
+      show_particles: showParticles,
+      show_bonds: showBonds,
+      show_annotations: showAnnotations,
+    },
     particlesSpecified,
     style: {
       profile: profileName,
@@ -979,6 +1182,7 @@ function interactiveRenderConfig() {
   config.layers = {
     show_particles: particlesToggle.checked,
     show_bonds: bondsToggle.checked,
+    show_annotations: annotationsToggle.checked,
   };
   config.style.profile = exportProfileSelect.value;
   return config;
@@ -1031,13 +1235,14 @@ function makeLineLayer(geometry, width, resolution, options) {
     linewidth: width,
     vertexColors: options.vertexColors,
     color: options.color,
-    transparent: options.opacity < 1,
+    transparent: options.transparent === undefined ? options.opacity < 1 : options.transparent,
     opacity: options.opacity,
-    depthTest: true,
+    depthTest: options.depthTest === undefined ? true : options.depthTest,
     depthWrite: options.depthWrite,
     alphaToCoverage: true,
     clippingPlanes: options.clippingPlanes || null,
   });
+  material.toneMapped = options.toneMapped === undefined ? true : options.toneMapped;
   material.resolution.copy(resolution);
   const line = new LineSegments2(geometry, material);
   line.renderOrder = options.renderOrder;
@@ -1099,9 +1304,13 @@ function buildTubeGeometry(indices, colorSource, radius, radialSegments) {
     vertexNormals[target + 1] = vertexNormal.y;
     vertexNormals[target + 2] = vertexNormal.z;
     const colorOffset = particleIndex * 3;
-    vertexColors[target] = colorSource[colorOffset];
-    vertexColors[target + 1] = colorSource[colorOffset + 1];
-    vertexColors[target + 2] = colorSource[colorOffset + 2];
+    if (typeof colorSource === "function") {
+      colorSource(particleIndex, vertexColors, target);
+    } else {
+      vertexColors[target] = colorSource[colorOffset];
+      vertexColors[target + 1] = colorSource[colorOffset + 1];
+      vertexColors[target + 2] = colorSource[colorOffset + 2];
+    }
   }
 
   paths.forEach((path, pathIndex) => {
@@ -1240,13 +1449,15 @@ function addStudioLights(targetScene, targetCamera, selection, profile) {
   targetScene.add(hemisphere);
 }
 
-function makeTubeSilhouette(geometry, expansion, color, clippingPlanes = null) {
+function makeTubeSilhouette(geometry, expansion, color, clippingPlanes = null, options = {}) {
   const material = new THREE.MeshBasicMaterial({
     color,
     side: THREE.BackSide,
-    depthTest: true,
-    depthWrite: true,
-    toneMapped: true,
+    transparent: options.opacity !== undefined && options.opacity < 1,
+    opacity: options.opacity === undefined ? 1 : options.opacity,
+    depthTest: options.depthTest === undefined ? true : options.depthTest,
+    depthWrite: options.depthWrite === undefined ? true : options.depthWrite,
+    toneMapped: options.toneMapped === undefined ? true : options.toneMapped,
     clippingPlanes,
   });
   material.onBeforeCompile = (shader) => {
@@ -1347,6 +1558,24 @@ function sectionStatistics(state, selection) {
     particles: visibleParticles,
     bonds: intersectingBonds,
   };
+}
+
+function annotationSectionBondCount(state, endpoints) {
+  if (!state.enabled) return null;
+  const half = state.thickness * 0.5;
+  const signedDistance = (particle) => {
+    const offset = particle * 3;
+    return state.normal.x * (positions[offset] - state.center.x)
+      + state.normal.y * (positions[offset + 1] - state.center.y)
+      + state.normal.z * (positions[offset + 2] - state.center.z);
+  };
+  let count = 0;
+  for (let index = 0; index < endpoints.length; index += 2) {
+    const left = signedDistance(endpoints[index]);
+    const right = signedDistance(endpoints[index + 1]);
+    if (Math.min(left, right) <= half && Math.max(left, right) >= -half) count += 1;
+  }
+  return count;
 }
 
 function formatFeatureValue(value) {
@@ -1454,6 +1683,8 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
   const exportMaterials = [];
   let renderPasses = 0;
   let geometryStats = null;
+  let studioLightsAdded = false;
+  const annotationReport = [];
 
   const addParticles = () => {
     const exportParticleGeometry = new THREE.BufferGeometry();
@@ -1475,7 +1706,11 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
   };
 
   const hasBonds = request.layers.show_bonds && selection.bondIndices.length > 0;
-  if (!hasBonds && !request.particlesSpecified) request.layers.show_particles = true;
+  const hasRequestedAnnotations = request.layers.show_annotations
+    && annotationLayers.some((layer) => layer.visible && layer.annotations.length > 0);
+  if (!hasBonds && !hasRequestedAnnotations && !request.particlesSpecified) {
+    request.layers.show_particles = true;
+  }
   if (hasBonds && profile.mode.startsWith("layered")) {
     const arrays = lineArrays(selection.bondIndices, exportColors, false);
     const exportLineGeometry = new LineSegmentsGeometry();
@@ -1566,12 +1801,140 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
     exportScene.add(tubeMesh);
     exportMaterials.push(tubeMaterial);
     addStudioLights(exportScene, exportCamera, selection, profile);
+    studioLightsAdded = true;
     renderPasses += 1;
   }
 
   if (request.layers.show_particles) addParticles();
+
+  annotationLayers.forEach((layer, layerIndex) => {
+    const layerVisible = request.layers.show_annotations && layer.visible;
+    const layerReport = {
+      id: layer.id,
+      label: layer.label,
+      visible: layerVisible,
+      order: layer.order,
+      annotations: [],
+    };
+    layer.annotations.forEach((annotation, annotationIndex) => {
+      const endpoints = layerVisible
+        ? annotationBondEndpoints(annotation, selection)
+        : new Uint32Array();
+      const renderedParticles = new Set(endpoints).size;
+      const report = {
+        id: annotation.id,
+        label: annotation.label,
+        order: annotation.order,
+        target: {
+          kind: annotation.target.kind,
+          selector: annotation.target.selector,
+          chromosomes: annotation.target.chromosomes,
+          resolved_particles: annotation.target.particle_count,
+          resolved_bonds: annotation.target.bond_count,
+          rendered_particles: renderedParticles,
+          rendered_bonds: endpoints.length / 2,
+          section_bonds: annotationSectionBondCount(exportSection, endpoints),
+          anchor: annotation.target.anchor,
+          bbox: annotation.target.bbox,
+        },
+        marks: [],
+      };
+      annotation.marks.forEach((mark, markIndex) => {
+        if (mark.kind !== "tube") throw new Error(`Unsupported annotation mark: ${mark.kind}`);
+        report.marks.push({
+          kind: mark.kind,
+          requested_color: mark.requested_color,
+          resolved_color: mark.color,
+          tube_width: mark.tube_width,
+          outline_width: mark.outline_width,
+          requested_outline_color: mark.requested_outline_color,
+          resolved_outline_color: mark.outline_color,
+          material: mark.material,
+          opacity: mark.opacity,
+          occlusion: mark.occlusion,
+          profile_color_transforms_bypassed: mark.material === "unlit",
+          tone_mapping_bypassed: mark.material === "unlit",
+          outline_tone_mapping_bypassed: true,
+        });
+        if (!endpoints.length) return;
+
+        const targetDistance = exportCamera.position.distanceTo(exportTarget);
+        const worldHeight = 2 * targetDistance * Math.tan(THREE.MathUtils.degToRad(exportCamera.fov) / 2);
+        const worldPerPixel = worldHeight / height;
+        const radius = mark.tube_width * profileScale * worldPerPixel * 0.5;
+        const colorWriter = annotationColorWriter(mark, profile, exportCamera, selection);
+        const geometry = buildTubeGeometry(endpoints, colorWriter, radius, profile.radialSegments || 8);
+        exportGeometries.push(geometry);
+        const depthTest = mark.occlusion === "depth_tested";
+        const depthWrite = depthTest && mark.opacity === 1;
+        const renderOrder = mark.occlusion === "always_visible"
+          ? 10_000 + layerIndex * 100 + annotationIndex * 4 + markIndex * 2
+          : 100 + layerIndex * 100 + annotationIndex * 4 + markIndex * 2;
+        const outlineExpansion = Math.max(
+          0,
+          (mark.outline_width - mark.tube_width) * profileScale * worldPerPixel * 0.5,
+        );
+        if (outlineExpansion > 0 && mark.outline_color) {
+          const outline = makeTubeSilhouette(
+            geometry,
+            outlineExpansion,
+            mark.outline_color,
+            clippingPlanes,
+            {
+              opacity: mark.opacity,
+              depthTest,
+              depthWrite,
+              toneMapped: false,
+            },
+          );
+          outline.mesh.renderOrder = renderOrder;
+          exportScene.add(outline.mesh);
+          exportMaterials.push(outline.material);
+          renderPasses += 1;
+        }
+
+        let material;
+        if (mark.material === "unlit" || !profile.lighting) {
+          material = new THREE.MeshBasicMaterial({
+            vertexColors: true,
+            side: THREE.FrontSide,
+            transparent: mark.opacity < 1,
+            opacity: mark.opacity,
+            depthTest,
+            depthWrite,
+            toneMapped: mark.material !== "unlit",
+            clippingPlanes,
+          });
+        } else {
+          material = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: profile.lighting.roughness,
+            metalness: 0,
+            side: THREE.FrontSide,
+            transparent: mark.opacity < 1,
+            opacity: mark.opacity,
+            depthTest,
+            depthWrite,
+            clippingPlanes,
+          });
+          if (!studioLightsAdded) {
+            addStudioLights(exportScene, exportCamera, selection, profile);
+            studioLightsAdded = true;
+          }
+        }
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.renderOrder = renderOrder + 1;
+        exportScene.add(mesh);
+        exportMaterials.push(material);
+        renderPasses += 1;
+      });
+      layerReport.annotations.push(report);
+    });
+    annotationReport.push(layerReport);
+  });
+
   if (renderPasses === 0) {
-    throw new Error("Render request has no visible particles or polymer bonds");
+    throw new Error("Render request has no visible particles, polymer bonds, or annotations");
   }
 
   await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -1609,6 +1972,7 @@ async function renderHighQuality(configOrProfile = null, options = {}) {
       particles: selection.particleCount,
       bonds: selection.bondCount,
     },
+    annotations: annotationReport,
     section: sectionStatistics(exportSection, selection),
     camera: {
       mode: request.view.camera.mode,
@@ -1653,6 +2017,7 @@ async function downloadPng(config = null) {
       size: result.blob.size,
       request: result.request,
       selection: result.selection,
+      annotations: result.annotations,
       section: result.section,
       colorbar: result.colorbar,
       camera: result.camera,
@@ -1745,6 +2110,7 @@ function resize() {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (wideBondMaterial) wideBondMaterial.resolution.set(window.innerWidth, window.innerHeight);
+  if (hasAnnotations) rebuildMonitorAnnotations();
   if (!regionPanel.hidden) positionRegionPanel();
 }
 window.addEventListener("resize", resize);
@@ -1784,6 +2150,7 @@ if (payload.viewer.initial_regions && payload.viewer.initial_regions.length) {
 }
 particles.visible = particlesToggle.checked;
 bonds.visible = bondsToggle.checked;
+monitorAnnotations.visible = annotationsToggle.checked;
 const initialCameraConfig = embeddedRenderConfig.view.camera || { mode: "fit", fov: 34, up: [0, 1, 0] };
 if (initialCameraConfig.mode === "explicit") {
   const configured = configuredCamera(initialCameraConfig, activeSelection, camera.aspect);
@@ -1834,6 +2201,7 @@ window.__demo = {
       target: controls.target.toArray(),
       particleVisible: particles.visible,
       bondVisible: bonds.visible,
+      annotationVisible: monitorAnnotations.visible,
       pointDrawCount: activeSelection.particleCount,
       bondDrawCount: activeSelection.bondCount,
       regionCount: activeRegions.length,

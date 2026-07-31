@@ -1130,12 +1130,12 @@
       "summary": "No documentation available.",
       "docstring": "No documentation available.",
       "return_type": null,
-      "lineno": 87,
+      "lineno": 91,
       "symbol": "hic_basic.cli.render3d.run",
       "import": "from hic_basic.cli.render3d import run",
       "source": {
         "module_path": "hic_basic/cli/render3d.py",
-        "lineno": 87
+        "lineno": 91
       }
     }
   ],
@@ -6625,6 +6625,36 @@
       }
     }
   ],
+  "visualize.annotations": [
+    {
+      "name": "annotate_structure",
+      "signature": "annotate_structure(scene: StructureScene, annotations: AnnotationInput, *, layer: str='annotations', layer_label: Optional[str]=None, visible: bool=True, layer_order: int=0)",
+      "summary": "Resolve and add typed annotations to an immutable structure scene.",
+      "docstring": "Resolve and add typed annotations to an immutable structure scene.\n\nGenome targets are resolved once in Python against the scene's stable\nchromosome, particle, and polymer-bond order. The resulting scene embeds\nthe same resolved membership for interactive HTML and direct PNG output.\nCalling the function again with the same layer id appends annotations to\nthat layer; annotation ids remain unique across the complete scene.\n\nParameters\n----------\nscene\n    Existing validated structure scene.\nannotations\n    One annotation or a sequence of annotations. Genome-region targets may\n    be unresolved; already resolved targets are retained and revalidated.\nlayer, layer_label, visible, layer_order\n    Stable annotation-layer identity, display label, default visibility,\n    and composition ordering key.\n\nReturns\n-------\nStructureScene\n    New scene containing resolved, immutable annotation membership and an\n    annotation-aware checksum.",
+      "return_type": "StructureScene",
+      "lineno": 90,
+      "symbol": "hic_basic.visualize.annotations.annotate_structure",
+      "import": "from hic_basic.visualize.annotations import annotate_structure",
+      "source": {
+        "module_path": "hic_basic/visualize/annotations.py",
+        "lineno": 90
+      }
+    },
+    {
+      "name": "genomic_segment_annotation",
+      "signature": "genomic_segment_annotation(region: str, *, id: str, label: Optional[str]=None, color: str='#ff0000', tube_width: float=8.0, outline_width: Optional[float]=None, outline_color: Optional[str]=None, material: str='unlit', opacity: float=1.0, occlusion: str='depth_tested', order: int=0)",
+      "summary": "Describe a polymer-segment annotation before scene resolution.",
+      "docstring": "Describe a polymer-segment annotation before scene resolution.\n\nParameters\n----------\nregion\n    Inclusive genome region such as ``chr1(pat):20000-30000``. A complete\n    interval includes both endpoint particles and only real polymer bonds\n    already present in the scene.\nid, label\n    Stable annotation identifier and optional display label.\ncolor\n    Requested semantic display color. It is preserved in ``unlit`` mode.\ntube_width, outline_width, outline_color\n    Independent annotation diameters and optional outline color in\n    reference pixels at a 1400-pixel export width.\nmaterial\n    ``\"unlit\"`` bypasses profile color transforms and lighting;\n    ``\"profile\"`` opts into the active base-polymer profile.\nopacity\n    Annotation opacity in the interval ``(0, 1]``.\nocclusion\n    ``\"depth_tested\"`` for geometry-aware occlusion or the explicit\n    ``\"always_visible\"`` overlay policy.\norder\n    Stable ordering key within the annotation layer.\n\nReturns\n-------\nStructureAnnotation\n    Unresolved typed annotation accepted by :func:`annotate_structure`.",
+      "return_type": "StructureAnnotation",
+      "lineno": 26,
+      "symbol": "hic_basic.visualize.annotations.genomic_segment_annotation",
+      "import": "from hic_basic.visualize.annotations import genomic_segment_annotation",
+      "source": {
+        "module_path": "hic_basic/visualize/annotations.py",
+        "lineno": 26
+      }
+    }
+  ],
   "visualize.config": [
     {
       "name": "load_render_config",
@@ -6632,12 +6662,12 @@
       "summary": "Load and validate a structure render configuration.",
       "docstring": "Load and validate a structure render configuration.\n\n``value`` may be an existing config, a mapping, a JSON string, a JSON file,\nor ``None`` for defaults. Unknown fields and invalid values are rejected.",
       "return_type": "StructureRenderConfig",
-      "lineno": 454,
+      "lineno": 464,
       "symbol": "hic_basic.visualize.config.load_render_config",
       "import": "from hic_basic.visualize.config import load_render_config",
       "source": {
         "module_path": "hic_basic/visualize/config.py",
-        "lineno": 454
+        "lineno": 464
       }
     }
   ],
@@ -6648,12 +6678,12 @@
       "summary": "Create a configurable offline browser viewer for a structure scene.",
       "docstring": "Create a configurable offline browser viewer for a structure scene.\n\nThe returned object is lightweight and does not start a server or renderer.\nCall ``write_html`` to create one portable HTML file. ``regions`` accepts\nchromosome names or inclusive ranges such as ``chr1(mat):0-50Mb``; multiple\nentries are displayed as a union. When supplied, ``render_config`` is the\nauthoritative region/profile request embedded for direct PNG rendering;\nthe older ``regions`` and ``export_profile`` arguments remain compatible.",
       "return_type": "StructureViewer",
-      "lineno": 121,
+      "lineno": 122,
       "symbol": "hic_basic.visualize.html.view_structure",
       "import": "from hic_basic.visualize.html import view_structure",
       "source": {
         "module_path": "hic_basic/visualize/html.py",
-        "lineno": 121
+        "lineno": 122
       }
     },
     {
@@ -6662,12 +6692,12 @@
       "summary": "Build a 3D genome scene and write it as one portable interactive HTML.",
       "docstring": "Build a 3D genome scene and write it as one portable interactive HTML.\n\nThis convenience API performs no external process invocation. JavaScript,\nCSS, typed arrays, colors, and polymer bonds are embedded in the output, so\nthe result can be downloaded and opened directly or served over Remote SSH.\n``render_config`` embeds the same typed request accepted by\n``render_structure_png``.\n\nReturns\n-------\npathlib.Path\n    Path to the atomically written HTML artifact.",
       "return_type": "Path",
-      "lineno": 153,
+      "lineno": 154,
       "symbol": "hic_basic.visualize.html.write_structure_html",
       "import": "from hic_basic.visualize.html import write_structure_html",
       "source": {
         "module_path": "hic_basic/visualize/html.py",
-        "lineno": 153
+        "lineno": 154
       }
     }
   ],
@@ -6692,7 +6722,7 @@
       "name": "structure_scene",
       "signature": "structure_scene(structure: StructureInput, *, color: ColorInput='chrom', palette: Optional[Mapping[Any, Any]]=None, cmap: str='viridis', vmin: Optional[float]=None, vmax: Optional[float]=None, missing_color: Any='#aeb7ba', polymer_bonds: bool=True, max_bond_gap: int=1000000, dataset_name: Optional[str]=None, metadata: Optional[Mapping[str, Any]]=None)",
       "summary": "Build a renderer-independent scene from a 3dg path or native DataFrame.",
-      "docstring": "Build a renderer-independent scene from a 3dg path or native DataFrame.\n\nParameters\n----------\nstructure\n    A five-column ``.3dg`` path or a DataFrame. DataFrames may use a\n    ``(chr, pos)`` MultiIndex with ``x, y, z`` columns, or flat\n    ``chrom/chr, pos, x, y, z`` columns.\ncolor\n    ``\"chrom\"`` for chromosome territory colors, a DataFrame column name,\n    an ``N x 3`` RGB array, or a length-N sequence of color specifications.\n    Numeric columns use ``cmap``; categorical columns use ``palette`` or a\n    deterministic categorical palette.\npalette\n    Optional category-to-color mapping. With ``color=\"chrom\"``, keys are\n    chromosome names.\ncmap, vmin, vmax, missing_color\n    Continuous color normalization and missing-value controls.\npolymer_bonds\n    Whether to connect adjacent genome-bin particles into polymer chains.\nmax_bond_gap\n    Maximum genomic separation in base pairs for an adjacent-bin bond.\n    Bonds never cross chromosome or haplotype boundaries.\ndataset_name\n    Display name stored in the scene. Defaults to the input file name.\nmetadata\n    Additional JSON-compatible dataset metadata.\n\nReturns\n-------\nStructureScene\n    Validated positions, colors, genomic identity, and polymer bonds. The\n    scene does not contain Three.js or other renderer-specific objects.",
+      "docstring": "Build a renderer-independent scene from a 3dg path or native DataFrame.\n\nParameters\n----------\nstructure\n    A five-column ``.3dg`` path or a DataFrame. DataFrames may use a\n    ``(chr, pos)`` MultiIndex with ``x, y, z`` columns, or flat\n    ``chrom/chr, pos, x, y, z`` columns.\ncolor\n    ``\"chrom\"`` for chromosome territory colors, a DataFrame column name,\n    one constant color specification, an ``N x 3`` RGB array, or a\n    length-N sequence of color specifications. Numeric columns use\n    ``cmap``; categorical columns use ``palette`` or a deterministic\n    categorical palette. A string matching a column name takes precedence\n    over interpreting that string as a color.\npalette\n    Optional category-to-color mapping. With ``color=\"chrom\"``, keys are\n    chromosome names.\ncmap, vmin, vmax, missing_color\n    Continuous color normalization and missing-value controls.\npolymer_bonds\n    Whether to connect adjacent genome-bin particles into polymer chains.\nmax_bond_gap\n    Maximum genomic separation in base pairs for an adjacent-bin bond.\n    Bonds never cross chromosome or haplotype boundaries.\ndataset_name\n    Display name stored in the scene. Defaults to the input file name.\nmetadata\n    Additional JSON-compatible dataset metadata.\n\nReturns\n-------\nStructureScene\n    Validated positions, colors, genomic identity, and polymer bonds. The\n    scene does not contain Three.js or other renderer-specific objects.",
       "return_type": "StructureScene",
       "lineno": 55,
       "symbol": "hic_basic.visualize.structure.structure_scene",
@@ -6708,12 +6738,12 @@
       "summary": "Build a scene colored by a genome-bin feature track.",
       "docstring": "Build a scene colored by a genome-bin feature track.\n\nParameters\n----------\nstructure\n    A five-column 3dg path or native structure DataFrame.\nfeature\n    A headerless ``chrom, pos, value`` TSV path, a DataFrame, or a\n    two-level-indexed Series. DataFrames may use ``pos`` or ``start``.\nfeature_name\n    Scientific label stored with the continuous color mapping and used by\n    exported color bars.\nfeature_value\n    Value column for a feature DataFrame. It may be omitted when exactly\n    one non-coordinate column exists.\nduplicate_haplotypes\n    Match a haploid reference row to both ``(mat)`` and ``(pat)`` chains,\n    while also normalizing optional ``chr`` prefixes.\ncmap, vmin, vmax, missing_color\n    Continuous feature color mapping. ``\"pymol-cpg\"`` reproduces the\n    magenta-gray-green mapping used by the legacy PyMOL CpG workflow.\npolymer_bonds, max_bond_gap\n    Polymer-chain construction controls passed to :func:`structure_scene`.\ndataset_name, metadata\n    Optional scene identity and JSON-compatible metadata.\n\nReturns\n-------\nStructureScene\n    A renderer-independent scene with per-particle colors. Polymer bonds\n    interpolate the colors of their endpoint particles.\n\nNotes\n-----\nMissing feature rows use ``missing_color``. Duplicate feature keys are\nrejected because their mapping to a particle would be ambiguous.",
       "return_type": "StructureScene",
-      "lineno": 210,
+      "lineno": 212,
       "symbol": "hic_basic.visualize.structure.structure_scene_with_feature",
       "import": "from hic_basic.visualize.structure import structure_scene_with_feature",
       "source": {
         "module_path": "hic_basic/visualize/structure.py",
-        "lineno": 210
+        "lineno": 212
       }
     }
   ],

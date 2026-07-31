@@ -10,11 +10,14 @@ import pandas as pd
 import pytest
 
 from hic_basic.visualize import (
+    AnnotationLayer,
     ExportStyle,
     PolymerBondLayer,
     SectionConfig,
     StructureRenderConfig,
     ViewConfig,
+    annotate_structure,
+    genomic_segment_annotation,
     structure_scene,
     structure_scene_with_feature,
     view_structure,
@@ -115,6 +118,72 @@ def test_structure_scene_with_feature_duplicates_haploid_track_and_records_color
     assert scene.particles.colors[0].tolist() == scene.particles.colors[4].tolist()
 
 
+def test_structure_annotations_resolve_real_bonds_and_reject_overlap():
+    base_scene = structure_scene(synthetic_structure(), color="#708087", max_bond_gap=1_000_000)
+    base_checksum = base_scene.checksum
+    anchor_1 = genomic_segment_annotation(
+        "chr1(mat):0-20kb",
+        id="anchor-1",
+        color="red",
+        tube_width=8,
+    )
+    anchor_2 = genomic_segment_annotation(
+        "chr1(mat):20kb-40kb",
+        id="anchor-2",
+        color="#00d000",
+        tube_width=9,
+    )
+    scene = annotate_structure(
+        base_scene,
+        [anchor_1, anchor_2],
+        layer="anchors",
+        layer_label="Loop anchors",
+    )
+    sequential = annotate_structure(
+        annotate_structure(
+            base_scene,
+            anchor_1,
+            layer="anchors",
+            layer_label="Loop anchors",
+        ),
+        anchor_2,
+        layer="anchors",
+    )
+
+    assert scene.schema_version == 2
+    assert scene.checksum != base_checksum
+    assert scene.checksum == sequential.checksum
+    assert isinstance(scene.annotation_layers[0], AnnotationLayer)
+    first, second = scene.annotation_layers[0].annotations
+    assert first.target.particle_indices.tolist() == [0, 1]
+    assert first.target.bond_indices.tolist() == [0]
+    assert second.target.particle_indices.tolist() == [1, 2]
+    assert second.target.bond_indices.tolist() == [1]
+    assert first.marks[0].requested_color == "red"
+    assert first.marks[0].color == "#ff0000"
+
+    with pytest.raises(ValueError, match="share polymer bond"):
+        annotate_structure(
+            scene,
+            genomic_segment_annotation(
+                "chr1(mat):0-20kb",
+                id="overlap",
+                color="#0000ff",
+            ),
+            layer="more-anchors",
+        )
+
+    with pytest.raises(ValueError, match="resolves to no polymer bonds"):
+        annotate_structure(
+            structure_scene(synthetic_structure(), max_bond_gap=20_000),
+            genomic_segment_annotation(
+                "chr1(mat):40kb-2Mb",
+                id="gap",
+                color="#ff0000",
+            ),
+        )
+
+
 def test_viewer_writes_standalone_versioned_payload(tmp_path):
     scene = structure_scene(synthetic_structure())
     output = tmp_path / "portable.html"
@@ -146,6 +215,37 @@ def test_viewer_writes_standalone_versioned_payload(tmp_path):
     assert payload["arrays"]["bond_indices"]["shape"] == [4, 2]
     assert decode_array(payload["arrays"]["bond_indices"]).tolist() == scene.bonds.endpoints.tolist()
     assert "Three.js" in document
+
+
+def test_viewer_payload_serializes_typed_annotation_layers():
+    scene = annotate_structure(
+        structure_scene(synthetic_structure(), max_bond_gap=20_000),
+        genomic_segment_annotation(
+            "chr1(pat):0-20kb",
+            id="anchor-pat",
+            label="Paternal anchor",
+            color="red",
+            tube_width=10,
+            outline_width=13,
+            outline_color="#7f0000",
+        ),
+        layer="anchors",
+    )
+
+    payload = embedded_payload(view_structure(scene).to_html())
+    layer = payload["annotations"]["layers"][0]
+    annotation = layer["annotations"][0]
+
+    assert payload["annotations"]["schema_version"] == 1
+    assert layer["id"] == "anchors"
+    assert annotation["target"]["selector"] == "chr1(pat):0-20kb"
+    assert annotation["target"]["particle_count"] == 2
+    assert annotation["target"]["bond_count"] == 1
+    assert decode_array(annotation["target"]["particle_indices"]).tolist() == [4, 5]
+    assert decode_array(annotation["target"]["bond_indices"]).tolist() == [2]
+    assert annotation["marks"][0]["kind"] == "tube"
+    assert annotation["marks"][0]["requested_color"] == "red"
+    assert annotation["marks"][0]["color"] == "#ff0000"
 
 
 def test_typed_render_config_is_embedded_as_authoritative_export_request():

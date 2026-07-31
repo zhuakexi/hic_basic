@@ -24,7 +24,7 @@ def add_arguments(subparser):
     subparser.add_argument(
         "--color",
         default="chrom",
-        help="Territory colors ('chrom') or a numeric/categorical input field",
+        help="Territory colors ('chrom'), one constant color, or a numeric/categorical input field",
     )
     subparser.add_argument(
         "--feature",

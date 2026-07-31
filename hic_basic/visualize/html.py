@@ -87,6 +87,7 @@ class StructureViewer:
             particle_size=self.particle_size,
             bond_size=self.bond_size,
             export_profile=self.export_profile,
+            has_annotations=bool(self.scene.annotation_layers),
         )
 
     def write_html(self, output: Union[str, os.PathLike], overwrite: bool = True) -> Path:
@@ -264,8 +265,56 @@ def _scene_payload(viewer: StructureViewer) -> dict:
         },
         "generated_at_ms": 0,
     }
+    if scene.annotation_layers:
+        payload["annotations"] = {
+            "schema_version": 1,
+            "layers": [_annotation_layer_payload(layer) for layer in scene.annotation_layers],
+        }
     json.dumps(payload, ensure_ascii=True)
     return payload
+
+
+def _annotation_layer_payload(layer) -> dict:
+    return {
+        "id": layer.id,
+        "label": layer.label,
+        "visible": layer.visible,
+        "order": layer.order,
+        "annotations": [
+            {
+                "id": annotation.id,
+                "label": annotation.label,
+                "order": annotation.order,
+                "target": {
+                    "kind": "genome_region",
+                    "selector": annotation.target.selector,
+                    "chromosomes": annotation.target.chromosomes,
+                    "particle_count": len(annotation.target.particle_indices),
+                    "bond_count": len(annotation.target.bond_indices),
+                    "anchor": annotation.target.anchor,
+                    "bbox": annotation.target.bbox,
+                    "particle_indices": _encode_array(annotation.target.particle_indices),
+                    "bond_indices": _encode_array(annotation.target.bond_indices),
+                },
+                "marks": [
+                    {
+                        "kind": mark.kind,
+                        "requested_color": mark.requested_color,
+                        "color": mark.color,
+                        "tube_width": mark.tube_width,
+                        "outline_width": mark.outline_width,
+                        "requested_outline_color": mark.requested_outline_color,
+                        "outline_color": mark.outline_color,
+                        "material": mark.material,
+                        "opacity": mark.opacity,
+                        "occlusion": mark.occlusion,
+                    }
+                    for mark in annotation.marks
+                ],
+            }
+            for annotation in layer.annotations
+        ],
+    }
 
 
 def _encode_array(array: np.ndarray) -> dict:
@@ -325,6 +374,7 @@ def _html_document(
     particle_size: float,
     bond_size: float,
     export_profile: str,
+    has_annotations: bool,
 ) -> str:
     profile_options = [
         ("molecular-studio-v1", "Molecular studio v1"),
@@ -362,6 +412,7 @@ def _html_document(
       <div class="controls" aria-label="Viewer controls">
         <label class="toggle"><input id="particles-toggle" type="checkbox" checked><span>Particles</span></label>
         <label class="toggle"><input id="bonds-toggle" type="checkbox" checked><span>Polymer bonds</span></label>
+        <label class="toggle"{"" if has_annotations else " hidden"}><input id="annotations-toggle" type="checkbox" checked><span>Annotations</span></label>
         <label class="toggle"><input id="section-toggle" type="checkbox"><span>Section</span></label>
         <label class="field field-section"><span>Thickness</span>
           <input id="section-thickness" type="range" min="0.1" max="10" step="0.1" value="2">

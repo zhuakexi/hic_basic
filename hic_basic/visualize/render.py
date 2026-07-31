@@ -278,6 +278,7 @@ def _normalize_metadata(metadata: Mapping[str, Any]) -> dict:
         "geometry": metadata.get("geometryStats"),
         "request": metadata.get("request", {}),
         "selection": metadata.get("selection", {}),
+        "annotations": metadata.get("annotations", []),
         "section": metadata.get("section"),
         "colorbar": metadata.get("colorbar"),
         "camera": metadata.get("camera", {}),

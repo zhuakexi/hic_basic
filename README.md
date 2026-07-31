@@ -64,7 +64,8 @@ hic_basic render3d sample.20k.3dg --feature hg19.cpg.20k.txt \
 The HTML contains its renderer and data and can be opened directly in a local
 browser. See [docs/STRUCTURE_VIEWER.md](docs/STRUCTURE_VIEWER.md) for Python API,
 custom colors, polymer-bond semantics, direct PNG rendering, publication
-profiles, genome-feature cross-sections, and Remote SSH use.
+profiles, genome-feature cross-sections, typed structure annotations, and
+Remote SSH use.
 
 See [docs/README.md](docs/README.md) for detailed usage.
 

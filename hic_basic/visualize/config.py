@@ -229,28 +229,38 @@ class ViewConfig:
 
 @dataclass(frozen=True)
 class LayerConfig:
-    """Visibility overrides for particle and polymer-bond layers."""
+    """Visibility overrides for base geometry and structure annotations."""
 
     show_particles: Optional[bool] = None
     show_bonds: Optional[bool] = None
+    show_annotations: Optional[bool] = None
 
     def __post_init__(self) -> None:
-        for name in ("show_particles", "show_bonds"):
+        for name in ("show_particles", "show_bonds", "show_annotations"):
             value = getattr(self, name)
             if value is not None and not isinstance(value, bool):
                 raise TypeError(f"{name} must be bool or None")
-        if self.show_particles is False and self.show_bonds is False:
+        if (
+            self.show_particles is False
+            and self.show_bonds is False
+            and self.show_annotations is not True
+        ):
             raise ValueError("at least one render layer must be visible")
 
     def to_dict(self) -> dict:
         return {
             "show_particles": self.show_particles,
             "show_bonds": self.show_bonds,
+            "show_annotations": self.show_annotations,
         }
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "LayerConfig":
-        data = _strict_mapping(value, {"show_particles", "show_bonds"}, "layer config")
+        data = _strict_mapping(
+            value,
+            {"show_particles", "show_bonds", "show_annotations"},
+            "layer config",
+        )
         return cls(**dict(data))
 
 

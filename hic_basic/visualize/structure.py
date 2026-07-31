@@ -76,9 +76,11 @@ def structure_scene(
         ``chrom/chr, pos, x, y, z`` columns.
     color
         ``"chrom"`` for chromosome territory colors, a DataFrame column name,
-        an ``N x 3`` RGB array, or a length-N sequence of color specifications.
-        Numeric columns use ``cmap``; categorical columns use ``palette`` or a
-        deterministic categorical palette.
+        one constant color specification, an ``N x 3`` RGB array, or a
+        length-N sequence of color specifications. Numeric columns use
+        ``cmap``; categorical columns use ``palette`` or a deterministic
+        categorical palette. A string matching a column name takes precedence
+        over interpreting that string as a color.
     palette
         Optional category-to-color mapping. With ``color="chrom"``, keys are
         chromosome names.
@@ -496,12 +498,18 @@ def _resolve_colors(
         )
 
     if isinstance(color, str):
-        if color not in frame.columns:
-            raise ValueError(f"color field not found in structure DataFrame: {color}")
-        values = frame[color]
-        if pd.api.types.is_numeric_dtype(values):
-            return _continuous_colors(values, cmap, vmin, vmax, missing_color, field=color)
-        return _categorical_colors(values, palette, missing_color), None
+        if color in frame.columns:
+            values = frame[color]
+            if pd.api.types.is_numeric_dtype(values):
+                return _continuous_colors(values, cmap, vmin, vmax, missing_color, field=color)
+            return _categorical_colors(values, palette, missing_color), None
+        try:
+            constant = _color_to_uint8(color)
+        except ValueError as error:
+            raise ValueError(
+                f"color is neither a structure DataFrame field nor a valid color: {color}"
+            ) from error
+        return np.repeat(np.asarray([constant], dtype=np.uint8), len(frame), axis=0), None
 
     array = np.asarray(color)
     if len(array) != len(frame):
@@ -517,7 +525,9 @@ def _resolve_colors(
         if numeric.min() < 0 or numeric.max() > 255:
             raise ValueError("direct RGB colors must be in the 0..1 or 0..255 range")
         return np.round(numeric).astype(np.uint8), None
-    raise ValueError("color must be 'chrom', a DataFrame column, color sequence, or N x 3 RGB array")
+    raise ValueError(
+        "color must be 'chrom', a DataFrame column, one color, a color sequence, or N x 3 RGB array"
+    )
 
 
 def _continuous_colors(
