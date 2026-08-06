@@ -360,6 +360,26 @@ Available stable profiles are:
 | `xu2025-v1` | Versioned Xu 2025 baseline compatibility |
 | `publication-v1` | Versioned legacy light rendering |
 
+The examples below use the same real mouse whole-genome structure
+(`BJ9205.clean.20k.4.3dg`; 113,801 particles across chromosomes 1-19 and X,
+with a 20 kb modal interval), chromosome-territory colors, camera, and
+800 x 800 raster. Particles are hidden so the profile-specific polymer
+rendering remains legible. The PNGs are stored as losslessly compressed RGB
+files.
+
+| | |
+| --- | --- |
+| **`molecular-studio-v1`**<br>![molecular-studio-v1 whole-genome 20 kb structure](assets/structure-profiles/molecular-studio-v1.png) | **`section-pymol-v1`**<br>![section-pymol-v1 whole-genome 20 kb structure](assets/structure-profiles/section-pymol-v1.png) |
+| **`section-studio-v1`**<br>![section-studio-v1 whole-genome 20 kb structure](assets/structure-profiles/section-studio-v1.png) | **`xu2025-v2`**<br>![xu2025-v2 whole-genome 20 kb structure](assets/structure-profiles/xu2025-v2.png) |
+| **`xu2025-v1`**<br>![xu2025-v1 whole-genome 20 kb structure](assets/structure-profiles/xu2025-v1.png) | **`publication-v1`**<br>![publication-v1 whole-genome 20 kb structure](assets/structure-profiles/publication-v1.png) |
+
+Regenerate the examples from an equivalent 20 kb whole-genome structure with:
+
+```bash
+./run_in_env.sh --cpu 4 --mem 16G --time 30m \
+  python scripts/generate_structure_profile_examples.py sample.20k.3dg
+```
+
 Parameters under an existing profile name are treated as a visual compatibility
 contract. New aesthetics require a new versioned profile name. `tube_width`,
 `silhouette_width`, `particle_size`, `background`, and `show_colorbar` are
