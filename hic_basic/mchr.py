@@ -11,7 +11,7 @@ from hires_utils.hires_io import parse_3dg
 from scipy.stats import mannwhitneyu
 from tqdm import tqdm
 
-from .genome import GenomeIdeograph
+from .genome import GenomeIdeograph, chrom_is_ploidified
 from .data import chromosomes
 from .genome import RegionPair
 from .TAD.IS import _mat_IS
@@ -70,7 +70,10 @@ def _3dg_to_xr(_3dg_file, sample, genome=None, binsize=20000, flavor="hickit"):
     sample : str
         Sample name used as dimension identifier
     genome : str, optional
-        Genome assembly for bin alignment (e.g., 'GRCh38')
+        Genome assembly for bin alignment (e.g., 'GRCh38'). For phased
+        (diploid) structures pass the diploid reference (e.g., 'GRCh38_dip')
+        so both homologous copies are kept; a haploid reference with a
+        phased structure is rejected with a mismatch error.
     binsize : int, optional
         Resolution in base pairs (default: 20000)
     flavor : str, optional
@@ -85,11 +88,22 @@ def _3dg_to_xr(_3dg_file, sample, genome=None, binsize=20000, flavor="hickit"):
         assert binsize is not None
     _3dg = parse_3dg(_3dg_file)
     if genome is not None:
+        chrom_vals = _3dg.index.get_level_values(0)
+        # Ploidy detection is only a hint, so warn instead of error here.
+        # The alignment check below is the authoritative mismatch signal.
+        if chrom_is_ploidified(chrom_vals) and not genome.endswith("dip"):
+            warnings.warn(
+                f"Structure {_3dg_file} has ploidified chromosome names "
+                f"(e.g. {chrom_vals[0]}), but reference '{genome}' is haploid. "
+                f"For phased (diploid) structures pass a diploid reference "
+                f"such as '{genome}_dip' so both homologous copies are kept."
+            )
         bins = GenomeIdeograph(genome).bins(
             binsize = binsize,
             bed=True,
             flavor=flavor
         )
+        n_struct = len(_3dg)
         _3dg = pd.merge(
             bins,
             _3dg,
@@ -97,6 +111,23 @@ def _3dg_to_xr(_3dg_file, sample, genome=None, binsize=20000, flavor="hickit"):
             right_index = True,
             how = "left"
         )
+        n_aligned = int(_3dg["x"].notna().sum())
+        if n_aligned < n_struct / 2:
+            if chrom_is_ploidified(chrom_vals):
+                raise ValueError(
+                    f"Structure {_3dg_file} did not align to reference "
+                    f"'{genome}' ({n_aligned}/{n_struct} bins matched): its "
+                    f"chromosome names are ploidified (e.g. {chrom_vals[0]}). "
+                    f"For phased (diploid) structures pass a diploid reference "
+                    f"such as '{genome}_dip'."
+                )
+            raise ValueError(
+                f"Structure {_3dg_file} did not align to reference "
+                f"'{genome}' ({n_aligned}/{n_struct} bins matched). Check that "
+                f"the reference genome matches the structure assembly "
+                f"(structure chroms: {sorted(set(chrom_vals))[:5]}...; "
+                f"reference chroms: {list(bins['chrom'].unique())[:5]}...)."
+            )
         _3dg = _3dg.set_index(["chrom","start"]).drop(
             "end",
             axis=1

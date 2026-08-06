@@ -201,6 +201,11 @@ def get_chrom_data(genome, order=False):
 mm10 = _make_ref_genome("mm10", ref_dir / "mm10.len.tsv")
 GRCh38 = _make_ref_genome("GRCh38", ref_dir / "GRCh38.len.tsv")
 hg38 = GRCh38
+# Diploid references: each chromosome listed once per homolog, e.g. chr1(mat)/chr1(pat).
+# Use these for phased (diploid) structures so both homologous copies are aligned.
+mm10_dip = _make_ref_genome("mm10_dip", ref_dir / "mm10.dip.len.tsv")
+GRCh38_dip = _make_ref_genome("GRCh38_dip", ref_dir / "GRCh38.dip.len.tsv")
+hg19_dip = _make_ref_genome("hg19_dip", ref_dir / "hg19.dip.len.tsv")
 
 
 

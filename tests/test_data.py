@@ -217,7 +217,33 @@ def test_ref_genome_cache_dir():
     # Verify cache directories exist
     assert mm10.cache_dir.exists()
     assert GRCh38.cache_dir.exists()
-    
+
     # Verify cache directory structure
     assert "mm10" in str(mm10.cache_dir)
     assert "GRCh38" in str(GRCh38.cache_dir)
+
+
+def test_diploid_reference_genomes_registered():
+    """Diploid references (mm10_dip, GRCh38_dip, hg19_dip) must be resolvable
+    by name, with each chromosome listed once per homolog as chrX(pat)/chrX(mat)."""
+    from hic_basic.data import mm10_dip, GRCh38_dip, hg19_dip
+    from hic_basic.data import get_chrom_data
+
+    for name in ("mm10_dip", "GRCh38_dip", "hg19_dip"):
+        # resolvable both as RefGenome attribute and through get_chrom_data
+        chrom_data = get_chrom_data(name)
+        assert "length" in chrom_data.columns
+        assert len(chrom_data) > 0
+        assert any("(pat)" in c for c in chrom_data.index)
+        assert any("(mat)" in c for c in chrom_data.index)
+
+    # dip reference has twice the haploid chromosome count
+    mm10_hap = get_chrom_data("mm10")
+    mm10_dip_data = mm10_dip.chromosomes.data
+    assert len(mm10_dip_data) == 2 * len(mm10_hap)
+
+    # GenomeIdeograph accepts the diploid genome name directly
+    ideograph = GenomeIdeograph("mm10_dip")
+    bins = ideograph.bins(20000, bed=True, flavor="hickit")
+    assert "chr1(pat)" in set(bins["chrom"])
+    assert "chr1(mat)" in set(bins["chrom"])

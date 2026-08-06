@@ -1,10 +1,12 @@
 import sys
 import unittest
 
+import pandas as pd
+
 sys.path.insert(0, "/share/home/ychi/dev/hic_basic")
 sys.path.insert(0, "/share/home/ychi/dev/hires_utils")
 
-from hic_basic.genome import Region, parse_ucsc_region
+from hic_basic.genome import Region, parse_ucsc_region, chrom_is_ploidified
 
 class TestRegion(unittest.TestCase):
     def test_list_of_tuples_input(self):
@@ -75,7 +77,26 @@ class TestParseUCSCRegion(unittest.TestCase):
 
     def test_partial_specification(self):
         self.assertEqual(parse_ucsc_region("chr1:-2,345"), ("chr1", None, 2345))
-        self.assertEqual(parse_ucsc_region("chr2:1234-"), ("chr2", 1234, None)) 
+        self.assertEqual(parse_ucsc_region("chr2:1234-"), ("chr2", 1234, None))
+
+class TestChromIsPloidified(unittest.TestCase):
+    """Test ploidified chromosome name detection."""
+
+    def test_mat_pat_suffixes(self):
+        self.assertTrue(chrom_is_ploidified(pd.Index(["chr1(mat)", "chr2"])))
+        self.assertTrue(chrom_is_ploidified(pd.Index(["chr1(pat)", "chr2"])))
+
+    def test_a_b_suffixes(self):
+        self.assertTrue(chrom_is_ploidified(pd.Series(["chr1a", "chr2"])))
+        self.assertTrue(chrom_is_ploidified(pd.Series(["chr1b", "chr2"])))
+
+    def test_haploid_names(self):
+        self.assertFalse(chrom_is_ploidified(pd.Index(["chr1", "chrX", "chrY"])))
+        self.assertFalse(chrom_is_ploidified(pd.Series(["chr1", "chr2"])))
+
+    def test_contig_names_not_flagged(self):
+        # scaffold/contig names must not be mistaken for ploidy suffixes
+        self.assertFalse(chrom_is_ploidified(pd.Index(["chrUn_KI270442v1", "chr1"])))
 # Run the tests
 if __name__ == '__main__':
     unittest.main()

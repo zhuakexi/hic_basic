@@ -640,6 +640,22 @@ class RegionPair:
 ### --- functions for genome spreadsheet --- ###
 
 
+# Ploidy suffixes as intended by chrom_rm_suffix, but anchored at the end of
+# the name: internal underscores (e.g. scaffold names like
+# "chrUn_KI270442v1") are never treated as ploidy markers.
+_PLOIDY_SUFFIX_RE = re.compile(r"\((?:mat|pat)\)$|_(?:mat|pat)$|_?[abAB]$")
+
+def chrom_is_ploidified(chrom):
+    """
+    Detect ploidified chromosome names, like "chr1(mat)", "chr1(pat)", "chr1a".
+    Mirrors the suffixes handled by chrom_rm_suffix, anchored at the name end
+    so scaffold/contig names with internal underscores are not flagged.
+    Input:
+        chrom: pd.Index or pd.Series of chromosome names
+    Output:
+        bool: True if any name carries a ploidy suffix
+    """
+    return bool(chrom.str.contains(_PLOIDY_SUFFIX_RE, regex=True).any())
 def index_merge_hom(df):
     """
     Cancel ploidiness in index. You can then merge homologous chromosomes use functions like groupby.
