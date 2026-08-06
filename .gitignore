@@ -4,6 +4,7 @@ hic_basic.egg-info/
 .project
 .codex/
 .qwen/
+.claude/
 .vscode/
 # on cache
 hic_basic/ref/cache/
