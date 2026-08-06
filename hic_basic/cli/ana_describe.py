@@ -32,7 +32,7 @@ def add_arguments(subparser):
 def run(args):
     from ..ana import Ana
 
-    ana = Ana(args.home, verbose=False)
+    ana = Ana.for_introspection(args.home)
 
     if args.column:
         meta = ana.column_meta(args.column)

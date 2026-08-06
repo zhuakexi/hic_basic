@@ -2329,17 +2329,31 @@
   ],
   "genome": [
     {
+      "name": "chrom_is_ploidified",
+      "signature": "chrom_is_ploidified(chrom)",
+      "summary": "Detect ploidified chromosome names, like \"chr1(mat)\", \"chr1(pat)\", \"chr1a\".",
+      "docstring": "Detect ploidified chromosome names, like \"chr1(mat)\", \"chr1(pat)\", \"chr1a\".\nMirrors the suffixes handled by chrom_rm_suffix, anchored at the name end\nso scaffold/contig names with internal underscores are not flagged.\nInput:\n    chrom: pd.Index or pd.Series of chromosome names\nOutput:\n    bool: True if any name carries a ploidy suffix",
+      "return_type": null,
+      "lineno": 648,
+      "symbol": "hic_basic.genome.chrom_is_ploidified",
+      "import": "from hic_basic.genome import chrom_is_ploidified",
+      "source": {
+        "module_path": "hic_basic/genome.py",
+        "lineno": 648
+      }
+    },
+    {
       "name": "index_merge_hom",
       "signature": "index_merge_hom(df)",
       "summary": "Cancel ploidiness in index. You can then merge homologous chromosomes use functions like groupby.",
       "docstring": "Cancel ploidiness in index. You can then merge homologous chromosomes use functions like groupby.\nThis will change index inplace.\nInput:\n    df: DataFrame with MultiIndex [\"chrom\", \"start\"], chom is ploidified, like \"chr1(mat)\"\nOutput:\n    a dataframe with modified level 0 index value, like \"chr1(mat)\" -> \"chr1\"",
       "return_type": null,
-      "lineno": 643,
+      "lineno": 659,
       "symbol": "hic_basic.genome.index_merge_hom",
       "import": "from hic_basic.genome import index_merge_hom",
       "source": {
         "module_path": "hic_basic/genome.py",
-        "lineno": 643
+        "lineno": 659
       }
     },
     {
@@ -2362,12 +2376,12 @@
       "summary": "Sort dataframe by natural chromosome order.",
       "docstring": "Sort dataframe by natural chromosome order.\nTODO:\n    1. ask whether to rm chromint after sorting\n    2. ask whether to reset index\nInput:\n    df: must have a column named \"chrom\"\nOutput:\n    df: sorted by natural chromosome order",
       "return_type": null,
-      "lineno": 662,
+      "lineno": 678,
       "symbol": "hic_basic.genome.sort_chrom",
       "import": "from hic_basic.genome import sort_chrom",
       "source": {
         "module_path": "hic_basic/genome.py",
-        "lineno": 662
+        "lineno": 678
       }
     }
   ],

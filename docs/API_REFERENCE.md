@@ -38,7 +38,7 @@ Total modules with public functions: 93
 - [cycle_phasing](#cycle_phasing) (2 functions)
 - [data.file_formats](#data-file_formats) (2 functions)
 - [embedding](#embedding) (5 functions)
-- [genome](#genome) (3 functions)
+- [genome](#genome) (4 functions)
 - [heuristic_ordering](#heuristic_ordering) (1 functions)
 - [hicbr](#hicbr) (2 functions)
 - [hicio](#hicio) (29 functions)
@@ -3569,7 +3569,25 @@ No documentation available.
 
 **File:** `genome.py`
 
-**Public functions:** 3
+**Public functions:** 4
+
+
+### `chrom_is_ploidified(chrom)`
+
+
+Detect ploidified chromosome names, like "chr1(mat)", "chr1(pat)", "chr1a".
+Mirrors the suffixes handled by chrom_rm_suffix, anchored at the name end
+so scaffold/contig names with internal underscores are not flagged.
+Input:
+    chrom: pd.Index or pd.Series of chromosome names
+Output:
+    bool: True if any name carries a ploidy suffix
+
+
+**Source:** Line 648 in [genome.py](genome.py#L648)
+
+
+---
 
 
 ### `index_merge_hom(df)`
@@ -3583,7 +3601,7 @@ Output:
     a dataframe with modified level 0 index value, like "chr1(mat)" -> "chr1"
 
 
-**Source:** Line 643 in [genome.py](genome.py#L643)
+**Source:** Line 659 in [genome.py](genome.py#L659)
 
 
 ---
@@ -3623,7 +3641,7 @@ Output:
     df: sorted by natural chromosome order
 
 
-**Source:** Line 662 in [genome.py](genome.py#L662)
+**Source:** Line 678 in [genome.py](genome.py#L678)
 
 
 ---

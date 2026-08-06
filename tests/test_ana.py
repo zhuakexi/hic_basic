@@ -1243,5 +1243,72 @@ class TestAna(unittest.TestCase):
             ]
             self.assertEqual(commit["state_hash"], self._combined_hash(paths))
 
+class TestAnaIntrospection(unittest.TestCase):
+    """
+    `ana-describe` must be side-effect free (issues/ana-describe-side-effect):
+    Ana.for_introspection() never creates or rewrites anything.
+    """
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.home = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _home_file_bytes(self):
+        return {
+            path.name: path.read_bytes()
+            for path in self.home.iterdir()
+            if path.is_file()
+        }
+
+    def _legacy_project(self):
+        """A project whose commits.json predates the system version metadata."""
+        df = pd.DataFrame(
+            {"norm_contact": [1.0]},
+            index=pd.Index(["sample_0"], dtype=pd.StringDtype()),
+        )
+        Ana(self.home, clear=True, data=df).commit("initial")
+        meta = load_json(self.home / "commits.json")
+        meta.pop("ana_system_version", None)
+        dump_json(meta, self.home / "commits.json")
+        return self.home
+
+    def test_introspection_does_not_rewrite_commits(self):
+        """A legacy project's commits.json stays byte-identical after describe."""
+        home = self._legacy_project()
+        before = self._home_file_bytes()
+        Ana.for_introspection(home).describe()
+        self.assertEqual(before, self._home_file_bytes())
+
+    def test_introspection_does_not_create_missing_files(self):
+        """Missing storage files are not created by introspection."""
+        home = self._legacy_project()
+        for name in ("data.csv", "data_schema.json", "obj.json"):
+            (home / name).unlink()
+        before = self._home_file_bytes()
+        Ana.for_introspection(home).describe()
+        self.assertEqual(before, self._home_file_bytes())
+
+    def test_introspection_does_not_create_missing_directory(self):
+        """A non-existent home path is not created."""
+        missing = self.home / "not_there"
+        Ana.for_introspection(missing).describe()
+        self.assertFalse(missing.exists())
+
+    def test_introspection_rejects_write_arguments(self):
+        """Read-only mode takes no data, obj, or clear."""
+        with self.assertRaises(AssertionError):
+            Ana(self.home, data=pd.DataFrame({"a": [1]}), initialize=False)
+        with self.assertRaises(AssertionError):
+            Ana(self.home, clear=True, initialize=False)
+
+    def test_write_capable_init_still_materializes_files(self):
+        """The write-capable constructor keeps its documented behavior."""
+        Ana(self.home, clear=True)
+        for name in ("data.csv", "data_schema.json", "obj.json", "commits.json"):
+            self.assertTrue((self.home / name).exists(), name)
+
 if __name__ == "__main__":
     unittest.main()

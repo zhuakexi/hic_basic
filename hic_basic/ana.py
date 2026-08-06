@@ -79,10 +79,10 @@ class Ana:
         >>> ana.data  # Returns DataFrame with correct dtypes: categorical, Int64, string
     """
     
-    def __init__(self, home, data=None, obj=None, clear=False, verbose=False, max_commits=50, from_ana=None):
+    def __init__(self, home, data=None, obj=None, clear=False, verbose=False, max_commits=50, from_ana=None, initialize=True):
         """
         Initialize the analysis data manager.
-        
+
         Parameters
         ----------
         home : str or Path
@@ -105,6 +105,10 @@ class Ana:
             Another Ana object to initialize from. If provided, will copy
             the data and obj from that object but create a new commit history.
             Must specify a different home directory.
+        initialize : bool, default True
+            If False, construct in read-only introspection mode: the project
+            directory is never created, modified, or synced (see
+            ``for_introspection()``). No ``data``/``obj``/``clear``/``from_ana``.
             
         Raises
         ------
@@ -115,7 +119,13 @@ class Ana:
         """
         self.home = Path(home)
         self.verbose = verbose
-        
+
+        if not initialize:
+            assert data is None and obj is None and not clear, (
+                "initialize=False (read-only introspection) accepts no "
+                "data, obj, or clear"
+            )
+
         # Handle initialization from another Ana object
         if from_ana is not None:
             if self.home.resolve() == Path(from_ana.home).resolve():
@@ -149,25 +159,33 @@ class Ana:
             self.commit_meta = load_json(self.commit_meta_path)
         else:
             # Original initialization logic
-            self.home.mkdir(parents=True, exist_ok=True)
             self.max_commits = max_commits
-            
-            # Initialize commit history - stored as JSON metadata
             self.commit_meta_path = self.home / "commits.json"
-            if self.commit_meta_path.exists() and not clear:
-                self.commit_meta = load_json(self.commit_meta_path)
-                # Ensure max_commits is updated if changed
-                self.commit_meta["max_commits"] = max_commits
+            if not initialize:
+                # Read-only introspection (Ana.for_introspection): never
+                # create or modify anything in the project directory.
+                self.commit_meta = (
+                    load_json(self.commit_meta_path)
+                    if self.commit_meta_path.exists()
+                    else {}
+                )
             else:
-                self.commit_meta = {
-                    "commits": [],
-                    "last_commit_count": 0,
-                    "max_commits": max_commits,
-                    "file_mapping": {},  # Maps commit_id -> physical_filename
-                    **self._default_system_meta(),
-                }
-                dump_json(self.commit_meta, self.commit_meta_path)
-            self._ensure_system_meta()
+                self.home.mkdir(parents=True, exist_ok=True)
+                # Initialize commit history - stored as JSON metadata
+                if self.commit_meta_path.exists() and not clear:
+                    self.commit_meta = load_json(self.commit_meta_path)
+                    # Ensure max_commits is updated if changed
+                    self.commit_meta["max_commits"] = max_commits
+                else:
+                    self.commit_meta = {
+                        "commits": [],
+                        "last_commit_count": 0,
+                        "max_commits": max_commits,
+                        "file_mapping": {},  # Maps commit_id -> physical_filename
+                        **self._default_system_meta(),
+                    }
+                    dump_json(self.commit_meta, self.commit_meta_path)
+                self._ensure_system_meta()
 
             # Initialize data storage files
             data_path = self.home / "data.csv"
@@ -191,12 +209,13 @@ class Ana:
                     commit_file.unlink()
             
             # Create empty storage files if they don't exist
-            if not data_path.exists():
-                data_path.touch()
-            if not schema_path.exists():
-                Ana.create_empty_json_file(schema_path)
-            if not obj_path.exists():
-                Ana.create_empty_json_file(obj_path)
+            if initialize:
+                if not data_path.exists():
+                    data_path.touch()
+                if not schema_path.exists():
+                    Ana.create_empty_json_file(schema_path)
+                if not obj_path.exists():
+                    Ana.create_empty_json_file(obj_path)
             
             # Process initial data inputs
             if data is not None:
@@ -220,7 +239,7 @@ class Ana:
                     self.update(value, key=key)
 
             # Ensure schema file exists even if initial data was not provided
-            if not self.schema_path.exists() and self.data_path.exists():
+            if initialize and not self.schema_path.exists() and self.data_path.exists():
                 try:
                     df = pd.read_csv(self.data_path, index_col=0)
                     if not df.empty or len(df.columns) > 0:
@@ -229,6 +248,30 @@ class Ana:
                         dump_json({}, self.schema_path)
                 except Exception:
                     dump_json({}, self.schema_path)
+
+    @classmethod
+    def for_introspection(cls, home, verbose=False):
+        """
+        Construct an Ana without touching the project directory.
+
+        Read-only introspection for tools like ``ana-describe``: schema,
+        column metadata, and objects are loaded if present, but nothing is
+        created or rewritten (no mkdir, no commits.json sync, no empty
+        storage files).
+
+        Parameters
+        ----------
+        home : str or Path
+            Path to the Ana project directory (not created if missing).
+        verbose : bool, default False
+            Print operational messages.
+
+        Returns
+        -------
+        Ana
+            Ana instance safe for read-only use.
+        """
+        return cls(home, verbose=verbose, initialize=False)
 
     @staticmethod
     def _default_system_meta():
