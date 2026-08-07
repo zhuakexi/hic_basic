@@ -2883,6 +2883,148 @@
       }
     }
   ],
+  "impute.schicluster_gpu": [
+    {
+      "name": "gpu_processing_worker",
+      "signature": "gpu_processing_worker(input_queue, output_queue, processing_params, verbosity=0)",
+      "summary": "GPU worker thread: impute matrices sequentially and hand them to the",
+      "docstring": "GPU worker thread: impute matrices sequentially and hand them to the\nsaver queue.\n\nRuns as a single thread in the parent process because CUDA cannot be\nused in forked subprocesses; GPU work is inherently sequential (one\ndevice, one stream of batched solves), so one worker suffices.\n\n``processing_params`` keys: ``method`` ('torch_ver' or 'numpy_ver'),\n``device`` ('gpu' or 'cpu'), ``if_convolve``, ``if_rwr``,\n``ignore_diag``, ``norm``, ``oldway``, and the three dtypes\n(``convolve_dtype`` / ``kernel_dtype`` / ``rwr_dtype``).",
+      "return_type": null,
+      "lineno": 393,
+      "symbol": "hic_basic.impute.schicluster_gpu.gpu_processing_worker",
+      "import": "from hic_basic.impute.schicluster_gpu import gpu_processing_worker",
+      "source": {
+        "module_path": "hic_basic/impute/schicluster_gpu.py",
+        "lineno": 393
+      }
+    },
+    {
+      "name": "hic_imputation_multiprocess",
+      "signature": "hic_imputation_multiprocess(coolps, outfiles, chroms=None, resolution=10000, band_width=4000000, ignore_diag=True, norm=True, verbosity=0, nproc_loading=1, nproc_saving=5, method='torch_ver', device='gpu', oldway=False, if_convolve=True, if_rwr=True, convolve_dtype=None, kernel_dtype=None, rwr_dtype=None)",
+      "summary": "Multi-process Hi-C imputation using a producer-consumer pipeline.",
+      "docstring": "Multi-process Hi-C imputation using a producer-consumer pipeline.\n\nLayout: ``nproc_loading`` loader processes -> 1 GPU worker thread ->\n``nproc_saving`` saver processes.  Queues are ``JoinableQueue`` with\ncapacity ``3 x n_workers`` to buffer while a slower stage catches up;\n``None`` poison pills shut each stage down in order after all work is\ndrained.\n\nArgs:\n    coolps (list): paths to cool files (one per task).\n    outfiles (list): output ``.npz`` paths, one per task.\n    chroms (list or str): chromosome per task, or a single chromosome\n        applied to all tasks.\n    resolution (int): resolution of the Hi-C data (bp).\n    band_width (int): maximum cis interaction distance (bp).\n    ignore_diag (bool): whether to zero the main diagonal.\n    norm (bool): whether to full-sum-normalize.\n    verbosity (int): 0 = silent, >=1 = pipeline progress logs.\n    nproc_loading (int): number of loader processes.\n    nproc_saving (int): number of saver processes.\n    method (str): ``'torch_ver'`` (GPU path) or ``'numpy_ver'`` (CPU,\n        in-thread).\n    device (str): ``'gpu'`` or ``'cpu'`` (only for ``'torch_ver'``).\n    oldway (bool): legacy diagonal +1 mode for the CPU path.\n    if_convolve (bool): whether to apply Gaussian convolution.\n    if_rwr (bool): whether to run the RWR step.\n    convolve_dtype: convolution output dtype; torch dtype for\n        ``'torch_ver'`` (float32 default), numpy dtype for\n        ``'numpy_ver'`` (float64 default).\n    kernel_dtype: Gaussian kernel dtype (float).\n    rwr_dtype: RWR solve dtype.",
+      "return_type": null,
+      "lineno": 538,
+      "symbol": "hic_basic.impute.schicluster_gpu.hic_imputation_multiprocess",
+      "import": "from hic_basic.impute.schicluster_gpu import hic_imputation_multiprocess",
+      "source": {
+        "module_path": "hic_basic/impute/schicluster_gpu.py",
+        "lineno": 538
+      }
+    },
+    {
+      "name": "load_single_hic_matrix",
+      "signature": "load_single_hic_matrix(coolp, chrom='chr1', resolution=10000, band_width=4000000, verbosity=0)",
+      "summary": "Load a single Hi-C matrix from a cool file into the pipeline format.",
+      "docstring": "Load a single Hi-C matrix from a cool file into the pipeline format.\n\nArgs:\n    coolp (str): path to the cool file.\n    chrom (str): chromosome (or region) to extract.\n    resolution (int): resolution of the Hi-C data (bp).\n    band_width (int): maximum cis interaction distance (bp); ``None``\n        disables the upper-band constraint.\n    verbosity (int): 0 = silent, >=1 = log loading time.\n\nReturns:\n    tuple: ``(mat_X, params)`` where ``mat_X`` has shape\n    ``(1, 1, H, W)`` and ``params`` carries ``chrom``, ``resolution``,\n    ``band_width``, ``upper_band`` and ``coolp``.",
+      "return_type": null,
+      "lineno": 319,
+      "symbol": "hic_basic.impute.schicluster_gpu.load_single_hic_matrix",
+      "import": "from hic_basic.impute.schicluster_gpu import load_single_hic_matrix",
+      "source": {
+        "module_path": "hic_basic/impute/schicluster_gpu.py",
+        "lineno": 319
+      }
+    },
+    {
+      "name": "matrix_loading_worker",
+      "signature": "matrix_loading_worker(input_queue, output_queue, verbosity=0)",
+      "summary": "Loader process: fetch ``(coolp, chrom, resolution, band_width, outfile)``",
+      "docstring": "Loader process: fetch ``(coolp, chrom, resolution, band_width, outfile)``\njobs and push ``(mat_X, params, outfile)`` tuples to the processing queue.\n\nA ``None`` item on the input queue is a poison pill that stops the\nworker.",
+      "return_type": null,
+      "lineno": 362,
+      "symbol": "hic_basic.impute.schicluster_gpu.matrix_loading_worker",
+      "import": "from hic_basic.impute.schicluster_gpu import matrix_loading_worker",
+      "source": {
+        "module_path": "hic_basic/impute/schicluster_gpu.py",
+        "lineno": 362
+      }
+    },
+    {
+      "name": "save_single_result",
+      "signature": "save_single_result(imputed_mat_X, params, outfile, verbosity=0)",
+      "summary": "Save one imputed matrix as a compressed CSR ``.npz``.",
+      "docstring": "Save one imputed matrix as a compressed CSR ``.npz``.\n\nThe stored arrays are ``data`` / ``indices`` / ``indptr`` / ``shape``;\nload with ``csr_matrix((z[\"data\"], z[\"indices\"], z[\"indptr\"]),\nshape=z[\"shape\"])``.  The stored matrix is the imputed, normalized,\nband-limited upper triangle (plus main diagonal).\n\nArgs:\n    imputed_mat_X (np.ndarray): imputed matrix, shape ``(H, W)``.\n    params (dict): pipeline params (informational; not stored).\n    outfile (str): output ``.npz`` path.\n    verbosity (int): 0 = silent, >=1 = per-stage timing logs.",
+      "return_type": null,
+      "lineno": 505,
+      "symbol": "hic_basic.impute.schicluster_gpu.save_single_result",
+      "import": "from hic_basic.impute.schicluster_gpu import save_single_result",
+      "source": {
+        "module_path": "hic_basic/impute/schicluster_gpu.py",
+        "lineno": 505
+      }
+    },
+    {
+      "name": "saving_worker",
+      "signature": "saving_worker(input_queue, verbosity=0)",
+      "summary": "Saver process: convert imputed matrices to CSR and write compressed",
+      "docstring": "Saver process: convert imputed matrices to CSR and write compressed\n``.npz`` files.\n\nA ``None`` item on the input queue is a poison pill that stops the\nworker.",
+      "return_type": null,
+      "lineno": 477,
+      "symbol": "hic_basic.impute.schicluster_gpu.saving_worker",
+      "import": "from hic_basic.impute.schicluster_gpu import saving_worker",
+      "source": {
+        "module_path": "hic_basic/impute/schicluster_gpu.py",
+        "lineno": 477
+      }
+    },
+    {
+      "name": "schicluster_imputation_cpu",
+      "signature": "schicluster_imputation_cpu(mat, alpha=0.05, kernel_size=3, sigma=2, if_convolve=True, ignore_diag=True, oldway=False, norm=True, upper_band=None, convolve_dtype=np.float64, kernel_dtype=np.float64, rwr_dtype=np.float64, if_rwr=True)",
+      "summary": "Schicluster imputation of one contact matrix, NumPy reference.",
+      "docstring": "Schicluster imputation of one contact matrix, NumPy reference.\n\nSame parameter surface as the GPU version, so the two paths can be\ncross-validated.  Note: with ``ignore_diag=True`` the input ``mat`` is\nmodified in place (main diagonal zeroed) \u2014 pass a copy if the input must\nbe preserved.\n\nArgs:\n    mat (np.ndarray): input contact matrix, shape ``(H, W)``.\n    alpha (float): RWR restart parameter.\n    kernel_size (int): size of the Gaussian kernel.\n    sigma (float): standard deviation of the Gaussian kernel.\n    if_convolve (bool): whether to apply Gaussian convolution.\n    ignore_diag (bool): whether to zero the main diagonal (before and\n        after imputation).\n    oldway (bool): legacy diagonal +1 mode (differs from the production\n        mode when convolution has placed non-zero values on the\n        sub/super-diagonal; do not compare against the reference data).\n    norm (bool): whether to full-sum-normalize the result.\n    upper_band (int): if not None, keep only the main diagonal and the\n        upper ``upper_band`` super-diagonals, zero the rest.\n    convolve_dtype (np.dtype): dtype of the convolution output (can be\n        int for research purposes, e.g. ``np.int32`` in production).\n    kernel_dtype (np.dtype): dtype of the Gaussian kernel (should be\n        float for proper convolution).\n    rwr_dtype (np.dtype): dtype for the RWR solve (float64 default).\n    if_rwr (bool): whether to run the RWR step.\n\nReturns:\n    np.ndarray: imputed matrix, shape ``(H, W)``.",
+      "return_type": null,
+      "lineno": 115,
+      "symbol": "hic_basic.impute.schicluster_gpu.schicluster_imputation_cpu",
+      "import": "from hic_basic.impute.schicluster_gpu import schicluster_imputation_cpu",
+      "source": {
+        "module_path": "hic_basic/impute/schicluster_gpu.py",
+        "lineno": 115
+      }
+    },
+    {
+      "name": "schicluster_imputation_gpu",
+      "signature": "schicluster_imputation_gpu(mat, alpha=0.05, kernel_size=3, sigma=2, if_convolve=True, ignore_diag=True, norm=True, upper_band=None, verbosity=0, device=None, convolve_dtype=torch.float32, kernel_dtype=torch.float32, rwr_dtype=torch.float32, if_rwr=True)",
+      "summary": "Schicluster imputation of a batch of contact matrices, GPU version.",
+      "docstring": "Schicluster imputation of a batch of contact matrices, GPU version.\n\nMatches the CPU reference (:func:`schicluster_imputation_cpu`) step for\nstep, but operates on a batch with ``torch.nn.functional.conv2d`` and a\nbatched ``torch.linalg.solve``.\n\nArgs:\n    mat: batch of input matrices, shape ``(batch_size, 1, H, W)``\n        (ndarray or tensor).\n    alpha (float): RWR restart parameter.\n    kernel_size (int): size of the Gaussian kernel.\n    sigma (float): standard deviation of the Gaussian kernel.\n    if_convolve (bool): whether to apply Gaussian convolution.\n    ignore_diag (bool): whether to zero the main diagonal (before and\n        after imputation).\n    norm (bool): whether to full-sum-normalize the result.\n    upper_band (int): if not None, keep only the main diagonal and the\n        upper ``upper_band`` super-diagonals, zero the rest.\n    verbosity (int): 0 = silent, >=1 = per-stage timing logs.\n    device (torch.device): device to run on; defaults to CUDA if\n        available, else CPU.\n    convolve_dtype (torch.dtype): dtype of the convolution output\n        (``torch.int32`` in production).\n    kernel_dtype (torch.dtype): dtype of the Gaussian kernel (float).\n    rwr_dtype (torch.dtype): dtype for the RWR solve (float32 in\n        production).\n    if_rwr (bool): whether to run the RWR step.\n\nReturns:\n    torch.Tensor: imputed matrices on CPU, shape ``(B, 1, H, W)``.",
+      "return_type": null,
+      "lineno": 199,
+      "symbol": "hic_basic.impute.schicluster_gpu.schicluster_imputation_gpu",
+      "import": "from hic_basic.impute.schicluster_gpu import schicluster_imputation_gpu",
+      "source": {
+        "module_path": "hic_basic/impute/schicluster_gpu.py",
+        "lineno": 199
+      }
+    },
+    {
+      "name": "solve_rwr_inverse",
+      "signature": "solve_rwr_inverse(stoch_matrix, alpha=0.05)",
+      "summary": "Solve the Random Walk with Restart (RWR) equations by matrix inverse.",
+      "docstring": "Solve the Random Walk with Restart (RWR) equations by matrix inverse.\n\nSolves ``(I - (1-alpha) * P^T) * R = alpha * I`` for the per-source\nrestart distributions and symmetrizes the result.\n\nArgs:\n    stoch_matrix (np.ndarray): column-stochastic matrix ``P``, shape\n        ``(N, N)``.\n    alpha (float): restart probability.\n\nReturns:\n    np.ndarray: symmetrized RWR solution, shape ``(N, N)``.",
+      "return_type": null,
+      "lineno": 48,
+      "symbol": "hic_basic.impute.schicluster_gpu.solve_rwr_inverse",
+      "import": "from hic_basic.impute.schicluster_gpu import solve_rwr_inverse",
+      "source": {
+        "module_path": "hic_basic/impute/schicluster_gpu.py",
+        "lineno": 48
+      }
+    },
+    {
+      "name": "solve_rwr_inverse_gpu",
+      "signature": "solve_rwr_inverse_gpu(stoch_matrix, alpha=0.05, rwr_dtype=torch.float32, device=None)",
+      "summary": "GPU version of :func:`solve_rwr_inverse`, batched over ``(B, C, N, N)``.",
+      "docstring": "GPU version of :func:`solve_rwr_inverse`, batched over ``(B, C, N, N)``.\n\nA single batched ``torch.linalg.solve`` replaces the per-matrix\n``scipy.linalg.solve`` of the CPU reference; this is the main speedup of\nthe GPU path.\n\nArgs:\n    stoch_matrix: column-stochastic matrix or tensor, shape\n        ``(batch_size, channels, N, N)``.\n    alpha (float): restart probability.\n    rwr_dtype (torch.dtype): arithmetic dtype for the solve.\n    device (torch.device): device to run on; defaults to CUDA if\n        available, else CPU.\n\nReturns:\n    torch.Tensor: symmetrized RWR solution, shape ``(B, C, N, N)``.",
+      "return_type": null,
+      "lineno": 73,
+      "symbol": "hic_basic.impute.schicluster_gpu.solve_rwr_inverse_gpu",
+      "import": "from hic_basic.impute.schicluster_gpu import solve_rwr_inverse_gpu",
+      "source": {
+        "module_path": "hic_basic/impute/schicluster_gpu.py",
+        "lineno": 73
+      }
+    }
+  ],
   "impute.simpute": [
     {
       "name": "DMimpute",
